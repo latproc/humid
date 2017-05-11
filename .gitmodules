@@ -1,0 +1,6 @@
+[submodule "nanogui"]
+	path = nanogui
+	url = https://github.com/latproc/nanogui.git
+[submodule "lib/nanogui"]
+	path = lib/nanogui
+	url = https://github.com/latproc/nanogui.git
