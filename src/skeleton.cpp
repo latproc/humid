@@ -108,6 +108,7 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg) : Skeleto
 	using namespace nanogui;
 	Label *itemText = new Label(window, "", "sans-bold");
 	itemText->setPosition(Vector2i(40, 40));
+	itemText->setSize(Vector2i(260, 20));
 	itemText->setFixedSize(Vector2i(260, 20));
 	itemText->setCaption(message.c_str());
 	

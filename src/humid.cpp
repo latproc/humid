@@ -1121,6 +1121,7 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	window->setTheme(theme);
 	Label *itemText = new Label(window, "", "sans-bold");
 	itemText->setPosition(Vector2i(40, 40));
+	itemText->setSize(Vector2i(260, 20));
 	itemText->setFixedSize(Vector2i(260, 20));
 	itemText->setCaption("Select a project to open");
 	itemText->setVisible(true);
