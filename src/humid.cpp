@@ -624,6 +624,64 @@ public:
 	int addr;
 };
 
+
+class EditorLabel : public nanogui::Label, public EditorWidget {
+
+public:
+
+	EditorLabel(Widget *parent, const std::string caption, const std::string &font = "sans", int fontSize = -1, int modbus_address = 0, int icon = 0)
+	: Label(parent, caption), EditorWidget(this), dh(0), handles(9), handle_coordinates(9,2), addr(modbus_address) {
+	}
+
+	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
+
+		using namespace nanogui;
+
+		if (editorMouseButtonEvent(this, p, button, down, modifiers))
+			return nanogui::Label::mouseButtonEvent(p, button, down, modifiers);
+
+		return true;
+	}
+
+	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
+
+		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
+			return Label::mouseMotionEvent(p, rel, button, modifiers);
+
+		return true;
+	}
+
+	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
+
+		if (editorMouseEnterEvent(this, p, enter))
+			return Label::mouseEnterEvent(p, enter);
+
+		return true;
+	}
+
+	int address() const {
+		return addr;
+	}
+
+
+	virtual void draw(NVGcontext *ctx) override {
+		nanogui::Label::draw(ctx);
+		if (mSelected) {
+			nvgStrokeWidth(ctx, 4.0f);
+			nvgBeginPath(ctx);
+			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
+			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
+			nvgStroke(ctx);
+		}
+	}
+
+	nanogui::DragHandle *dh;
+	std::vector<Handle> handles;
+	MatrixXd handle_coordinates;
+	int addr;
+};
+
+
 class EditorImageView : public nanogui::ImageView, public EditorWidget {
 
 public:
@@ -1320,6 +1378,13 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "LABEL", this, cell, 0, "LABEL", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "TEXT", this, cell, 0, "TEXT", "");
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
@@ -1880,13 +1945,20 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 	state = s;
 }
 
+nanogui::Vector2i fixPlacement(nanogui::Widget *w, nanogui::Widget *container, nanogui::Vector2i &pos) {
+	if (pos.x() < 0) pos = Vector2i(0, pos.y());
+	if (pos.x() + w->width() > container->width()) pos = Vector2i(container->width() - w->width(), pos.y());
+	if (pos.y() < w->theme()->mWindowHeaderHeight) pos = Vector2i(pos.x(), w->theme()->mWindowHeaderHeight+1);
+	if (pos.y() + w->height() > container->height()) pos = Vector2i(pos.x(), container->height() - w->height());
+	return pos;
+}
+
 void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable *> selections) {
 	using namespace nanogui;
 
-	nanogui::Widget *window = w_user->getWindow();
-	nanogui::DragHandle *drag_handle = editor->getDragHandle();
+	Widget *window = w_user->getWindow();
+	DragHandle *drag_handle = editor->getDragHandle();
 	
-	//EDITOR->setCreateMode(false);
 	drag_handle->incRef();
 	removeChild(drag_handle);
 	PropertyMonitor *pm = drag_handle->propertyMonitor();
@@ -1899,15 +1971,9 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 		std::cout << "creating instance of " << item->getClass() << "\n";
 		nanogui::Widget *w = item->create(window);
 		if (w) {
-
-			//b->setEnabled(false);
-			//img->setPolicy(ImageView::SizePolicy::Expand);
-			const int object_height = 40;
-			w->setFixedSize(Vector2i(60, object_height));
-			w->setSize(Vector2i(60, object_height));
-
-			w->setPosition(p - window->position() - w->size()/2 + nanogui::Vector2i(0, offset));
-			offset += object_height + 8;
+			Vector2i pos(p - window->position() - w->size()/2 + nanogui::Vector2i(0, offset));
+			w->setPosition(fixPlacement(w, window, pos));
+			offset += w->height() + 8;
 		}
 	}
 	window->addChild(drag_handle);
@@ -2139,10 +2205,16 @@ struct comma_is_space : std::ctype<char> {
 nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	using namespace nanogui;
 	Widget *result = 0;
+	int object_width = 60;
+	int object_height = 40;
 	if (this->getClass() == "BUTTON") {
 		EditorButton *b = new EditorButton(window, caption(), 0);
 		b->setBackgroundColor(Color(200, 30, 30, 255));
 		result = b;
+	}
+	else if (getClass() == "LABEL") {
+		EditorLabel *eb = new EditorLabel(window, "untitled");
+		result = eb;
 	}
 	else if (getClass() == "TEXT") {
 		EditorTextBox *eb = new EditorTextBox(window);
@@ -2159,25 +2231,13 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	else if (getClass() == "PLOT") {
 		EditorLinePlot *lp = new EditorLinePlot(window);
 		lp->setBufferSize(gui->sampleBufferSize());
-		/*
-		lp->setHeader("Header");
-		lp->setFooter("Footer");
-		Color colors[] = {
-			Color(200,0,0, 255), Color(0,200,0, 255), Color(0, 200, 200, 255),
-			Color(200, 200, 0, 255), Color(200, 0, 200, 255)
-		};
-		int numColors = 5;
-		std::map<std::string, CircularBuffer*> &data(gui->getUserWindow()->getData());
-		auto iter = data.begin();
-		while (iter != data.end()) {
-			const std::pair<std::string, CircularBuffer *> &node = *iter++;
-			TimeSeries *ts = new TimeSeries(node.first, node.second);
-			Color &color(colors[ lp->getSeries().size() % numColors ]);
-			ts->setColor(color);
-			lp->addTimeSeries(ts);
-		}
-		*/
+		object_width = 200;
+		object_height = 120;
 		result = lp;
+	}
+	if (result) {
+		result->setFixedSize(Vector2i(object_width, object_height));
+		result->setSize(Vector2i(object_width, object_height));
 	}
 	return result;
 }
@@ -2349,6 +2409,8 @@ void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Eve
 nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 	using namespace nanogui;
 	Widget *result = 0;
+	int object_width = 60;
+	int object_height = 25;
 	switch (kind) {
 
 		case '0': {
@@ -2365,7 +2427,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 				EditorButton *b = new EditorButton(container, tag_name.substr(p+5), false,
 												   address_int);
-				b->setSize(Vector2i(60, 25));
+				b->setSize(Vector2i(object_width, object_height));
 				b->setName(tag_name);
 
 				b->setChangeCallback([b, this] (bool state) {
@@ -2379,7 +2441,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			}
 			else {
 				EditorButton *b = new EditorButton(container);
-				b->setSize(Vector2i(60, 25));
+				b->setSize(Vector2i(object_width, object_height));
 				b->setFlags(Button::ToggleButton);
 				b->setName(tag_name);
 				b->setChangeCallback([this,b](bool state) {
@@ -2396,15 +2458,11 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			break;
 
 		case '1': {
-			//new Label(container, tag_name, "sans-bold");
-			//CheckBox *b = new CheckBox(container, tag_name);
-			//img->setPolicy(ImageView::SizePolicy::Expand);
-			//b->setBackgroundColor(Color(200, 200, 200, 255));
-			//b->setFixedSize(Vector2i(25, 25));
 			char *rest = 0;
 			int address_int = (int)strtol(address_str.c_str()+2,&rest, 10);
 			EditorButton *b = new EditorButton(container, tag_name, true, address_int);
-			b->setFixedSize(Vector2i(60, 25));
+			b->setSize(Vector2i(object_width, object_height));
+			b->setFixedSize(Vector2i(object_width, object_height));
 			b->setFlags(Button::ToggleButton);
 			b->setName(tag_name);
 			b->setChangeCallback([this,b](bool state) {
@@ -2420,14 +2478,21 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			break;
 
 		case '3': {
+			//EditorLabel *el = new EditorLabel(container, tag_name, std::string("sans-bold"));
+			//el->setSize(Vector2i(object_width, object_height));
+			//el->setFixedSize(Vector2i(object_width, object_height));
+			//CheckBox *b = new CheckBox(container, tag_name);
+			//img->setPolicy(ImageView::SizePolicy::Expand);
+			//b->setBackgroundColor(Color(200, 200, 200, 255));
+			//b->setFixedSize(Vector2i(25, 25));
 			//result = new Label(container, tag_name, "sans-bold");
 
 			EditorTextBox *textBox = new EditorTextBox(container);
-			textBox->setFixedSize(Vector2i(60, 25));
 			textBox->setName(tag_name);
 			textBox->setValue("");
 			textBox->setEnabled(true);
 			textBox->setEditable(true);
+			textBox->setSize(Vector2i(object_width, object_height));
 			result = textBox;
 		}
 
@@ -2436,9 +2501,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 		case '4': {
 			//new Label(container, tag_name, "sans-bold");
 			auto textBox = new IntBox<int>(container);
-			textBox->setFixedSize(Vector2i(60, 25));
 			textBox->setEditable(true);
-			textBox->setFixedSize(Vector2i(100, 20));
+			textBox->setSize(Vector2i(object_width, object_height));
+			textBox->setFixedSize(Vector2i(object_width, object_height));
 			textBox->setValue(50);
 			textBox->setDefaultValue("0");
 			//textBox->setFontSize(16);
