@@ -46,6 +46,7 @@
 #include "manuallayout.h"
 #include "skeleton.h"
 #include "lineplot.h"
+#include "PanelScreen.h"
 
 #include <libgen.h>
 #include <zmq.hpp>
@@ -213,17 +214,6 @@ private:
 	std::map<std::string, nanogui::Widget *> widgets;
 };
 
-class PanelScreen {
-public:
-	void setName(const std::string &n) { name = n; }
-	std::string getName() { return name; }
-	void add(nanogui::Widget *w) { w->incRef(); items.push_back(w); }
-	void remove(nanogui::Widget *w) { items.remove(w); w->decRef(); }
-private:
-	std::list<nanogui::Widget*> items;
-	std::string name;
-};
-
 class ViewOptions {
 public:
 	bool visible;
@@ -277,6 +267,7 @@ public:
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 	virtual bool resizeEvent(const Vector2i &) override;
+	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
 
 	GLuint getImageId(const char *); 
 	void update() override;
@@ -293,8 +284,11 @@ public:
 	}
 	ViewManager &getViewManager() { return views; }
 
+	std::list<PanelScreen*> &getScreens() { return user_screens; }
+
 private:
 	ViewManager views;
+	std::list<PanelScreen*>user_screens;
 	nanogui::Vector2i old_size;
 	nanogui::Theme *theme;
 	EditorSettings settings;
@@ -409,10 +403,12 @@ public:
 
 		if (EDITOR->isEditMode()) {
 			if (down) {
-				if (!mSelected) { palette->clearSelections(); select(); }
-				else if (modifiers & GLFW_MOD_SHIFT) {
+				if (!mSelected) palette->clearSelections(); 
+				if (mSelected && modifiers & GLFW_MOD_SHIFT)
 					deselect();
-				}
+				else
+					select();
+				
 			}
 			return false;
 		}
@@ -539,6 +535,19 @@ public:
 		return true;
 	}
 
+/*	bool keyboardEvent(int key, int scancode, int action, int modifiers) override {
+		if (focused() && isSelected() && action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
+			UserWindow *uw = EDITOR->gui()->getUserWindow();
+			if (uw && uw->hasSelections()) {
+				incRef();
+				uw->deleteSelections();
+				decRef();
+				return false;
+			}
+		}
+		return true;			
+	}
+*/
 	int address() const {
 		return addr;
 	}
@@ -896,7 +905,6 @@ class ObjectWindow : public Skeleton, public Palette {
 public:
 	ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char *tag_fname = 0);
 	void setVisible(bool which) { window->setVisible(which); }
-	nanogui::Window *getWindow()  { return window; }
 	void update();
 	nanogui::Screen *getScreen() { return gui; }
 	void show(nanogui::Widget &w);
@@ -946,8 +954,11 @@ class ScreensWindow : public Skeleton, public Palette {
 public:
 	ScreensWindow(EditorGUI *screen, nanogui::Theme *theme);
 	void setVisible(bool which) { window->setVisible(which); }
+	void update();
 private:
 	EditorGUI *gui;
+	nanogui::VScrollPanel *palette_scroller;
+	nanogui::Widget *palette_content;
 };
 
 class ViewsWindow : public nanogui::Object {
@@ -1162,31 +1173,29 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 	return true;
 }
 
-UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen), current_layer(0) {
+/*
+UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen), current_layer(0), mDefaultSize(1024,768) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(640, 480));
-	window->setSize(Vector2i(640, 480));
+	window->setFixedSize(mDefaultSize);
+	window->setSize(mDefaultSize);
 	window->setVisible(false);
 	window->setTitle("Untitled");
-	/* TBD
-	 TabWidget* tabWidget = window->add<TabWidget>();
-	 current_layer = tabWidget->createTab("Screen 1");
-	 layers.pus_back(current_layer);
-	 */
 }
-
+*/
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
-: Skeleton(screen, uww), gui(screen), current_layer(0) {
+: Skeleton(screen, uww), gui(screen), current_layer(0), mDefaultSize(1024,768) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(640, 480));
-	window->setSize(Vector2i(640, 480));
+	window->setFixedSize(mDefaultSize);
+	window->setSize(mDefaultSize);
 	window->setVisible(false);
 	window->setTitle("Untitled");
 	window->setPosition(nanogui::Vector2i(200,48));
+	push(window);
+	
 	/* TBD
 	TabWidget* tabWidget = window->add<TabWidget>();
 	current_layer = tabWidget->createTab("Screen 1");
@@ -1197,6 +1206,8 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
 
 void UserWindow::deleteSelections() {
+	if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
+	getWindow()->requestFocus();
 	for (auto sel : getSelected()) {
 		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
 		if (w) getWindow()->removeChild(w);
@@ -1400,15 +1411,31 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	window->setTitle("Screens");
 	window->setVisible(false);
 	{
-		VScrollPanel *palette_scroller = new VScrollPanel(window);
+		palette_scroller = new VScrollPanel(window);
 		int button_width = window->width() - 20;
 		palette_scroller->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight));
 		palette_scroller->setPosition( Vector2i(5, window->theme()->mWindowHeaderHeight+1));
-		Widget *palette_content = new Widget(palette_scroller);
+		palette_content = new Widget(palette_scroller);
 		palette_content->setLayout(new GridLayout(Orientation::Vertical,10));
 		Widget *cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
 	}
+}
+
+void ScreensWindow::update() {
+	getWindow()->requestFocus();
+	int button_width = window->width() - 20;
+	int n = palette_content->childCount();
+	while (n--) palette_content->removeChild(0);
+	for (auto screen : gui->getScreens() ) {
+		nanogui::Widget *cell = new nanogui::Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
+		SelectableButton *b = new SelectableButton("BUTTON", this, cell, screen->getName());
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+	}
+	getWindow()->performLayout(gui->nvgContext());
 }
 
 
@@ -1547,7 +1574,11 @@ void PropertyWindow::update() {
 			properties->addVariable<std::string>(label,
 								   [uw](std::string value) {
 									   PanelScreen *ps = uw->getActivePanel();
-									   if (ps) ps->setName(value);
+									   if (ps) {
+										   ps->setName(value);
+										   uw->getWindow()->setTitle(value);
+									   }
+									   if (uw->app()->getScreensWindow()) uw->app()->getScreensWindow()->update();
 								   },
 								   [uw]()->std::string{
 									   PanelScreen *ps = uw->getActivePanel();
@@ -1556,11 +1587,19 @@ void PropertyWindow::update() {
 								   });
 			label = "Window Width";
 			properties->addVariable<int>(label,
-								   [uw](int value) { uw->getWindow()->setWidth(value); },
+								   [uw](int value) mutable {
+									   nanogui::Window *w = uw->getWindow(); 
+									   w->setWidth(value);
+									   w->setFixedWidth(value);
+									   },
 								   [uw]()->int{ return uw->getWindow()->width(); });
 			label = "Window Height";
 			properties->addVariable<int>(label,
-								   [uw](int value) { uw->getWindow()->setHeight(value); },
+								   [uw](int value) mutable {
+									   nanogui::Window *w = uw->getWindow();
+									   w->setHeight(value);
+									   w->setFixedHeight(value);
+									   },
 								   [uw]()->int{ return uw->getWindow()->height(); });
 		}
 		n = pw->children().size();
@@ -1718,13 +1757,13 @@ void EditorGUI::createWindows() {
 	w_theme = new ThemeWindow(this, theme);
 	w_properties = new PropertyWindow(this, theme);
 	UserWindowWin *uww = new UserWindowWin(this, "Untitled");
+	user_screens.push_back(uww);
 	nanogui::Theme *uwTheme = new nanogui::Theme(nvgContext());
 	setupTheme(uwTheme);
 	w_user = new UserWindow(this, uwTheme, uww);
 	w_toolbar = new Toolbar(this, theme);
 	w_startup = new StartupWindow(this, theme);
 	w_objects = new ObjectWindow(this, theme);
-
 
 	w_structures = new StructuresWindow(this, theme);
 
@@ -1771,6 +1810,7 @@ void EditorGUI::createWindows() {
 													 [this](nanogui::Window *value) { this->updateSettings(value); }
 													 );
 
+	w_screens->update();
 	performLayout(mNVGContext);
 }
 
@@ -1781,6 +1821,7 @@ void EditorWidget::justSelected() {
 		//prop->show(*getWidget());
 		prop->update();
 	}
+	EDITOR->gui()->getUserWindow()->getWindow()->requestFocus();
 }
 
 void EditorWidget::justDeselected() {
@@ -1878,7 +1919,11 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 
 	using namespace nanogui;
 
+	Widget *clicked = findWidget(p);
+
 	nanogui::Window *window = w_user->getWindow();
+	Widget *ww = dynamic_cast<Widget*>(window);
+
 	if (button != GLFW_MOUSE_BUTTON_1 || !window->contains(p /*- window->position()*/))
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 
@@ -1892,7 +1937,7 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	nanogui::DragHandle *drag_handle = editor->getDragHandle();
 
 	if (drag_handle && EDITOR->isEditMode()) {
-		if (!is_child) {
+		if (clicked == ww && !is_child) {
 			if (getStructuresWindow()->hasSelections()) {
 				if (down) {
 					createStructures(p, getStructuresWindow()->getSelected());
@@ -1906,6 +1951,14 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 					getObjectWindow()->clearSelections();
 				}
 				return false;
+			}
+			else {
+				if (down) {
+					window->requestFocus();
+					getUserWindow()->clearSelections();
+					if (getPropertyWindow()) getPropertyWindow()->update();
+				}
+				return Screen::mouseButtonEvent(p, button, down, modifiers);
 			}
 		}
 		else {
@@ -1923,16 +1976,14 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 					if (getPropertyWindow())
 						getPropertyWindow()->update();
 				}
-				//setFocused(true);
 				return Screen::mouseButtonEvent(p, button, down, modifiers);
 			}
 		}
-
-
 		return true;
 	}
 	else {
 		//not edit mode
+		//window->requestFocus();
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 	}
 }
@@ -2034,6 +2085,19 @@ void EditorGUI::update() {
 		needs_update = false;
 	}
 }
+
+bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
+	if (action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
+		if (w_user->hasSelections()) {
+			if (w_user->getWindow()->focused()) {
+				w_user->deleteSelections();
+				return false;
+			}
+		}
+	}
+	return Screen::keyboardEvent(key, scancode, action, modifiers);
+}
+
 
 CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 	std::map<std::string, CircularBuffer *>::iterator found = data.find(item);

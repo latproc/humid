@@ -13,13 +13,14 @@
 #include <signal.h>
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
+#include "PanelScreen.h"
 
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 
-class SkeletonWindow : public nanogui::Window {
+class SkeletonWindow : public nanogui::Window, public PanelScreen {
 public:
 	SkeletonWindow(Widget *parent, const std::string &title = "Untitled")
-	: Window(parent, title), move_listener( [](nanogui::Window* value){ } ) {
+	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ) {
 
 	}
 	void setMoveListener( std::function<void(nanogui::Window*)> f) {

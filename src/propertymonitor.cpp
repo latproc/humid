@@ -4,7 +4,7 @@
 */
 #include <iostream>
 #include "propertymonitor.h"
-#include "draghandle.h"
+#include "DragHandle.h"
 #include <nanogui/imageview.h>
 #include "lineplot.h"
 

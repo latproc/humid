@@ -21,7 +21,7 @@ class PanelScreen;
 
 class UserWindow : public Skeleton, public Palette {
 public:
-	UserWindow(EditorGUI *screen, nanogui::Theme *theme);
+	//UserWindow(EditorGUI *screen, nanogui::Theme *theme);
 	UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww);
 	void setVisible(bool which) { window->setVisible(which); }
 	void save(const std::string &path);
@@ -41,10 +41,12 @@ public:
 		if (!active_screens.empty()) active_screens.pop_back();
 		return last;
 	}
+	nanogui::Vector2i defaultSize() { return mDefaultSize; }
 private:
 	EditorGUI *gui;
 	std::list<PanelScreen*>active_screens;
 	nanogui::Widget *current_layer;
+	nanogui::Vector2i mDefaultSize;
 	std::list<nanogui::Widget *> layers;
 	std::map<std::string, CircularBuffer *>data; // tbd need more lines
 

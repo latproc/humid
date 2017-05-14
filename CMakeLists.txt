@@ -2,6 +2,22 @@ cmake_minimum_required(VERSION 3.5)
 
 project("Humid")
 
+if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
+	message("Including local CMake settings")
+	include("${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
+endif()
+
+set(NANOGUI_BUILD_SHARED ON)
+if(APPLE AND NANOGUI_BUILD_SHARED)
+	set(CMAKE_MACOSX_RPATH ON)
+endif()
+
+if (APPLE)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+	INCLUDE_DIRECTORIES(${NANO_GUI_BUILD_DIR}/include)
+	INCLUDE_DIRECTORIES("/usr/local/include")
+endif()
+
 include(CheckCXXCompilerFlag)
 
 set(CMAKE_BUILD_TYPE "Debug")
@@ -21,7 +37,13 @@ include_directories(lib/nanogui/include)
 include_directories(${NANOGUI_EXTRA_INCS})
 add_definitions(${NANOGUI_EXTRA_DEFS})
 
-set(BOOST_ROOT "/usr/local/")
+include_directories("/usr/local/include")
+include_directories("/opt/local/include")
+
+#LINK_DIRECTORIES("/usr/local/lib")
+#LINK_DIRECTORIES("/opt/local/lib")
+
+#set(BOOST_ROOT "/usr/local/")
 FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono REQUIRED )
 
 set (CLOCKWORK_DIR /opt/latproc/iod/src)
@@ -75,21 +97,23 @@ include_directories("${CLOCKWORK_DIR}")
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-  set(HEADERS src/DragHandle.h	src/manuallayout.h	src/propertymonitor.h	src/skeleton.h 
+set(HEADERS src/DragHandle.h	src/manuallayout.h	src/propertymonitor.h	src/skeleton.h 
 		  src/structure.h src/parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
 		  src/PropertyList.h src/GLTexture.h src/UIItem.h
 		  src/Selectable.h src/Palette.h src/SelectableWidget.h
 		  src/SelectableButton.h src/UserWindow.h src/SampleTrigger.h
+		  src/PanelScreen.h
   )
 
-  add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp  ${HEADERS})
-  target_link_libraries(okdialog Clockwork "zmq" ${Boost_LIBRARIES})
-  target_link_libraries(okdialog nanogui ${NANOGUI_EXTRA_LIBS})
+add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/PanelScreen.cpp ${HEADERS})
+target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
 
-	# yacc instructions from Andy Cedilnik 2002.
+# based on yacc instructions from Andy Cedilnik 2002.
 
-	set (FLEX_EXECUTABLE lex)
-	set (BISON_EXECUTABLE /usr/local/bin/bison)
+set (FLEX_EXECUTABLE lex)
+if (!BISON_EXECUTABLE)
+	set (BISON_EXECUTABLE bison)
+endif ()
 
 	set(hmi_lex_output ${CMAKE_BINARY_DIR}/hmilang.yy.cpp)
 	set(hmi_yacc_output ${CMAKE_BINARY_DIR}/hmilang.tab.cpp)
@@ -161,10 +185,11 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 		  src/GLTexture.cpp src/UIItem.cpp src/Selectable.cpp
 		  src/Palette.cpp src/SelectableWidget.cpp
 		  src/SelectableButton.cpp 
+		  src/PanelScreen.cpp
 		  src/SampleTrigger.cpp ${SETTINGCHECK_PARSER}
 		  ${HEADERS})
-  target_link_libraries(humid Clockwork "zmq" ${Boost_LIBRARIES})
-  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS})
+		
+  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/Parameter.cpp src/structure.cpp)
   target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
