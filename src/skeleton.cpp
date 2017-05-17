@@ -341,6 +341,7 @@ void ClockworkClient::idle() {
 
 						if (MessageEncoding::getCommand(data, op, &message)) {
 							assert(mh.start_time != 0);
+							assert(first_message_time != 0);
 							const unsigned long t = ( mh.start_time - first_message_time)/scale;
 							handleClockworkMessage(t, op, message);
 							if (op == "STATE"&& message->size() == 2) {

@@ -26,7 +26,7 @@ public:
 	void setVisible(bool which) { window->setVisible(which); }
 	void save(const std::string &path);
 	CircularBuffer *getValues(const std::string name);
-	CircularBuffer *addDataBuffer(const std::string name, size_t len);
+	CircularBuffer * addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len);
 	std::map<std::string, CircularBuffer *> &getData() { return data; }
 	void update();
 	nanogui::Widget *current() { return current_layer; }
@@ -42,6 +42,7 @@ public:
 		return last;
 	}
 	nanogui::Vector2i defaultSize() { return mDefaultSize; }
+	CircularBuffer *createBuffer(const std::string name);
 private:
 	EditorGUI *gui;
 	std::list<PanelScreen*>active_screens;

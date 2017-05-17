@@ -36,12 +36,12 @@ public:
 	Color &getColor() { return mColor; }
 
 	void setScale(float x, float y); // use 0.0 for auto scaled dimensions
-	void setOffset(float x, float y) { h_offset = x; v_offset = y; }
+	//void setOffset(float x, float y) { h_offset = x; v_offset = y; }
 	void getScale(float &x, float &y);
 	float getXScale();
 	float getYScale();
-	void getOffset(float &x, float &y) { x = h_offset; y = v_offset; }
-	float getXOffset() { return h_offset; }
+	//void getOffset(float &x, float &y) { x = h_offset; y = v_offset; }
+	//float getXOffset() { return h_offset; }
 	float getYOffset() { return v_offset; }
 	uint64_t getZeroTime() { return zero_time; }
 	uint64_t t0() { return app_zero_time; }
@@ -67,7 +67,7 @@ private:
 	float v_scale;	// vertical scaling factor
 	float h_scale;	// horizontal scaling factor
 	float v_offset; // vertical offset to the trace after scaling
-	float h_offset; // horizontal offset to the trace after scaling
+	//float h_offset; // horizontal offset to the trace after scaling
 	//TBD bool frozen; // trace is frozen at start time
 	//TBD float x_min_idx; // start the x domain at the timestamp at this index
 	//bool auto_scale_v; // automatically scale the data range
@@ -76,7 +76,6 @@ private:
 	uint64_t zero_time;
 	float line_width;
 	LineStyle line_style;
-
 	// streaming to file
 	std::string output_filename;
 };
@@ -138,6 +137,7 @@ public:
 	std::list<TimeSeries*>getSeries() const { return data; }
 	bool scrollEvent(const Vector2i &p, const Vector2f &rel) override;
 	bool handleKey(int key, int scancode, int action, int modifiers);
+	bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
 
 	void freeze();
 	void thaw();

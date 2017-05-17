@@ -12,6 +12,7 @@
 
 class CircularBuffer {
 public:
+	enum DataType { INT16, UINT16, INT32, UINT32, DOUBLE, STR };
 	class Handler {
 	public:
 		virtual void operator()() { }
@@ -30,11 +31,12 @@ private:
 	bool frozen;
 	SampleTrigger *start_trigger;
 	SampleTrigger *stop_trigger;
+	DataType data_type;
 
 	std::multimap<SampleTrigger::Event, Handler *> handlers;
 
 public:
-	CircularBuffer(int size);
+	CircularBuffer(int size, DataType dt);
 	void destroy();
 	int size();
 	int length();
@@ -77,6 +79,8 @@ public:
 
 	void registerCallback(Handler *handler, SampleTrigger::Event evt);
 	void deregisterCallback(Handler *handler, SampleTrigger::Event evt);
+
+	DataType getDataType() { return data_type; }
 };
 
 #endif

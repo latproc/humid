@@ -57,11 +57,13 @@
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
 #include <circularbuffer.h>
+#include <symboltable.h>
 
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/program_options.hpp>
+#include <boost/algorithm/string.hpp>
 #include "PropertyList.h"
 #include "GLTexture.h"
 #include "Palette.h"
@@ -74,6 +76,7 @@
 #include "settingslang.h"
 SymbolTable globals;
 std::list<Structure *>st_structures;
+std::map<std::string, Structure *>structures;
 extern FILE *st_yyin;
 int st_yyparse();
 extern int st_yycharno;
@@ -84,8 +87,6 @@ const char *yyfilename = 0;
 int num_errors = 0;
 std::list<std::string>error_messages;
 std::list<std::string>settings_files;
-
-
 
 using std::cout;
 using std::cerr;
@@ -142,8 +143,14 @@ Handle::Mode all_handles[] = {
 
 class SettingsItem {
 public:
-	SettingsItem(nanogui::Widget *w) : widget(w) {}
+	SettingsItem(const std::string &n, const std::string &k, nanogui::Widget *w = 0) : widget(w),kind(k), name(n) {}
+	
 	bool load(Structure *item) {
+		if (item->getKind() == "WINDOW") { return loadWindow(item); }
+		//if (item->getKind() == "EDITORSETTINGS") { return loadSettings(item); }
+		return false;
+	}
+	bool loadWindow(Structure *item) {
 		if (widget) {
 			nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
 			const Value &vx = item->getProperties().find("x");
@@ -170,8 +177,43 @@ public:
 			return true;
 		}
 		else return false;
+
 	}
-	bool save(std::ostream &out, const std::string &name) {
+
+	bool saveSettings(std::ostream &out) {
+		std::map<std::string, Structure*>::iterator iter = structures.find("EditorSettings");
+		if (iter == structures.end()) return false;
+		Structure *s = (*iter).second;
+		if (s) {
+			SymbolTable &properties = s->getProperties();
+			SymbolTableConstIterator iter = properties.begin();
+			out << name << kind << "{\n";
+			while (iter != properties.end()) {
+				const SymbolTableNode &item = *iter++;
+				out << item.first << " PROPERTY " << item.second << ";\n";
+			}
+			out << "}\n";
+		}
+		return false;
+	}
+/*
+	bool loadSettings(Structure *item) {
+		if (widget) {
+			EditorGUI *gui = dynamic_cast<EditorGUI*>(widget);
+			if (!gui) return false;
+			gui->setProperties(item->properties);
+		}
+		return false;
+	}
+*/
+
+	bool save(std::ostream &out) {
+		if (kind == "WINDOW") return saveWindow(out, name);
+		if (kind == "EDITORSETTINGS") return saveSettings(out);
+		return false;
+	}
+
+	bool saveWindow(std::ostream &out, const std::string &name) {
 		if (widget) {
 			nanogui::Vector2i pos = widget->position();
 			nanogui::Vector2i siz = widget->size();
@@ -183,8 +225,11 @@ public:
 		}
 		return false;
 	}
+	
 private:
 	nanogui::Widget *widget;
+	std::string kind;
+	std::string name;
 };
 
 class EditorSettings {
@@ -192,16 +237,25 @@ public:
 	void load(const std::string object_name, nanogui::Widget *widget) {
 		for (auto item : st_structures) {
 			if (item->getName() == object_name) {
-				SettingsItem(widget).load(item);
+				SettingsItem(object_name, item->getKind(), widget).load(item);
 			}
 		}
+	}
+	Structure *find(const std::string object_name) {
+		for (auto item : st_structures) {
+			if (item->getName() == object_name) {
+				return item;
+			}
+		}
+		return nullptr;
 	}
 	void save() {
 		if (settings_files.size() == 0) return;
 		std::string fname(settings_files.front());
 		std::ofstream settings(fname);
+		SettingsItem("EditorSettings", "EDITORSETTINGS").save(settings);
 		for (auto w : widgets) {
-			SettingsItem(w.second).save(settings, w.first);
+			SettingsItem(w.first, "WINDOW", w.second).save(settings);
 		}
 		settings.close();
 	}
@@ -212,6 +266,7 @@ public:
 
 private:
 	std::map<std::string, nanogui::Widget *> widgets;
+	std::list<SettingsItem>items;
 };
 
 class ViewOptions {
@@ -236,6 +291,37 @@ public:
 
 private:
 	std::map<nanogui::Widget*, ViewOptions> items;
+};
+
+class EditorObject {
+	public:
+		virtual ~EditorObject() { }
+};
+
+class LinkableProperty {
+public:
+	LinkableProperty(const std::string group, int object_type,
+					const std::string &name, const std::string &addr_str,
+					const std::string &dtype, int dsize) 
+	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), data_type(CircularBuffer::DOUBLE), data_size(dsize) { 
+		if (data_type_name == "Signed_int_16") data_type = CircularBuffer::INT16;
+		else if (data_type_name == "Signed_int_32") data_type = CircularBuffer::INT32;
+		else if (data_type_name == "Ascii_string") data_type = CircularBuffer::STR;
+		else if (data_type_name == "Discrete") data_type = CircularBuffer::INT16;
+	}
+	const std::string &tagName() const { return tag_name; }
+	const std::string &typeName() const { return data_type_name; }
+	CircularBuffer::DataType dataType() const { return data_type; }
+	int getKind() const { return kind; }
+	std::string addressStr() const { return address_str; }
+private:
+	std::string group_name;
+	int kind;
+	std::string tag_name;
+	std::string address_str;
+	std::string data_type_name;
+	CircularBuffer::DataType data_type;
+	int data_size;
 };
 
 class EditorGUI : public ClockworkClient {
@@ -282,11 +368,28 @@ public:
 	void updateSettings(nanogui::Widget *source) {
 		settings.save();
 	}
+	void updateProperties() {
+		Structure *s = settings.find("EditorSettings");
+		if (s == nullptr) {
+			s = new Structure("EditorSettings", "EDITORSETTINGS");
+			st_structures.push_back(s);
+			structures["EditorSettings"] = s;
+		}
+		s->getProperties().add(properties);
+		settings.save();
+	}
 	ViewManager &getViewManager() { return views; }
 
 	std::list<PanelScreen*> &getScreens() { return user_screens; }
+	std::string nextName(EditorObject*);
+
+	SymbolTable &getProperties() { return properties; }
+	LinkableProperty *findLinkableProperty(const std::string name);
+	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
 
 private:
+	SymbolTable properties;
+	std::map<std::string, LinkableProperty*>linkables;
 	ViewManager views;
 	std::list<PanelScreen*>user_screens;
 	nanogui::Vector2i old_size;
@@ -306,10 +409,12 @@ private:
 	ScreensWindow *w_screens;
 	ViewsWindow *w_views;
 	SeriesWindow *w_buffers;
+	std::map<std::string, EditorObject*>user_objects;
 	using imagesDataType = std::vector<std::pair<GLTexture, GLTexture::handleType>>;
 	imagesDataType mImagesData;
 	bool needs_update;
 	unsigned int sample_buffer_size;
+	int user_object_sequence;
 };
 
 class StructureFactoryButton : public SelectableButton {
@@ -334,20 +439,15 @@ class ObjectFactoryButton : public SelectableButton {
 public:
 	ObjectFactoryButton(EditorGUI *screen,
 						const std::string type_str, Palette *pal,
-						nanogui::Widget *parent,
-						int object_type,
-						const std::string &name, const std::string &addr_str)
-	: SelectableButton(type_str, pal, parent, name),
-	gui(screen), kind(object_type), tag_name(name), address_str(addr_str)
-	{}
+						nanogui::Widget *parent, const LinkableProperty *lp
+						)
+	: SelectableButton(type_str, pal, parent, lp->tagName()), gui(screen), properties(lp)	{}
 	nanogui::Widget *create(nanogui::Widget *container) const override;
-	int getAddress();
-	const std::string &tagName() { return tag_name; }
+	const std::string &tagName() { return properties->tagName(); }
+	const LinkableProperty *details() { return properties; }
 private:
 	EditorGUI *gui;
-	int kind;
-	std::string tag_name;
-	std::string address_str;
+	const LinkableProperty *properties;
 };
 
 
@@ -380,7 +480,7 @@ private:
 
 Editor *Editor::_instance = 0;
 
-class EditorWidget : public Selectable {
+class EditorWidget : public Selectable, public EditorObject {
 
 public:
 
@@ -393,6 +493,7 @@ public:
 		}
 		this->palette = p;
 	}
+	~EditorWidget() { }
 
 	nanogui::Widget *getWidget() { return widget; }
 	virtual void loadProperties(PropertyFormHelper *pfh);
@@ -817,7 +918,7 @@ private:
 
 EditorGUI::EditorGUI() : theme(0), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
 	w_structures(0), w_connections(0), w_startup(0), needs_update(false),
-	sample_buffer_size(500)
+	sample_buffer_size(500),user_object_sequence(1)
 {
 	old_size = mSize;
 	std::vector<std::pair<int, std::string>> icons = nanogui::loadImageDirectory(mNVGContext, "images");
@@ -830,6 +931,17 @@ EditorGUI::EditorGUI() : theme(0), state(GUIWELCOME), editor(0), w_toolbar(0), w
 		mImagesData.emplace_back(std::move(texture), std::move(data));
 	}
 	assert(mImagesData.size() > 0);
+}
+
+std::string EditorGUI::nextName(EditorObject *o) {
+	char buf[40];
+	snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
+	while (user_objects.find(buf) != user_objects.end()) {
+		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
+	}
+	std::string result(buf);
+	user_objects[result] = o;
+	return result;
 }
 
 class Toolbar : public nanogui::Window {
@@ -970,7 +1082,7 @@ public:
 	nanogui::Window *createPanelPage(const char *name,
 									 const char *filename = 0,
 									 nanogui::Widget *palette_content = 0);
-	bool importModbusInterface(std::istream &init,
+	bool importModbusInterface(const std::string group_name, std::istream &init,
 							   nanogui::Widget *palette_content,
 							   nanogui::Widget *container);
 	nanogui::Widget *getItems() { return items; }
@@ -1200,7 +1312,7 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	window->setVisible(false);
 }
 
-class UserWindowWin : public SkeletonWindow {
+class UserWindowWin : public SkeletonWindow, public EditorObject {
 public:
 	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), gui(s) {
 	}
@@ -1285,39 +1397,62 @@ CircularBuffer *UserWindow::getValues(const std::string name) {
 	return 0;
 }
 
-CircularBuffer * UserWindow::addDataBuffer(const std::string name, size_t len) {
+CircularBuffer * UserWindow::addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len) {
 	std::cout << "adding data buffer for " << name << "\n";
-	return data[name] = new CircularBuffer(len);
+	CircularBuffer *buf = new CircularBuffer(len, dt);
+	data[name] = buf;
+	return buf;
 }
+
+// TBD remove this hack (see lineplot)
+CircularBuffer *UserWindow::createBuffer(const std::string name) {
+	CircularBuffer *res = getValues(name);
+	if (!res) {
+		LinkableProperty *lp = gui->findLinkableProperty(name);
+		if (lp)
+			res = addDataBuffer(name, lp->dataType(), gui->sampleBufferSize());
+	}
+	return res;
+}
+
+
 
 void UserWindow::save(const std::string &path) {
 	using namespace nanogui;
-	for (auto it = window->children().rbegin(); it != window->children().rend(); ++it) {
-		Widget *child = *it;
-		EditorButton *b = dynamic_cast<EditorButton*>(child);
-		if (b) {
-			std::cout << b->getName() << " BUTTON ("
-				<< "pos_x: " << b->position().x() << ", pos_y: " << b->position().y()
-				<< ", width: " << b->width() << ", height: " << b->height()
-				<< ", caption: " << b->caption() << ");\n";
-			continue;
+	std::ofstream out(path);
+	
+	for (auto screen : gui->getScreens()) {
+		std::string screen_type(screen->getName());
+		boost::to_upper(screen_type);
+		out << screen_type << " SCREEN {\n";
+		for (auto it = window->children().rbegin(); it != window->children().rend(); ++it) {
+			Widget *child = *it;
+			EditorButton *b = dynamic_cast<EditorButton*>(child);
+			if (b) {
+				out << b->getName() << " BUTTON ("
+					<< "pos_x: " << b->position().x() << ", pos_y: " << b->position().y()
+					<< ", width: " << b->width() << ", height: " << b->height()
+					<< ", caption: " << b->caption() << ");\n";
+				continue;
+			}
+			EditorTextBox *t = dynamic_cast<EditorTextBox*>(child);
+			if (t) {
+				out << t->getName() << " TEXT ("
+				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
+				<< ", width: " << t->width() << ", height: " << t->height()
+				<< ", value: " << t->value() << ");\n";
+				continue;
+			}
+			EditorImageView *ip = dynamic_cast<EditorImageView*>(child);
+			if (ip) {
+				out << ip->getName() << " IMAGE ("
+				<< "pos_x: " << ip->position().x() << ", pos_y: " << ip->position().y()
+				<< ", width: " << ip->width() << ", height: " << ip->height()
+				<< ", caption: " << ip->imageName() << ");\n";
+				continue;
+			}
 		}
-		EditorTextBox *t = dynamic_cast<EditorTextBox*>(child);
-		if (t) {
-			std::cout << t->getName() << " TEXT ("
-			<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
-			<< ", width: " << t->width() << ", height: " << t->height()
-			<< ", value: " << t->value() << ");\n";
-			continue;
-		}
-		EditorImageView *ip = dynamic_cast<EditorImageView*>(child);
-		if (ip) {
-			std::cout << ip->getName() << " IMAGE ("
-			<< "pos_x: " << ip->position().x() << ", pos_y: " << ip->position().y()
-			<< ", width: " << ip->width() << ", height: " << ip->height()
-			<< ", caption: " << ip->imageName() << ");\n";
-			continue;
-		}
+		out << "}\n" << screen->getName() << " " << screen_type << ";\n\n";
 	}
 }
 
@@ -1681,8 +1816,8 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	gui = screen;
 	if (tfn) tag_file_name = tfn;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(250, 600));
-	window->setPosition( Vector2i(screen->width() - 260,48));
+	window->setFixedSize(Vector2i(360, 600));
+	window->setPosition( Vector2i(screen->width() - 360,48));
 	window->setTitle("Objects");
 	GridLayout *layout = new GridLayout(Orientation::Vertical,1, Alignment::Fill, 0, 3);
 	window->setLayout(layout);
@@ -1845,6 +1980,10 @@ void EditorGUI::createWindows() {
 	window = s->getWindow();
 	window->setTheme(theme);
 
+	{
+		Structure *s = settings.find("EditorSettings");
+		if (s) properties.add(s->getProperties());
+	}
 	settings.load("MainWindow", this);
 	settings.load("ThemeSettings", w_theme->getWindow());
 	settings.load("Properties", w_properties->getWindow());
@@ -1971,6 +2110,8 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 		std::cout << "creating instance of " << item->getClass() << "\n";
 		nanogui::Widget *w = item->create(window);
 		if (w) {
+			EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
+			if (ew) ew->setName( nextName(ew) );
 			Vector2i pos(p - window->position() - w->size()/2 + nanogui::Vector2i(0, offset));
 			w->setPosition(fixPlacement(w, window, pos));
 			offset += w->height() + 8;
@@ -2112,6 +2253,12 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 	return res;
 }
 
+LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
+	std::map<std::string, LinkableProperty*>::iterator found = linkables.find(name);
+	if (found == linkables.end()) return 0;
+	return (*found).second;
+}
+
 void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op, std::list<Value> *message) {
 	if (op == "UPDATE") {
 		if (!this->getUserWindow()) return;
@@ -2126,13 +2273,21 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				name = v.asString();
 				buf = w_user->getValues(name);
 				if (!buf) {
-					buf = w_user->addDataBuffer(name, sample_buffer_size);
+					LinkableProperty *lp = findLinkableProperty(name);
+					if (lp)
+						buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
 				}
 			}
 			else if (buf && pos == 4) {
+				CircularBuffer::DataType dt = buf->getDataType();
 				if (v.asInteger(val)) {
-					buf->addSample(now, (int16_t)(val & 0xffff));
-					//std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
+					if (dt == CircularBuffer::INT16)
+						buf->addSample(now, (int16_t)(val & 0xffff));
+					else if (dt == CircularBuffer::INT32)
+						buf->addSample(now, (int32_t)(val & 0xffffffff));
+					else
+						buf->addSample(now, val);
+					std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
 				}
 				else if (v.asFloat(dval)) {
 					buf->addSample(now, dval);
@@ -2168,9 +2323,9 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 
 CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 	std::map<std::string, CircularBuffer *>::iterator found = data.find(item);
-	if (found == data.end())
-		addDataBuffer(item, gui->sampleBufferSize());
-	return data[item];
+	if (found == data.end()) return nullptr;
+	//	addDataBuffer(item, gui->sampleBufferSize());
+	return (*found).second;
 }
 
 nanogui::Window *ObjectWindow::createPanelPage(
@@ -2184,7 +2339,7 @@ nanogui::Window *ObjectWindow::createPanelPage(
 		std::ifstream init(modbus_settings);
 
 		if (init.good()) {
-			importModbusInterface(init, palette_content, window);
+			importModbusInterface(filename, init, palette_content, window);
 		}
 	}
 
@@ -2411,7 +2566,12 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 	Widget *result = 0;
 	int object_width = 60;
 	int object_height = 25;
-	switch (kind) {
+
+	int kind = properties->getKind();
+	const std::string &address_str(properties->addressStr());
+	const std::string &tag_name(properties->tagName());
+
+	switch (properties->getKind()) {
 
 		case '0': {
 			size_t p = tag_name.find(".cmd_");
@@ -2522,7 +2682,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 	return result;
 }
 
-bool ObjectWindow::importModbusInterface(std::istream &init,
+bool ObjectWindow::importModbusInterface(const std::string group_name, std::istream &init,
 										 nanogui::Widget *palette_content,
 										 nanogui::Widget *container) {
 
@@ -2556,8 +2716,9 @@ bool ObjectWindow::importModbusInterface(std::istream &init,
 		{
 			Widget *cell = new Widget(palette_content);
 			cell->setFixedSize(Vector2i(210,35));
-
-			SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, kind, tag_name, address_str);
+			LinkableProperty *lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
+			gui->addLinkableProperty(tag_name, lp);
+			SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
 			b->setEnabled(true);
 			b->setFixedSize(Vector2i(200, 30));
 			//b->setPosition(Vector2i(100,++pallete_row * 32));
@@ -2670,7 +2831,7 @@ int main(int argc, const char ** argv ) {
 	fname += "/.humidrc";
 	settings_files.push_back(fname);
 	loadSettingsFiles(settings_files);
-
+	for (auto item : st_structures) structures[item->getName()] = item;
 
 	gettimeofday(&start, 0);
 

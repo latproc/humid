@@ -24,16 +24,17 @@
 
 #include <iostream>
 
+extern CircularBuffer *createBuffer(const std::string name);
 NAMESPACE_BEGIN(nanogui)
 
 TimeSeries::TimeSeries() : mColor(255, 255), data(0), /*t_start(TIME_ANY), t_end(TIME_ANY),*/
-		min_v(0.0), max_v(1.0), v_scale(1.0), h_scale(1.0), v_offset(0.0), h_offset(0.0)/*, frozen(false)*/,
+		min_v(0.0), max_v(1.0), v_scale(1.0), h_scale(1.0), v_offset(0.0), /*h_offset(0.0), frozen(false)*/
 	app_zero_time(0), zero_time(0), line_width(2.0f), line_style(SOLID)
 { }
 
 TimeSeries::TimeSeries(const std::string title, CircularBuffer *buf)
 : name(title), mColor(255, 255), data(buf), /*t_start(TIME_ANY), t_end(TIME_ANY),*/
-	v_scale(1.0), h_scale(1.0), v_offset(0.0), h_offset(0.0), /*, frozen(false)*/
+	v_scale(1.0), h_scale(1.0), v_offset(0.0), /*h_offset(0.0), , frozen(false)*/
 	line_width(2.0f), line_style(SOLID)
 {
 
@@ -67,6 +68,7 @@ void TimeSeries::updateScale() {
 		if (maxv > max_v) max_v = maxv;
 	}
 	v_scale = max_v - min_v;
+	if (v_scale == 0) v_scale = 1.0f;
 }
 
 LinePlot::LinePlot(Widget *parent, const std::string &caption)
@@ -181,7 +183,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 				pos.y() + getYOffset() + (double)height/2.0,
 				getName().c_str(), NULL);
 	}
-	if (buf && buf->size() > 0) {
+	if (buf && buf->length() > 0) {
 
 		//buf->findRange(min_v, max_v);
 		if (max_v == min_v) max_v += 1.0;
@@ -200,63 +202,65 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 		size_t n = buf->length();
 		//find start index for a given time
 		uint64_t i = 0;
-		unsigned long x = 0;
+		long x = 0;
 		float vy = height - y_offset;
 		while (i<n) {
 			x=buf->getTime(i);
-			//x -= buf->getZeroTime();
+			x -= buf->getZeroTime();
 			x += buf->getStartTime();
 			if ( x < x_min ) {
-				if (i==0)
-					std::cout << "sample too old (x: " << x << " < " << x_min << ")\n";
+				//if (i==0)
+				//	std::cout << "sample too old (x: " << x << " < " << x_min << ")\n";
 				break;
 			}
 			++i;
 		}
+		if (i == n) --i;
 		nvgBeginPath(ctx);
 		nvgStrokeWidth(ctx, line_width);
 		// indent the graph in the x direction
 		int x_indent = 5;
 		x_scale *= 1.0f - (float)x_indent * 2.0f / (float)size.x();
-		if (line_style == SOLID)
-			nvgMoveTo(ctx, pos.x() + x_indent, pos.y());
-		float vx = getXOffset() * x_scale + x_indent;
+		float vx = x_indent;
 		float last_x = vx;
+		int start_idx = i;
+		if (line_style == SOLID) {
+			double y = buf->getBufferValue(i);
+			vy =  height - (y * y_scale + y_offset);
+			nvgMoveTo(ctx, pos.x() + x_indent, pos.y() + vy);
+		}
 		for (; i>0; ) {
-			if (line_style == SOLID)
-				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+			//if (line_style == SOLID && i<start_idx)
+			//	nvgLineTo(ctx, pos.x() + x_indent + vx, pos.y() + vy);
 			long xx1 = buf->getTime(i);
 			long xx2 = buf->getZeroTime();
 			long xx3 = buf->getStartTime();
-			x = xx1 - xx2 + xx3;
+			x = xx1 + xx3 - xx2 ;
 			//x = buf->getTime(i) - buf->getZeroTime() + buf->getStartTime();
-			if (x < x_min)
+			if (x < x_min) 
 				x = x_min;
-			if (x > x_max)
+			if (x > x_max) 
 				x = x_max;
-			--i;
-			size_t idx = i;
-			if (x >= x_min && x<=x_max) {
-				if (i>0) nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
-				vx = ((x - x_min) * getXScale() + getXOffset() )* x_scale + x_indent;
-				if (vx > size.x())
-					vx = size.x();
-				if (vx < 0.0) vx = 0.0;
-				if (line_style == SOLID)
-					nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
-			}
+			size_t idx = --i;
+			//if (line_style == SOLID && i>0 && i<start_idx) nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+			vx = (x - x_min) * getXScale() * x_scale + x_indent;
+			if (vx > size.x()) vx = size.x();
+			if (vx < 0.0) vx = 0.0;
+			if (line_style == SOLID)
+				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 			double y = buf->getBufferValue(idx);
 			vy =  height - (y * y_scale + y_offset);
 			if (vy > height) vy = height;
 			else if (vy < 0.0) vy = 0.0;
-			if (line_style == SOLID)
+			if (line_style == SOLID) {
 				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+			}
 			else {
 				float l = line_width/2.0f;
 				nvgRect(ctx, pos.x() + vx - l, pos.y() + vy - l, line_width, line_width);
 			}
 		}
-		vx = ((x_max - x_min) * getXScale() + getXOffset() )* x_scale + x_indent;
+		vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
 		if (vx > size.x()) vx = size.x();
 		nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 		nvgStrokeColor(ctx, mColor);
@@ -290,8 +294,10 @@ void LinePlot::draw(NVGcontext *ctx) {
 	}
 	// set the time scale for the plot
 	uint64_t now = 0;
- 	if (!frozen) now = (microsecs()+ 500)/1000;
-	else now = freeze_time_ms;
+ 	if (!frozen) 
+	 	now = (microsecs()+ 500)/1000;
+	else 
+	  	now = freeze_time_ms;
 	const int default_time_range = 30000;
 	assert(x_scale > 0.0);
 	double displayed_time_range = (double) default_time_range / x_scale;
@@ -311,6 +317,7 @@ void LinePlot::draw(NVGcontext *ctx) {
 			nanogui::Vector2i siz(mSize);
 			siz.y() = height;
 			TimeSeries &series(*series_ptr);
+			nvgFillColor(ctx, series.getColor());
 			series.draw(ctx, pos, siz, x_min, now, time_scale, !overlay_plots);
 			++plot_num;
 		}
@@ -366,30 +373,71 @@ void LinePlot::draw(NVGcontext *ctx) {
 bool LinePlot::scrollEvent(const Vector2i &p, const Vector2f &rel) {
 	if (data.size() == 0) return false;
 	nanogui::TimeSeries *ts = data.front();
+	if (ts->getData()->length() == 0) return false;
 	Eigen::Vector2i mp(p - position());
 
 	float prev_scale = x_scale;
+
+	float wid = width();
+	double offs = (float)mp.x() / wid;
+	double x_max = x_min + (float)30000 / x_scale;
+	double t = x_max - (1.0 - offs) * 30000.0 / x_scale;
+	double t_data = t - ts->getData()->getStartTime() + ts->getData()->getZeroTime();
+	double val = ts->getData()->getBufferValueAt(t_data);
+	char buf[80];
+	snprintf(buf, 80, "%s,%5.2lf", display_time(t_data).c_str(), val);
+	std::cout << buf << "\n";
+	setTooltip(buf);
 
 	x_scale += rel.y()/2.0;
 	if (x_scale <0.1) x_scale = 0.1;
 	std::cout << "scroll: " << rel.y() << "x scale: " << x_scale << "\n";
 
-	x_scroll += 1 - x_scale / prev_scale;
+	//x_scroll += 1 - x_scale / prev_scale;
+
+	double offs2 = (x_max - t) * x_scale / 30000.0;
+	double t2 = x_max - (1.0 - offs) * 30000.0 / x_scale;
+	double dt = (t2 - t);
+	double scroll_change = dt / 30000.0 * x_scale;
+	x_scroll -= scroll_change;
 
 	return false;
+}
+
+bool LinePlot::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
+	if (data.size() == 0) return Widget::mouseMotionEvent(p, rel, button, modifiers);
+	std::string tooltip;
+	const char *sep = "";
+	for (auto ts : data){
+		if (ts->getData()->length() == 0) return Widget::mouseMotionEvent(p, rel, button, modifiers);;
+		Eigen::Vector2i mp(p - position());
+
+		float wid = width();
+		double offs = (float)mp.x() / wid;
+		double x_max = (double)x_min + 30000.0 / x_scale;
+		double t = x_max - (1.0 - offs) * 30000.0 / x_scale;
+		double t_data = t - ts->getData()->getStartTime() + ts->getData()->getZeroTime();
+		double val = ts->getData()->getBufferValueAt(t_data);
+		char buf[80];
+		snprintf(buf, 80, "%s%s: %s,%5.2lf", sep,ts->getName().c_str(), display_time(t_data).c_str(), val);
+		sep = "\n";
+		tooltip += buf;
+	}
+	setTooltip(tooltip);
+
+	return Widget::mouseMotionEvent(p, rel, button, modifiers);
 }
 
 bool LinePlot::handleKey(int key, int scancode, int action, int modifiers) {
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
 		if (key == GLFW_KEY_LEFT) {
-			if (x_scroll == 0.0) freeze();
+			if (!frozen && x_scroll == 0.0) freeze();
 			x_scroll -= 1.0 / 20.0;
 		}
 		else if (key == GLFW_KEY_RIGHT) {
 			x_scroll += 1.0 / 20.0;
 			if (x_scroll >= 0.0) {
 				x_scroll = 0.0;
-				thaw();
 			}
 		}
 		else if (key == GLFW_KEY_SPACE) {
@@ -400,16 +448,18 @@ bool LinePlot::handleKey(int key, int scancode, int action, int modifiers) {
 }
 
 void LinePlot::freeze() {
+	if (frozen) return;
 	for (auto *series_ptr : data) {
 		series_ptr->getData()->freeze();
 	}
 	frozen = true;
-	freeze_time_ms = microsecs()/1000 - 500;
+	freeze_time_ms = (microsecs()+500)/1000;
 }
 
 void LinePlot::thaw() {
 	for (auto *series_ptr : data) {
-		series_ptr->getData()->thaw();
+		if (series_ptr->getData())
+			series_ptr->getData()->thaw();
 	}
 	frozen = false;
 	x_scroll = 0.0;
@@ -480,10 +530,16 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 	std::map<std::string, CircularBuffer*> &data(user_window->getData());
 	for (auto item : item_names) {
 		CircularBuffer *buf = user_window->getDataBuffer(item);
-		nanogui::TimeSeries *ts = new nanogui::TimeSeries(item, buf);
-		Color &color(colors[ getSeries().size() % numColors ]);
-		ts->setColor(color);
-		addTimeSeries(ts);
+		if (!buf) {
+			buf = user_window->createBuffer(item);
+		}
+		if (buf) {
+			nanogui::TimeSeries *ts = new nanogui::TimeSeries(item, buf);
+			Color &color(colors[ getSeries().size() % numColors ]);
+			ts->setColor(color);
+			addTimeSeries(ts);
+		}
+		else std::cerr << "Failed to create time series for unknown object '" << item << "'\n";
 	}
 	master_series = 0;
 }

@@ -14,7 +14,7 @@
 #include <map>
 #include "SampleTrigger.h"
 
-CircularBuffer::CircularBuffer(int size)
+CircularBuffer::CircularBuffer(int size, DataType dt)
 {
     bufsize = size;
     front = -1;
@@ -27,6 +27,7 @@ CircularBuffer::CircularBuffer(int size)
 	frozen = false;
 	start_trigger = 0;
 	stop_trigger = 0;
+	data_type = dt;
 }
 
 void CircularBuffer::destroy() {
@@ -50,14 +51,19 @@ int CircularBuffer::bufferIndexFor(int i) {
 }
 
 void CircularBuffer::addSample(long time, double val) {
+	if (frozen) return;
 	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+
+	if (data_type == INT16) val = (int16_t)val;
+	else if (data_type == UINT16) val = (uint16_t)val;
+
 	if (zero_time == 0) { zero_time = time; start_time = microsecs() / 1000; }
 	if (start_trigger && start_trigger->active()) {
 		Value v(val);
 		start_trigger->check(v);
 		if (start_trigger->justTriggered()) thaw();
 	}
-	if (!frozen) front = (front + 1) % bufsize;
+	front = (front + 1) % bufsize;
 	if (front == back) total -= values[front];
 	if (front == back || back == -1) back = (back + 1) % bufsize;
 	total += val;
@@ -198,7 +204,8 @@ double CircularBuffer::getBufferValueAt(unsigned long t) {
 	while (times[nxt] < t) { idx = nxt; nxt = (idx+1) % bufsize; }
 	double dt = times[nxt] - times[idx];
 	double scale = (double)(t - times[idx]) / dt;
-	return values[idx] + scale * (values[nxt] - values[idx]);
+	return values[nxt];
+	//return values[idx] + scale * (values[nxt] - values[idx]);
 }
 
 double CircularBuffer::bufferSum(int n) {
