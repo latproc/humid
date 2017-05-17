@@ -111,7 +111,8 @@ target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
 # based on yacc instructions from Andy Cedilnik 2002.
 
 set (FLEX_EXECUTABLE lex)
-if (!BISON_EXECUTABLE)
+if (BISON_EXECUTABLE)
+else()
 	set (BISON_EXECUTABLE bison)
 endif ()
 
