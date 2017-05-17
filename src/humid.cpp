@@ -314,6 +314,8 @@ public:
 	CircularBuffer::DataType dataType() const { return data_type; }
 	int getKind() const { return kind; }
 	std::string addressStr() const { return address_str; }
+	void setValue(const Value &v) {  current = v; }
+	Value & value() { return current; }
 private:
 	std::string group_name;
 	int kind;
@@ -322,6 +324,7 @@ private:
 	std::string data_type_name;
 	CircularBuffer::DataType data_type;
 	int data_size;
+	Value current;
 };
 
 class EditorGUI : public ClockworkClient {
@@ -2268,18 +2271,20 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 		long val = 0;
 		double dval = 0.0;
 		CircularBuffer *buf = 0;
+		LinkableProperty *lp = 0;
 		for (auto &v: *message) {
 			if (pos == 2) {
 				name = v.asString();
+				lp = findLinkableProperty(name);
 				buf = w_user->getValues(name);
 				if (!buf) {
-					LinkableProperty *lp = findLinkableProperty(name);
 					if (lp)
 						buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
 				}
 			}
 			else if (buf && pos == 4) {
 				CircularBuffer::DataType dt = buf->getDataType();
+				if (lp) lp->setValue(v);
 				if (v.asInteger(val)) {
 					if (dt == CircularBuffer::INT16)
 						buf->addSample(now, (int16_t)(val & 0xffff));
