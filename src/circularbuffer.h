@@ -82,6 +82,14 @@ public:
 	void deregisterCallback(Handler *handler, SampleTrigger::Event evt);
 
 	DataType getDataType() { return data_type; }
+	static DataType dataTypeFromString(const std::string s) {
+		if (s == "Signed_int_16") return INT16;
+		else if (s == "Signed_int_32") return INT32;
+		else if (s == "Ascii_string") return STR;
+		else if (s == "Discrete") return INT16;
+		return DOUBLE;
+	}
+	void clear();
 };
 
 #endif

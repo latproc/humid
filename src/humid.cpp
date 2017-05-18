@@ -303,12 +303,8 @@ public:
 	LinkableProperty(const std::string group, int object_type,
 					const std::string &name, const std::string &addr_str,
 					const std::string &dtype, int dsize) 
-	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), data_type(CircularBuffer::DOUBLE), data_size(dsize) { 
-		if (data_type_name == "Signed_int_16") data_type = CircularBuffer::INT16;
-		else if (data_type_name == "Signed_int_32") data_type = CircularBuffer::INT32;
-		else if (data_type_name == "Ascii_string") data_type = CircularBuffer::STR;
-		else if (data_type_name == "Discrete") data_type = CircularBuffer::INT16;
-	}
+	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), 
+		data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) { }
 	const std::string &tagName() const { return tag_name; }
 	const std::string &typeName() const { return data_type_name; }
 	CircularBuffer::DataType dataType() const { return data_type; }
@@ -386,6 +382,7 @@ public:
 	std::list<PanelScreen*> &getScreens() { return user_screens; }
 	std::string nextName(EditorObject*);
 
+	int getSampleBufferSize() { return sample_buffer_size; }
 	SymbolTable &getProperties() { return properties; }
 	LinkableProperty *findLinkableProperty(const std::string name);
 	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
@@ -2519,6 +2516,11 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 		if (file_path.length())
 			this->saveData(file_path);
 	});
+	properties->addButton("Clear Data", [&]() {
+		for (auto *ts : data) {
+			ts->getData()->clear();
+		}
+	});
 	for (auto series : data) {
 		properties->addGroup(series->getName());
 		properties->addVariable<int> (
@@ -2735,6 +2737,7 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 			Widget *cell = new Widget(palette_content);
 			cell->setFixedSize(Vector2i(210,35));
 			LinkableProperty *lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
+			gui->getUserWindow()->addDataBuffer(tag_name, CircularBuffer::dataTypeFromString(data_type), gui->getSampleBufferSize());
 			gui->addLinkableProperty(tag_name, lp);
 			SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
 			b->setEnabled(true);

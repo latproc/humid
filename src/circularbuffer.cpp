@@ -39,6 +39,11 @@ void CircularBuffer::destroy() {
 	delete this;
 }
 
+void CircularBuffer::clear() {
+	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	front = back = -1;
+}
+
 int CircularBuffer::bufferIndexFor(int i) {
 	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
 	int l = length();
