@@ -151,6 +151,8 @@ public:
 	std::string getName() const { return name; }
 	void setName(const std::string n) { name = n; }
 
+	void saveData(const std::string fname);
+
 protected:
     std::string mCaption, mHeader, mFooter;
 	std::string name;

@@ -597,5 +597,105 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 	master_series = 0;
 }
 
+void LinePlot::saveData(const std::string fname) {
+	if (data.size() == 0) return;
+	std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+
+	std::ofstream out(fname);
+	if (!out.good()) {
+		std::cerr << "failed to open file for writing\n";
+		return;
+	}
+	// header
+	out << "Time";
+	for (auto *ts : data) {
+		out << "," << ts->getName();
+	}
+	out << "\n";
+
+	// deal with the simple case of only one time series 
+	if (data.size() == 1) {
+		TimeSeries *ts = data.front();
+		CircularBuffer *buf = ts->getData();
+		int n = buf->length();
+		while (n-- > 0) {
+			out << buf->getTime(n) << "," << buf->getBufferValue(n) << "\n";
+		}
+		out.close();
+		return;
+	}
+
+	// perform a merge of all series
+
+	// check whether all series are empty
+	uint64_t t = 0;
+	for (auto *ts : data) {
+		CircularBuffer *buf = ts->getData();
+		if (buf->length()) {
+			t = buf->getTime( buf->length()-1);
+			break;
+		}
+	}
+	if (!t) { out.flush(); out.close(); return; }
+
+	// initialise buffer indexes
+	int n = data.size();
+	int pos[n];
+	double values[n];
+	CircularBuffer *bufs[ data.size() ];
+	int i = 0;
+
+	// count out how many series have data
+	int outstanding = data.size();
+	for (auto *ts : data) { 
+		CircularBuffer *buf = ts->getData();
+		pos[i] = buf->length()-1;
+		bufs[i] = buf;
+		if (pos[i] == -1) --outstanding;
+		++i;
+	}
+
+	// main loop
+	while (outstanding > 0) {
+		int i = 0, j = 0;
+		// find earliest of remaining columns
+		while (j<n && pos[j]==-1) ++j;
+		assert(j<n);
+		i = j;
+		uint64_t earliest = bufs[j]->getTime( pos[j] );
+		uint64_t next = earliest;
+		while (++j<n) {
+			while (j<n && pos[j]==-1) ++j;
+			if (j<n) {
+				next = bufs[j]->getTime( pos[j] );
+				if (next < earliest) {
+					i = j;
+					earliest = next;
+				}
+			}
+		}
+
+		// output values at current index position and move index on for
+		// buffers that have a value at the earliest time.
+		j = 0;
+		out << earliest;
+		while (j < n) {
+			out << ",";
+			if (pos[j] > -1) {
+				uint64_t t = bufs[j]->getTime( pos[j] );
+				out << bufs[j]->getBufferValue( pos[j] );
+				if (t == earliest) {
+					pos[j]--;
+					if (pos[j] == -1) --outstanding; // hit the end of this buffer
+				}
+			}
+			else if (bufs[j]->length()) 
+					out << bufs[j]->getBufferValue(0);
+			++j;
+		}
+		out << "\n";
+	}
+}
+
 
 NAMESPACE_END(nanogui)

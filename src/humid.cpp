@@ -921,7 +921,7 @@ private:
 
 EditorGUI::EditorGUI() : theme(0), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
 	w_structures(0), w_connections(0), w_startup(0), needs_update(false),
-	sample_buffer_size(500),user_object_sequence(1)
+	sample_buffer_size(5000),user_object_sequence(1)
 {
 	old_size = mSize;
 	std::vector<std::pair<int, std::string>> icons = nanogui::loadImageDirectory(mNVGContext, "images");
@@ -2511,6 +2511,13 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 
 			gui->getPropertyWindow()->update();
 		}
+	});
+	properties->addButton("Save Data", [&,gui,this]() {
+		std::string file_path( nanogui::file_dialog(
+				{ {"csv", "Comma separated values"},
+				  {"txt", "Text file"} }, true));
+		if (file_path.length())
+			this->saveData(file_path);
 	});
 	for (auto series : data) {
 		properties->addGroup(series->getName());
