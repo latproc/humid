@@ -344,6 +344,7 @@ void ClockworkClient::idle() {
 							assert(first_message_time != 0);
 							const unsigned long t = ( mh.start_time - first_message_time)/scale;
 							handleClockworkMessage(t, op, message);
+#if 0
 							if (op == "STATE"&& message->size() == 2) {
 								machine = message->front().asString();
 								message->pop_front();
@@ -384,6 +385,7 @@ void ClockworkClient::idle() {
 								if (idx == device_map.end()) //new machine
 									device_map[property] = next_device_num++;
 							}
+#endif
 						}
 						free(data);
 					}

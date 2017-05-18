@@ -2480,6 +2480,12 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 	properties->addVariable<float> ("X offset",
 									[&](float value) mutable{ x_scroll = value; },
 									[&]()->float { return x_scroll; });
+	properties->addVariable<float> ("Grid Intensity",
+									[&](float value) mutable{ grid_intensity = value; },
+									[&]()->float { return grid_intensity; });
+	properties->addVariable<bool> ("Display Grid",
+									[&](bool value) mutable{ display_grid = value; },
+									[&]()->bool { return display_grid; });
 	properties->addVariable<bool> ("Overlay plots",
 									[&](bool value) mutable{ overlay_plots = value; },
 									[&]()->bool { return overlay_plots; });

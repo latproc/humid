@@ -116,6 +116,7 @@ public:
     void setValues(const VectorXf &values) { mValues = values; }
 
     virtual Vector2i preferredSize(NVGcontext *ctx) const override;
+	void drawGrid(NVGcontext *ctx, int x_start, double x_step, int num_x_steps, int y_start, double y_step,  int num_y_steps);
     virtual void draw(NVGcontext *ctx) override;
 
     virtual void save(Serializer &s) const override;
@@ -166,6 +167,8 @@ protected:
 	bool frozen;
 	uint64_t freeze_time_ms;
 	unsigned int buffer_size;
+	float grid_intensity;
+	bool display_grid;
 };
 
 NAMESPACE_END(nanogui)

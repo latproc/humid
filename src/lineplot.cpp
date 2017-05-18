@@ -74,7 +74,7 @@ void TimeSeries::updateScale() {
 LinePlot::LinePlot(Widget *parent, const std::string &caption)
     : Widget(parent), mCaption(caption), overlay_plots(false),
 	start_time(microsecs()), x_min(0), x_scale(1.0), x_scroll(0.0), frozen(false),
-	buffer_size(200)
+	buffer_size(200), grid_intensity(0.05), display_grid(true)
 {
     mBackgroundColor = Color(20, 128);
     mForegroundColor = Color(255, 192, 0, 128);
@@ -169,6 +169,19 @@ void TimeSeries::drawLabel(NVGcontext *ctx, Vector2i &pos, float val) {
 	nvgText(ctx, pos.x(),pos.y(),buf, NULL);
 }
 
+long calcX(CircularBuffer *buf, int i, uint64_t x_min, uint64_t x_max) {
+	long xx1 = buf->getTime(i);
+	long xx2 = buf->getZeroTime();
+	long xx3 = buf->getStartTime();
+	long x = xx1 + xx3 - xx2 ;
+	if (x < x_min) 
+		x = x_min;
+	if (x > x_max) {
+		//x = x_max;
+	}
+	return x;
+}
+
 void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 					  uint64_t x_min, uint64_t x_max, float x_scale, bool show_name) {
 	CircularBuffer *buf = getData();
@@ -215,7 +228,6 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 			}
 			++i;
 		}
-		if (i == n) --i;
 		nvgBeginPath(ctx);
 		nvgStrokeWidth(ctx, line_width);
 		// indent the graph in the x direction
@@ -223,31 +235,28 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 		x_scale *= 1.0f - (float)x_indent * 2.0f / (float)size.x();
 		float vx = x_indent;
 		float last_x = vx;
-		int start_idx = i;
 		if (line_style == SOLID) {
 			double y = buf->getBufferValue(i);
 			vy =  height - (y * y_scale + y_offset);
-			nvgMoveTo(ctx, pos.x() + x_indent, pos.y() + vy);
+			if (i == n) { // not enough points to fill the graph..
+				x = calcX(buf, i-1, x_min, x_max);
+				vx = (x - x_min) * getXScale() * x_scale + x_indent;
+				if (vx > size.x()) vx = size.x();
+				if (vx < 0.0) vx = 0.0;
+			}
+			nvgMoveTo(ctx, pos.x() + vx, pos.y() + vy);
 		}
+		if (i == n) --i;
+		int start_idx = i;
 		for (; i>0; ) {
-			//if (line_style == SOLID && i<start_idx)
-			//	nvgLineTo(ctx, pos.x() + x_indent + vx, pos.y() + vy);
-			long xx1 = buf->getTime(i);
-			long xx2 = buf->getZeroTime();
-			long xx3 = buf->getStartTime();
-			x = xx1 + xx3 - xx2 ;
-			//x = buf->getTime(i) - buf->getZeroTime() + buf->getStartTime();
-			if (x < x_min) 
-				x = x_min;
-			if (x > x_max) 
-				x = x_max;
 			size_t idx = --i;
-			//if (line_style == SOLID && i>0 && i<start_idx) nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+			x = calcX(buf, i, x_min, x_max);
 			vx = (x - x_min) * getXScale() * x_scale + x_indent;
 			if (vx > size.x()) vx = size.x();
 			if (vx < 0.0) vx = 0.0;
 			if (line_style == SOLID)
 				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+
 			double y = buf->getBufferValue(idx);
 			vy =  height - (y * y_scale + y_offset);
 			if (vy > height) vy = height;
@@ -260,9 +269,12 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 				nvgRect(ctx, pos.x() + vx - l, pos.y() + vy - l, line_width, line_width);
 			}
 		}
-		vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
-		if (vx > size.x()) vx = size.x();
-		nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+		if (!buf->isFrozen()) {
+			//uint64_t now = microsecs()/1000;
+			//vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
+			//if (vx > size.x()) vx = size.x();
+			//nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+		}
 		nvgStrokeColor(ctx, mColor);
 		nvgStroke(ctx);
 		//nvgFillColor(ctx, mForegroundColor);
@@ -278,6 +290,34 @@ static std::string display_time(double dt) {
 	return buf;
 }
 
+void LinePlot::drawGrid(NVGcontext *ctx, int x_start, double x_step, int num_x_steps, int y_start, double y_step,  int num_y_steps) {
+//void LinePlot::drawGrid(ctx, indent, displayed_time_range*time_scale/10.0, 10, mPos.y() + top_indent, (double)height/num_gridlines_v,  num_gridlines_v);
+	// plot a grid
+	if (!display_grid) return;
+	double x = x_start;
+	for (int i = 0; i<= num_x_steps; ++i) {
+		int xp = mPos.x() + x;
+		nvgBeginPath(ctx);
+		nvgStrokeWidth(ctx, 0.1);
+		nvgMoveTo(ctx, xp, y_start);
+		nvgLineTo(ctx, xp, y_start + y_step * num_y_steps);
+		nvgStrokeColor(ctx, Color(Vector3f(0,150,0),grid_intensity));
+		nvgStroke(ctx);
+		x += x_step;
+	}
+	double y = y_start;
+	x = mPos.x() + x_start;
+	for (int i=0; i <= num_y_steps; ++i) {
+		nvgBeginPath(ctx);
+		nvgStrokeWidth(ctx, 0.1);
+		nvgMoveTo(ctx, x, y);
+		nvgLineTo(ctx, x + x_step * num_x_steps, y);
+		nvgStrokeColor(ctx, Color(Vector3f(0,150,0),grid_intensity));
+		nvgStroke(ctx);
+		y += y_step;
+	}
+}
+
 
 void LinePlot::draw(NVGcontext *ctx) {
 	Widget::draw(ctx);
@@ -288,9 +328,14 @@ void LinePlot::draw(NVGcontext *ctx) {
 
 	int top_indent = 12;
 	int separation = 5;
-	int height = mSize.y() - top_indent;
+	int height = mSize.y() - 2*top_indent;
+	int indent = 5;
+	int num_gridlines_v = 10;
 	if (data.size()) {
-		if (!overlay_plots) height /= data.size(); else height -= 30;
+		if (!overlay_plots) {
+			height /= data.size(); 
+			num_gridlines_v /= data.size();
+		}
 	}
 	// set the time scale for the plot
 	uint64_t now = 0;
@@ -302,7 +347,10 @@ void LinePlot::draw(NVGcontext *ctx) {
 	assert(x_scale > 0.0);
 	double displayed_time_range = (double) default_time_range / x_scale;
 	x_min = now - displayed_time_range * (1 - x_scroll);
-	double time_scale = (double)mSize.x() / displayed_time_range;
+	double time_scale = (double)(mSize.x()-2*indent) / displayed_time_range;
+
+	if (display_grid && (overlay_plots || data.size() == 0) )
+		drawGrid(ctx, indent, displayed_time_range*time_scale/10.0, 10, mPos.y() + top_indent, (double)height/num_gridlines_v,  num_gridlines_v);
 
 	// plot each series
 	int plot_num = 0;
@@ -311,9 +359,14 @@ void LinePlot::draw(NVGcontext *ctx) {
 
 		for (auto *series_ptr : data) {
 			int plot_pos = mPos.y() + top_indent;
-			if (!overlay_plots) plot_pos += plot_num * (height + separation);
+			if (!overlay_plots) {
+				plot_pos += plot_num * (height + separation);
+				if (display_grid && !overlay_plots)
+					drawGrid(ctx, indent, displayed_time_range * time_scale/10.0, 10, 
+						plot_pos + top_indent, (double)height/num_gridlines_v,  num_gridlines_v);
+			}
 			nanogui::Vector2i pos(mPos);
-			pos.y() = plot_pos;
+			pos.y() = plot_pos + top_indent;
 			nanogui::Vector2i siz(mSize);
 			siz.y() = height;
 			TimeSeries &series(*series_ptr);
@@ -437,7 +490,7 @@ bool LinePlot::handleKey(int key, int scancode, int action, int modifiers) {
 		else if (key == GLFW_KEY_RIGHT) {
 			x_scroll += 1.0 / 20.0;
 			if (x_scroll >= 0.0) {
-				x_scroll = 0.0;
+				//x_scroll = 0.0;
 			}
 		}
 		else if (key == GLFW_KEY_SPACE) {

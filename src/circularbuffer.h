@@ -71,6 +71,7 @@ public:
 
 	void freeze() { frozen = true; } /* stop accepting new data */
 	void thaw() { frozen = false; } /* start accepting new data */
+	bool isFrozen() { return frozen; }
 
 	SampleTrigger *getTrigger(SampleTrigger::Event evt);
 	void setTrigger(SampleTrigger *, SampleTrigger::Event evt);
