@@ -821,6 +821,8 @@ public:
 		return addr;
 	}
 
+	virtual void loadProperties(PropertyFormHelper *pfh) override;
+
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::ImageView::draw(ctx);
 		if (mSelected) {
@@ -832,7 +834,12 @@ public:
 		}
 	}
 
-	void setImageName(const std::string new_name) { image_name = new_name; }
+	void setImageName(const std::string new_name) { 
+		image_name = new_name;
+		GLuint img = EDITOR->gui()->getImageId(new_name.c_str());
+		mImageID = img;
+		updateImageParameters();
+	}
 	const std::string &imageName() const { return image_name; }
 
 	nanogui::DragHandle *dh;
@@ -1448,7 +1455,7 @@ void UserWindow::save(const std::string &path) {
 				out << ip->getName() << " IMAGE ("
 				<< "pos_x: " << ip->position().x() << ", pos_y: " << ip->position().y()
 				<< ", width: " << ip->width() << ", height: " << ip->height()
-				<< ", caption: " << ip->imageName() << ");\n";
+				<< ", location: " << ip->imageName() << ");\n";
 				continue;
 			}
 		}
@@ -2383,6 +2390,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		EditorImageView *iv = new EditorImageView(window, img);
 		iv->setGridThreshold(20);
 		iv->setPixelInfoThreshold(20);
+		iv->setImageName("images/blank");
 		result = iv;
 	}
 	else if (getClass() == "PLOT") {
@@ -2434,6 +2442,21 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 
 	}
 }
+
+void EditorImageView::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addVariable<std::string> (
+			"Image File",
+			[&](std::string value) mutable{ setImageName(value); },
+			[&]()->std::string{ return imageName(); });
+		properties->addVariable<float> ("Scale",
+									[&](float value) mutable{ setScale(value); },
+									[&]()->float { return scale(); });
+	}
+}
+
 
 void EditorButton::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
