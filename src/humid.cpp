@@ -1094,11 +1094,13 @@ public:
 							   nanogui::Widget *palette_content,
 							   nanogui::Widget *container);
 	nanogui::Widget *getItems() { return items; }
+	void loadItems(const std::string match);
 protected:
 	EditorGUI *gui;
 	std::string tag_file_name;
 	nanogui::Widget *items;
 	nanogui::TextBox *search_box;
+	nanogui::Widget *palette_content;
 };
 
 class ThemeWindow : public nanogui::Object {
@@ -1840,7 +1842,9 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	search_box->setEnabled(true);
 	search_box->setEditable(true);
 	search_box->setAlignment(TextBox::Alignment::Left);
-	search_box->setCallback([this](const std::string &filter)->bool {
+	ObjectWindow *object_window = this;
+	search_box->setCallback([&](const std::string &filter)->bool {
+		loadItems(search_box->value());
 		return false;
 	});
 	if (tag_file_name.length()) loadTagFile(tag_file_name);
@@ -1854,15 +1858,16 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 	if (tags.length() && items->childCount() <= 1) {
 		tag_file_name = tags;
 		VScrollPanel *palette_scroller = new VScrollPanel(items);
-		palette_scroller->setPosition( Vector2i(5,5)); //Vector2i(5, window->theme()->mWindowHeaderHeight+1 + search_height));
-		Widget *palette_content = new Widget(palette_scroller);
+		palette_scroller->setPosition( Vector2i(5,5)); 
+		palette_content = new Widget(palette_scroller);
 		palette_content->setFixedSize(Vector2i(235, 600 - window->theme()->mWindowHeaderHeight-5 - search_height));
 
 		createPanelPage("Objects", tag_file_name.c_str(), palette_content);
-		GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1);
+		GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
 		palette_layout->setSpacing(4);
 		palette_layout->setMargin(4);
 		palette_layout->setColAlignment(nanogui::Alignment::Fill);
+		palette_layout->setRowAlignment(nanogui::Alignment::Fill);
 		palette_content->setLayout(palette_layout);
 		palette_scroller->setFixedSize(Vector2i(240, 600 - window->theme()->mWindowHeaderHeight - search_height));
 
@@ -2282,26 +2287,34 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				name = v.asString();
 				lp = findLinkableProperty(name);
 				buf = w_user->getValues(name);
-				if (!buf) {
+				if (!buf || !lp) {
 					if (lp)
 						buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
+					else
+						std::cout << "no linkable property for " << name << "\n";
+					if (!buf) std::cout << "no buffer for " << name << "\n";
 				}
 			}
 			else if (buf && pos == 4) {
 				CircularBuffer::DataType dt = buf->getDataType();
 				if (lp) lp->setValue(v);
 				if (v.asInteger(val)) {
-					if (dt == CircularBuffer::INT16)
+					if (dt == CircularBuffer::INT16) {
 						buf->addSample(now, (int16_t)(val & 0xffff));
-					else if (dt == CircularBuffer::INT32)
+						std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
+					}
+					else if (dt == CircularBuffer::INT32) {
 						buf->addSample(now, (int32_t)(val & 0xffffffff));
+						std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
+					}
 					else
 						buf->addSample(now, val);
-					std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
 				}
 				else if (v.asFloat(dval)) {
 					buf->addSample(now, dval);
 				}
+				else 
+					std::cout << "cannot interpret " << name << " value '" << v << "' as an integer or float\n";
 			}
 			++pos;
 		}
@@ -2726,6 +2739,33 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 	return result;
 }
 
+void ObjectWindow::loadItems(const std::string match) {
+	using namespace nanogui;
+	clearSelections();
+	while (palette_content->childCount() > 0) {
+		palette_content->removeChild(0);
+	}
+
+	std::vector<std::string> tokens;
+	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
+	
+
+	for (auto item : gui->getLinkableProperties() ) {
+		for (auto nam : tokens) {
+			if (item.first.find(nam) != std::string::npos) {
+				Widget *cell = new Widget(palette_content);
+				LinkableProperty *lp = item.second;
+				cell->setFixedSize(Vector2i(210,35));
+				SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
+				b->setEnabled(true);
+				b->setFixedSize(Vector2i(200, 30));
+				break; // only add once
+			}
+		}
+	}
+	window->performLayout(gui->nvgContext());
+}
+
 bool ObjectWindow::importModbusInterface(const std::string group_name, std::istream &init,
 										 nanogui::Widget *palette_content,
 										 nanogui::Widget *container) {
@@ -2766,17 +2806,9 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		cout << kind << " " << tag_name << " "
 		<< data_type << " " << data_count << " " << address_str
 		<< "\n";
+
+		loadItems(search_box->value());
 	}
-	for (auto item : gui->getLinkableProperties() ) {
-		Widget *cell = new Widget(palette_content);
-		LinkableProperty *lp = item.second;
-		cell->setFixedSize(Vector2i(210,35));
-		SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
-		b->setEnabled(true);
-		b->setFixedSize(Vector2i(200, 30));
-		//b->setPosition(Vector2i(100,++pallete_row * 32));
-	}
-	//palette_content->setFixedSize( nanogui::Vector2i( (pallete_row+1) * 32, palette_content->fixedWidth()));
 	
 	return true;
 }

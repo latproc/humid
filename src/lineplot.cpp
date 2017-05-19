@@ -169,16 +169,11 @@ void TimeSeries::drawLabel(NVGcontext *ctx, Vector2i &pos, float val) {
 	nvgText(ctx, pos.x(),pos.y(),buf, NULL);
 }
 
-long calcX(CircularBuffer *buf, int i, uint64_t x_min, uint64_t x_max) {
+long calcX(CircularBuffer *buf, int i) {
 	long xx1 = buf->getTime(i);
 	long xx2 = buf->getZeroTime();
 	long xx3 = buf->getStartTime();
 	long x = xx1 + xx3 - xx2 ;
-	if (x < x_min) 
-		x = x_min;
-	if (x > x_max) {
-		//x = x_max;
-	}
 	return x;
 }
 
@@ -239,7 +234,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 			double y = buf->getBufferValue(i);
 			vy =  height - (y * y_scale + y_offset);
 			if (i == n) { // not enough points to fill the graph..
-				x = calcX(buf, i-1, x_min, x_max);
+				x = calcX(buf, i-1);
 				vx = (x - x_min) * getXScale() * x_scale + x_indent;
 				if (vx > size.x()) vx = size.x();
 				if (vx < 0.0) vx = 0.0;
@@ -250,7 +245,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 		int start_idx = i;
 		for (; i>0; ) {
 			size_t idx = --i;
-			x = calcX(buf, i, x_min, x_max);
+			x = calcX(buf, i);
 			vx = (x - x_min) * getXScale() * x_scale + x_indent;
 			if (vx > size.x()) vx = size.x();
 			if (vx < 0.0) vx = 0.0;
