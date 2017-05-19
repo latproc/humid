@@ -386,6 +386,7 @@ public:
 	SymbolTable &getProperties() { return properties; }
 	LinkableProperty *findLinkableProperty(const std::string name);
 	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
+	std::map<std::string, LinkableProperty*>getLinkableProperties() { return linkables; }
 
 private:
 	SymbolTable properties;
@@ -1823,7 +1824,7 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	gui = screen;
 	if (tfn) tag_file_name = tfn;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(360, 600));
+	window->setFixedSize(Vector2i(360, 700));
 	window->setPosition( Vector2i(screen->width() - 360,48));
 	window->setTitle("Objects");
 	GridLayout *layout = new GridLayout(Orientation::Vertical,1, Alignment::Fill, 0, 3);
@@ -2756,22 +2757,24 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		>> data_count >> retentive >> address_str >> array_start
 		>> array_end;
 		char kind = address_str[1];
-		{
-			Widget *cell = new Widget(palette_content);
-			cell->setFixedSize(Vector2i(210,35));
+		if (tag_name.length()) {
 			LinkableProperty *lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
 			gui->getUserWindow()->addDataBuffer(tag_name, CircularBuffer::dataTypeFromString(data_type), gui->getSampleBufferSize());
 			gui->addLinkableProperty(tag_name, lp);
-			SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
-			b->setEnabled(true);
-			b->setFixedSize(Vector2i(200, 30));
-			//b->setPosition(Vector2i(100,++pallete_row * 32));
 		}
 
 		cout << kind << " " << tag_name << " "
-
 		<< data_type << " " << data_count << " " << address_str
 		<< "\n";
+	}
+	for (auto item : gui->getLinkableProperties() ) {
+		Widget *cell = new Widget(palette_content);
+		LinkableProperty *lp = item.second;
+		cell->setFixedSize(Vector2i(210,35));
+		SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(200, 30));
+		//b->setPosition(Vector2i(100,++pallete_row * 32));
 	}
 	//palette_content->setFixedSize( nanogui::Vector2i( (pallete_row+1) * 32, palette_content->fixedWidth()));
 	
