@@ -344,48 +344,6 @@ void ClockworkClient::idle() {
 							assert(first_message_time != 0);
 							const unsigned long t = ( mh.start_time - first_message_time)/scale;
 							handleClockworkMessage(t, op, message);
-#if 0
-							if (op == "STATE"&& message->size() == 2) {
-								machine = message->front().asString();
-								message->pop_front();
-								state = message->front().asString();
-								int state_num = lookupState(state);
-								std::map<std::string, int>::iterator idx = device_map.find(machine);
-
-								if (idx == device_map.end()) //new machine
-									device_map[machine] = next_device_num++;
-							}
-							else if (op == "UPDATE") {
-#if 0
-								output << "update: " << t << ", ";
-								std::list<Value>::iterator iter = message->begin();
-								while (iter!= message->end()) {
-									const Value &v =  *iter++;
-									output << v;
-									if (iter != message->end()) output << "\t";
-								}
-								output << "\n";
-#endif
-							}
-							else if (op == "PROPERTY" && message->size() == 3) {
-								std::string machine = message->front().asString();
-								message->pop_front();
-								std::string prop = message->front().asString();
-								message->pop_front();
-								property = machine + "." + prop;
-#if 0
-								val = message->front();
-								if (val.kind == Value::t_string)
-									output << "\"" << escapeNonprintables(val.asString().c_str()) << "\"";
-								else
-									output << escapeNonprintables(val.asString().c_str());
-								output << "\n";
-#endif
-								std::map<std::string, int>::iterator idx = device_map.find(property);
-								if (idx == device_map.end()) //new machine
-									device_map[property] = next_device_num++;
-							}
-#endif
 						}
 						free(data);
 					}
@@ -438,12 +396,12 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 	return res;
 }
 
-void ClockworkClient::queueMessage(std::string s) {
-	messages.push_back(s);
+void ClockworkClient::queueMessage(const std::string s) {
+	messages.push_back(std::make_pair(s, [](const std::string){}) );
 }
 
 void ClockworkClient::queueMessage(const char *s) {
-	messages.push_back(s);
+	messages.push_back(std::make_pair(s, [](const std::string){}) );
 }
 
 static void finish(int sig) {

@@ -36,7 +36,13 @@ bool DragHandle::mouseDragEvent(const Vector2i &p, const Vector2i & /* rel */,
 	if (!mEnabled) {
 		return false;
 	}
-	setPosition( Vector2i(p.x()-size().x()/2.0, p.y() - size().y()/2 ) );
+	int x = p.x(); 
+	if (x < 0) x = 0;
+	if (x>parent()->size().x()) x = parent()->size().x();
+	int y = p.y(); 
+	if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
+	if (y>parent()->size().y()) y = parent()->size().y();
+	setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
 	if (property_monitor) property_monitor->update(this);
 
 	//mValue = std::min(std::max((p.x() - mPos.x()) / (float) mSize.x(), (float) 0.0f), (float) 1.0f);
@@ -51,7 +57,15 @@ bool DragHandle::mouseButtonEvent(const Vector2i &p, int /* button */, bool down
 		return false;
 	}
 	//mValue = std::min(std::max((p.x() - mPos.x()) / (float) mSize.x(), (float) 0.0f), (float) 1.0f);
-	setPosition(Vector2i(p.x()-size().x()/2.0, p.y() - size().y()/2 ));
+	if (down) {
+		int x = p.x(); 
+		if (x < 0) x = 0;
+		if (x>parent()->size().x()) x = parent()->size().x();
+		int y = p.y(); 
+		if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
+		if (y>parent()->size().y()) y = parent()->size().y();
+		setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
+	}
 	if (mCallback)
 		mCallback(mValue);
 	if (mFinalCallback && !down)

@@ -50,14 +50,14 @@ float TimeSeries::getXScale() {
 
 float TimeSeries::getYScale() {
 //	if (auto_scale_v)
-		updateScale();
+	updateScale();
 	return v_scale;
 }
 
 void TimeSeries::updateScale() {
 	if (data->length() > 0) {
 		double minv = data->getBufferValue(0);
-		double maxv = data->getBufferValue(0);
+		double maxv = minv;
 		size_t n = data->length();
 		for (size_t i = 1; i < n; ++i) {
 			double y = data->getBufferValue(i);
@@ -68,7 +68,7 @@ void TimeSeries::updateScale() {
 		if (maxv > max_v) max_v = maxv;
 	}
 	v_scale = max_v - min_v;
-	if (v_scale == 0) v_scale = 1.0f;
+	if (v_scale <= 0) v_scale = 1.0f;
 }
 
 LinePlot::LinePlot(Widget *parent, const std::string &caption)
@@ -161,8 +161,8 @@ void LinePlot::setMasterSeries(TimeSeries *series) {
 void TimeSeries::drawLabel(NVGcontext *ctx, Vector2i &pos, float val) {
 	char buf[20];
 	const char *fmt = "%5.1f";
-	if (min_v<10.0 && min_v > -10.0) fmt = "%5.3f";
-	snprintf(buf, 20, fmt, min_v);
+	if (val<10.0 && val > -10.0) fmt = "%5.3f";
+	snprintf(buf, 20, fmt, val);
 	nvgFontSize(ctx, 14.0f);
 	nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
 	nvgFillColor(ctx, Color(255,255,255,255));
@@ -177,7 +177,7 @@ long calcX(CircularBuffer *buf, int i) {
 	return x;
 }
 
-void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
+void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis &y_axis,
 					  uint64_t x_min, uint64_t x_max, float x_scale, bool show_name) {
 	CircularBuffer *buf = getData();
 	int height = size.y();
@@ -194,24 +194,26 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 	if (buf && buf->length() > 0) {
 
 		//buf->findRange(min_v, max_v);
-		if (max_v == min_v) max_v += 1.0;
-		double y_scale = 0.9 * height / getYScale();
-		double y_offset = (0.0 - min_v) * y_scale + getYOffset() + 0.1*height;
+		//if (max_v <= min_v) max_v = min_v + 1.0f;
+		//double y_scale = 0.9 * height / getYScale();
+		//double y_offset = (0.0 - min_v) * y_scale + getYOffset() + 0.1*height;
+		double y_scale = 0.9 * height / y_axis.range();
+		double y_offset = 0.05*height;
 
 		{
-			Vector2i lbl_pos(pos.x() + 3,pos.y() + getYOffset() + 0.05*height);
-			drawLabel(ctx, lbl_pos, min_v);
+			Vector2i lbl_pos(pos.x() + 3,pos.y() + getYOffset() + 0.95*height);
+			drawLabel(ctx, lbl_pos, y_axis.min());
 		}
 		{
-			Vector2i lbl_pos(pos.x() + 3,pos.y() + getYOffset() + 0.95*height);
-			drawLabel(ctx, lbl_pos, max_v);
+			Vector2i lbl_pos(pos.x() + 3,pos.y() + getYOffset() + 0.05*height);
+			drawLabel(ctx, lbl_pos, y_axis.max());
 		}
 
 		size_t n = buf->length();
 		//find start index for a given time
 		uint64_t i = 0;
 		long x = 0;
-		float vy = height - y_offset;
+		float vy = 0.0f;
 		while (i<n) {
 			x=buf->getTime(i);
 			x -= buf->getZeroTime();
@@ -232,7 +234,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 		float last_x = vx;
 		if (line_style == SOLID) {
 			double y = buf->getBufferValue(i);
-			vy =  height - (y * y_scale + y_offset);
+			vy =  (double)height - ( (y - y_axis.min()) * y_scale + y_offset);
 			if (i == n) { // not enough points to fill the graph..
 				x = calcX(buf, i-1);
 				vx = (x - x_min) * getXScale() * x_scale + x_indent;
@@ -242,18 +244,15 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 			nvgMoveTo(ctx, pos.x() + vx, pos.y() + vy);
 		}
 		if (i == n) --i;
-		int start_idx = i;
 		for (; i>0; ) {
-			size_t idx = --i;
+			--i;
 			x = calcX(buf, i);
 			vx = (x - x_min) * getXScale() * x_scale + x_indent;
-			if (vx > size.x()) vx = size.x();
-			if (vx < 0.0) vx = 0.0;
 			if (line_style == SOLID)
 				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 
-			double y = buf->getBufferValue(idx);
-			vy =  height - (y * y_scale + y_offset);
+			double y = buf->getBufferValue(i);
+			vy =  (double)height - ( (y-y_axis.min()) * y_scale + y_offset);
 			if (vy > height) vy = height;
 			else if (vy < 0.0) vy = 0.0;
 			if (line_style == SOLID) {
@@ -266,9 +265,9 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 		}
 		if (!buf->isFrozen()) {
 			//uint64_t now = microsecs()/1000;
-			//vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
+			vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
 			//if (vx > size.x()) vx = size.x();
-			//nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+			nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 		}
 		nvgStrokeColor(ctx, mColor);
 		nvgStroke(ctx);
@@ -279,7 +278,11 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size,
 
 static std::string display_time(double dt) {
 	char buf[20];
-	if ( fabs(dt) > 60000.0) snprintf(buf, 20, "%7.3lfm",dt/60000.0);
+	if ( fabs(dt) > 60000.0) {
+		int min = dt/60000;
+		double sec = (dt/60000.0 - min) * 60.0;
+		snprintf(buf, 20, "%02d:%02.3f",min, sec);
+	}
 	else if ( fabs(dt) > 1000.0) snprintf(buf, 20, "%7.3lfs",dt/1000.0);
 	else snprintf(buf, 20, "%5.0lfms",dt);
 	return buf;
@@ -351,6 +354,22 @@ void LinePlot::draw(NVGcontext *ctx) {
 	int plot_num = 0;
 	{
 		std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+		std::vector<Axis>y_axes(CircularBuffer::NumTypes);
+		{
+			Axis a;
+			for (int i = CircularBuffer::INT16; i<= CircularBuffer::STR; ++i) {
+				y_axes[i] = a;
+			}
+		}
+
+		// calculate y scales
+		if (overlay_plots) {
+			for (auto *series_ptr : data) {
+				CircularBuffer *buf = series_ptr->getData();
+				y_axes[buf->getDataType()].add(buf->smallest());
+				y_axes[buf->getDataType()].add(buf->largest());
+			}
+		}
 
 		for (auto *series_ptr : data) {
 			int plot_pos = mPos.y() + top_indent;
@@ -366,7 +385,15 @@ void LinePlot::draw(NVGcontext *ctx) {
 			siz.y() = height;
 			TimeSeries &series(*series_ptr);
 			nvgFillColor(ctx, series.getColor());
-			series.draw(ctx, pos, siz, x_min, now, time_scale, !overlay_plots);
+			Axis axis(y_axes[series.getData()->getDataType()]);
+			if (!overlay_plots) {
+				CircularBuffer *buf = series_ptr->getData();
+				axis.clear();
+				axis.add(buf->smallest());
+				axis.add(buf->largest());
+			}
+			series.draw(ctx, pos, siz, axis, x_min, now, time_scale, !overlay_plots);
+
 			++plot_num;
 		}
 		// draw key if overlaying plots

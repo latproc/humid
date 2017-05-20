@@ -104,6 +104,7 @@ extern const int DEBUG_ALL;
 #define DEBUG_BASIC ( 1 & debug)
 extern int debug;
 extern int saved_debug;
+std::string tag_file_name;
 
 const char *program_name;
 
@@ -521,8 +522,10 @@ public:
 	}
 
 	virtual bool editorMouseMotionEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
-		if ( !EDITOR->isEditMode() )
+		if ( !EDITOR->isEditMode() ) {
+			EDITOR->getDragHandle()->setVisible(false);
 			return true; // caller should continue to call the default handler for the object
+		}
 
 		Eigen::Vector2d pt(p.x(), p.y());
 
@@ -538,13 +541,13 @@ public:
 				idx = i;
 			}
 		}
-
+/*
 		if (min >= 24) {
 			EDITOR->getDragHandle()->setVisible(false);
 			updateHandles(widget);
 			return false;
 		}
-
+*/
 		nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
 		if (handles[idx].mode() != Handle::NONE) {
 			drag_handle->setTarget(widget);
@@ -556,11 +559,16 @@ public:
 			if (drag_handle->propertyMonitor())
 				drag_handle->propertyMonitor()->setMode( handles[idx].mode() );
 
+			updateHandles(widget);
 			drag_handle->setVisible(true);
 		}
 		else {
-			drag_handle->setVisible(false);
+			drag_handle->setPosition(
+					Vector2i(widget->position().x() + widget->width() - drag_handle->size().x()/2,
+							 widget->position().y() + widget->height() - drag_handle->size().y()/2) ) ;
+
 			updateHandles(widget);
+			drag_handle->setVisible(true);
 		}
 
 		return false;
@@ -568,6 +576,10 @@ public:
 
 	virtual bool editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i &p, bool enter) {
 		if (enter) updateHandles(widget);
+		else {
+			EDITOR->getDragHandle()->setVisible(false);
+			updateHandles(widget);
+		}
 
 		return true;
 	}
@@ -1097,7 +1109,6 @@ public:
 	void loadItems(const std::string match);
 protected:
 	EditorGUI *gui;
-	std::string tag_file_name;
 	nanogui::Widget *items;
 	nanogui::TextBox *search_box;
 	nanogui::Widget *palette_content;
@@ -1341,15 +1352,16 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 				UserWindow *uw = gui->getUserWindow();
 				if (uw && uw->hasSelections()) {
 					uw->deleteSelections();
+					return false;
 				}
 			}
-		}		
-		else {
-			for (auto item : children() ) {
-				nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(item);
-				if (lp) lp->handleKey(key, scancode, action, modifiers);
-			}
 		}
+		bool handled = false;		
+		for (auto item : children() ) {
+			nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(item);
+			if (lp) { lp->handleKey(key, scancode, action, modifiers); handled = true; }
+		}
+		if (!handled) return Window::keyboardEvent(key, scancode, action, modifiers);
 	}
 	return true;
 }
@@ -1710,46 +1722,13 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	window->setTheme(theme);
 	window->setPosition(nanogui::Vector2i(32,64));
 	window->setFixedSize(nanogui::Vector2i(260,560));
-#if 0
-	window->setLayout(new GridLayout(Orientation::Vertical,1));
-	{
-		VScrollPanel *palette_scroller = new VScrollPanel(window);
-		int button_width = window->width() - 20;
-		palette_scroller->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight));
-		palette_scroller->setPosition( Vector2i(5, window->theme()->mWindowHeaderHeight+1));
-		Widget *palette_content = new Widget(palette_scroller);
-		palette_content->setLayout(new GridLayout(Orientation::Vertical,4));
-		Widget *cell = new Widget(palette_content);
-		cell->setFixedSize(Vector2i(button_width+4,35));
-	}
-#endif
+
 	window->setVisible(false);
 
 
 }
-/*
-void PropertyWindow::show(nanogui::Widget &w) {
-	EditorGUI *gui = dynamic_cast<EditorGUI*>(screen);
-	EditorWidget *ew = dynamic_cast<EditorWidget*>(&w);
-	if (ew) {
-		ew->loadProperties(properties);
-	}
-	else {
-		properties->addVariable<int> ("Height",
-									   [&](int value) mutable{ w.setHeight(value); },
-									   [&]()->int{ return w.height(); });
-		properties->addVariable<int> ("Width",
-										[&](int value) mutable{ w.setWidth(value); },
-										[&]()->int{ return w.width(); });
-	}
-	window->setVisible(true);
-	gui->performLayout();
-}
-*/
 
 void PropertyWindow::update() {
-	//item_proxy->getAll();
-	//properties->refresh();
 	std::cout << "PropertyWindow::update\n";
 #if 1
 	EditorGUI *gui = dynamic_cast<EditorGUI*>(screen);
@@ -1826,7 +1805,8 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	gui = screen;
 	if (tfn) tag_file_name = tfn;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(360, 700));
+	window->setFixedSize(Vector2i(360, 600));
+	window->setSize(Vector2i(360, 600));
 	window->setPosition( Vector2i(screen->width() - 360,48));
 	window->setTitle("Objects");
 	GridLayout *layout = new GridLayout(Orientation::Vertical,1, Alignment::Fill, 0, 3);
@@ -1834,6 +1814,7 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	items = new Widget(window);
 	items->setPosition(Vector2i(1, window->theme()->mWindowHeaderHeight+1));
 	items->setLayout(new BoxLayout(Orientation::Vertical));
+	items->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight));
 
 	search_box = new nanogui::TextBox(items);
 	search_box->setFixedSize(Vector2i(200, 25));
@@ -1842,7 +1823,6 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	search_box->setEnabled(true);
 	search_box->setEditable(true);
 	search_box->setAlignment(TextBox::Alignment::Left);
-	ObjectWindow *object_window = this;
 	search_box->setCallback([&](const std::string &filter)->bool {
 		loadItems(search_box->value());
 		return false;
@@ -1854,13 +1834,13 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 
 void ObjectWindow::loadTagFile(const std::string tags) {
 	using namespace nanogui;
-	const int search_height = 28;
+	const int search_height = 36;
 	if (tags.length() && items->childCount() <= 1) {
 		tag_file_name = tags;
 		VScrollPanel *palette_scroller = new VScrollPanel(items);
-		palette_scroller->setPosition( Vector2i(5,5)); 
+		palette_scroller->setPosition( Vector2i(1,search_height+5)); 
 		palette_content = new Widget(palette_scroller);
-		palette_content->setFixedSize(Vector2i(235, 600 - window->theme()->mWindowHeaderHeight-5 - search_height));
+		palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
 
 		createPanelPage("Objects", tag_file_name.c_str(), palette_content);
 		GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
@@ -1869,7 +1849,7 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 		palette_layout->setColAlignment(nanogui::Alignment::Fill);
 		palette_layout->setRowAlignment(nanogui::Alignment::Fill);
 		palette_content->setLayout(palette_layout);
-		palette_scroller->setFixedSize(Vector2i(240, 600 - window->theme()->mWindowHeaderHeight - search_height));
+		palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
 
 		window->performLayout(gui->nvgContext());
 	}
@@ -2478,29 +2458,29 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 	if (btn) {
 		EditorGUI *gui = EDITOR->gui();
 		properties->addVariable<nanogui::Color> (
-				 "Background colour",
+			"Background colour",
 			 [&,btn](const nanogui::Color &value) mutable{ btn->setBackgroundColor(value); },
 			 [&,btn]()->const nanogui::Color &{ return btn->backgroundColor(); });
 		properties->addVariable<nanogui::Color> (
-		"Text colour",
-		[&,btn](const nanogui::Color &value) mutable{ btn->setTextColor(value); },
-		[&,btn]()->const nanogui::Color &{ return btn->textColor(); } );
+			"Text colour",
+			[&,btn](const nanogui::Color &value) mutable{ btn->setTextColor(value); },
+			[&,btn]()->const nanogui::Color &{ return btn->textColor(); } );
 		properties->addVariable<std::string> (
-												 "Caption",
-												 [&](std::string value) mutable{ setCaption(value); },
-												 [&]()->std::string{ return caption(); });
+			"Caption",
+			[&](std::string value) mutable{ setCaption(value); },
+			[&]()->std::string{ return caption(); });
 		properties->addVariable<std::string> (
-												 "Remote object",
-												 [&](std::string value) mutable{ setName(value); },
-												 [&]()->std::string{ return getName(); });
+			"Remote object",
+			[&](std::string value) mutable{ setName(value); },
+			[&]()->std::string{ return getName(); });
 		properties->addVariable<unsigned int> (
-												 "Modbus address",
-												 [&](unsigned int value) mutable{ addr = value; },
-											   [&]()->unsigned int{ return addr; });
+			"Modbus address",
+			[&](unsigned int value) mutable{ addr = value; },
+			[&]()->unsigned int{ return addr; });
 		properties->addVariable<unsigned int> (
-											   "Behaviour",
-											   [&](unsigned int value) mutable{ setFlags(value & 0x0f); },
-											   [&]()->unsigned int{ return flags(); });
+			"Behaviour",
+			[&](unsigned int value) mutable{ setFlags(value & 0x0f); },
+			[&]()->unsigned int{ return flags(); });
 	}
 }
 
@@ -2509,24 +2489,24 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 	EditorGUI *gui = EDITOR->gui();
 
 	properties->addVariable<float> ("X scale",
-									[&](float value) mutable{ x_scale = value; },
-									[&]()->float { return x_scale; });
+		[&](float value) mutable{ x_scale = value; },
+		[&]()->float { return x_scale; });
 	properties->addVariable<float> ("X offset",
-									[&](float value) mutable{ x_scroll = value; },
-									[&]()->float { return x_scroll; });
+		[&](float value) mutable{ x_scroll = value; },
+		[&]()->float { return x_scroll; });
 	properties->addVariable<float> ("Grid Intensity",
-									[&](float value) mutable{ grid_intensity = value; },
-									[&]()->float { return grid_intensity; });
+		[&](float value) mutable{ grid_intensity = value; },
+		[&]()->float { return grid_intensity; });
 	properties->addVariable<bool> ("Display Grid",
-									[&](bool value) mutable{ display_grid = value; },
-									[&]()->bool { return display_grid; });
+		[&](bool value) mutable{ display_grid = value; },
+		[&]()->bool { return display_grid; });
 	properties->addVariable<bool> ("Overlay plots",
-									[&](bool value) mutable{ overlay_plots = value; },
-									[&]()->bool { return overlay_plots; });
+		[&](bool value) mutable{ overlay_plots = value; },
+		[&]()->bool { return overlay_plots; });
 	properties->addVariable<std::string> ("Monitors",
-											 [&, gui](std::string value) mutable{
-												 setMonitors( gui->getUserWindow(), value); },
-											 [&, gui]()->std::string{ return monitors(); });
+		[&, gui](std::string value) mutable{
+			setMonitors( gui->getUserWindow(), value); },
+		[&, gui]()->std::string{ return monitors(); });
 	properties->addButton("Monitor Selected", [&,gui]() mutable{
 		if (gui->getObjectWindow()->hasSelections()) {
 			requestFocus();
@@ -2561,38 +2541,40 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 	for (auto series : data) {
 		properties->addGroup(series->getName());
 		properties->addVariable<int> (
-			  "Line style",
-			  [&,series](int value) mutable{
-				  series->setLineStyle(static_cast<nanogui::TimeSeries::LineStyle>(value));
-			  },
-			  [&,series]()->int{ return (int)series->getLineStyle(); });
+			"Line style",
+			[&,series](int value) mutable{
+				series->setLineStyle(static_cast<nanogui::TimeSeries::LineStyle>(value));
+			},
+			[&,series]()->int{ return (int)series->getLineStyle(); });
 		properties->addVariable<float> (
-									  "Line thickness",
-									  [&,series](float value) mutable{
-										  series->setLineWidth(value);
-									  },
-									  [&,series]()->float{ return series->getLineWidth(); });
+			"Line thickness",
+			[&,series](float value) mutable{
+				series->setLineWidth(value);
+			},
+			[&,series]()->float{ return series->getLineWidth(); });
 	}
-	properties->addVariable<std::string> ("Start trigger",
-										  [&,gui](const std::string value) mutable{
-											  setTriggerName(gui->getUserWindow(),
-															 SampleTrigger::START, value);},
+	properties->addGroup("Triggers");
+	properties->addVariable<std::string> (
+			"Start trigger",
+			[&,gui](const std::string value) mutable{
+			setTriggerName(gui->getUserWindow(),
+			SampleTrigger::START, value);},
 			[&]()->std::string { return start_trigger_name; });
 	properties->addVariable<int> ("Start Value",
-								  [&,gui](int value) mutable{
-									  setTriggerValue(gui->getUserWindow(),
-													  SampleTrigger::START, value); },
+			[&,gui](int value) mutable{
+				setTriggerValue(gui->getUserWindow(),
+				SampleTrigger::START, value); },
 				[&]()->int { return start_trigger_value; });
 	properties->addVariable<std::string> ("Stop trigger",
-										  [&,gui](const std::string value) mutable{
-											  setTriggerName(gui->getUserWindow(),
-															 SampleTrigger::STOP, value);},
-										  [&,gui]()->std::string { return start_trigger_name; });
+			[&,gui](const std::string value) mutable{
+				setTriggerName(gui->getUserWindow(),
+				SampleTrigger::STOP, value);},
+				[&,gui]()->std::string { return start_trigger_name; });
 	properties->addVariable<int> ("Stop Value",
-								  [&](int value) mutable{
-									  setTriggerValue(gui->getUserWindow(),
-													  SampleTrigger::STOP, value); },
-									[&]()->int { return stop_trigger_value; });
+			[&](int value) mutable{
+				setTriggerValue(gui->getUserWindow(),
+				SampleTrigger::STOP, value); },
+				[&]()->int { return stop_trigger_value; });
 }
 
 
@@ -2755,10 +2737,10 @@ void ObjectWindow::loadItems(const std::string match) {
 			if (item.first.find(nam) != std::string::npos) {
 				Widget *cell = new Widget(palette_content);
 				LinkableProperty *lp = item.second;
-				cell->setFixedSize(Vector2i(210,35));
+				cell->setFixedSize(Vector2i(window->width()-32,35));
 				SelectableButton *b = new ObjectFactoryButton(gui, "BUTTON", this, cell, lp);
 				b->setEnabled(true);
-				b->setFixedSize(Vector2i(200, 30));
+				b->setFixedSize(Vector2i(window->width()-40, 30));
 				break; // only add once
 			}
 		}
@@ -2807,8 +2789,8 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		<< data_type << " " << data_count << " " << address_str
 		<< "\n";
 
-		loadItems(search_box->value());
 	}
+	loadItems(search_box->value());
 	
 	return true;
 }
@@ -2886,7 +2868,7 @@ int main(int argc, const char ** argv ) {
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
 	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
 	("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
-	("cwin", "clockwork incoming port (deprecated)")
+	("tags", po::value<std::string>(&hostname)->default_value(""),"clockwork tag file")
 	;
 	po::variables_map vm;
 	po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -2900,6 +2882,7 @@ int main(int argc, const char ** argv ) {
 	if (vm.count("cwout")) cw_out = vm["cwout"].as<int>();
 	if (vm.count("host")) host = vm["host"].as<std::string>();
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
+	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (DEBUG_BASIC) std::cout << "Debugging\n";
 
 	std::string home(".");

@@ -68,6 +68,8 @@ void CircularBuffer::addSample(long time, double val) {
 		start_trigger->check(v);
 		if (start_trigger->justTriggered()) thaw();
 	}
+	if (back == -1 || val < smallest_value) smallest_value = val;
+	if (back == -1 || val > largest_value) largest_value = val;
 	front = (front + 1) % bufsize;
 	if (front == back) total -= values[front];
 	if (front == back || back == -1) back = (back + 1) % bufsize;

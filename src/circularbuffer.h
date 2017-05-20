@@ -13,28 +13,12 @@
 class CircularBuffer {
 public:
 	enum DataType { INT16, UINT16, INT32, UINT32, DOUBLE, STR };
+	static const int NumTypes = 6;
 	class Handler {
 	public:
 		virtual void operator()() { }
 		virtual ~Handler() { }
 	};
-private:
-    int bufsize;
-    int front;
-    int back;
-    double total;
-    double *values;
-    uint64_t *times;
-	uint64_t zero_time;
-	uint64_t start_time;
-	std::recursive_mutex update_mutex;
-	bool frozen;
-	SampleTrigger *start_trigger;
-	SampleTrigger *stop_trigger;
-	DataType data_type;
-
-	std::multimap<SampleTrigger::Event, Handler *> handlers;
-
 public:
 	CircularBuffer(int size, DataType dt);
 	void destroy();
@@ -90,6 +74,29 @@ public:
 		return DOUBLE;
 	}
 	void clear();
+
+	double smallest() { return smallest_value; }
+	double largest() { return largest_value; }
+
+private:
+    int bufsize;
+    int front;
+    int back;
+    double total;
+    double *values;
+	double smallest_value;
+	double largest_value;
+    uint64_t *times;
+	uint64_t zero_time;
+	uint64_t start_time;
+	std::recursive_mutex update_mutex;
+	bool frozen;
+	SampleTrigger *start_trigger;
+	SampleTrigger *stop_trigger;
+	DataType data_type;
+
+	std::multimap<SampleTrigger::Event, Handler *> handlers;
+
 };
 
 #endif

@@ -6,6 +6,7 @@
 #include "propertymonitor.h"
 #include "DragHandle.h"
 #include <nanogui/imageview.h>
+#include <nanogui/theme.h>
 #include "lineplot.h"
 
 using Eigen::Vector2i;
@@ -24,14 +25,30 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 				if (target_parent && target_parent->contains(newPos + target_parent->position())
 						&& target_parent->contains(newPos + dh->getTarget()->size() + target_parent->position()))
 					dh->getTarget()->setPosition( newPos );
+
+				int x = newPos.x(); 
+				if (x < 0) x = 0;
+				if (x > target_parent->size().x() - dh->getTarget()->size().x()) x = target_parent->size().x() - dh->getTarget()->size().x();
+				int y = newPos.y(); 
+				if (y < target_parent->theme()->mWindowHeaderHeight+1) y = target_parent->theme()->mWindowHeaderHeight+1;
+				if (y > target_parent->size().y() - dh->getTarget()->size().y()) y = target_parent->size().y() - dh->getTarget()->size().y();
+				dh->getTarget()->setPosition( Vector2i(x,y ) );
+
 			}
 				break;
 			case Handle::RESIZE_TL:
 				{
+					nanogui::Widget *target_parent = dh->getTarget()->parent();
 					Vector2i pos = dh->position() + dh->size()/2;
 					Vector2i br(dh->getTarget()->position() + dh->getTarget()->size());
 					Vector2i size(br - pos);
-					dh->getTarget()->setPosition(pos);
+					int x = pos.x();
+					if (x > target_parent->width() - dh->getTarget()->width()) 
+						x = target_parent->width() - dh->getTarget()->width();
+					int y = pos.y();
+					if (y > target_parent->height() - dh->getTarget()->height()) 
+						y = target_parent->height() - dh->getTarget()->height();
+					dh->getTarget()->setPosition(Vector2i(x,y));
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);

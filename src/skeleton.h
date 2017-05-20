@@ -92,7 +92,7 @@ public:
 
 	std::string escapeNonprintables(const char *buf);
 
-	void queueMessage(std::string s);
+	void queueMessage(const std::string s);
 
 	void queueMessage(const char *s);
 
@@ -113,7 +113,7 @@ protected:
 	SetupConnectMonitor *connect_responder;
 	zmq::socket_t *iosh_cmd;
 	zmq::socket_t *cmd_interface;
-	std::list<std::string> messages; // outgoing messages
+	std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
 	nanogui::ref<nanogui::Window> property_window;
 	
 	MessagingInterface *g_iodcmd;

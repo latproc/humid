@@ -23,6 +23,26 @@ class UserWindow;
 
 NAMESPACE_BEGIN(nanogui)
 
+class Axis {
+public:
+	Axis() : initialised(false), min_v(0), max_v(1) {}
+	double range() const { assert(initialised); if (max_v == min_v) return 1.0; return max_v - min_v; }
+	double min() const { return min_v; }
+	double max() const { return max_v; }
+	void add(double value) {
+		if (!initialised) { min_v = max_v = value; initialised = true;}
+		else {
+			if (value < min_v) min_v = value;
+			if (value > max_v) max_v = value;
+		}
+	}
+	void clear() { initialised = false; }
+private:
+	bool initialised;
+	double min_v;
+	double max_v;
+};
+
 class TimeSeries {
 public:
 	enum LineStyle { SOLID, POINTS };
@@ -47,7 +67,7 @@ public:
 	uint64_t t0() { return app_zero_time; }
 
 	void drawLabel(NVGcontext *ctx, Vector2i &pos, float val);
-	void draw(NVGcontext *ctx, Vector2i &pos, Vector2i &siz, uint64_t x_min, uint64_t x_max, float x_scale, bool show_name = true);
+	void draw(NVGcontext *ctx, Vector2i &pos, Vector2i &siz, const Axis &y_axis, uint64_t x_min, uint64_t x_max, float x_scale, bool show_name = true);
 
 	void setLineWidth(float width) { line_width = width; }
 	float getLineWidth() const { return line_width; }
