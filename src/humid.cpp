@@ -70,6 +70,7 @@
 #include "SelectableWidget.h"
 #include "SelectableButton.h"
 #include "UserWindow.h"
+#include "cJSON.h"
 
 // settings file parser globals
 #define __MAIN__ 1
@@ -2303,7 +2304,72 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 	//	std::cout << op << "\n";
 }
 
-void EditorGUI::update() { 
+void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
+	int num_params = cJSON_GetArraySize(obj);
+	if (num_params)
+	{
+		for (int i=0; i<num_params; ++i)
+		{
+			cJSON *item = cJSON_GetArrayItem(obj, i);
+			if (item->type == cJSON_Array)
+			{
+				Value group = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 0), 0);
+				Value addr = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 1), 0);
+				Value name = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 2), 0);
+				Value len = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 3), 0);
+				Value value = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 4), 0);
+				if (DEBUG_BASIC)
+					std::cout << name << ": " << group << " " << addr << " " << len << " " << value <<  "\n";
+				if (value.kind == Value::t_string) {
+					std::string valstr = value.asString();
+					//insert((int)group.iValue, (int)addr.iValue-1, valstr.c_str(), valstr.length()+1); // note copying null
+				}
+				//else
+				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
+				LinkableProperty *lp = gui->findLinkableProperty(name.asString());
+				if (lp) {
+					lp->setValue(value);
+					CircularBuffer *buf = gui->getUserWindow()->getValues(name.asString());
+					if (buf) {
+						long v;
+						double fv;
+						buf->clear();
+						if (value.asInteger(v)) 
+							buf->addSample( buf->getZeroTime(), v);
+						else if (value.asFloat(fv))
+							buf->addSample( buf->getZeroTime(), fv);
+					}
+				}
+			}
+			else
+			{
+				char *node = cJSON_Print(item);
+				std::cerr << "item " << i << " is not of the expected format: " << node << "\n";
+				free(node);
+			}
+		}
+	}
+}
+
+void EditorGUI::update() {
+	static bool startup = true;
+	if (startup) {
+		// if the tag file is loaded, get initial values
+		if (linkables.size()) {
+			queueMessage("MODBUS REFRESH", 
+			[this](std::string s) { 
+				if (s != "failed") {
+					std::cout << s << "\n";
+					cJSON *obj = cJSON_Parse(s.c_str());
+					if (!obj) return;
+					if (obj->type == cJSON_Array) {
+						processModbusInitialisation(obj, this);
+					}
+					startup = false;
+				}
+			}); 
+		}
+	}
 	if (w_user) w_user->update();
 	if (needs_update) {
 		w_properties->getWindow()->performLayout(nvgContext());
@@ -2631,9 +2697,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 				b->setChangeCallback([b, this] (bool state) {
 					gui->queueMessage(
-									  gui->getIODSyncCommand(0, b->address(), 1));
+									  gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
 					gui->queueMessage(
-									  gui->getIODSyncCommand(0, b->address(), 0));
+									  gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
 
 				});
 				result = b;
@@ -2644,7 +2710,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				b->setFlags(Button::ToggleButton);
 				b->setName(tag_name);
 				b->setChangeCallback([this,b](bool state) {
-					gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0));
+					gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
 					if (state)
 						b->setBackgroundColor(Color(255, 80, 0, 255));
 					else
@@ -2665,7 +2731,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			b->setFlags(Button::ToggleButton);
 			b->setName(tag_name);
 			b->setChangeCallback([this,b](bool state) {
-				gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0));
+				gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
 				if (state)
 					b->setBackgroundColor(Color(255, 80, 0, 255));
 				else

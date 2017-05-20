@@ -468,8 +468,6 @@ bool LinePlot::scrollEvent(const Vector2i &p, const Vector2f &rel) {
 	if (x_scale <0.1) x_scale = 0.1;
 	std::cout << "scroll: " << rel.y() << "x scale: " << x_scale << "\n";
 
-	//x_scroll += 1 - x_scale / prev_scale;
-
 	double offs2 = (x_max - t) * x_scale / 30000.0;
 	double t2 = x_max - (1.0 - offs) * 30000.0 / x_scale;
 	double dt = (t2 - t);

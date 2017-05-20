@@ -199,7 +199,7 @@ nanogui::Vector2i WindowStagger::pos() {
 ClockworkClient::ClockworkClient()
 : nanogui::Screen(Eigen::Vector2i(1024, 768), "NanoGUI Test", true, false),
 	window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
-	iosh_cmd(0), cmd_interface(0), next_device_num(0), next_state_num(0),
+	iosh_cmd(0), cmd_interface(0), command_state(WaitingCommand), next_device_num(0), next_state_num(0),
 	first_message_time(0), scale(1000),
 	window_stagger(this) {
 		screen = this;
@@ -318,6 +318,26 @@ void ClockworkClient::idle() {
 					}
 				}
 				else while (loop_counter--) {
+					if (command_state == WaitingCommand && !messages.empty()) {
+						std::string msg = messages.front().first;
+						safeSend(*cmd_interface, msg.c_str(), msg.length());
+						command_state = WaitingResponse;
+					}
+					else if (command_state == WaitingResponse) {
+						char *buf = 0;
+						size_t len = 0;
+						if (safeRecv(*cmd_interface, &buf, &len, false, 0)) {
+							std::string s = messages.front().first;
+							if (buf) {
+								buf[len] = 0;
+								messages.front().second(buf);
+							}
+							messages.pop_front();
+							delete[] buf;
+							command_state = WaitingCommand;
+						}
+					}
+
 					MessageHeader mh;
 					char *data = 0;
 					size_t len = 0;
@@ -396,12 +416,12 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 	return res;
 }
 
-void ClockworkClient::queueMessage(const std::string s) {
-	messages.push_back(std::make_pair(s, [](const std::string){}) );
+void ClockworkClient::queueMessage(const std::string s, std::function< void(const std::string) >f) {
+	messages.push_back(std::make_pair(s, f) );
 }
 
-void ClockworkClient::queueMessage(const char *s) {
-	messages.push_back(std::make_pair(s, [](const std::string){}) );
+void ClockworkClient::queueMessage(const char *s, std::function< void(const std::string) >f) {
+	messages.push_back(std::make_pair(s, f) );
 }
 
 static void finish(int sig) {

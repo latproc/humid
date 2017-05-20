@@ -77,6 +77,8 @@ class SetupConnectMonitor;
 class ClockworkClient : public nanogui::Screen {
 
 public:
+	enum CommandState { WaitingCommand, WaitingResponse };
+
 	ClockworkClient();
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
@@ -92,9 +94,9 @@ public:
 
 	std::string escapeNonprintables(const char *buf);
 
-	void queueMessage(const std::string s);
+	void queueMessage(const std::string s, std::function< void(std::string) >f);
 
-	void queueMessage(const char *s);
+	void queueMessage(const char *s, std::function< void(std::string) >f);
 
 	char *sendIOD(int group, int addr, int new_value);
 	char *sendIODMessage(const std::string &s);
@@ -114,9 +116,11 @@ protected:
 	zmq::socket_t *iosh_cmd;
 	zmq::socket_t *cmd_interface;
 	std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
+	CommandState command_state;
 	nanogui::ref<nanogui::Window> property_window;
 	
 	MessagingInterface *g_iodcmd;
+
 	
 	std::map<std::string, int> state_map;
 	std::map<std::string, int> device_map;
