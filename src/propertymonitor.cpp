@@ -52,6 +52,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -67,6 +68,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -83,6 +85,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -97,6 +100,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -113,6 +117,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -129,6 +134,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -140,6 +146,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}
@@ -153,6 +160,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 					if (size.x() >= 24 && size.y() >= 24) {
 						resized = true;
 						dh->getTarget()->setSize(size);
+						dh->getTarget()->setFixedSize(size);
 						nanogui::ImageView *iv = dynamic_cast<nanogui::ImageView*>(dh->getTarget());
 						if (iv) iv->fit();
 					}

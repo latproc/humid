@@ -300,6 +300,25 @@ class EditorObject {
 		virtual ~EditorObject() { }
 };
 
+class LinkableObject {
+public:
+	virtual ~LinkableObject() { if (widget) widget->decRef(); }
+	LinkableObject(nanogui::Widget *w) : widget(w) { if (w) w->incRef(); }
+	virtual void update(const Value &value) {}
+	nanogui::Widget *linked() { return widget; }
+protected:
+	nanogui::Widget *widget;
+};
+
+class LinkableTextBox : public LinkableObject {
+	public:
+		LinkableTextBox(nanogui::Widget *w) : LinkableObject(w) { }
+		void update(const Value &value) override {
+			nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
+			if (tb) tb->setValue(value.asString());
+		}
+};
+
 class LinkableProperty {
 public:
 	LinkableProperty(const std::string group, int object_type,
@@ -312,8 +331,23 @@ public:
 	CircularBuffer::DataType dataType() const { return data_type; }
 	int getKind() const { return kind; }
 	std::string addressStr() const { return address_str; }
-	void setValue(const Value &v) {  current = v; }
+	void setValue(const Value &v);
 	Value & value() { return current; }
+	void link(LinkableObject *lo) { 
+		links.push_back(lo); 
+		lo->update(value());
+	}
+	void clearLink(nanogui::Widget*w) {
+		std::list<LinkableObject*>::iterator iter = links.begin();
+		while (iter != links.end()) {
+			LinkableObject *link = *iter;
+			if (link->linked() == w) {
+				iter = links.erase(iter);
+				delete link;
+			}
+			else iter++;
+		}
+	}
 private:
 	std::string group_name;
 	int kind;
@@ -323,6 +357,7 @@ private:
 	CircularBuffer::DataType data_type;
 	int data_size;
 	Value current;
+	std::list<LinkableObject*> links;
 };
 
 class EditorGUI : public ClockworkClient {
@@ -774,6 +809,8 @@ public:
 		return true;
 	}
 
+	void loadProperties(PropertyFormHelper* properties) override;
+
 	int address() const {
 		return addr;
 	}
@@ -964,6 +1001,13 @@ std::string EditorGUI::nextName(EditorObject *o) {
 	user_objects[result] = o;
 	return result;
 }
+
+void LinkableProperty::setValue(const Value &v) {  
+	current = v; 
+	for (auto link : links) 
+		link->update(v); 
+}
+
 
 class Toolbar : public nanogui::Window {
 public:
@@ -2278,7 +2322,8 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 			}
 			else if (buf && pos == 4) {
 				CircularBuffer::DataType dt = buf->getDataType();
-				if (lp) lp->setValue(v);
+				if (lp) 
+					lp->setValue(v);
 				if (v.asInteger(val)) {
 					if (dt == CircularBuffer::INT16) {
 						buf->addSample(now, (int16_t)(val & 0xffff));
@@ -2514,6 +2559,17 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<float> ("Scale",
 									[&](float value) mutable{ setScale(value); },
 									[&]()->float { return scale(); });
+	}
+}
+
+void EditorLabel::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addVariable<std::string> (
+			"Caption",
+			[&](std::string value) mutable{ setCaption(value); },
+			[&]()->std::string{ return caption(); });
 	}
 }
 
@@ -2758,6 +2814,8 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setEnabled(true);
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
+			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
+			if (lp) lp->link(new LinkableTextBox(textBox));
 			result = textBox;
 		}
 
@@ -2765,17 +2823,18 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 		case '4': {
 			//new Label(container, tag_name, "sans-bold");
-			auto textBox = new IntBox<int>(container);
+			auto textBox = new EditorTextBox(container);
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
 			textBox->setFixedSize(Vector2i(object_width, object_height));
-			textBox->setValue(50);
-			textBox->setDefaultValue("0");
+			//textBox->setDefaultValue("0");
 			//textBox->setFontSize(16);
-			textBox->setFormat("[1-9][0-9]*");
-			textBox->setSpinnable(true);
-			textBox->setMinValue(1);
-			textBox->setValueIncrement(1);
+			//textBox->setFormat("[1-9][0-9]*");
+			//textBox->setSpinnable(true);
+			//textBox->setMinValue(1);
+			//textBox->setValueIncrement(1);
+			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
+			if (lp) lp->link(new LinkableTextBox(textBox));
 			result = textBox;
 		}
 
