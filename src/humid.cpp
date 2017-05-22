@@ -1925,7 +1925,7 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	search_box->setAlignment(TextBox::Alignment::Left);
 	search_box->setCallback([&](const std::string &filter)->bool {
 		loadItems(search_box->value());
-		return false;
+		return true;
 	});
 	if (tag_file_name.length()) loadTagFile(tag_file_name);
 	window->performLayout(screen->nvgContext());
@@ -2930,6 +2930,11 @@ void ObjectWindow::loadItems(const std::string match) {
 				break; // only add once
 			}
 		}
+	}
+	if (palette_content->childCount() == 0) {
+		Widget *cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(window->width()-32,35));
+		new Label(cell, "No match");
 	}
 	window->performLayout(gui->nvgContext());
 }
