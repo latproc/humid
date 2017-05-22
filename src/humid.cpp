@@ -326,13 +326,24 @@ public:
 					const std::string &dtype, int dsize) 
 	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), 
 		data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) { }
+	const std::string &group() const { return group_name; }
+	void setGroup(const std::string g) { group_name = g; }
 	const std::string &tagName() const { return tag_name; }
 	const std::string &typeName() const { return data_type_name; }
+	void setTypeName(const std::string s) { data_type_name = s; }
 	CircularBuffer::DataType dataType() const { return data_type; }
+	void setDataTypeStr(const std::string dtype) { 
+		data_type = CircularBuffer::dataTypeFromString(dtype);
+		data_type_name = dtype;
+	}
 	int getKind() const { return kind; }
+	void setKind(int new_kind) { kind = new_kind; }
 	std::string addressStr() const { return address_str; }
+	void setAddressStr(const std::string s) { address_str = s; }
 	void setValue(const Value &v);
 	Value & value() { return current; }
+	int dataSize() { return data_size; }
+	void setDataSize(int new_size) { data_size = new_size; }
 	void link(LinkableObject *lo) { 
 		links.push_back(lo); 
 		lo->update(value());
@@ -362,6 +373,7 @@ private:
 
 class EditorGUI : public ClockworkClient {
 public:
+	enum STARTUP_STATES { sINIT, sSENT, sDONE };
 	enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };
 	EditorGUI();
 
@@ -425,6 +437,8 @@ public:
 	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
 	std::map<std::string, LinkableProperty*>getLinkableProperties() { return linkables; }
 
+	void refreshData() { startup = sINIT; }
+
 private:
 	SymbolTable properties;
 	std::map<std::string, LinkableProperty*>linkables;
@@ -433,6 +447,7 @@ private:
 	nanogui::Vector2i old_size;
 	nanogui::Theme *theme;
 	EditorSettings settings;
+	STARTUP_STATES startup;
 	GuiState state;
 	Editor *editor;
 	Toolbar *w_toolbar;
@@ -974,7 +989,7 @@ private:
 	int stop_trigger_value;
 };
 
-EditorGUI::EditorGUI() : theme(0), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
+EditorGUI::EditorGUI() : theme(0), startup(sINIT), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
 	w_structures(0), w_connections(0), w_startup(0), needs_update(false),
 	sample_buffer_size(5000),user_object_sequence(1)
 {
@@ -1144,14 +1159,14 @@ public:
 	nanogui::Screen *getScreen() { return gui; }
 	void show(nanogui::Widget &w);
 	void loadTagFile(const std::string tagfn);
-	nanogui::Window *createPanelPage(const char *name,
-									 const char *filename = 0,
+	nanogui::Window *createPanelPage(const char *filename = 0,
 									 nanogui::Widget *palette_content = 0);
 	bool importModbusInterface(const std::string group_name, std::istream &init,
 							   nanogui::Widget *palette_content,
 							   nanogui::Widget *container);
 	nanogui::Widget *getItems() { return items; }
 	void loadItems(const std::string match);
+	nanogui::Widget * getPaletteContent() { return palette_content; }
 protected:
 	EditorGUI *gui;
 	nanogui::Widget *items;
@@ -1271,7 +1286,17 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
-	tb->setChangeCallback([](bool state) { });
+	tb->setChangeCallback([this](bool state) { 
+		const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
+		std::set<std::string>groups;
+		for (auto item : properties) {
+			groups.insert(item.second->group());
+		}
+		for (auto group : groups) {
+			gui->getObjectWindow()->createPanelPage(group.c_str(), gui->getObjectWindow()->getPaletteContent());
+		}
+		gui->refreshData();
+	});
 
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
 	settings_button->setFixedSize(Vector2i(32,32));
@@ -1465,10 +1490,21 @@ CircularBuffer *UserWindow::getValues(const std::string name) {
 }
 
 CircularBuffer * UserWindow::addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len) {
+	auto found = data.find(name);
+	if (found != data.end()) {
+		CircularBuffer *buf = (*found).second;
+		if (buf->getDataType() == dt) return buf;
+		CircularBuffer *new_buf = new CircularBuffer(len, dt);
+		data[name] = new_buf;
+		delete buf;
+		return new_buf;
+	}
+	else {
 	std::cout << "adding data buffer for " << name << "\n";
 	CircularBuffer *buf = new CircularBuffer(len, dt);
 	data[name] = buf;
 	return buf;
+}
 }
 
 // TBD remove this hack (see lineplot)
@@ -1675,19 +1711,38 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	window->setFixedSize(Vector2i(180,240));
 	window->setSize(Vector2i(180,240));
 	window->setPosition(Vector2i(screen->width() - 200, 40));
-	window->setLayout(new GridLayout(Orientation::Vertical,1));
+	window->setLayout(new BoxLayout(Orientation::Vertical,Alignment::Fill));
 	window->setTitle("Screens");
 	window->setVisible(false);
+
+	const int tool_button_size = 32;
+	Widget *items = new Widget(window);
+	items->setPosition(Vector2i(1, window->theme()->mWindowHeaderHeight+1));
+	items->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Fill));
+	items->setFixedSize(Vector2i(window->width(), tool_button_size+5));
+	items->setSize(Vector2i(window->width(), tool_button_size+5));
+
+	ToolButton *tb = new ToolButton(items, ENTYPO_ICON_PLUS);
+	tb->setFlags(Button::ToggleButton);
+	tb->setFixedSize(Vector2i(tool_button_size, tool_button_size));
+	tb->setSize(Vector2i(tool_button_size, tool_button_size));
+	//tb->setPosition(Vector2i(32, 64));
+	tb->setChangeCallback([this](bool state) {
+		//gui->getUserWindow()->createScreen();
+	});
+
+
 	{
 		palette_scroller = new VScrollPanel(window);
 		int button_width = window->width() - 20;
-		palette_scroller->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight));
-		palette_scroller->setPosition( Vector2i(5, window->theme()->mWindowHeaderHeight+1));
+		palette_scroller->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight - tool_button_size));
+		palette_scroller->setPosition( Vector2i(5, window->theme()->mWindowHeaderHeight + 10 + tool_button_size));
 		palette_content = new Widget(palette_scroller);
 		palette_content->setLayout(new GridLayout(Orientation::Vertical,10));
 		Widget *cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
 	}
+	window->performLayout(gui->nvgContext());
 }
 
 void ScreensWindow::update() {
@@ -1887,7 +1942,7 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 		palette_content = new Widget(palette_scroller);
 		palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
 
-		createPanelPage("Objects", tag_file_name.c_str(), palette_content);
+		createPanelPage(tag_file_name.c_str(), palette_content);
 		GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
 		palette_layout->setSpacing(4);
 		palette_layout->setMargin(4);
@@ -2396,9 +2451,7 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 	}
 }
 
-enum STARTUP_STATES { sINIT, sSENT, sDONE };
 void EditorGUI::update() {
-	static STARTUP_STATES startup = sINIT;
 	if (startup != sDONE) {
     std::cout << "GUI not yet ready to initialise values\n";
 		// if the tag file is loaded, get initial values
@@ -2452,7 +2505,6 @@ CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 }
 
 nanogui::Window *ObjectWindow::createPanelPage(
-		   const char *name,
 		   const char *filename,
 		   nanogui::Widget *palette_content) {
 	using namespace nanogui;
@@ -2914,7 +2966,21 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		>> array_end;
 		char kind = address_str[1];
 		if (tag_name.length()) {
-			LinkableProperty *lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
+			LinkableProperty *lp = gui->findLinkableProperty(tag_name);
+			if (lp == nullptr) 
+				lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
+			else {
+				const std::string &old_group(lp->group());
+				int old_kind = lp->getKind();
+				const std::string &old_addr_str(lp->addressStr());
+				const CircularBuffer::DataType old_dt = lp->dataType();
+				int old_size = lp->dataSize();
+				lp->setGroup(group_name);
+				lp->setKind(kind);
+				lp->setAddressStr(address_str);
+				lp->setDataTypeStr(data_type);
+				lp->setDataSize(data_count);
+			}
 			gui->getUserWindow()->addDataBuffer(tag_name, CircularBuffer::dataTypeFromString(data_type), gui->getSampleBufferSize());
 			gui->addLinkableProperty(tag_name, lp);
 		}
