@@ -2396,22 +2396,31 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 	}
 }
 
+enum STARTUP_STATES { sINIT, sSENT, sDONE };
 void EditorGUI::update() {
-	static bool startup = true;
-	if (startup) {
+	static STARTUP_STATES startup = sINIT;
+	if (startup != sDONE) {
+    std::cout << "GUI not yet ready to initialise values\n";
 		// if the tag file is loaded, get initial values
-		if (linkables.size()) {
+		if (linkables.size() && startup == sINIT) {
+      std::cout << "Sending data initialisation request\n";
+      startup = sSENT;
 			queueMessage("MODBUS REFRESH", 
 			[this](std::string s) { 
+				std::cout << "MODBUS REFRESH returned: " << s << "\n";
 				if (s != "failed") {
-					std::cout << s << "\n";
 					cJSON *obj = cJSON_Parse(s.c_str());
-					if (!obj) return;
+					if (!obj) { 
+            startup = sINIT;
+            return;
+          }
 					if (obj->type == cJSON_Array) {
 						processModbusInitialisation(obj, this);
 					}
-					startup = false;
+					startup = sDONE;
 				}
+        else
+          startup = sINIT;
 			}); 
 		}
 	}
