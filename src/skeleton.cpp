@@ -309,7 +309,7 @@ void ClockworkClient::idle() {
 					}
 				}
 
-				int loop_counter = 30;
+				int loop_counter = 80;
 
 				if (!subscription_manager->checkConnections(items, 3, *iosh_cmd)) {
 					if (debug) {
