@@ -2382,11 +2382,11 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				if (v.asInteger(val)) {
 					if (dt == CircularBuffer::INT16) {
 						buf->addSample(now, (int16_t)(val & 0xffff));
-						std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
+						//std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
 					}
 					else if (dt == CircularBuffer::INT32) {
 						buf->addSample(now, (int32_t)(val & 0xffffffff));
-						std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
+						//std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
 					}
 					else
 						buf->addSample(now, val);
