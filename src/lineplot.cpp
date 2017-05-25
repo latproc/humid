@@ -263,12 +263,12 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 				nvgRect(ctx, pos.x() + vx - l, pos.y() + vy - l, line_width, line_width);
 			}
 		}
-		if (!buf->isFrozen()) {
+		//if (!buf->isFrozen()) {
 			//uint64_t now = microsecs()/1000;
 			vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
 			//if (vx > size.x()) vx = size.x();
 			nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
-		}
+		//}
 		nvgStrokeColor(ctx, mColor);
 		nvgStroke(ctx);
 		//nvgFillColor(ctx, mForegroundColor);
@@ -280,7 +280,7 @@ static std::string display_time(double dt) {
 	char buf[20];
 	if ( fabs(dt) > 60000.0) {
 		int min = dt/60000;
-		double sec = (dt/60000.0 - min) * 60.0;
+		double sec = fabs( (dt-min*60.0)/60000.0 ) * 60.0;
 		snprintf(buf, 20, "%02d:%02.3f",min, sec);
 	}
 	else if ( fabs(dt) > 1000.0) snprintf(buf, 20, "%7.3lfs",dt/1000.0);
