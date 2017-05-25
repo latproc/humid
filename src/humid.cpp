@@ -146,87 +146,13 @@ Handle::Mode all_handles[] = {
 class SettingsItem {
 public:
 	SettingsItem(const std::string &n, const std::string &k, nanogui::Widget *w = 0) : widget(w),kind(k), name(n) {}
-	
-	bool load(Structure *item) {
-		if (item->getKind() == "WINDOW") { return loadWindow(item); }
-		//if (item->getKind() == "EDITORSETTINGS") { return loadSettings(item); }
-		return false;
-	}
-	bool loadWindow(Structure *item) {
-		if (widget) {
-			nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
-			const Value &vx = item->getProperties().find("x");
-			const Value &vy = item->getProperties().find("y");
-			long x, y;
-			if (vx.asInteger(x) && vy.asInteger(y)) {
-				if (screen)
-					screen->setPosition(nanogui::Vector2i(x, y));
-				else
-					widget->setPosition(nanogui::Vector2i(x, y));
-			}
-			const Value &vw = item->getProperties().find("w");
-			const Value &vh = item->getProperties().find("h");
-			long w, h;
-			if (vw.asInteger(w) && vh.asInteger(h)) {
-				if (screen) {
-					screen->setSize(nanogui::Vector2i(w, h));
-				}
-				else {
-					widget->setSize(nanogui::Vector2i(w, h));
-					widget->setFixedSize(nanogui::Vector2i(w, h));
-				}
-			}
-			return true;
-		}
-		else return false;
+	bool load(Structure *item);
+	bool save(std::ostream &out);
+	bool saveSettings(std::ostream &out);
+	bool loadSettings(Structure *item);
+	bool loadWindow(Structure *item);
+	bool saveWindow(std::ostream &out, const std::string &name);
 
-	}
-
-	bool saveSettings(std::ostream &out) {
-		std::map<std::string, Structure*>::iterator iter = structures.find("EditorSettings");
-		if (iter == structures.end()) return false;
-		Structure *s = (*iter).second;
-		if (s) {
-			SymbolTable &properties = s->getProperties();
-			SymbolTableConstIterator iter = properties.begin();
-			out << name << kind << "{\n";
-			while (iter != properties.end()) {
-				const SymbolTableNode &item = *iter++;
-				out << item.first << " PROPERTY " << item.second << ";\n";
-			}
-			out << "}\n";
-		}
-		return false;
-	}
-/*
-	bool loadSettings(Structure *item) {
-		if (widget) {
-			EditorGUI *gui = dynamic_cast<EditorGUI*>(widget);
-			if (!gui) return false;
-			gui->setProperties(item->properties);
-		}
-		return false;
-	}
-*/
-
-	bool save(std::ostream &out) {
-		if (kind == "WINDOW") return saveWindow(out, name);
-		if (kind == "EDITORSETTINGS") return saveSettings(out);
-		return false;
-	}
-
-	bool saveWindow(std::ostream &out, const std::string &name) {
-		if (widget) {
-			nanogui::Vector2i pos = widget->position();
-			nanogui::Vector2i siz = widget->size();
-			out << name << " WINDOW " << "("
-			<< "x:" << pos.x() << ",y:" << pos.y()
-			<< ",w:" << siz.x() << ",h:" << siz.y()
-			<< ");\n";
-			return true;
-		}
-		return false;
-	}
 	
 private:
 	nanogui::Widget *widget;
@@ -325,7 +251,10 @@ public:
 					const std::string &name, const std::string &addr_str,
 					const std::string &dtype, int dsize) 
 	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), 
-		data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) { }
+		data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) {
+			char *rest = 0;
+			modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
+		}
 	const std::string &group() const { return group_name; }
 	void setGroup(const std::string g) { group_name = g; }
 	const std::string &tagName() const { return tag_name; }
@@ -339,11 +268,17 @@ public:
 	int getKind() const { return kind; }
 	void setKind(int new_kind) { kind = new_kind; }
 	std::string addressStr() const { return address_str; }
-	void setAddressStr(const std::string s) { address_str = s; }
+	void setAddressStr(const std::string s) { 
+		address_str = s;
+		char *rest = 0;
+		modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
+	}
 	void setValue(const Value &v);
 	Value & value() { return current; }
-	int dataSize() { return data_size; }
+	int dataSize() const { return data_size; }
 	void setDataSize(int new_size) { data_size = new_size; }
+	int address() const { return modbus_address; }
+	void setAddress(int a) { modbus_address = a; }
 	void link(LinkableObject *lo) { 
 		links.push_back(lo); 
 		lo->update(value());
@@ -367,8 +302,19 @@ private:
 	std::string data_type_name;
 	CircularBuffer::DataType data_type;
 	int data_size;
+	int modbus_address;
 	Value current;
 	std::list<LinkableObject*> links;
+};
+
+class Connectable {
+public:
+	Connectable(const LinkableProperty *lp) : remote(lp) { }
+	int address() const { 
+		if (remote) return remote->address(); else return 0;
+	}
+protected:
+	const LinkableProperty * remote;
 };
 
 class EditorGUI : public ClockworkClient {
@@ -433,6 +379,7 @@ public:
 
 	int getSampleBufferSize() { return sample_buffer_size; }
 	SymbolTable &getProperties() { return properties; }
+	void setProperties( const SymbolTable &st ) { properties.add(st); }
 	LinkableProperty *findLinkableProperty(const std::string name);
 	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
 	std::map<std::string, LinkableProperty*>getLinkableProperties() { return linkables; }
@@ -533,11 +480,11 @@ private:
 
 Editor *Editor::_instance = 0;
 
-class EditorWidget : public Selectable, public EditorObject {
+class EditorWidget : public Selectable, public EditorObject, public Connectable {
 
 public:
 
-	EditorWidget(nanogui::Widget *w) : Selectable(0), dh(0), handles(9), handle_coordinates(9,2) {
+	EditorWidget(nanogui::Widget *w, const LinkableProperty *lp) : Selectable(0), Connectable(lp), dh(0), handles(9), handle_coordinates(9,2) {
 		assert(w != 0);
 		Palette *p = dynamic_cast<Palette*>(w);
 		if (!p) {
@@ -668,8 +615,8 @@ class EditorButton : public nanogui::Button, public EditorWidget {
 
 public:
 
-	EditorButton(Widget *parent, const std::string &caption = "Untitled", bool toggle = false, unsigned int modbus_address = 0, int icon = 0)
-	: Button(parent, caption, icon), EditorWidget(this), is_toggle(toggle), addr(modbus_address) {
+	EditorButton(Widget *parent, const LinkableProperty *lp, const std::string &caption = "Untitled", bool toggle = false, int icon = 0)
+	: Button(parent, caption, icon), EditorWidget(this, lp), is_toggle(toggle) {
 	}
 
 	void loadProperties(PropertyFormHelper* properties) override;
@@ -713,9 +660,6 @@ public:
 		return true;			
 	}
 */
-	int address() const {
-		return addr;
-	}
 
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::Button::draw(ctx);
@@ -730,16 +674,17 @@ public:
 
 
 	bool is_toggle;
-	unsigned int addr;
 };
 
 class EditorTextBox : public nanogui::TextBox, public EditorWidget {
 
 public:
 
-	EditorTextBox(Widget *parent, int modbus_address = 0, int icon = 0)
-	: TextBox(parent), EditorWidget(this), dh(0), handles(9), handle_coordinates(9,2), addr(modbus_address) {
+	EditorTextBox(Widget *parent, const LinkableProperty *lp, int icon = 0)
+	: TextBox(parent), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
+
+	void loadProperties(PropertyFormHelper* properties) override;
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
 
@@ -767,11 +712,6 @@ public:
 		return true;
 	}
 
-	int address() const {
-		return addr;
-	}
-
-
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::TextBox::draw(ctx);
 		if (mSelected) {
@@ -786,7 +726,6 @@ public:
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
-	int addr;
 };
 
 
@@ -794,8 +733,8 @@ class EditorLabel : public nanogui::Label, public EditorWidget {
 
 public:
 
-	EditorLabel(Widget *parent, const std::string caption, const std::string &font = "sans", int fontSize = -1, int modbus_address = 0, int icon = 0)
-	: Label(parent, caption), EditorWidget(this), dh(0), handles(9), handle_coordinates(9,2), addr(modbus_address) {
+	EditorLabel(Widget *parent, const LinkableProperty *lp, const std::string caption, const std::string &font = "sans", int fontSize = -1, int icon = 0)
+	: Label(parent, caption), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
@@ -826,11 +765,6 @@ public:
 
 	void loadProperties(PropertyFormHelper* properties) override;
 
-	int address() const {
-		return addr;
-	}
-
-
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::Label::draw(ctx);
 		if (mSelected) {
@@ -845,7 +779,6 @@ public:
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
-	int addr;
 };
 
 
@@ -853,8 +786,8 @@ class EditorImageView : public nanogui::ImageView, public EditorWidget {
 
 public:
 
-	EditorImageView(Widget *parent, GLuint image_id, int modbus_address = 0, int icon = 0)
-	: ImageView(parent, image_id), EditorWidget(this), dh(0), handles(9), handle_coordinates(9,2), addr(modbus_address) {
+	EditorImageView(Widget *parent, const LinkableProperty *lp, GLuint image_id, int icon = 0)
+	: ImageView(parent, image_id), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
@@ -883,10 +816,6 @@ public:
 		return true;
 	}
 
-	int address() const {
-		return addr;
-	}
-
 	virtual void loadProperties(PropertyFormHelper *pfh) override;
 
 	virtual void draw(NVGcontext *ctx) override {
@@ -911,7 +840,6 @@ public:
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
-	int addr;
 	std::string image_name;
 };
 
@@ -920,8 +848,8 @@ class EditorLinePlot : public nanogui::LinePlot, public EditorWidget {
 
 public:
 
-	EditorLinePlot(Widget *parent, int modbus_address = 0, int icon = 0)
-	: LinePlot(parent, "Test"), EditorWidget(this), handle_coordinates(9,2), addr(modbus_address),
+	EditorLinePlot(Widget *parent, const LinkableProperty *lp = nullptr, int icon = 0)
+	: LinePlot(parent, "Test"), EditorWidget(this, lp), handle_coordinates(9,2),
 		start_trigger_value(0), stop_trigger_value(0)
  	{
 	}
@@ -954,10 +882,6 @@ public:
 
 	virtual void loadProperties(PropertyFormHelper *pfh) override;
 
-	int address() const {
-		return addr;
-	}
-
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::LinePlot::draw(ctx);
 		if (mSelected) {
@@ -980,7 +904,6 @@ public:
 	*/
 private:
 	MatrixXd handle_coordinates;
-	int addr;
 	std::string name;
 	std::string monitored_objects;
 	std::string start_trigger_name;
@@ -1217,6 +1140,7 @@ public:
 	ViewsWindow(EditorGUI *screen, nanogui::Theme *theme);
 	void setVisible(bool which) { window->setVisible(which); }
 	nanogui::Window *getWindow()  { return window; }
+	void addWindows();
 	void add(const std::string name, nanogui::Widget *);
 private:
 	EditorGUI *gui;
@@ -1301,7 +1225,11 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
 	settings_button->setFixedSize(Vector2i(32,32));
 	settings_button->setTooltip("Theme properties");
-	settings_button->setChangeCallback([this](bool state) { this->gui->getThemeWindow()->setVisible(state); });
+	settings_button->setChangeCallback([this](bool state) { 
+		this->gui->getThemeWindow()->setVisible(state); 
+		if (state)
+			this->gui->getThemeWindow()->getWindow()->requestFocus();
+	});
 
 	tb = new ToolButton(toolbar, ENTYPO_ICON_LAYOUT);
 	tb->setTooltip("Create");
@@ -1313,6 +1241,7 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setChangeCallback([this](bool state) {
 		this->gui->getViewsWindow()->setVisible(state);
+		this->gui->getViewsWindow()->getWindow()->requestFocus();
 		//this->gui->sendIODMessage("MODBUS REFRESH");
  	});
 
@@ -1408,7 +1337,10 @@ public:
 	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), gui(s) {
 	}
 
-	bool keyboardEvent(int key, int /* scancode */, int action, int modifiers);
+	bool keyboardEvent(int key, int /* scancode */, int action, int modifiers) override;
+
+	bool mouseEnterEvent(const Vector2i &p, bool enter) override;
+
 	void update();
 
 private:
@@ -1435,6 +1367,20 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 	}
 	return true;
 }
+
+
+bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
+	bool res = Window::mouseEnterEvent(p, enter);
+	StructuresWindow *sw = EDITOR->gui()->getStructuresWindow();;
+	ObjectWindow *ow = EDITOR->gui()->getObjectWindow();
+	if (!focused() && enter && EDITOR->isEditMode() && ( (sw && sw->hasSelections()) || (ow && ow->hasSelections() )))
+		requestFocus();
+	//else if (focused() && !enter)
+	//		setFocused(false);
+	
+	return res;
+}
+
 
 /*
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen), current_layer(0), mDefaultSize(1024,768) {
@@ -1767,12 +1713,15 @@ ViewsWindow::ViewsWindow(EditorGUI *screen, nanogui::Theme *theme) : gui(screen)
 	properties = new FormHelper(screen);
 	window = properties->addWindow(Eigen::Vector2i(200, 50), "Views");
 	window->setTheme(theme);
+	window->setVisible(false);
+}
+
+void ViewsWindow::addWindows() {
 	add("Structures", gui->getStructuresWindow()->getWindow());
 	add("Properties", gui->getPropertyWindow()->getWindow());
 	add("Objects", gui->getObjectWindow()->getWindow());
 	add("Patterns", gui->getPatternsWindow()->getWindow());
 	add("Screens", gui->getScreensWindow()->getWindow());
-	window->setVisible(false);
 }
 
 void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
@@ -1780,10 +1729,13 @@ void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
 	assert(w);
 	properties->addVariable<bool> (
 		name,
-		  [&,w](bool value) mutable{
+		  [&,w,this](bool value) mutable{
 			  w->setVisible(value); gui->getViewManager().set(w, value);
+			  this->gui->updateSettings(nullptr);
 		  },
-		  [&,w]()->bool{ return gui->getViewManager().get(w).visible; });
+		  [&,w,this]()->bool{ 
+			  return this->gui->getViewManager().get(w).visible; 
+		  });
 }
 
 
@@ -1818,9 +1770,8 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	properties = new PropertyFormHelper(screen);
 	properties->setFixedSize(nanogui::Vector2i(120,28));
 	//item_proxy = new ItemProxy(properties, 0);
-	window = properties->addWindow(Eigen::Vector2i(30, 10), "Property List");
+	window = properties->addWindow(Eigen::Vector2i(30, 50), "Property List");
 	window->setTheme(theme);
-	window->setPosition(nanogui::Vector2i(32,64));
 	window->setFixedSize(nanogui::Vector2i(260,560));
 
 	window->setVisible(false);
@@ -1958,7 +1909,7 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 ThemeWindow::ThemeWindow(nanogui::Screen *screen, nanogui::Theme *theme) {
 	using namespace nanogui;
 	properties = new FormHelper(screen);
-	window = properties->addWindow(Eigen::Vector2i(10, 10), "Theme Properties");
+	window = properties->addWindow(Eigen::Vector2i(80, 50), "Theme Properties");
 	window->setTheme(theme);
 	loadTheme(theme);
 	window->setVisible(false);
@@ -2085,6 +2036,9 @@ void EditorGUI::createWindows() {
 	settings.load("Objects", w_objects->getWindow());
 	settings.load("UserWindow", w_user->getWindow());
 	settings.load("ScreensWindow", w_screens->getWindow());
+
+	// delayed adding windows to the view manager window until the visibility settings are loaded.
+	w_views->addWindows();
 
 	settings.add("MainWindow", this);
 	settings.add("ThemeSettings", w_theme->getWindow());
@@ -2225,7 +2179,9 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	nanogui::Window *window = w_user->getWindow();
 	Widget *ww = dynamic_cast<Widget*>(window);
 
-	if (button != GLFW_MOUSE_BUTTON_1 || !window->contains(p /*- window->position()*/))
+	bool is_user = EDITOR->gui()->getUserWindow()->getWindow()->focused();
+
+	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/))
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 
 
@@ -2538,29 +2494,29 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	int object_width = 60;
 	int object_height = 40;
 	if (this->getClass() == "BUTTON") {
-		EditorButton *b = new EditorButton(window, caption(), 0);
+		EditorButton *b = new EditorButton(window, nullptr, caption());
 		b->setBackgroundColor(Color(200, 30, 30, 255));
 		result = b;
 	}
 	else if (getClass() == "LABEL") {
-		EditorLabel *eb = new EditorLabel(window, "untitled");
+		EditorLabel *eb = new EditorLabel(window, nullptr, "untitled");
 		result = eb;
 	}
 	else if (getClass() == "TEXT") {
-		EditorTextBox *eb = new EditorTextBox(window);
+		EditorTextBox *eb = new EditorTextBox(window, nullptr);
 		eb->setEditable(true);
 		result = eb;
 	}
 	else if (getClass() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank");
-		EditorImageView *iv = new EditorImageView(window, img);
+		EditorImageView *iv = new EditorImageView(window, nullptr, img);
 		iv->setGridThreshold(20);
 		iv->setPixelInfoThreshold(20);
 		iv->setImageName("images/blank");
 		result = iv;
 	}
 	else if (getClass() == "PLOT") {
-		EditorLinePlot *lp = new EditorLinePlot(window);
+		EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
 		lp->setBufferSize(gui->sampleBufferSize());
 		object_width = 200;
 		object_height = 120;
@@ -2609,6 +2565,39 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 	}
 }
 
+void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&](std::string value) { /*setName(value);*/ },
+			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) { 
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ return remote ? remote->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataType();
+				return 0; 
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataSize();
+				return 0; 
+			});
+	}
+}
+
 void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -2620,6 +2609,32 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<float> ("Scale",
 									[&](float value) mutable{ setScale(value); },
 									[&]()->float { return scale(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&](std::string value) { /*setName(value);*/ },
+			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) { 
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ return remote ? remote->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataType();
+				return 0; 
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataSize();
+				return 0; 
+			});
 	}
 }
 
@@ -2631,6 +2646,32 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			"Caption",
 			[&](std::string value) mutable{ setCaption(value); },
 			[&]()->std::string{ return caption(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&](std::string value) { /*setName(value);*/ },
+			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) { 
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ return remote ? remote->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataType();
+				return 0; 
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataSize();
+				return 0; 
+			});
 	}
 }
 
@@ -2652,18 +2693,36 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Caption",
 			[&](std::string value) mutable{ setCaption(value); },
 			[&]()->std::string{ return caption(); });
-		properties->addVariable<std::string> (
-			"Remote object",
-			[&](std::string value) mutable{ setName(value); },
-			[&]()->std::string{ return getName(); });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) mutable{ addr = value; },
-			[&]()->unsigned int{ return addr; });
 		properties->addVariable<unsigned int> (
 			"Behaviour",
 			[&](unsigned int value) mutable{ setFlags(value & 0x0f); },
 			[&]()->unsigned int{ return flags(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&](std::string value) { /*setName(value);*/ },
+			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) { 
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ return remote ? remote->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataType();
+				return 0; 
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				if (remote) return remote->dataSize();
+				return 0; 
+			});
 	}
 }
 
@@ -2735,6 +2794,37 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 				series->setLineWidth(value);
 			},
 			[&,series]()->float{ return series->getLineWidth(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&](std::string value) { /*setName(value);*/ },
+			[&]()->std::string{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) { 
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
+				if (lp)
+					return lp->dataType();
+				return 0; 
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{ 
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
+				if (lp)
+					return lp->dataSize();
+				return 0; 
+			});
+		
 	}
 	properties->addGroup("Triggers");
 	properties->addVariable<std::string> (
@@ -2807,8 +2897,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 					address_int = 0;
 				}
 
-				EditorButton *b = new EditorButton(container, tag_name.substr(p+5), false,
-												   address_int);
+				EditorButton *b = new EditorButton(container, properties, tag_name.substr(p+5), false);
 				b->setSize(Vector2i(object_width, object_height));
 				b->setName(tag_name);
 
@@ -2822,7 +2911,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				result = b;
 			}
 			else {
-				EditorButton *b = new EditorButton(container);
+				EditorButton *b = new EditorButton(container, properties);
 				b->setSize(Vector2i(object_width, object_height));
 				b->setFlags(Button::ToggleButton);
 				b->setName(tag_name);
@@ -2841,8 +2930,8 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 		case '1': {
 			char *rest = 0;
-			int address_int = (int)strtol(address_str.c_str()+2,&rest, 10);
-			EditorButton *b = new EditorButton(container, tag_name, true, address_int);
+			//int address_int = (int)strtol(address_str.c_str()+2,&rest, 10);
+			EditorButton *b = new EditorButton(container, properties, tag_name, true);
 			b->setSize(Vector2i(object_width, object_height));
 			b->setFixedSize(Vector2i(object_width, object_height));
 			b->setFlags(Button::ToggleButton);
@@ -2860,7 +2949,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			break;
 
 		case '3': {
-			//EditorLabel *el = new EditorLabel(container, tag_name, std::string("sans-bold"));
+			//EditorLabel *el = new EditorLabel(container, nullptr, tag_name, std::string("sans-bold"));
 			//el->setSize(Vector2i(object_width, object_height));
 			//el->setFixedSize(Vector2i(object_width, object_height));
 			//CheckBox *b = new CheckBox(container, tag_name);
@@ -2869,7 +2958,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			//b->setFixedSize(Vector2i(25, 25));
 			//result = new Label(container, tag_name, "sans-bold");
 
-			EditorTextBox *textBox = new EditorTextBox(container);
+			EditorTextBox *textBox = new EditorTextBox(container, properties);
 			textBox->setName(tag_name);
 			textBox->setValue("");
 			textBox->setEnabled(true);
@@ -2884,7 +2973,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 		case '4': {
 			//new Label(container, tag_name, "sans-bold");
-			auto textBox = new EditorTextBox(container);
+			auto textBox = new EditorTextBox(container, properties);
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
 			textBox->setFixedSize(Vector2i(object_width, object_height));
@@ -2998,6 +3087,98 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 	loadItems(search_box->value());
 	
 	return true;
+}
+
+bool SettingsItem::load(Structure *item) {
+	if (item->getKind() == "WINDOW") { return loadWindow(item); }
+	if (item->getKind() == "EDITORSETTINGS") { return loadSettings(item); }
+	return false;
+}
+bool SettingsItem::loadWindow(Structure *item) {
+	if (widget) {
+		nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
+		const Value &vx = item->getProperties().find("x");
+		const Value &vy = item->getProperties().find("y");
+		long x, y;
+		if (vx.asInteger(x) && vy.asInteger(y)) {
+			if (screen)
+				screen->setPosition(nanogui::Vector2i(x, y));
+			else
+				widget->setPosition(nanogui::Vector2i(x, y));
+		}
+		const Value &vw = item->getProperties().find("w");
+		const Value &vh = item->getProperties().find("h");
+		long w, h;
+		if (vw.asInteger(w) && vh.asInteger(h)) {
+			if (screen) {
+				screen->setSize(nanogui::Vector2i(w, h));
+			}
+			else {
+				widget->setSize(nanogui::Vector2i(w, h));
+				widget->setFixedSize(nanogui::Vector2i(w, h));
+			}
+		}
+		long vis = 0;
+		const Value &vis_prop(item->getProperties().find("visible"));
+		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
+			EDITOR->gui()->getViewManager().set(widget, vis);
+		return true;
+	}
+	else return false;
+}
+
+
+bool SettingsItem::saveSettings(std::ostream &out) {
+	std::map<std::string, Structure*>::iterator iter = structures.find("EditorSettings");
+	if (iter == structures.end()) return false;
+	Structure *s = (*iter).second;
+	if (s) {
+		SymbolTable &properties = s->getProperties();
+		SymbolTableConstIterator iter = properties.begin();
+		out << name << kind << "{\n";
+		while (iter != properties.end()) {
+			const SymbolTableNode &item = *iter++;
+			out << item.first << " PROPERTY " << item.second << ";\n";
+		}
+		out << "}\n";
+	}
+	return false;
+}
+
+bool SettingsItem::loadSettings(Structure *item) {
+	if (widget) {
+		EditorGUI *gui = dynamic_cast<EditorGUI*>(widget);
+		if (!gui) return false;
+		gui->setProperties(item->getProperties());
+		const Value &vis(item->getProperties().lookup("visible"));
+		if (vis != SymbolTable::Null) {
+			long torf = 0;
+			if (vis.asInteger(torf))
+				EDITOR->gui()->getViewManager().set(widget, (bool)torf);
+		}
+	}
+	return false;
+}
+
+
+bool SettingsItem::save(std::ostream &out) {
+	if (kind == "WINDOW") return saveWindow(out, name);
+	if (kind == "EDITORSETTINGS") return saveSettings(out);
+	return false;
+}
+
+bool SettingsItem::saveWindow(std::ostream &out, const std::string &name) {
+	if (widget) {
+		nanogui::Vector2i pos = widget->position();
+		nanogui::Vector2i siz = widget->size();
+		out << name << " WINDOW " << "("
+		<< "x:" << pos.x() << ",y:" << pos.y()
+		<< ",w:" << siz.x() << ",h:" << siz.y()
+		<< ",visible:" << EDITOR->gui()->getViewManager().get(widget).visible
+		<< ");\n";
+		return true;
+	}
+	return false;
 }
 
 StartupWindow *EditorGUI::getStartupWindow() { return w_startup; }
