@@ -129,7 +129,6 @@ class UIStructure;
 class PropertyFormHelper;
 class ScreensWindow;
 class ViewsWindow;
-class SeriesWindow;
 
 Handle::Mode all_handles[] = {
 	Handle::POSITION,
@@ -307,6 +306,10 @@ private:
 	std::list<LinkableObject*> links;
 };
 
+/** 
+Connectable objects have a reference to other objects for the purpose
+of updating values and sending events.
+*/
 class Connectable {
 public:
 	Connectable(const LinkableProperty *lp) : remote(lp) { }
@@ -340,7 +343,6 @@ public:
 	PatternsWindow *getPatternsWindow();
 	ScreensWindow *getScreensWindow();
 	ViewsWindow *getViewsWindow();
-	SeriesWindow *getSeriesWindow();
 	nanogui::Window *getActiveWindow();
 	void *setActiveWindow(nanogui::Window*);
 	void createStructures(const nanogui::Vector2i &p, std::set<Selectable *> selections);
@@ -408,7 +410,6 @@ private:
 	StartupWindow *w_startup;
 	ScreensWindow *w_screens;
 	ViewsWindow *w_views;
-	SeriesWindow *w_buffers;
 	std::map<std::string, EditorObject*>user_objects;
 	using imagesDataType = std::vector<std::pair<GLTexture, GLTexture::handleType>>;
 	imagesDataType mImagesData;
@@ -591,6 +592,17 @@ public:
 		}
 	}
 
+	virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size) {
+		if (mSelected) {
+			nvgStrokeWidth(ctx, 4.0f);
+			nvgBeginPath(ctx);
+			nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
+			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
+			nvgStroke(ctx);
+		}
+
+	}
+
 
 	void setName(const std::string new_name) { name = new_name; }
 	const std::string &getName() const { return name; }
@@ -663,13 +675,7 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::Button::draw(ctx);
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
+		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 	}
 
 
@@ -714,13 +720,7 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::TextBox::draw(ctx);
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
+		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 	}
 
 	nanogui::DragHandle *dh;
@@ -767,13 +767,7 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::Label::draw(ctx);
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
+		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 	}
 
 	nanogui::DragHandle *dh;
@@ -820,13 +814,7 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override {
 		nanogui::ImageView::draw(ctx);
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
+		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 	}
 
 	void setImageName(const std::string new_name) { 
@@ -896,12 +884,6 @@ public:
 	void setTriggerName(UserWindow *user_window, SampleTrigger::Event evt, const std::string name);
 	void setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val);
 
-
-	/*void setMonitors(const std::string mon) {
-		monitored_objects = mon;
-	}
-	const std::string monitors() const { return monitored_objects; }
-	*/
 private:
 	MatrixXd handle_coordinates;
 	std::string name;
@@ -983,13 +965,15 @@ public:
 		assert(mScreen);
 		if (mWindow) mWindow->decRef();
 		mWindow = new nanogui::Window(mScreen, title);
-		mLayout = new nanogui::AdvancedGridLayout({10, 0, 10, 0}, {});
+		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
 		nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
 		palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-		palette_scroller->setPosition( Vector2i(5, mWindow->theme()->mWindowHeaderHeight+1));
+		palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 		mContent = new nanogui::Widget(palette_scroller);
+		//mContent->setFixedSize(Vector2i(palette_scroller->width()-10, palette_scroller->height()));
+		mContent->setSize(Vector2i(palette_scroller->width(), palette_scroller->height()));
 		mContent->setLayout(mLayout);
-		mLayout->setMargin(10);
+		mLayout->setMargin(20);
 		mLayout->setColStretch(2, 1);
 		mWindow->setPosition(pos);
 		mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
@@ -1000,13 +984,15 @@ public:
 	void setWindow(nanogui::Window *wind) override {
 		assert(mScreen);
 		mWindow = wind;
-		mLayout = new nanogui::AdvancedGridLayout({10, 0, 10, 0}, {});
-		mLayout->setMargin(10);
+		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		mLayout->setMargin(20);
 		mLayout->setColStretch(2, 1);
 		nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
 		palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-		palette_scroller->setPosition( Vector2i(5, mWindow->theme()->mWindowHeaderHeight+1));
+		palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 		mContent = new nanogui::Widget(palette_scroller);
+		//mContent->setFixedSize(Vector2i(palette_scroller->width()-10, palette_scroller->height()));
+		mContent->setSize(Vector2i(palette_scroller->width(), palette_scroller->height()));
 		mContent->setLayout(mLayout);
 		mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
 		mWindow->setVisible(true);
@@ -1147,20 +1133,6 @@ private:
 	nanogui::Window *window;
 	nanogui::FormHelper *properties;
 };
-
-class SeriesWindow : public nanogui::Object {
-public:
-	SeriesWindow(EditorGUI *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-	nanogui::Window *getWindow()  { return window; }
-	void add(const std::string name, nanogui::TimeSeries *series);
-	void update();
-private:
-	EditorGUI *gui;
-	nanogui::Window *window;
-	nanogui::FormHelper *properties;
-};
-
 
 Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(screen), gui(screen) {
 	using namespace nanogui;
@@ -1738,33 +1710,6 @@ void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
 		  });
 }
 
-
-SeriesWindow::SeriesWindow(EditorGUI *screen, nanogui::Theme *theme) : gui(screen) {
-	using namespace nanogui;
-	properties = new FormHelper(screen);
-	window = properties->addWindow(Eigen::Vector2i(200, 50), "Views");
-	window->setTheme(theme);
-	window->setVisible(false);
-}
-/*
-void SeriesWindow::update() {
-	for (auto item : gui->getUserWindow()->getData()) {
-		add(item.first, item.second);
-	}
-
-}
-
-void SeriesWindow::add(const std::string name, nanogui::TimeSeries *series) {
-	properties->addGroup(name);
-	properties->addVariable<int> (
-			"Line thickness",
-		   [&,series](int value) mutable{
-			   series.setLineWidth(value);
-		   },
-		   [&,series]()->int{ return series.getLineWidth(); });
-}
-*/
-
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);
@@ -1775,8 +1720,6 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	window->setFixedSize(nanogui::Vector2i(260,560));
 
 	window->setVisible(false);
-
-
 }
 
 void PropertyWindow::update() {
@@ -2073,7 +2016,7 @@ void EditorWidget::justSelected() {
 		//prop->show(*getWidget());
 		prop->update();
 	}
-	EDITOR->gui()->getUserWindow()->getWindow()->requestFocus();
+	//EDITOR->gui()->getUserWindow()->getWindow()->requestFocus();
 }
 
 void EditorWidget::justDeselected() {
@@ -2174,15 +2117,23 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 
 	using namespace nanogui;
 
-	Widget *clicked = findWidget(p);
-
 	nanogui::Window *window = w_user->getWindow();
+	if (!window || !window->visible()) return Screen::mouseButtonEvent(p, button, down, modifiers);
+
+	Widget *clicked = findWidget(p);
+	
 	Widget *ww = dynamic_cast<Widget*>(window);
 
 	bool is_user = EDITOR->gui()->getUserWindow()->getWindow()->focused();
+	//if (window->contains(p) && !is_user) { requestFocus(); is_user = true; }
 
-	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/))
+	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {
+		if (!clicked) return Screen::mouseButtonEvent(p, button, down, modifiers);
+		Widget *parent = clicked->parent();
+		while (parent->parent()) { clicked = parent; parent = clicked->parent(); }
+		if (!clicked->focused()) clicked->requestFocus();
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
+	}
 
 
 	bool is_child = false;

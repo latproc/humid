@@ -192,11 +192,6 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 				getName().c_str(), NULL);
 	}
 	if (buf && buf->length() > 0) {
-
-		//buf->findRange(min_v, max_v);
-		//if (max_v <= min_v) max_v = min_v + 1.0f;
-		//double y_scale = 0.9 * height / getYScale();
-		//double y_offset = (0.0 - min_v) * y_scale + getYOffset() + 0.1*height;
 		double y_scale = 0.9 * height / y_axis.range();
 		double y_offset = 0.05*height;
 
@@ -263,16 +258,10 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 				nvgRect(ctx, pos.x() + vx - l, pos.y() + vy - l, line_width, line_width);
 			}
 		}
-		//if (!buf->isFrozen()) {
-			//uint64_t now = microsecs()/1000;
-			vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
-			//if (vx > size.x()) vx = size.x();
-			nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
-		//}
+		vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
+		nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 		nvgStrokeColor(ctx, mColor);
 		nvgStroke(ctx);
-		//nvgFillColor(ctx, mForegroundColor);
-		//nvgFill(ctx);
 	}
 }
 
@@ -342,7 +331,7 @@ void LinePlot::draw(NVGcontext *ctx) {
 	else 
 	  	now = freeze_time_ms;
 	const int default_time_range = 30000;
-	assert(x_scale > 0.0);
+	if (x_scale == 0.0) x_scale = 0.001; 
 	double displayed_time_range = (double) default_time_range / x_scale;
 	x_min = now - displayed_time_range * (1 - x_scroll);
 	double time_scale = (double)(mSize.x()-2*indent) / displayed_time_range;
