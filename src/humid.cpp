@@ -2130,7 +2130,7 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {
 		if (!clicked) return Screen::mouseButtonEvent(p, button, down, modifiers);
 		Widget *parent = clicked->parent();
-		while (parent->parent()) { clicked = parent; parent = clicked->parent(); }
+		while (parent && parent->parent()) { clicked = parent; parent = clicked->parent(); }
 		if (!clicked->focused()) clicked->requestFocus();
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 	}
