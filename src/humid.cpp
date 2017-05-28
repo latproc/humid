@@ -2135,7 +2135,6 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 	}
 
-
 	bool is_child = false;
 	nanogui::Vector2i pos(p - window->position());
 	for (auto elem : window->children()) {
@@ -2322,9 +2321,10 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 			{
 				Value group = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 0), 0);
 				Value addr = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 1), 0);
-				Value name = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 2), 0);
-				Value len = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 3), 0);
-				Value value = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 4), 0);
+				Value kind = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 2), 0);
+				Value name = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 3), 0);
+				Value len = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 4), 0);
+				Value value = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 5), 0);
 				if (DEBUG_BASIC)
 					std::cout << name << ": " << group << " " << addr << " " << len << " " << value <<  "\n";
 				if (value.kind == Value::t_string) {

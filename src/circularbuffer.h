@@ -70,6 +70,7 @@ public:
 		if (s == "Signed_int_16") return INT16;
 		else if (s == "Signed_int_32") return INT32;
 		else if (s == "Ascii_string") return STR;
+		else if (s == "Floating_PT_32") return DOUBLE;
 		else if (s == "Discrete") return INT16;
 		return DOUBLE;
 	}
