@@ -103,6 +103,7 @@ public:
 	std::string getIODSyncCommand(int group, int addr, bool which);
 	std::string getIODSyncCommand(int group, int addr, int new_value);
 	std::string getIODSyncCommand(int group, int addr, unsigned int new_value);
+	std::string getIODSyncCommand(int group, int addr, float new_value);
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) {};

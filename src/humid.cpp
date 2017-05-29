@@ -41,6 +41,7 @@
 #include <locale>
 #include <string>
 #include <vector>
+#include <set>
 #include "PropertyMonitor.h"
 #include "DragHandle.h"
 #include "manuallayout.h"
@@ -293,6 +294,7 @@ public:
 			else iter++;
 		}
 	}
+	void save(std::ostream &out) const;
 private:
 	std::string group_name;
 	int kind;
@@ -316,6 +318,7 @@ public:
 	int address() const { 
 		if (remote) return remote->address(); else return 0;
 	}
+	const LinkableProperty *getRemote() { return remote; }
 protected:
 	const LinkableProperty * remote;
 };
@@ -485,7 +488,8 @@ class EditorWidget : public Selectable, public EditorObject, public Connectable 
 
 public:
 
-	EditorWidget(nanogui::Widget *w, const LinkableProperty *lp) : Selectable(0), Connectable(lp), dh(0), handles(9), handle_coordinates(9,2) {
+	EditorWidget(const std::string structure_name, nanogui::Widget *w, const LinkableProperty *lp) 
+	: Selectable(0), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2) {
 		assert(w != 0);
 		Palette *p = dynamic_cast<Palette*>(w);
 		if (!p) {
@@ -603,6 +607,9 @@ public:
 
 	}
 
+	std::string baseName() const { 
+		return base;
+	}
 
 	void setName(const std::string new_name) { name = new_name; }
 	const std::string &getName() const { return name; }
@@ -614,6 +621,7 @@ public:
 	const std::string &patterns() const { return pattern_list; }
 
 protected:
+	std::string base;
 	std::string name;
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
@@ -628,7 +636,7 @@ class EditorButton : public nanogui::Button, public EditorWidget {
 public:
 
 	EditorButton(Widget *parent, const LinkableProperty *lp, const std::string &caption = "Untitled", bool toggle = false, int icon = 0)
-	: Button(parent, caption, icon), EditorWidget(this, lp), is_toggle(toggle) {
+	: Button(parent, caption, icon), EditorWidget("BUTTON", this, lp), is_toggle(toggle) {
 	}
 
 	void loadProperties(PropertyFormHelper* properties) override;
@@ -687,7 +695,7 @@ class EditorTextBox : public nanogui::TextBox, public EditorWidget {
 public:
 
 	EditorTextBox(Widget *parent, const LinkableProperty *lp, int icon = 0)
-	: TextBox(parent), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+	: TextBox(parent), EditorWidget("TEXT", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 	void loadProperties(PropertyFormHelper* properties) override;
@@ -734,7 +742,7 @@ class EditorLabel : public nanogui::Label, public EditorWidget {
 public:
 
 	EditorLabel(Widget *parent, const LinkableProperty *lp, const std::string caption, const std::string &font = "sans", int fontSize = -1, int icon = 0)
-	: Label(parent, caption), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+	: Label(parent, caption), EditorWidget("LABEL", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
@@ -781,7 +789,7 @@ class EditorImageView : public nanogui::ImageView, public EditorWidget {
 public:
 
 	EditorImageView(Widget *parent, const LinkableProperty *lp, GLuint image_id, int icon = 0)
-	: ImageView(parent, image_id), EditorWidget(this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+	: ImageView(parent, image_id), EditorWidget("IMAGE", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
@@ -837,7 +845,7 @@ class EditorLinePlot : public nanogui::LinePlot, public EditorWidget {
 public:
 
 	EditorLinePlot(Widget *parent, const LinkableProperty *lp = nullptr, int icon = 0)
-	: LinePlot(parent, "Test"), EditorWidget(this, lp), handle_coordinates(9,2),
+	: LinePlot(parent, "Test"), EditorWidget("PLOT", this, lp), handle_coordinates(9,2),
 		start_trigger_value(0), stop_trigger_value(0)
  	{
 	}
@@ -1169,7 +1177,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb = new ToolButton(toolbar, ENTYPO_ICON_SAVE);
 	//tb->setFlags(Button::ToggleButton);
 	tb->setTooltip("Save");
-	tb->setChangeCallback([this](bool state) {
+	tb->setFlags(Button::NormalButton);
+	tb->setCallback([this] {
 		Editor *editor = EDITOR;
 		if (editor) {
 			std::string file_path(file_dialog(
@@ -1340,7 +1349,6 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 	return true;
 }
 
-
 bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 	bool res = Window::mouseEnterEvent(p, enter);
 	StructuresWindow *sw = EDITOR->gui()->getStructuresWindow();;
@@ -1436,11 +1444,35 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 	return res;
 }
 
+std::string shortName(const std::string s) {
+	size_t pos = s.rfind("/");
+	if (pos != std::string::npos) return s.substr(++pos); else return s;
+}
 
+void LinkableProperty::save(std::ostream &out) const {
+	out << "group:" << shortName(group_name) << ", "
+		<< "kind:" << kind << ", "
+		<< "address:" << address_str << ", "
+		<< "type:" << data_type_name << ", "
+		<< "size:" << data_size << ", "
+		<< "remote:" << tag_name;
+}
 
 void UserWindow::save(const std::string &path) {
 	using namespace nanogui;
 	std::ofstream out(path);
+
+	{
+		const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
+		std::set<std::string>groups;
+		for (auto item : properties) {
+			groups.insert(item.second->group());
+		}
+		for (auto group : groups) {
+			out << shortName(group) << " CONNECTION_GROUP (path:\""<< group << "\");\n";
+		}
+	}
+	std::set<const LinkableProperty*> used_properties;
 	
 	for (auto screen : gui->getScreens()) {
 		std::string screen_type(screen->getName());
@@ -1450,30 +1482,77 @@ void UserWindow::save(const std::string &path) {
 			Widget *child = *it;
 			EditorButton *b = dynamic_cast<EditorButton*>(child);
 			if (b) {
-				out << b->getName() << " BUTTON ("
+				out << b->getName() << " " << b->baseName() << " ("
 					<< "pos_x: " << b->position().x() << ", pos_y: " << b->position().y()
 					<< ", width: " << b->width() << ", height: " << b->height()
-					<< ", caption: " << b->caption() << ");\n";
+					<< ", caption: \"" << b->caption() << '"';
+					if (b->getRemote()) {
+						used_properties.insert(b->getRemote());
+						out << ", remote:" << b->getRemote()->tagName();
+					}
+					out << ");\n";
 				continue;
 			}
 			EditorTextBox *t = dynamic_cast<EditorTextBox*>(child);
 			if (t) {
-				out << t->getName() << " TEXT ("
+				out << t->getName() << " " << t->baseName() << " ("
 				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
 				<< ", width: " << t->width() << ", height: " << t->height()
-				<< ", value: " << t->value() << ");\n";
+				<< ", value: " << t->value();
+				if (t->getRemote()) {
+					used_properties.insert(t->getRemote());
+					out << ", remote:" << t->getRemote()->tagName();
+				}
+				out << ");\n";
 				continue;
 			}
+			{
 			EditorImageView *ip = dynamic_cast<EditorImageView*>(child);
 			if (ip) {
-				out << ip->getName() << " IMAGE ("
+				out << ip->getName() << " " << ip->baseName() << " ("
 				<< "pos_x: " << ip->position().x() << ", pos_y: " << ip->position().y()
 				<< ", width: " << ip->width() << ", height: " << ip->height()
-				<< ", location: " << ip->imageName() << ");\n";
+				<< ", location: \"" << ip->imageName() << '"';
+				if (ip->getRemote()) {
+					used_properties.insert(ip->getRemote());
+					out << ", remote:" << ip->getRemote()->tagName();
+				}
+				out <<  ");\n";
 				continue;
+			}
+			}
+			{
+			EditorLinePlot *lp = dynamic_cast<EditorLinePlot*>(child);
+			if (lp) {
+				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName() << ";\n";
+				out <<  lp->baseName()<< "_"  << lp->getName() << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
+				<< "\tOPTION pos_x VALUE " << lp->position().x() << ";\n"
+				<< "\tOPTION pos_y VALUE " << lp->position().y() << ";\n"
+				<< "\tOPTION width: VALUE " << lp->width() << ";\n"
+				<< "\tOPTION height VALUE " << lp->height() << ";\n"
+				<< "\tOPTION x_scale VALUE " << lp->xScale()  << ";\n"
+				<< "\tOPTION grid_intensity VALUE " << lp->gridIntensity() << ";\n"
+				<< "\tOPTION display_grid VALUE " << lp->displayGrid() << ";\n";
+				for (auto series : lp->getSeries()) {
+					LinkableProperty *lp = gui->findLinkableProperty(series->getName());
+					if (lp) used_properties.insert(lp);
+					out << "\t" << series->getName() << " SERIES (remote:" <<  series->getName() << ");\n";
+				}
+				out << "}\n";
+				continue;
+			}
 			}
 		}
 		out << "}\n" << screen->getName() << " " << screen_type << ";\n\n";
+
+
+		for (auto link : used_properties) {
+			out << link->tagName() << " REMOTE (";
+			link->save(out);
+			out << ");\n";
+			
+		}
+
 	}
 }
 
@@ -2125,13 +2204,14 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	Widget *ww = dynamic_cast<Widget*>(window);
 
 	bool is_user = EDITOR->gui()->getUserWindow()->getWindow()->focused();
-	//if (window->contains(p) && !is_user) { requestFocus(); is_user = true; }
 
 	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {
+		/*
 		if (!clicked) return Screen::mouseButtonEvent(p, button, down, modifiers);
 		Widget *parent = clicked->parent();
 		while (parent && parent->parent()) { clicked = parent; parent = clicked->parent(); }
 		if (!clicked->focused()) clicked->requestFocus();
+		*/
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 	}
 
@@ -2363,25 +2443,26 @@ void EditorGUI::update() {
     std::cout << "GUI not yet ready to initialise values\n";
 		// if the tag file is loaded, get initial values
 		if (linkables.size() && startup == sINIT) {
-      std::cout << "Sending data initialisation request\n";
-      startup = sSENT;
+			std::cout << "Sending data initialisation request\n";
+			startup = sSENT;
 			queueMessage("MODBUS REFRESH", 
-			[this](std::string s) { 
-				std::cout << "MODBUS REFRESH returned: " << s << "\n";
-				if (s != "failed") {
-					cJSON *obj = cJSON_Parse(s.c_str());
-					if (!obj) { 
-            startup = sINIT;
-            return;
-          }
-					if (obj->type == cJSON_Array) {
-						processModbusInitialisation(obj, this);
+				[this](std::string s) { 
+					std::cout << "MODBUS REFRESH returned: " << s << "\n";
+					if (s != "failed") {
+						cJSON *obj = cJSON_Parse(s.c_str());
+						if (!obj) { 
+							startup = sINIT;
+							return;
+						}
+						if (obj->type == cJSON_Array) {
+							processModbusInitialisation(obj, this);
+						}
+						startup = sDONE;
 					}
-					startup = sDONE;
+					else
+						startup = sINIT;
 				}
-        else
-          startup = sINIT;
-			}); 
+			); 
 		}
 	}
 	if (w_user) w_user->update();
@@ -2454,8 +2535,28 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = eb;
 	}
 	else if (getClass() == "TEXT") {
+		EditorGUI *gui = EDITOR->gui();
 		EditorTextBox *eb = new EditorTextBox(window, nullptr);
 		eb->setEditable(true);
+		eb->setCallback( [eb, gui](const std::string &value)->bool{ 
+			if (!eb->getRemote()) return false;
+			char *rest = 0;
+			{
+				long val = strtol(value.c_str(),&rest,10); 
+				if (*rest == 0) {
+					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+					return true;
+				}
+			}
+			{
+				double val = strtod(value.c_str(),&rest);
+				if (*rest == 0)  {
+					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+					return true;
+				}
+			}
+			return false;
+		});
 		result = eb;
 	}
 	else if (getClass() == "IMAGE") {
@@ -2484,6 +2585,9 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
+		properties->addVariable<std::string> ("Structure",
+									  [&,w](const std::string value) { },
+									  [&,w]()->std::string{ return base; });
 		properties->addVariable<int> ("Horizontal Pos",
 									  [&,w](int value) mutable{
 										  Eigen::Vector2i pos(value, w->position().y());
@@ -2520,6 +2624,13 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
+		nanogui::FloatBox<double> *tb = dynamic_cast<nanogui::FloatBox<double>* >(this);
+		if (tb) {
+			properties->addVariable<std::string> (
+				"Number format",
+				[&,tb](std::string value) { tb->numberFormat(value); },
+				[&,tb]()->std::string{ return tb->numberFormat(); });
+		}
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
@@ -2917,6 +3028,25 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setSize(Vector2i(object_width, object_height));
 			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 			if (lp) lp->link(new LinkableTextBox(textBox));
+			EditorGUI *gui = EDITOR->gui();
+			textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
+				char *rest = 0;
+				{
+					long val = strtol(value.c_str(),&rest,10); 
+					if (*rest == 0) {
+						gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+						return true;
+					}
+				}
+				{
+					double val = strtod(value.c_str(),&rest);
+					if (*rest == 0)  {
+						gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+						return true;
+					}
+				}
+				return false;
+			});
 			result = textBox;
 		}
 
@@ -2936,6 +3066,25 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			//textBox->setValueIncrement(1);
 			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 			if (lp) lp->link(new LinkableTextBox(textBox));
+			EditorGUI *gui = EDITOR->gui();
+			textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
+				char *rest = 0;
+				{
+					long val = strtol(value.c_str(),&rest,10); 
+					if (*rest == 0) {
+						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+						return true;
+					}
+				}
+				{
+					double val = strtod(value.c_str(),&rest);
+					if (*rest == 0)  {
+						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+						return true;
+					}
+				}
+				return false;
+			});
 			result = textBox;
 		}
 
@@ -2957,9 +3106,10 @@ void ObjectWindow::loadItems(const std::string match) {
 	std::vector<std::string> tokens;
 	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
 	
-
+	int n = tokens.size();
 	for (auto item : gui->getLinkableProperties() ) {
 		for (auto nam : tokens) {
+			if (n>1 && nam.length() == 0) continue; //skip empty elements in a list
 			if (item.first.find(nam) != std::string::npos) {
 				Widget *cell = new Widget(palette_content);
 				LinkableProperty *lp = item.second;

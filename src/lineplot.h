@@ -168,14 +168,14 @@ public:
 
 	void resized(); // called when the widget is resized
 
-	std::string getName() const { return name; }
-	void setName(const std::string n) { name = n; }
-
 	void saveData(const std::string fname);
+
+	float xScale() { return x_scale; }
+	float gridIntensity() { return grid_intensity; }
+	bool displayGrid() { return display_grid; }
 
 protected:
     std::string mCaption, mHeader, mFooter;
-	std::string name;
     Color mBackgroundColor, mForegroundColor, mTextColor;
     VectorXf mValues;  
 	std::list<TimeSeries*>data;

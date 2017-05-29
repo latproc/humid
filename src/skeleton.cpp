@@ -525,6 +525,18 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, unsigned int
 	return s;
 }
 
+std::string ClockworkClient::getIODSyncCommand(int group, int addr, float new_value) {
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	sendIODMessage(msg);
+
+	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+
+	std::string s(msg);
+
+	free(msg);
+
+	return s;
+}
 char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
 	std::string s(getIODSyncCommand(group, addr, new_value));
 
