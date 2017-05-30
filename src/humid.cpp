@@ -1342,7 +1342,7 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 		bool handled = false;		
 		for (auto item : children() ) {
 			nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(item);
-			if (lp) { lp->handleKey(key, scancode, action, modifiers); handled = true; }
+			if (lp && lp->focused()) { lp->handleKey(key, scancode, action, modifiers); handled = true; }
 		}
 		if (!handled) return Window::keyboardEvent(key, scancode, action, modifiers);
 	}
