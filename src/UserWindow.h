@@ -25,6 +25,8 @@ public:
 	UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww);
 	void setVisible(bool which) { window->setVisible(which); }
 	void save(const std::string &path);
+	void load(const std::string &path);
+
 	CircularBuffer *getValues(const std::string name);
 	CircularBuffer * addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len);
 	std::map<std::string, CircularBuffer *> &getData() { return data; }

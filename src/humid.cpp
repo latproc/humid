@@ -84,7 +84,18 @@ int st_yyparse();
 extern int st_yycharno;
 extern int st_yylineno;
 const char *st_yyfilename = 0;
+
+#include "hmilang.h"
+std::list<Structure *>hm_structures;
+std::list<StructureClass *> hm_classes;
+extern FILE *yyin;
+int yyparse();
+extern int yycharno;
+extern int yylineno;
 const char *yyfilename = 0;
+const char *filename = 0;
+class LinkableProperty;
+std::map<std::string, LinkableProperty *> remotes;
 
 int num_errors = 0;
 std::list<std::string>error_messages;
@@ -469,6 +480,7 @@ public:
 	nanogui::DragHandle *getDragHandle();
 
 	void save(const std::string &path);
+	void load(const std::string &path);
 
 	EditorGUI *gui() { return screen; }
 
@@ -1161,22 +1173,27 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 		}
 	});
 	tb = new ToolButton(toolbar, ENTYPO_ICON_NEW);
-	tb->setFlags(Button::ToggleButton);
-	tb->setTooltip("New");
+	tb->setFlags(Button::NormalButton);
+	tb->setTooltip("New Project");
 	tb->setFixedSize(Vector2i(32,32));
-	tb = new ToolButton(toolbar, ENTYPO_ICON_OPEN_BOOK);
-	tb->setFlags(Button::ToggleButton);
-	tb->setTooltip("Open");
-	tb->setFixedSize(Vector2i(32,32));
-	tb->setCallback([&] {
-		std::string tags(file_dialog(
-		  { {"csv", "Clockwork TAG file"}, {"txt", "Text file"} }, false));
-		gui->getObjectWindow()->loadTagFile(tags);
+
+	tb = new ToolButton(toolbar, ENTYPO_ICON_NOTE);
+	//tb->setFlags(Button::ToggleButton);
+	tb->setTooltip("Open Project");
+	tb->setFlags(Button::NormalButton);
+	tb->setCallback([this] {
+		Editor *editor = EDITOR;
+		if (editor) {
+			std::string file_path(file_dialog(
+				{ {"humid", "Humid layout file"},
+				  {"txt", "Text file"} }, false));
+			if (file_path.length()) editor->load(file_path);
+		}
 	});
 
 	tb = new ToolButton(toolbar, ENTYPO_ICON_SAVE);
 	//tb->setFlags(Button::ToggleButton);
-	tb->setTooltip("Save");
+	tb->setTooltip("Save Project");
 	tb->setFlags(Button::NormalButton);
 	tb->setCallback([this] {
 		Editor *editor = EDITOR;
@@ -1188,6 +1205,17 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 		}
 	});
 	tb->setFixedSize(Vector2i(32,32));
+
+	tb = new ToolButton(toolbar, ENTYPO_ICON_OPEN_BOOK);
+	tb->setFlags(Button::ToggleButton);
+	tb->setTooltip("Tags");
+	tb->setFixedSize(Vector2i(32,32));
+	tb->setCallback([&] {
+		std::string tags(file_dialog(
+		  { {"csv", "Clockwork TAG file"}, {"txt", "Text file"} }, false));
+		gui->getObjectWindow()->loadTagFile(tags);
+	});
+
 	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
@@ -1280,6 +1308,12 @@ void Editor::refresh(bool ) {
 }
 
 nanogui::DragHandle *Editor::getDragHandle() { return drag_handle; }
+
+void Editor::load(const std::string &path) {
+	using namespace nanogui;
+	UserWindow *uw = screen->getUserWindow();
+	if (uw) uw->load(path);
+}
 
 void Editor::save(const std::string &path) {
 	using namespace nanogui;
@@ -1458,6 +1492,118 @@ void LinkableProperty::save(std::ostream &out) const {
 		<< "remote:" << tag_name;
 }
 
+void loadProjectFiles(std::list<std::string> &files) {
+
+	/* load configuration from files named on the commandline */
+	int opened_file = 0;
+	std::list<std::string>::iterator f_iter = files.begin();
+	while (f_iter != files.end())
+	{
+		const char *filename = (*f_iter).c_str();
+		if (filename[0] != '-')
+		{
+			opened_file = 1;
+			yyin = fopen(filename, "r");
+			if (yyin)
+			{
+				std::cerr << "Processing file: " << filename << "\n";
+				yylineno = 1;
+				yycharno = 1;
+				yyfilename = filename;
+				yyparse();
+				fclose(yyin);
+			}
+			else
+			{
+				std::stringstream ss;
+				ss << "## - Error: failed to load project file: " << filename;
+				error_messages.push_back(ss.str());
+				++num_errors;
+			}
+		}
+		else if (strlen(filename) == 1) /* '-' means stdin */
+		{
+			opened_file = 1;
+			std::cerr << "\nProcessing stdin\n";
+			yyfilename = "stdin";
+			yyin = stdin;
+			yylineno = 1;
+			yycharno = 1;
+			yyparse();
+		}
+		f_iter++;
+	}
+}
+
+void UserWindow::load(const std::string &path) {
+	std::list<std::string> files;
+	files.push_back(path);
+	loadProjectFiles(files);
+
+	for (auto *s : hm_structures) {
+		std::string kind = s->getKind();
+		StructureClass *sc = nullptr;
+		for (auto item : hm_classes) {
+			if (item->getName() == kind) { sc = item; break; }
+		}
+		if (sc) {
+			for (auto element : sc->getLocals()) {
+#if 0
+				if (kind == "TEXT") {
+					/*
+					EditorTextBox *textBox = new EditorTextBox(container, properties);
+					textBox->setName(tag_name);
+					textBox->setValue("");
+					textBox->setEnabled(true);
+					textBox->setEditable(true);
+					textBox->setSize(Vector2i(object_width, object_height));
+					LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
+					if (lp) lp->link(new LinkableTextBox(textBox));
+					EditorGUI *gui = EDITOR->gui();
+					textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
+						char *rest = 0;
+						{
+							long val = strtol(value.c_str(),&rest,10); 
+							if (*rest == 0) {
+								gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+								return true;
+							}
+						}
+						{
+							double val = strtod(value.c_str(),&rest);
+							if (*rest == 0)  {
+								gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+								return true;
+							}
+						}
+						return false;
+					});
+					*/
+				}
+				else if (kind == "PLOT") {
+
+				}
+				else if (kind == "BUTTON") {
+					EditorButton *b = new EditorButton(window, nullptr, caption());
+					b->setBackgroundColor(Color(200, 30, 30, 255));
+					b->setPosition( nanogui::Vector2i(element->getProperties.find("pos_x")).iValue,element->getProperties.find("pos_y").iValue);
+					result = b;
+				}
+#endif
+			}
+		}
+		if (kind == "REMOTE") {
+			Value &rname = s->getProperties().find("NAME");
+			if (rname != SymbolTable::Null) {
+				LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
+				if (lp) {
+					remotes[s->getName()] = lp;
+				}
+			}
+		}
+	}
+}
+
 void UserWindow::save(const std::string &path) {
 	using namespace nanogui;
 	std::ofstream out(path);
@@ -1472,12 +1618,12 @@ void UserWindow::save(const std::string &path) {
 			out << shortName(group) << " CONNECTION_GROUP (path:\""<< group << "\");\n";
 		}
 	}
-	std::set<const LinkableProperty*> used_properties;
-	
+	std::stringstream pending_definitions;
+	std::set<const LinkableProperty*> used_properties;	
 	for (auto screen : gui->getScreens()) {
 		std::string screen_type(screen->getName());
 		boost::to_upper(screen_type);
-		out << screen_type << " SCREEN {\n";
+		out << screen_type << " STRUCTURE EXTENDS SCREEN {\n";
 		for (auto it = window->children().rbegin(); it != window->children().rend(); ++it) {
 			Widget *child = *it;
 			EditorButton *b = dynamic_cast<EditorButton*>(child);
@@ -1497,8 +1643,11 @@ void UserWindow::save(const std::string &path) {
 			if (t) {
 				out << t->getName() << " " << t->baseName() << " ("
 				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
-				<< ", width: " << t->width() << ", height: " << t->height()
-				<< ", value: " << t->value();
+				<< ", width: " << t->width() << ", height: " << t->height();
+				if (!t->getRemote() || t->getRemote()->dataType() == CircularBuffer::STR)
+					out << ", value: \"" << t->value() << '"';
+				else
+					out << ", value: " << t->value();
 				if (t->getRemote()) {
 					used_properties.insert(t->getRemote());
 					out << ", remote:" << t->getRemote()->tagName();
@@ -1524,27 +1673,34 @@ void UserWindow::save(const std::string &path) {
 			{
 			EditorLinePlot *lp = dynamic_cast<EditorLinePlot*>(child);
 			if (lp) {
-				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName() << ";\n";
-				out <<  lp->baseName()<< "_"  << lp->getName() << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
-				<< "\tOPTION pos_x VALUE " << lp->position().x() << ";\n"
-				<< "\tOPTION pos_y VALUE " << lp->position().y() << ";\n"
-				<< "\tOPTION width: VALUE " << lp->width() << ";\n"
-				<< "\tOPTION height VALUE " << lp->height() << ";\n"
-				<< "\tOPTION x_scale VALUE " << lp->xScale()  << ";\n"
-				<< "\tOPTION grid_intensity VALUE " << lp->gridIntensity() << ";\n"
-				<< "\tOPTION display_grid VALUE " << lp->displayGrid() << ";\n";
+				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName() 
+					<< " ("
+					<< "pos_x: " << lp->position().x() << ", pos_y: " << lp->position().y()
+					<< ", width: " << lp->width() << ", height: " << lp->height()
+					<< ", x_scale: " << lp->xScale() 
+					<< ", grid_intensity: " << lp->gridIntensity()
+					<< ", display_grid: " << lp->displayGrid()
+					<< ");\n";
+				pending_definitions <<  screen_type << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
+				<< "\tOPTION pos_x 50;\n"
+				<< "\tOPTION pos_y 100;\n"
+				<< "\tOPTION width 200;\n"
+				<< "\tOPTION height 100;\n"
+				<< "\tOPTION x_scale 1.0;\n"
+				<< "\tOPTION grid_intensity 0.05;\n"
+				<< "\tOPTION display_grid TRUE;\n\n";
 				for (auto series : lp->getSeries()) {
 					LinkableProperty *lp = gui->findLinkableProperty(series->getName());
 					if (lp) used_properties.insert(lp);
-					out << "\t" << series->getName() << " SERIES (remote:" <<  series->getName() << ");\n";
+					pending_definitions << "\t" << series->getName() << " SERIES (remote:" <<  series->getName() << ");\n";
 				}
-				out << "}\n";
+				pending_definitions << "}\n";
 				continue;
 			}
 			}
 		}
 		out << "}\n" << screen->getName() << " " << screen_type << ";\n\n";
-
+		out << pending_definitions.str() << "\n";
 
 		for (auto link : used_properties) {
 			out << link->tagName() << " REMOTE (";
@@ -2205,13 +2361,11 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 
 	bool is_user = EDITOR->gui()->getUserWindow()->getWindow()->focused();
 
-	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {
-		/*
+	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {	
 		if (!clicked) return Screen::mouseButtonEvent(p, button, down, modifiers);
 		Widget *parent = clicked->parent();
 		while (parent && parent->parent()) { clicked = parent; parent = clicked->parent(); }
-		if (!clicked->focused()) clicked->requestFocus();
-		*/
+		if (!clicked->focused() && parent != window) clicked->requestFocus();
 		return Screen::mouseButtonEvent(p, button, down, modifiers);
 	}
 

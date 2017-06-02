@@ -141,7 +141,7 @@ endif ()
 	# Add generated source to the list of sources
 	 SET(HMI_SRCS ${HMI_SRCS} src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
 
-	# Since the parser source does not exists yet when cmake is run, mark
+	# Since the parser source does not exist when cmake is run, mark
 	# it as generated
 	SET_SOURCE_FILES_PROPERTIES(${hmi_lex_output} GENERATED)
 	SET_SOURCE_FILES_PROPERTIES(${hmi_yacc_output} GENERATED)
@@ -175,7 +175,7 @@ endif ()
 	# Add generated source to the list of sources
 	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
 
-	# Since the parser source does not exists yet when cmake is run, mark
+	# Since the parser source does not exist yet when cmake is run, mark
 	# it as generated
 	SET_SOURCE_FILES_PROPERTIES(${settings_lex_output} GENERATED)
 	SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
@@ -194,6 +194,10 @@ endif ()
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/Parameter.cpp src/structure.cpp)
   target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
+
+  SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
+  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp)
+  target_link_libraries(hmifile_check Clockwork "zmq" ${Boost_LIBRARIES})
 
 
   # Copy icons for example application

@@ -13,9 +13,14 @@
 void yyerror(const char *str);
 
 #ifndef __MAIN__
+class LinkedProperty;
+
 extern int line_num;
 extern SymbolTable globals;
 extern const char *yyfilename;
+extern std::list<Structure *>hm_structures;
+extern std::list<StructureClass *> hm_classes;
+extern std::map<std::string, LinkedProperty *> remotes;
 #endif
 
 #endif

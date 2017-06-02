@@ -126,7 +126,6 @@ READONLY            return READONLY;
 READWRITE           return READWRITE;
 REPLACE             return REPLACE;
 REPORTS				return REPORTS;
-STATE_CHANGES		return STATE_CHANGES;
 PRIVATE				{
 	char buf[100];
 	snprintf(buf, 100, "Error at line %d PRIVATE semantics are changing. Use LOCAL instead\n", yylineno);
@@ -142,6 +141,7 @@ RECEIVES            return RECEIVES;
 REQUIRES            return REQUIRES;
 RETURN				return RETURN;
 RESUME              return RESUME;
+SCREEN				return SCREEN;
 SDO					return SDO;
 SELECT              return SELECT;
 SEND                return SEND;
@@ -152,7 +152,9 @@ SHARES              return SHARES;
 SHUTDOWN			return SHUTDOWN;
 SORT                return SORT;
 STATE               return STATE;
+STATE_CHANGES		return STATE_CHANGES;
 STATES              return STATES;
+STRUCTURE			return STRUCTURE;
 STRING              return STRINGTYPE;
 TAG					return TAG;
 TAKE                return TAKE;
@@ -183,6 +185,28 @@ WITHIN              return WITHIN;
 	val = strtol(yytext, &p, 16);
 	yylval.iVal = val;
 	return INTEGER;
+}
+
+0\.0 {
+	yylval.fVal = atof(yytext);
+	return FLOATVAL;
+}
+
+0\. {
+	yylval.fVal = atof(yytext);
+	return FLOATVAL;
+}
+
+[-]{0,1}[0-9][0-9]*[.][0-9]* {
+	yylval.fVal = atof(yytext);
+	std::cout << "FLOAT: " << yytext << ": " << yylval.fVal << "\n";
+	return FLOATVAL;
+}
+
+[-]{0,1}[0-9][0-9]*[.][0-9]*E[0-9]{1,3} {
+	yylval.fVal = atof(yytext);
+	std::cout << "FLOAT: " << yytext << ": " << yylval.fVal << "\n";
+	return FLOATVAL;
 }
 
 0           {
