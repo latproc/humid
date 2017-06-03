@@ -1535,32 +1535,81 @@ void loadProjectFiles(std::list<std::string> &files) {
 	}
 }
 
+void fixElementPosition(nanogui::Widget *w, const SymbolTable &properties) {
+	Value vx = properties.find("pos_x");
+	Value vy = properties.find("pos_y");
+	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
+		long x, y;
+		if (vx.asInteger(x) && vy.asInteger(y)) w->setPosition(nanogui::Vector2i(x,y));
+	}
+}
+
+void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
+	Value vx = properties.find("width");
+	Value vy = properties.find("height");
+	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
+		long x, y;
+		if (vx.asInteger(x) && vy.asInteger(y)) w->setSize(nanogui::Vector2i(x,y));
+	}
+}
+
+StructureClass *findClass(const std::string &name) {
+		StructureClass *sc = nullptr;
+		for (auto item : hm_classes) {
+			if (item->getName() == name) return item;
+		}
+		return nullptr;
+}
+
 void UserWindow::load(const std::string &path) {
 	std::list<std::string> files;
 	files.push_back(path);
 	loadProjectFiles(files);
 
+	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
+	
+	drag_handle->incRef();
+	window->removeChild(drag_handle);
+	PropertyMonitor *pm = drag_handle->propertyMonitor();
+	drag_handle->setPropertyMonitor(0);
+
 	for (auto *s : hm_structures) {
-		std::string kind = s->getKind();
 		StructureClass *sc = nullptr;
 		for (auto item : hm_classes) {
-			if (item->getName() == kind) { sc = item; break; }
+			if (item->getName() == s->getKind()) { sc = item; break; }
 		}
 		if (sc) {
-			for (auto element : sc->getLocals()) {
-#if 0
+			int pnum = 0;
+			for (auto param : sc->getLocals()) {
+				++pnum;
+				Structure *element = param.machine;
+				if (!element) {
+					std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
+					continue;
+				}
+				std::string kind = element->getKind();
+				StructureClass *element_class = findClass(kind);
+				Value &remote = element->getProperties().find("remote");
+				LinkableProperty *lp = nullptr;
+				if (remote != SymbolTable::Null) 
+					lp = gui->findLinkableProperty(remote.asString());
 				if (kind == "TEXT") {
-					/*
-					EditorTextBox *textBox = new EditorTextBox(container, properties);
-					textBox->setName(tag_name);
+					EditorTextBox *textBox = new EditorTextBox(window, lp);
 					textBox->setValue("");
 					textBox->setEnabled(true);
 					textBox->setEditable(true);
-					textBox->setSize(Vector2i(object_width, object_height));
-					LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
-					if (lp) lp->link(new LinkableTextBox(textBox));
-					EditorGUI *gui = EDITOR->gui();
-					textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
+					fixElementPosition( textBox, element->getProperties());
+					fixElementSize( textBox, element->getProperties());
+					if (lp) 
+						lp->link(new LinkableTextBox(textBox));
+					textBox->setName(element->getName());
+					if (lp)
+						textBox->setTooltip(remote.asString());
+					else
+						textBox->setTooltip(element->getName());
+					EditorGUI *gui = this->gui;
+					textBox->setCallback( [textBox, gui](const std::string &value)->bool{
+						if (!textBox->getRemote()) return false; 
 						char *rest = 0;
 						{
 							long val = strtol(value.c_str(),&rest,10); 
@@ -1578,21 +1627,26 @@ void UserWindow::load(const std::string &path) {
 						}
 						return false;
 					});
-					*/
 				}
-				else if (kind == "PLOT") {
-
+				else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
+					EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
+					lp->setBufferSize(gui->sampleBufferSize());
+					fixElementPosition( lp, element->getProperties());
+					fixElementSize( lp, element->getProperties());
+					Value &monitors = element->getProperties().find("monitors");
+					if (monitors != SymbolTable::Null) {
+						lp->setMonitors(this, monitors.asString());
+					}
 				}
 				else if (kind == "BUTTON") {
-					EditorButton *b = new EditorButton(window, nullptr, caption());
-					b->setBackgroundColor(Color(200, 30, 30, 255));
-					b->setPosition( nanogui::Vector2i(element->getProperties.find("pos_x")).iValue,element->getProperties.find("pos_y").iValue);
-					result = b;
+					EditorButton *b = new EditorButton(window, lp, element->getName());
+					b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+					fixElementPosition( b, element->getProperties());
+					fixElementSize( b, element->getProperties());
 				}
-#endif
 			}
 		}
-		if (kind == "REMOTE") {
+		if (s->getKind() == "REMOTE") {
 			Value &rname = s->getProperties().find("NAME");
 			if (rname != SymbolTable::Null) {
 				LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
@@ -1602,6 +1656,12 @@ void UserWindow::load(const std::string &path) {
 			}
 		}
 	}
+	window->addChild(drag_handle);
+
+	drag_handle->setPropertyMonitor(pm);
+	drag_handle->decRef();
+
+	window->performLayout( gui->nvgContext() );
 }
 
 void UserWindow::save(const std::string &path) {
@@ -1680,8 +1740,9 @@ void UserWindow::save(const std::string &path) {
 					<< ", x_scale: " << lp->xScale() 
 					<< ", grid_intensity: " << lp->gridIntensity()
 					<< ", display_grid: " << lp->displayGrid()
+					<< ", monitors: \"" << lp->monitors() << '"'
 					<< ");\n";
-				pending_definitions <<  screen_type << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
+				pending_definitions <<  lp->baseName() << "_" << lp->getName() << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
 				<< "\tOPTION pos_x 50;\n"
 				<< "\tOPTION pos_y 100;\n"
 				<< "\tOPTION width 200;\n"
@@ -2594,7 +2655,6 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 
 void EditorGUI::update() {
 	if (startup != sDONE) {
-    std::cout << "GUI not yet ready to initialise values\n";
 		// if the tag file is loaded, get initial values
 		if (linkables.size() && startup == sINIT) {
 			std::cout << "Sending data initialisation request\n";
@@ -3179,6 +3239,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setValue("");
 			textBox->setEnabled(true);
 			textBox->setEditable(true);
+			textBox->setTooltip(tag_name);
 			textBox->setSize(Vector2i(object_width, object_height));
 			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 			if (lp) lp->link(new LinkableTextBox(textBox));
@@ -3212,6 +3273,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
 			textBox->setFixedSize(Vector2i(object_width, object_height));
+			textBox->setTooltip(tag_name);
 			//textBox->setDefaultValue("0");
 			//textBox->setFontSize(16);
 			//textBox->setFormat("[1-9][0-9]*");

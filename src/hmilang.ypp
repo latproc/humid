@@ -76,6 +76,7 @@ static char *timeout_message_name = 0;
 	const char *pVal;
 	Value *val;
 	Parameter *param;
+	ClassExtension *extension;
 };
 
 %token <iVal> INTEGER
@@ -99,6 +100,7 @@ static char *timeout_message_name = 0;
 
 %type <val> value
 %type <param> parameter
+%type <extension> extension
 
 %%
 
@@ -121,6 +123,7 @@ definition_header '{' definition_body '}' {
         // save the current list of commands to the class
         // etc
         if (hps.current_locals.size()) {
+			std::cout << hps.current_machineclass->getName() << " has " <<hps.current_locals.size() << " locals\n";
 			std::copy(hps.current_locals.begin(), hps.current_locals.end(),back_inserter(hps.current_machineclass->getLocals()));
 			hps.current_locals.clear();
         }
@@ -176,8 +179,14 @@ SYMBOL STRUCTURE parameters {
 ;
 
 extension:
-EXTENDS SYMBOL {
+EXTENDS SCREEN {
+	hps.current_base = new ClassExtension("SCREEN");
+	$$=hps.current_base;
+}
+| EXTENDS SYMBOL {
 	hps.current_base = new ClassExtension($2);
+	std::cout << "new extension of " <<  hps.current_base->getName() << "\n";
+	$$=hps.current_base;
 }
 ;
 
@@ -191,17 +200,42 @@ definition_section:
 GLOBAL global_references ';'
 | OPTION option_settings ';'
 | LOCAL OPTION local_option_settings ';'
-| machine_instantiation;
+| local_machine_instantiation;
 ;
 
 machine_instantiation:
 instantiation ';'
 {
-	std::cerr << std::setw(5) << yylineno << " " << "Instance of a machine:" << *hps.current_machine << "\n";
+	std::cerr << std::setw(5) << yylineno << " " << "Instance: " << *hps.current_machine << "\n";
 	hm_structures.push_back(hps.current_machine);
 	hps.current_machine = NULL;
 }
 ;
+
+local_machine_instantiation:
+instantiation ';'
+{
+    bool found = false;
+    // check for duplicate names in local variables
+    BOOST_FOREACH(Parameter &p, hps.current_locals) {
+        if (p.val.kind == Value::t_symbol && p.val.sValue == hps.current_machine->getName()) {
+            std::stringstream ss;
+            ss << "## - Error: " << yyfilename << ":" << yylineno
+                << " local machine " << hps.current_machine->getName() << " already defined";
+            error_messages.push_back(ss.str());
+            ++num_errors;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+	    char *name = strdup(hps.current_machine->getName().c_str());
+        Parameter p(name);
+        p.machine = hps.current_machine;
+        hps.current_locals.push_back(p);
+    }
+}
+
 
 instantiation:
 SYMBOL SYMBOL parameters
@@ -228,7 +262,6 @@ SYMBOL SYMBOL parameters
 	hps.properties.clear();
 }
 ;
-
 
 parameters:
 parameter

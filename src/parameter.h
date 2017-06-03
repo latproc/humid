@@ -8,11 +8,12 @@
 #include <value.h>
 #include <symboltable.h>
 
+class Structure;
 class Parameter {
 public:
 	Value val;
 	SymbolTable properties;
-	MachineInstance *machine;
+	Structure *machine;
 	std::string real_name;
 	Parameter(Value v);
 	Parameter(const char *name, const SymbolTable &st);

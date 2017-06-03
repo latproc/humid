@@ -42,6 +42,7 @@ public:
 	virtual void addPrivateProperty(const std::string &name); 
 
 	const std::string &getName() const { return name; }
+	const std::string &getBase() const { return base; }
 
 private:
 	std::map<std::string, Structure *>global_references;
