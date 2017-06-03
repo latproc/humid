@@ -290,6 +290,10 @@ public:
 	void setDataSize(int new_size) { data_size = new_size; }
 	int address() const { return modbus_address; }
 	void setAddress(int a) { modbus_address = a; }
+	int address_group() const {
+		if (address_str.at(0) == '\'') return address_str.at(1)-'0'; else return address_str.at(0)-'0';
+	}
+
 	void link(LinkableObject *lo) { 
 		links.push_back(lo); 
 		lo->update(value());
@@ -1641,14 +1645,14 @@ void UserWindow::load(const std::string &path) {
 						{
 							long val = strtol(value.c_str(),&rest,10); 
 							if (*rest == 0) {
-								gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
 								return true;
 							}
 						}
 						{
 							double val = strtod(value.c_str(),&rest);
 							if (*rest == 0)  {
-								gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
 								return true;
 							}
 						}
