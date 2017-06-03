@@ -129,6 +129,10 @@ extern struct timeval start;
 
 extern void setup_signals();
 
+
+std::string escapeQuotes(const std::string &s);
+std::string stripEscapes(const std::string &s);
+
 class StartupWindow;
 class PropertyWindow;
 class ObjectWindow;
@@ -687,6 +691,11 @@ public:
 		return true;
 	}
 
+	void setCommand(std::string cmd) {
+		command_str = stripEscapes(cmd);
+	}
+	const std::string &command() const { return command_str; }
+
 /*	bool keyboardEvent(int key, int scancode, int action, int modifiers) override {
 		if (focused() && isSelected() && action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
 			UserWindow *uw = EDITOR->gui()->getUserWindow();
@@ -708,6 +717,7 @@ public:
 
 
 	bool is_toggle;
+	std::string command_str;
 };
 
 class EditorTextBox : public nanogui::TextBox, public EditorWidget {
@@ -1270,7 +1280,6 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setChangeCallback([this](bool state) {
 		this->gui->getViewsWindow()->setVisible(state);
 		this->gui->getViewsWindow()->getWindow()->requestFocus();
-		//this->gui->sendIODMessage("MODBUS REFRESH");
  	});
 
 	BoxLayout *bl = new BoxLayout(Orientation::Horizontal);
@@ -1640,12 +1649,13 @@ void UserWindow::load(const std::string &path) {
 						textBox->setTooltip(element->getName());
 					EditorGUI *gui = this->gui;
 					textBox->setCallback( [textBox, gui](const std::string &value)->bool{
-						if (!textBox->getRemote()) return false; 
+						if (!textBox->getRemote()) return true; 
 						char *rest = 0;
 						{
 							long val = strtol(value.c_str(),&rest,10); 
 							if (*rest == 0) {
-								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), 
+									[](std::string s){std::cout << s << "\n"; });
 								return true;
 							}
 						}
@@ -1680,12 +1690,21 @@ void UserWindow::load(const std::string &path) {
 					fixElementSize( b, element->getProperties());
 					if (font_size) b->setFontSize(font_size);
 					b->setCaption(element->getProperties().find("caption").asString());
+					{
+						const Value &cmd = element->getProperties().find("command");
+						if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
+					}
 
 					b->setChangeCallback([b, this] (bool state) {
-						gui->queueMessage(
+						if (b->getRemote()) {
+							gui->queueMessage(
 										gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-						gui->queueMessage(
+							gui->queueMessage(
 										gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+						}
+						else if (b->command().length()) {
+ 							gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+						}
 
 					});
 				}
@@ -1739,6 +1758,7 @@ void UserWindow::save(const std::string &path) {
 					<< ", width: " << b->width() << ", height: " << b->height()
 					<< ", caption: \"" << b->caption() << '"'
 					<< ", font_size: " << b->fontSize();
+					if (b->command().length()) out << ", command: " << escapeQuotes(b->command());
 					if (b->getRemote()) {
 						used_properties.insert(b->getRemote());
 						out << ", remote:" << b->getRemote()->tagName();
@@ -1767,10 +1787,12 @@ void UserWindow::save(const std::string &path) {
 				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
 				<< ", width: " << t->width() << ", height: " << t->height()
 				<< ", font_size: " << t->fontSize();
-				if (!t->getRemote() || t->getRemote()->dataType() == CircularBuffer::STR)
-					out << ", value: \"" << t->value() << '"';
+				if (!t->getRemote())
+					out << ", value: " << escapeQuotes(t->value());
+				/*else if (t->getRemote() && t->getRemote()->dataType() == CircularBuffer::STR)
+					out << ", value: " << escapeQuotes(t->value());
 				else
-					out << ", value: " << t->value();
+					out << ", value: " << t->value();*/
 				if (t->getRemote()) {
 					used_properties.insert(t->getRemote());
 					out << ", remote:" << t->getRemote()->tagName();
@@ -2810,6 +2832,18 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		EditorButton *b = new EditorButton(window, nullptr, caption());
 		b->setName( EDITOR->gui()->nextName(b));
 		b->setBackgroundColor(Color(200, 30, 30, 255));
+		b->setChangeCallback([b, this] (bool state) {
+			if (b->getRemote()) {
+				gui->queueMessage(
+							gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
+				gui->queueMessage(
+							gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+			}
+			else if (b->command().length()) {
+				gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+			}
+		});
+
 		result = b;
 	}
 	else if (getClass() == "LABEL") {
@@ -2823,7 +2857,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		eb->setName( EDITOR->gui()->nextName(eb));
 		eb->setEditable(true);
 		eb->setCallback( [eb, gui](const std::string &value)->bool{ 
-			if (!eb->getRemote()) return false;
+			if (!eb->getRemote()) return true;
 			char *rest = 0;
 			{
 				long val = strtol(value.c_str(),&rest,10); 
@@ -3045,6 +3079,10 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Behaviour",
 			[&](unsigned int value) mutable{ setFlags(value & 0x0f); },
 			[&]()->unsigned int{ return flags(); });
+		properties->addVariable<std::string> (
+			"Command",
+			[&](std::string value) { setCommand(value); },
+			[&]()->std::string{ return command(); });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
@@ -3623,6 +3661,43 @@ void loadSettingsFiles(std::list<std::string> &files) {
 		f_iter++;
 	}
 }
+
+
+	std::string escapeQuotes(const std::string &s) {
+		size_t n = s.length()+1;
+		char buf[n*2];
+		char *p = buf;
+		char last = 0;
+		bool need_quote = false;
+		for (auto c : s) {
+			if (p+n*2-buf <= 2) break;
+			if (last == 0 && c != '"') {*p++ = '"'; need_quote = true; }
+			if (last != '\\' && c == '"') *p++ = '\\';
+			*p++ = c;
+			last = c;
+		}
+		if (need_quote) *p++ = '"';
+		*p = 0;
+		return buf;
+	}
+
+	std::string stripEscapes(const std::string &s) {
+		size_t n = s.length()+1;
+		char buf[n*2];
+		char *p = buf;
+		char last = 0;
+		for (auto c : s) {
+			if (last==0) { if (c == '"') continue; last=c; continue;}
+			if (p+n*2-buf <= 2) break;
+			if (last != '\\' || c != '"') *p++ = last;
+			last = c;
+		}
+		*p++ = last;
+		*p = 0;
+		return buf;
+	}
+
+
 
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
