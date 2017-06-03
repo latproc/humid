@@ -174,6 +174,9 @@ public:
 	float gridIntensity() { return grid_intensity; }
 	bool displayGrid() { return display_grid; }
 
+	void overlay(bool which) { overlay_plots = which; }
+	bool overlaid() { return overlay_plots; }
+
 protected:
     std::string mCaption, mHeader, mFooter;
     Color mBackgroundColor, mForegroundColor, mTextColor;

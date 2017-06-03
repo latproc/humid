@@ -392,6 +392,7 @@ public:
 
 	std::list<PanelScreen*> &getScreens() { return user_screens; }
 	std::string nextName(EditorObject*);
+	bool changeName(EditorObject*, const std::string &oldname, const std::string &newname);
 
 	int getSampleBufferSize() { return sample_buffer_size; }
 	SymbolTable &getProperties() { return properties; }
@@ -623,7 +624,10 @@ public:
 		return base;
 	}
 
-	void setName(const std::string new_name) { name = new_name; }
+	void setName(const std::string new_name) { 
+		if (EDITOR->gui()->changeName(this, name,new_name)) 
+			name = new_name;
+	}
 	const std::string &getName() const { return name; }
 
 	void justSelected() override;
@@ -931,6 +935,15 @@ EditorGUI::EditorGUI() : theme(0), startup(sINIT), state(GUIWELCOME), editor(0),
 	assert(mImagesData.size() > 0);
 }
 
+bool EditorGUI::changeName(EditorObject *o, const std::string &oldname, const std::string &newname) {
+	if (oldname == newname) return true;
+	std::map<std::string, EditorObject*>::iterator found = user_objects.find(newname);
+	if (found != user_objects.end()) return false;
+	user_objects[newname] = o;
+	found = user_objects.find(oldname);
+	if (found != user_objects.end()) user_objects.erase(found);
+	return true;
+}
 std::string EditorGUI::nextName(EditorObject *o) {
 	char buf[40];
 	snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
@@ -938,6 +951,8 @@ std::string EditorGUI::nextName(EditorObject *o) {
 		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
 	}
 	std::string result(buf);
+	EditorWidget *w = dynamic_cast<EditorWidget*>(o);
+	if (w) w->setName(result);
 	user_objects[result] = o;
 	return result;
 }
@@ -1590,16 +1605,28 @@ void UserWindow::load(const std::string &path) {
 				std::string kind = element->getKind();
 				StructureClass *element_class = findClass(kind);
 				Value &remote = element->getProperties().find("remote");
+				Value &font_size_val = element->getProperties().find("font_size");
+				long font_size = 0;
+				if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
 				LinkableProperty *lp = nullptr;
 				if (remote != SymbolTable::Null) 
 					lp = gui->findLinkableProperty(remote.asString());
+				if (kind == "LABEL") {
+					EditorLabel *el = new EditorLabel(window, nullptr, element->getProperties().find("caption").asString());
+					el->setName(element->getName());
+					fixElementPosition( el, element->getProperties());
+					fixElementSize( el, element->getProperties());
+					if (font_size) el->setFontSize(font_size);
+				}
 				if (kind == "TEXT") {
 					EditorTextBox *textBox = new EditorTextBox(window, lp);
+					textBox->setName(element->getName());
 					textBox->setValue("");
 					textBox->setEnabled(true);
 					textBox->setEditable(true);
 					fixElementPosition( textBox, element->getProperties());
 					fixElementSize( textBox, element->getProperties());
+					if (font_size) textBox->setFontSize(font_size);
 					if (lp) 
 						lp->link(new LinkableTextBox(textBox));
 					textBox->setName(element->getName());
@@ -1630,9 +1657,12 @@ void UserWindow::load(const std::string &path) {
 				}
 				else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
 					EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
+					lp->setName(element->getName());
 					lp->setBufferSize(gui->sampleBufferSize());
 					fixElementPosition( lp, element->getProperties());
 					fixElementSize( lp, element->getProperties());
+					if (font_size) lp->setFontSize(font_size);
+					if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
 					Value &monitors = element->getProperties().find("monitors");
 					if (monitors != SymbolTable::Null) {
 						lp->setMonitors(this, monitors.asString());
@@ -1640,9 +1670,20 @@ void UserWindow::load(const std::string &path) {
 				}
 				else if (kind == "BUTTON") {
 					EditorButton *b = new EditorButton(window, lp, element->getName());
+					b->setName(element->getName());
 					b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
 					fixElementPosition( b, element->getProperties());
 					fixElementSize( b, element->getProperties());
+					if (font_size) b->setFontSize(font_size);
+					b->setCaption(element->getProperties().find("caption").asString());
+
+					b->setChangeCallback([b, this] (bool state) {
+						gui->queueMessage(
+										gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
+						gui->queueMessage(
+										gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+
+					});
 				}
 			}
 		}
@@ -1686,12 +1727,14 @@ void UserWindow::save(const std::string &path) {
 		out << screen_type << " STRUCTURE EXTENDS SCREEN {\n";
 		for (auto it = window->children().rbegin(); it != window->children().rend(); ++it) {
 			Widget *child = *it;
+			{
 			EditorButton *b = dynamic_cast<EditorButton*>(child);
 			if (b) {
 				out << b->getName() << " " << b->baseName() << " ("
 					<< "pos_x: " << b->position().x() << ", pos_y: " << b->position().y()
 					<< ", width: " << b->width() << ", height: " << b->height()
-					<< ", caption: \"" << b->caption() << '"';
+					<< ", caption: \"" << b->caption() << '"'
+					<< ", font_size: " << b->fontSize();
 					if (b->getRemote()) {
 						used_properties.insert(b->getRemote());
 						out << ", remote:" << b->getRemote()->tagName();
@@ -1699,11 +1742,27 @@ void UserWindow::save(const std::string &path) {
 					out << ");\n";
 				continue;
 			}
+			}
+			{
+			EditorLabel *el = dynamic_cast<EditorLabel*>(child);
+			if (el) {
+				out << el->getName() << " " << el->baseName() << " ("
+					<< "pos_x: " << el->position().x() 
+					<< ", pos_y: " << el->position().y()
+					<< ", width: " << el->width() << ", height: " << el->height()
+					<< ", caption: \"" << el->caption() << '"'
+					<< ", font_size: " << el->fontSize()
+					<< ");\n";
+				continue;
+			}
+			}
+			{
 			EditorTextBox *t = dynamic_cast<EditorTextBox*>(child);
 			if (t) {
 				out << t->getName() << " " << t->baseName() << " ("
 				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
-				<< ", width: " << t->width() << ", height: " << t->height();
+				<< ", width: " << t->width() << ", height: " << t->height()
+				<< ", font_size: " << t->fontSize();
 				if (!t->getRemote() || t->getRemote()->dataType() == CircularBuffer::STR)
 					out << ", value: \"" << t->value() << '"';
 				else
@@ -1714,6 +1773,7 @@ void UserWindow::save(const std::string &path) {
 				}
 				out << ");\n";
 				continue;
+			}
 			}
 			{
 			EditorImageView *ip = dynamic_cast<EditorImageView*>(child);
@@ -1733,6 +1793,8 @@ void UserWindow::save(const std::string &path) {
 			{
 			EditorLinePlot *lp = dynamic_cast<EditorLinePlot*>(child);
 			if (lp) {
+				if (lp->getName().length() == 0)
+					lp->setName(gui->nextName(lp));
 				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName() 
 					<< " ("
 					<< "pos_x: " << lp->position().x() << ", pos_y: " << lp->position().y()
@@ -1741,6 +1803,7 @@ void UserWindow::save(const std::string &path) {
 					<< ", grid_intensity: " << lp->gridIntensity()
 					<< ", display_grid: " << lp->displayGrid()
 					<< ", monitors: \"" << lp->monitors() << '"'
+					<< ", overlay: " << lp->overlaid()
 					<< ");\n";
 				pending_definitions <<  lp->baseName() << "_" << lp->getName() << " STRUCTURE EXTENDS " << lp->baseName() << " {\n"
 				<< "\tOPTION pos_x 50;\n"
@@ -2737,20 +2800,23 @@ struct comma_is_space : std::ctype<char> {
 nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	using namespace nanogui;
 	Widget *result = 0;
-	int object_width = 60;
-	int object_height = 40;
+	int object_width = 80;
+	int object_height = 60;
 	if (this->getClass() == "BUTTON") {
 		EditorButton *b = new EditorButton(window, nullptr, caption());
+		b->setName( EDITOR->gui()->nextName(b));
 		b->setBackgroundColor(Color(200, 30, 30, 255));
 		result = b;
 	}
 	else if (getClass() == "LABEL") {
 		EditorLabel *eb = new EditorLabel(window, nullptr, "untitled");
+		eb->setName( EDITOR->gui()->nextName(eb));
 		result = eb;
 	}
 	else if (getClass() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();
 		EditorTextBox *eb = new EditorTextBox(window, nullptr);
+		eb->setName( EDITOR->gui()->nextName(eb));
 		eb->setEditable(true);
 		eb->setCallback( [eb, gui](const std::string &value)->bool{ 
 			if (!eb->getRemote()) return false;
@@ -2776,6 +2842,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	else if (getClass() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank");
 		EditorImageView *iv = new EditorImageView(window, nullptr, img);
+		iv->setName( EDITOR->gui()->nextName(iv));
 		iv->setGridThreshold(20);
 		iv->setPixelInfoThreshold(20);
 		iv->setImageName("images/blank");
@@ -2783,6 +2850,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (getClass() == "PLOT") {
 		EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
+		lp->setName( EDITOR->gui()->nextName(lp));
 		lp->setBufferSize(gui->sampleBufferSize());
 		object_width = 200;
 		object_height = 120;
