@@ -1602,10 +1602,7 @@ void UserWindow::load(const std::string &path) {
 	drag_handle->setPropertyMonitor(0);
 
 	for (auto *s : hm_structures) {
-		StructureClass *sc = nullptr;
-		for (auto item : hm_classes) {
-			if (item->getName() == s->getKind()) { sc = item; break; }
-		}
+		StructureClass *sc = findClass(s->getKind());
 		if (sc) {
 			int pnum = 0;
 			for (auto param : sc->getLocals()) {
@@ -1719,6 +1716,12 @@ void UserWindow::load(const std::string &path) {
 				}
 			}
 		}
+		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
+			const Value &title = s->getProperties().find("caption");
+			if (title != SymbolTable::Null) window->setTitle(title.asString());
+			PanelScreen *ps = getActivePanel();
+			if (ps) ps->setName(s->getName());
+		}
 	}
 	window->addChild(drag_handle);
 
@@ -1747,7 +1750,8 @@ void UserWindow::save(const std::string &path) {
 	for (auto screen : gui->getScreens()) {
 		std::string screen_type(screen->getName());
 		boost::to_upper(screen_type);
-		out << screen_type << " STRUCTURE EXTENDS SCREEN {\n";
+		out << screen_type << " STRUCTURE EXTENDS SCREEN {\n"
+			<< "  OPTION caption \"Untitled\";\n";
 		for (auto it = window->children().rbegin(); it != window->children().rend(); ++it) {
 			Widget *child = *it;
 			{
@@ -1849,7 +1853,9 @@ void UserWindow::save(const std::string &path) {
 			}
 			}
 		}
-		out << "}\n" << screen->getName() << " " << screen_type << ";\n\n";
+		PanelScreen *ps = getActivePanel();
+		out << "}\n" << ps->getName() << " " << screen_type 
+			<< " (caption: " << escapeQuotes(window->title()) << ");\n\n";
 		out << pending_definitions.str() << "\n";
 
 		for (auto link : used_properties) {
@@ -2139,13 +2145,29 @@ void PropertyWindow::update() {
 			}
 		}
 		else {
+			{
+			std::string label("Screen Title");
+			properties->addVariable<std::string>(label,
+								   [uw](std::string value) {
+									   PanelScreen *ps = uw->getActivePanel();
+									   if (ps) {
+										   uw->getWindow()->setTitle(value);
+									   }
+									   if (uw->app()->getScreensWindow()) uw->app()->getScreensWindow()->update();
+								   },
+								   [uw]()->std::string{
+									   PanelScreen *ps = uw->getActivePanel();
+									   if (ps) return uw->getWindow()->title();
+									   return "";
+								   });
+			}
+			{
 			std::string label("Screen Name");
 			properties->addVariable<std::string>(label,
 								   [uw](std::string value) {
 									   PanelScreen *ps = uw->getActivePanel();
 									   if (ps) {
 										   ps->setName(value);
-										   uw->getWindow()->setTitle(value);
 									   }
 									   if (uw->app()->getScreensWindow()) uw->app()->getScreensWindow()->update();
 								   },
@@ -2154,7 +2176,8 @@ void PropertyWindow::update() {
 									   if (ps) return ps->getName();
 									   return "";
 								   });
-			label = "Window Width";
+			}
+			std::string label = "Window Width";
 			properties->addVariable<int>(label,
 								   [uw](int value) mutable {
 									   nanogui::Window *w = uw->getWindow(); 
