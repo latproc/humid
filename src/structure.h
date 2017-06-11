@@ -35,7 +35,6 @@ public:
 	std::map<std::string, Value> &getOptions() { return options; }
 	std::vector<Parameter> &getLocals() { return locals; }
 
-
 	virtual void addProperty(const char *name);
 	virtual void addProperty(const std::string &name);
 	virtual void addPrivateProperty(const char *name);
@@ -63,11 +62,17 @@ public:
 	void setDefinitionLocation(const std::string fnam, int lineno) { }
 	void setProperties(const SymbolTable &props) { properties.add(props); }
 	SymbolTable &getProperties() { return properties; }
+	int getIntProperty(const std::string name, int default_value = 0);
 
 	const std::string &getName() { return name; }
+	void setName( const std::string new_name) { name = new_name; }
 	const std::string &getKind() { return kind; }
 
+	Structure *clone(const std::string new_name);
+
 	std::ostream &operator<<(std::ostream &out) const;
+protected:
+	Structure(const Structure &other);
 private:
 	SymbolTable properties;
 	std::string name;

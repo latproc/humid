@@ -18,6 +18,7 @@
 class EditorGUI;
 class UserWindowWin;
 class PanelScreen;
+class Structure;
 
 class UserWindow : public Skeleton, public Palette {
 public:
@@ -45,6 +46,10 @@ public:
 	}
 	nanogui::Vector2i defaultSize() { return mDefaultSize; }
 	CircularBuffer *createBuffer(const std::string name);
+
+	Structure *structure() { return current_structure; }
+	void setStructure( Structure *s);
+	void loadStructure( Structure *s);
 private:
 	EditorGUI *gui;
 	std::list<PanelScreen*>active_screens;
@@ -57,6 +62,7 @@ private:
 	UserWindow &operator=(const UserWindow &other);
 	std::ostream &operator<<(std::ostream &out) const;
 	bool operator==(const UserWindow &other);
+	Structure *current_structure;
 };
 
 std::ostream &operator<<(std::ostream &out, const UserWindow &m);

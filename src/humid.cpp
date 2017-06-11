@@ -132,6 +132,7 @@ extern void setup_signals();
 
 std::string escapeQuotes(const std::string &s);
 std::string stripEscapes(const std::string &s);
+StructureClass *findClass(const std::string &name);
 
 class StartupWindow;
 class PropertyWindow;
@@ -518,7 +519,8 @@ class EditorWidget : public Selectable, public EditorObject, public Connectable 
 public:
 
 	EditorWidget(const std::string structure_name, nanogui::Widget *w, const LinkableProperty *lp) 
-	: Selectable(0), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2) {
+	: Selectable(0), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
+		definition(0) {
 		assert(w != 0);
 		Palette *p = dynamic_cast<Palette*>(w);
 		if (!p) {
@@ -656,6 +658,9 @@ public:
 	void setPatterns(const std::string patterns) { pattern_list = patterns; }
 	const std::string &patterns() const { return pattern_list; }
 
+	void setDefinition(Structure *defn) { definition = defn; }
+	Structure *getDefinition() { return definition; }
+
 protected:
 	std::string base;
 	std::string name;
@@ -663,6 +668,7 @@ protected:
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
 	std::string pattern_list;
+	Structure *definition;
 };
 
 
@@ -1162,8 +1168,10 @@ class StructuresWindow : public Skeleton, public Palette {
 public:
 	StructuresWindow(EditorGUI *screen, nanogui::Theme *theme);
 	void setVisible(bool which) { window->setVisible(which); }
+	Structure *createStructure(const std::string kind);
 private:
 	EditorGUI *gui;
+	std::map<std::string, Structure *>starters;
 };
 
 class PatternsWindow : public Skeleton, public Palette {
@@ -1451,7 +1459,7 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(scre
 }
 */
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
-: Skeleton(screen, uww), gui(screen), current_layer(0), mDefaultSize(1024,768) {
+: Skeleton(screen, uww), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
@@ -1467,6 +1475,29 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	current_layer = tabWidget->createTab("Screen 1");
 	layers.push_back(current_layer);
 	 */
+}
+
+void UserWindow::setStructure( Structure *s) {
+	if (!s) return;
+	StructureClass *sc = findClass(s->getKind());
+	if ( s->getKind() != "SCREEN" && (!sc || sc->getBase() != "SCREEN") ) return;
+	clearSelections();
+    nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
+	drag_handle->incRef();
+    window->removeChild(drag_handle);
+    PropertyMonitor *pm = drag_handle->propertyMonitor();
+    drag_handle->setPropertyMonitor(0);
+
+	loadStructure(s);
+	current_structure = s;
+
+    window->addChild(drag_handle);
+
+    drag_handle->setPropertyMonitor(pm);
+    drag_handle->decRef();
+
+    window->performLayout( gui->nvgContext() );
+
 }
 
 NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
@@ -1621,6 +1652,129 @@ StructureClass *findClass(const std::string &name) {
 		return nullptr;
 }
 
+void UserWindow::loadStructure( Structure *s) {
+	StructureClass *sc = findClass(s->getKind());
+	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
+		int pnum = 0;
+		for (auto param : sc->getLocals()) {
+			++pnum;
+			Structure *element = param.machine;
+			if (!element) {
+				std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
+				continue;
+			}
+			std::string kind = element->getKind();
+			StructureClass *element_class = findClass(kind);
+			Value &remote = element->getProperties().find("remote");
+			Value &font_size_val = element->getProperties().find("font_size");
+			long font_size = 0;
+			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
+			LinkableProperty *lp = nullptr;
+			if (remote != SymbolTable::Null) 
+				lp = gui->findLinkableProperty(remote.asString());
+			if (kind == "LABEL") {
+				EditorLabel *el = new EditorLabel(window, nullptr, element->getProperties().find("caption").asString());
+				el->setName(element->getName());
+				fixElementPosition( el, element->getProperties());
+				fixElementSize( el, element->getProperties());
+				if (font_size) el->setFontSize(font_size);
+			}
+			if (kind == "TEXT") {
+				EditorTextBox *textBox = new EditorTextBox(window, lp);
+				textBox->setName(element->getName());
+				textBox->setValue("");
+				textBox->setEnabled(true);
+				textBox->setEditable(true);
+				fixElementPosition( textBox, element->getProperties());
+				fixElementSize( textBox, element->getProperties());
+				if (font_size) textBox->setFontSize(font_size);
+				if (lp) 
+					lp->link(new LinkableTextBox(textBox));
+				textBox->setName(element->getName());
+				if (lp)
+					textBox->setTooltip(remote.asString());
+				else
+					textBox->setTooltip(element->getName());
+				EditorGUI *gui = this->gui;
+				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
+					if (!textBox->getRemote()) return true; 
+					char *rest = 0;
+					{
+						long val = strtol(value.c_str(),&rest,10); 
+						if (*rest == 0) {
+							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), 
+								[](std::string s){std::cout << s << "\n"; });
+							return true;
+						}
+					}
+					{
+						double val = strtod(value.c_str(),&rest);
+						if (*rest == 0)  {
+							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+							return true;
+						}
+					}
+					return false;
+				});
+			}
+			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
+				EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
+				lp->setName(element->getName());
+				lp->setBufferSize(gui->sampleBufferSize());
+				fixElementPosition( lp, element->getProperties());
+				fixElementSize( lp, element->getProperties());
+				if (font_size) lp->setFontSize(font_size);
+				if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
+				Value &monitors = element->getProperties().find("monitors");
+				if (monitors != SymbolTable::Null) {
+					lp->setMonitors(this, monitors.asString());
+				}
+			}
+			else if (kind == "BUTTON") {
+				EditorButton *b = new EditorButton(window, lp, element->getName());
+				b->setName(element->getName());
+				b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+				fixElementPosition( b, element->getProperties());
+				fixElementSize( b, element->getProperties());
+				if (font_size) b->setFontSize(font_size);
+				b->setCaption(element->getProperties().find("caption").asString());
+				{
+					const Value &cmd = element->getProperties().find("command");
+					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
+				}
+
+				b->setChangeCallback([b, this] (bool state) {
+					if (b->getRemote()) {
+						gui->queueMessage(
+									gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
+						gui->queueMessage(
+									gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+					}
+					else if (b->command().length()) {
+						gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+					}
+
+				});
+			}
+		}
+	}
+	if (s->getKind() == "REMOTE") {
+		Value &rname = s->getProperties().find("NAME");
+		if (rname != SymbolTable::Null) {
+			LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
+			if (lp) {
+				remotes[s->getName()] = lp;
+			}
+		}
+	}
+	if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
+		const Value &title = s->getProperties().find("caption");
+		if (title != SymbolTable::Null) window->setTitle(title.asString());
+		PanelScreen *ps = getActivePanel();
+		if (ps) ps->setName(s->getName());
+	}
+}
+
 void UserWindow::load(const std::string &path) {
 	std::list<std::string> files;
 	files.push_back(path);
@@ -1634,126 +1788,7 @@ void UserWindow::load(const std::string &path) {
 	drag_handle->setPropertyMonitor(0);
 
 	for (auto *s : hm_structures) {
-		StructureClass *sc = findClass(s->getKind());
-		if (sc) {
-			int pnum = 0;
-			for (auto param : sc->getLocals()) {
-				++pnum;
-				Structure *element = param.machine;
-				if (!element) {
-					std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
-					continue;
-				}
-				std::string kind = element->getKind();
-				StructureClass *element_class = findClass(kind);
-				Value &remote = element->getProperties().find("remote");
-				Value &font_size_val = element->getProperties().find("font_size");
-				long font_size = 0;
-				if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
-				LinkableProperty *lp = nullptr;
-				if (remote != SymbolTable::Null) 
-					lp = gui->findLinkableProperty(remote.asString());
-				if (kind == "LABEL") {
-					EditorLabel *el = new EditorLabel(window, nullptr, element->getProperties().find("caption").asString());
-					el->setName(element->getName());
-					fixElementPosition( el, element->getProperties());
-					fixElementSize( el, element->getProperties());
-					if (font_size) el->setFontSize(font_size);
-				}
-				if (kind == "TEXT") {
-					EditorTextBox *textBox = new EditorTextBox(window, lp);
-					textBox->setName(element->getName());
-					textBox->setValue("");
-					textBox->setEnabled(true);
-					textBox->setEditable(true);
-					fixElementPosition( textBox, element->getProperties());
-					fixElementSize( textBox, element->getProperties());
-					if (font_size) textBox->setFontSize(font_size);
-					if (lp) 
-						lp->link(new LinkableTextBox(textBox));
-					textBox->setName(element->getName());
-					if (lp)
-						textBox->setTooltip(remote.asString());
-					else
-						textBox->setTooltip(element->getName());
-					EditorGUI *gui = this->gui;
-					textBox->setCallback( [textBox, gui](const std::string &value)->bool{
-						if (!textBox->getRemote()) return true; 
-						char *rest = 0;
-						{
-							long val = strtol(value.c_str(),&rest,10); 
-							if (*rest == 0) {
-								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), 
-									[](std::string s){std::cout << s << "\n"; });
-								return true;
-							}
-						}
-						{
-							double val = strtod(value.c_str(),&rest);
-							if (*rest == 0)  {
-								gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
-								return true;
-							}
-						}
-						return false;
-					});
-				}
-				else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
-					EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
-					lp->setName(element->getName());
-					lp->setBufferSize(gui->sampleBufferSize());
-					fixElementPosition( lp, element->getProperties());
-					fixElementSize( lp, element->getProperties());
-					if (font_size) lp->setFontSize(font_size);
-					if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
-					Value &monitors = element->getProperties().find("monitors");
-					if (monitors != SymbolTable::Null) {
-						lp->setMonitors(this, monitors.asString());
-					}
-				}
-				else if (kind == "BUTTON") {
-					EditorButton *b = new EditorButton(window, lp, element->getName());
-					b->setName(element->getName());
-					b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
-					fixElementPosition( b, element->getProperties());
-					fixElementSize( b, element->getProperties());
-					if (font_size) b->setFontSize(font_size);
-					b->setCaption(element->getProperties().find("caption").asString());
-					{
-						const Value &cmd = element->getProperties().find("command");
-						if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
-					}
-
-					b->setChangeCallback([b, this] (bool state) {
-						if (b->getRemote()) {
-							gui->queueMessage(
-										gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-							gui->queueMessage(
-										gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
-						}
-						else if (b->command().length()) {
- 							gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
-						}
-
-					});
-				}
-			}
-		}
-		if (s->getKind() == "REMOTE") {
-			Value &rname = s->getProperties().find("NAME");
-			if (rname != SymbolTable::Null) {
-				LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
-				if (lp) {
-					remotes[s->getName()] = lp;
-				}
-			}
-		}
-		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
-			const Value &title = s->getProperties().find("caption");
-			if (title != SymbolTable::Null) window->setTitle(title.asString());
-			PanelScreen *ps = getActivePanel();
-			if (ps) ps->setName(s->getName());
-		}
+		loadStructure(s);
 	}
 	window->addChild(drag_handle);
 
@@ -1940,6 +1975,11 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		Structure *s = new Structure("Start_Button", "BUTTON"); 
+		starters["BUTTON"] = s;
+		s->getProperties().add("width",120);
+		s->getProperties().add("height",60);
+
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
@@ -1947,6 +1987,10 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Image", "IMAGE"); 
+		starters["IMAGE"] = s;
+		s->getProperties().add("width",128);
+		s->getProperties().add("height",128);
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
@@ -1954,6 +1998,10 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Rect", "RECT"); 
+		starters["RECT"] = s;
+		s->getProperties().add("width",128);
+		s->getProperties().add("height",128);
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
@@ -1961,6 +2009,10 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Label", "LABEL"); 
+		starters["LABEL"] = s;
+		s->getProperties().add("width",80);
+		s->getProperties().add("height",40);
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
@@ -1968,6 +2020,10 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Text", "TEXT"); 
+		starters["TEXT"] = s;
+		s->getProperties().add("width",80);
+		s->getProperties().add("height",40);
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
@@ -1975,8 +2031,18 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Plot", "PLOT"); 
+		starters["PLOT"] = s;
+		s->getProperties().add("width",256);
+		s->getProperties().add("height",128);
 	}
 
+}
+
+Structure *StructuresWindow::createStructure(const std::string kind) {
+	auto found = starters.find(kind);
+	if (found == starters.end()) return nullptr;
+	return (*found).second->clone( "" );
 }
 
 
@@ -2498,7 +2564,7 @@ void EditorGUI::createWindows() {
 	w_screens = new ScreensWindow(this, theme);
 	w_views = new ViewsWindow(this, theme);
 
-	ConfirmDialog *s = new ConfirmDialog(this, "Humid V0.1");
+	ConfirmDialog *s = new ConfirmDialog(this, "Humid V0.19");
 	s->setCallback([s,this]{
 		s->setVisible(false);
 		this->setState(EditorGUI::GUISELECTPROJECT);
@@ -2985,13 +3051,17 @@ struct comma_is_space : std::ctype<char> {
 
 nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	using namespace nanogui;
+
+	Structure *s = EDITOR->gui()->getStructuresWindow()->createStructure(this->getClass());
+	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
+	int object_height = (s) ? s->getIntProperty("height", 60) : 60;
 	Widget *result = 0;
-	int object_width = 80;
-	int object_height = 60;
 	if (this->getClass() == "BUTTON") {
 		EditorButton *b = new EditorButton(window, nullptr, caption());
+		if (s) b->setDefinition(s);
 		b->setName( EDITOR->gui()->nextName(b));
-		b->setBackgroundColor(Color(200, 30, 30, 255));
+		if (s) s->setName(b->getName());
+		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
 		b->setChangeCallback([b, this] (bool state) {
 			if (b->getRemote()) {
 				gui->queueMessage(
@@ -3008,13 +3078,17 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (getClass() == "LABEL") {
 		EditorLabel *eb = new EditorLabel(window, nullptr, "untitled");
+		if (s) eb->setDefinition(s);
 		eb->setName( EDITOR->gui()->nextName(eb));
+		if (s) s->setName(eb->getName());
 		result = eb;
 	}
 	else if (getClass() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();
 		EditorTextBox *eb = new EditorTextBox(window, nullptr);
+		if (s) eb->setDefinition(s);
 		eb->setName( EDITOR->gui()->nextName(eb));
+		if (s) s->setName(eb->getName());
 		eb->setEditable(true);
 		eb->setCallback( [eb, gui](const std::string &value)->bool{ 
 			if (!eb->getRemote()) return true;
@@ -3040,7 +3114,9 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	else if (getClass() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank");
 		EditorImageView *iv = new EditorImageView(window, nullptr, img);
+		if (s) iv->setDefinition(s);
 		iv->setName( EDITOR->gui()->nextName(iv));
+		if (s) s->setName(iv->getName());
 		iv->setGridThreshold(20);
 		iv->setPixelInfoThreshold(20);
 		iv->setImageName("images/blank");
@@ -3049,9 +3125,9 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	else if (getClass() == "PLOT") {
 		EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
 		lp->setName( EDITOR->gui()->nextName(lp));
+		if (s) lp->setDefinition(s);
+		if (s) s->setName(lp->getName());
 		lp->setBufferSize(gui->sampleBufferSize());
-		object_width = 200;
-		object_height = 120;
 		result = lp;
 	}
 	if (result) {
