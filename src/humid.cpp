@@ -286,14 +286,22 @@ public:
 	void setAddressStr(const std::string s) { 
 		address_str = s;
 		char *rest = 0;
-		modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
+		if (address_str.at(0) == '\'')
+			modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
+		else
+			modbus_address = (int)strtol(address_str.c_str()+1,&rest, 10);
+	}
+	void setAddressStr(int grp, int addr) {
+		char buf[10];
+		snprintf(buf,10, "'%d%04d", grp, addr);
+		modbus_address = addr;
 	}
 	void setValue(const Value &v);
 	Value & value() { return current; }
 	int dataSize() const { return data_size; }
 	void setDataSize(int new_size) { data_size = new_size; }
 	int address() const { return modbus_address; }
-	void setAddress(int a) { modbus_address = a; }
+	void setAddress(int a) { modbus_address = a; setAddressStr(address_group(), a); }
 	int address_group() const {
 		if (address_str.at(0) == '\'') return address_str.at(1)-'0'; else return address_str.at(0)-'0';
 	}
@@ -522,7 +530,11 @@ public:
 	~EditorWidget() { }
 
 	nanogui::Widget *getWidget() { return widget; }
+
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names);
 	virtual void loadProperties(PropertyFormHelper *pfh);
+	virtual void setProperty(const std::string &prop, const std::string value);
+	virtual std::string getProperty(const std::string &prop);
 
 	virtual bool editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, int button, bool down, int modifiers) {
 
@@ -530,7 +542,7 @@ public:
 
 		if (EDITOR->isEditMode()) {
 			if (down) {
-				if (!mSelected) palette->clearSelections(); 
+				if (!mSelected && !(modifiers & GLFW_MOD_SHIFT) ) palette->clearSelections(); 
 				if (mSelected && modifiers & GLFW_MOD_SHIFT)
 					deselect();
 				else
@@ -663,6 +675,7 @@ public:
 	: Button(parent, caption, icon), EditorWidget("BUTTON", this, lp), is_toggle(toggle) {
 	}
 
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
@@ -728,8 +741,8 @@ public:
 	: TextBox(parent), EditorWidget("TEXT", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
-
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
 
 		using namespace nanogui;
@@ -756,11 +769,7 @@ public:
 		return true;
 	}
 
-	virtual void draw(NVGcontext *ctx) override {
-		nanogui::TextBox::draw(ctx);
-		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
-	}
-
+	virtual void draw(NVGcontext *ctx) override;	
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
@@ -801,6 +810,7 @@ public:
 		return true;
 	}
 
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
 
 	virtual void draw(NVGcontext *ctx) override {
@@ -848,6 +858,7 @@ public:
 		return true;
 	}
 
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
 	virtual void loadProperties(PropertyFormHelper *pfh) override;
 
 	virtual void draw(NVGcontext *ctx) override {
@@ -906,6 +917,7 @@ public:
 		return true;
 	}
 
+	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
 	virtual void loadProperties(PropertyFormHelper *pfh) override;
 
 	virtual void draw(NVGcontext *ctx) override {
@@ -1130,6 +1142,9 @@ protected:
 	nanogui::Widget *items;
 	nanogui::TextBox *search_box;
 	nanogui::Widget *palette_content;
+	nanogui::TabWidget *tab_region;
+	nanogui::Widget *current_layer;
+    std::map<std::string, nanogui::Widget *> layers;
 };
 
 class ThemeWindow : public nanogui::Object {
@@ -1506,9 +1521,26 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 	return res;
 }
 
+std::string stripChar(const std::string &s, char ch) {
+	size_t n = s.length()+1;
+	char buf[n*2];
+	char *p = buf;
+	for (auto c : s) {
+		if (c != ch) *p++ = c;
+	}
+	*p = 0;
+	return buf;
+}
+
 std::string shortName(const std::string s) {
 	size_t pos = s.rfind("/");
-	if (pos != std::string::npos) return s.substr(++pos); else return s;
+	std::string n;
+	if (pos != std::string::npos) n = s.substr(++pos); else n = s;
+	pos = n.rfind('.');
+	if (pos != std::string::npos) n.at(pos) = 0;
+	n = stripChar(n, '-');
+	n = stripChar(n, '.');
+	return n;
 }
 
 void LinkableProperty::save(std::ostream &out) const {
@@ -2129,19 +2161,75 @@ void PropertyWindow::update() {
 		int n = pw->children().size();
 
 		if (uw->getSelected().size()) {
-			for (auto sel : uw->getSelected()) {
-				nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
-				EditorWidget *ew = dynamic_cast<EditorWidget*>(sel);
-				if (ew) {
-					ew->loadProperties(properties);
+			// collect a map of all properties to their objects and then load the 
+			// properties that are common to all selected objects
+			int num_sel = uw->getSelected().size();
+			if (num_sel>1) {
+				std::multimap<std::string, EditorWidget*> items;
+				for (auto sel : uw->getSelected()) {
+					EditorWidget *ew = dynamic_cast<EditorWidget*>(sel);
+					if (ew) ew->getPropertyNames(items);
 				}
-				else if (w && sel->isSelected()) {
-					std::string label("Width");
+				std::set<std::string> common;
+				std::string last;
+				unsigned int count = 0;
+				for (auto pmap : items) {
+					if (pmap.first == last) ++count;
+					else {
+						if (count == num_sel) common.insert(last);
+						last = pmap.first;
+						count = 1;
+					}
+				}
+				if (count == num_sel) common.insert(last);
+				if (common.size()) {
+					std::list<EditorWidget *>widgets;
+					for (auto sel : uw->getSelected()){
+						EditorWidget *ew = dynamic_cast<EditorWidget*>(sel);
+						assert(ew);
+						widgets.push_back(ew);
+					}
+					for (auto prop : common) {
+						std::string label(prop);
+						properties->addVariable<std::string>(label,
+									[widgets, label](std::string value) { 
+										for (auto sel : widgets) {
+											assert(sel);
+											sel->setProperty(label, value);
+										}
+									},
+									[widgets, label]()->std::string{ 
+										EditorWidget *ew = widgets.front();
+										assert(ew);
+										return ew->getProperty(label); 
+									});
+						}
+				}
+				else {
+					// dummy
+					std::string label("dummy");
+					int val;
 					properties->addVariable<int>(label,
-								   [w](int value) { w->setWidth(value); },
-								   [w]()->int{ return w->width(); });
+						[val](int value) mutable { val = value; },
+						[val]()->int{ return val; });
 				}
-				break;
+
+			}
+			else {
+				for (auto sel : uw->getSelected()) {
+					nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
+					EditorWidget *ew = dynamic_cast<EditorWidget*>(sel);
+					if (ew) {
+						ew->loadProperties(properties);
+					}
+					else if (w && sel->isSelected()) {
+						std::string label("Width");
+						properties->addVariable<int>(label,
+									[w](int value) { w->setWidth(value); },
+									[w]()->int{ return w->width(); });
+					}
+					break;
+				}
 			}
 		}
 		else {
@@ -2193,6 +2281,22 @@ void PropertyWindow::update() {
 									   w->setFixedHeight(value);
 									   },
 								   [uw]()->int{ return uw->getWindow()->height(); });
+			label = "Screen Width";
+			properties->addVariable<int>(label,
+								   [uw](int value) mutable {
+									   nanogui::Window *w = uw->getWindow(); 
+									   w->setWidth(value);
+									   w->setFixedWidth(value);
+									   },
+								   [uw]()->int{ return uw->getWindow()->width(); });
+			label = "Screen Height";
+			properties->addVariable<int>(label,
+								   [uw](int value) mutable {
+									   nanogui::Window *w = uw->getWindow();
+									   w->setHeight(value);
+									   w->setFixedHeight(value);
+									   },
+								   [uw]()->int{ return uw->getWindow()->height(); });
 		}
 		n = pw->children().size();
 		gui->performLayout();
@@ -2229,6 +2333,13 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 		loadItems(search_box->value());
 		return true;
 	});
+	tab_region = items->add<TabWidget>();
+	nanogui::Widget *layer = tab_region->createTab("Local");
+	layer->setLayout(new GroupLayout());
+	layers["Local"] = layer;
+	current_layer = layer;
+	tab_region->setActiveTab(0);
+	
 	if (tag_file_name.length()) loadTagFile(tag_file_name);
 	window->performLayout(screen->nvgContext());
 	window->setVisible(false);
@@ -2237,24 +2348,44 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 void ObjectWindow::loadTagFile(const std::string tags) {
 	using namespace nanogui;
 	const int search_height = 36;
-	if (tags.length() && items->childCount() <= 1) {
-		tag_file_name = tags;
-		VScrollPanel *palette_scroller = new VScrollPanel(items);
-		palette_scroller->setPosition( Vector2i(1,search_height+5)); 
-		palette_content = new Widget(palette_scroller);
-		palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
-
-		createPanelPage(tag_file_name.c_str(), palette_content);
-		GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
-		palette_layout->setSpacing(4);
-		palette_layout->setMargin(4);
-		palette_layout->setColAlignment(nanogui::Alignment::Fill);
-		palette_layout->setRowAlignment(nanogui::Alignment::Fill);
-		palette_content->setLayout(palette_layout);
-		palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
-
-		window->performLayout(gui->nvgContext());
+	nanogui::Widget *container = nullptr;
+	std::string tab_name = shortName(tags);
+	if (tags.length()) {
+		auto found = layers.find(tab_name);
+		if (found != layers.end())
+			nanogui::Widget *container = (*found).second;
+		else {
+			container = tab_region->createTab(shortName(tab_name));
+			container->setLayout(new GroupLayout());
+			layers["Remote"] = container;
+		}
 	}
+	else
+		return;
+	assert(container);
+	current_layer = container;
+	tag_file_name = tags;
+	VScrollPanel *palette_scroller = new VScrollPanel(container);
+	palette_scroller->setPosition( Vector2i(1,search_height+5)); 
+	palette_content = new Widget(palette_scroller);
+	palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
+
+	createPanelPage(tag_file_name.c_str(), palette_content);
+	GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
+	palette_layout->setSpacing(4);
+	palette_layout->setMargin(4);
+	palette_layout->setColAlignment(nanogui::Alignment::Fill);
+	palette_layout->setRowAlignment(nanogui::Alignment::Fill);
+	palette_content->setLayout(palette_layout);
+	palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
+
+	if (palette_content->childCount() == 0) {
+		Widget *cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(window->width()-32,35));
+		new Label(cell, "No match");
+	}
+
+	window->performLayout(gui->nvgContext());
 }
 
 ThemeWindow::ThemeWindow(nanogui::Screen *screen, nanogui::Theme *theme) {
@@ -2742,6 +2873,12 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
 				LinkableProperty *lp = gui->findLinkableProperty(name.asString());
 				if (lp) {
+					if (group.iValue != lp->address_group())
+						std::cout << name << " change of group from " << lp->address_group() << " to " << group << "\n";
+					if (addr.iValue != lp->address())
+						std::cout << name << " change of address from " << lp->address() << " to " << addr << "\n";
+					lp->setAddressStr(group.iValue, addr.iValue);
+
 					lp->setValue(value);
 					CircularBuffer *buf = gui->getUserWindow()->getValues(name.asString());
 					if (buf) {
@@ -2924,6 +3061,66 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	return result;
 }
 
+void EditorWidget::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+	names.insert(std::make_pair("Structure", this));
+	names.insert(std::make_pair("Horizontal Pos", this));
+	names.insert(std::make_pair("Vertical Pos", this));
+	names.insert(std::make_pair("Width", this));
+	names.insert(std::make_pair("Height", this));
+	names.insert(std::make_pair("Name", this)); // not common
+	names.insert(std::make_pair("FontSize", this));
+}
+
+void EditorWidget::setProperty(const std::string &prop, const std::string value) {
+	std::string::size_type sz;
+	if (prop == "Horizontal Pos") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		w->setPosition( nanogui::Vector2i(std::stoi(value,&sz),w->position().y()) );
+		return;
+	}
+	if (prop == "Vertical Pos") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		w->setPosition( nanogui::Vector2i(w->position().x(), std::stoi(value,&sz)) );
+		return;
+	}
+	if (prop == "Width") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		w->setWidth(std::stoi(value,&sz)); 
+		return;
+	}
+	if (prop == "Height") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		w->setHeight(std::stoi(value,&sz));
+		return;
+	}
+	if (prop == "FontSize") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		w->setFontSize(std::stoi(value,&sz));
+		return;
+	}
+}
+
+std::string EditorWidget::getProperty(const std::string &prop) {
+	if (prop == "Structure") return base;
+	if (prop == "Horizontal Pos") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		char buf[10]; snprintf(buf, 10, "%d", w->position().x()); return buf;
+	}
+	if (prop == "Vertical Pos") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		char buf[10]; snprintf(buf, 10, "%d", w->position().y()); return buf;
+	}
+	if (prop == "Width") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		char buf[10]; snprintf(buf, 10, "%d", w->width()); return buf;
+	}
+	if (prop == "Height") {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+		char buf[10]; snprintf(buf, 10, "%d", w->height()); return buf;
+	}
+	return "";
+}
+
 
 void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -2961,6 +3158,222 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 											  );
 
 	}
+}
+
+void EditorTextBox::draw(NVGcontext* ctx) {
+	using namespace nanogui;
+
+    Widget::draw(ctx);
+
+    NVGpaint bg = nvgBoxGradient(ctx,
+        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
+        3, 4, Color(255, 32), Color(32, 32));
+    NVGpaint fg1 = nvgBoxGradient(ctx,
+        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
+        3, 4, Color(150, 32), Color(32, 32));
+    NVGpaint fg2 = nvgBoxGradient(ctx,
+        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
+        3, 4, nvgRGBA(255, 0, 0, 100), nvgRGBA(255, 0, 0, 50));
+
+    nvgBeginPath(ctx);
+    nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2,
+                   mSize.y() - 2, 3);
+
+    if (mEditable && focused())
+        mValidFormat ? nvgFillPaint(ctx, fg1) : nvgFillPaint(ctx, fg2);
+    else if (mSpinnable && mMouseDownPos.x() != -1)
+        nvgFillPaint(ctx, fg1);
+    else
+        nvgFillPaint(ctx, bg);
+
+    nvgFill(ctx);
+
+    nvgBeginPath(ctx);
+    nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - 1,
+                   mSize.y() - 1, 2.5f);
+    nvgStrokeColor(ctx, Color(0, 48));
+    nvgStroke(ctx);
+
+    nvgFontSize(ctx, fontSize());
+    nvgFontFace(ctx, "sans");
+    Vector2i drawPos(mPos.x(), mPos.y() + mSize.y() * 0.5f + 1);
+
+    float xSpacing = mSize.y() * 0.3f;
+
+    float unitWidth = 0;
+
+    if (mUnitsImage > 0) {
+        int w, h;
+        nvgImageSize(ctx, mUnitsImage, &w, &h);
+        float unitHeight = mSize.y() * 0.4f;
+        unitWidth = w * unitHeight / h;
+        NVGpaint imgPaint = nvgImagePattern(
+            ctx, mPos.x() + mSize.x() - xSpacing - unitWidth,
+            drawPos.y() - unitHeight * 0.5f, unitWidth, unitHeight, 0,
+            mUnitsImage, mEnabled ? 0.7f : 0.35f);
+        nvgBeginPath(ctx);
+        nvgRect(ctx, mPos.x() + mSize.x() - xSpacing - unitWidth,
+                drawPos.y() - unitHeight * 0.5f, unitWidth, unitHeight);
+        nvgFillPaint(ctx, imgPaint);
+        nvgFill(ctx);
+        unitWidth += 2;
+    } else if (!mUnits.empty()) {
+        unitWidth = nvgTextBounds(ctx, 0, 0, mUnits.c_str(), nullptr, nullptr);
+        nvgFillColor(ctx, Color(255, mEnabled ? 64 : 32));
+        nvgTextAlign(ctx, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
+        nvgText(ctx, mPos.x() + mSize.x() - xSpacing, drawPos.y(),
+                mUnits.c_str(), nullptr);
+        unitWidth += 2;
+    }
+
+    float spinArrowsWidth = 0.f;
+
+    if (mSpinnable && !focused()) {
+        spinArrowsWidth = 14.f;
+
+        nvgFontFace(ctx, "icons");
+        nvgFontSize(ctx, ((mFontSize < 0) ? mTheme->mButtonFontSize : mFontSize) * 1.2f);
+
+        bool spinning = mMouseDownPos.x() != -1;
+
+        /* up button */ {
+            bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Top;
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            auto icon = utf8(ENTYPO_ICON_CHEVRON_UP);
+            nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
+            Vector2f iconPos(mPos.x() + 4.f,
+                             mPos.y() + mSize.y()/2.f - xSpacing/2.f);
+            nvgText(ctx, iconPos.x(), iconPos.y(), icon.data(), nullptr);
+        }
+
+        /* down button */ {
+            bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Bottom;
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            auto icon = utf8(ENTYPO_ICON_CHEVRON_DOWN);
+            nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
+            Vector2f iconPos(mPos.x() + 4.f,
+                             mPos.y() + mSize.y()/2.f + xSpacing/2.f + 1.5f);
+            nvgText(ctx, iconPos.x(), iconPos.y(), icon.data(), nullptr);
+        }
+
+        nvgFontSize(ctx, fontSize());
+        nvgFontFace(ctx, "sans");
+    }
+
+    switch (mAlignment) {
+        case Alignment::Left:
+            nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
+            drawPos.x() += xSpacing + spinArrowsWidth;
+            break;
+        case Alignment::Right:
+            nvgTextAlign(ctx, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
+            drawPos.x() += mSize.x() - unitWidth - xSpacing;
+            break;
+        case Alignment::Center:
+            nvgTextAlign(ctx, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+            drawPos.x() += mSize.x() * 0.5f;
+            break;
+    }
+
+    nvgFontSize(ctx, fontSize());
+    nvgFillColor(ctx,
+                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+
+    // clip visible text area
+    float clipX = mPos.x() + xSpacing + spinArrowsWidth - 1.0f;
+    float clipY = mPos.y() + 1.0f;
+    float clipWidth = mSize.x() - unitWidth - spinArrowsWidth - 2 * xSpacing + 2.0f;
+    float clipHeight = mSize.y() - 3.0f;
+
+    nvgSave(ctx);
+    nvgIntersectScissor(ctx, clipX, clipY, clipWidth, clipHeight);
+
+    Vector2i oldDrawPos(drawPos);
+    drawPos.x() += mTextOffset;
+
+    if (mCommitted) {
+        nvgText(ctx, drawPos.x(), drawPos.y(), mValue.c_str(), nullptr);
+    } else {
+        const int maxGlyphs = 1024;
+        NVGglyphPosition glyphs[maxGlyphs];
+        float textBound[4];
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+                      nullptr, textBound);
+        float lineh = textBound[3] - textBound[1];
+
+        // find cursor positions
+        int nglyphs =
+            nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
+                                  mValueTemp.c_str(), nullptr, glyphs, maxGlyphs);
+        updateCursor(ctx, textBound[2], glyphs, nglyphs);
+
+        // compute text offset
+        int prevCPos = mCursorPos > 0 ? mCursorPos - 1 : 0;
+        int nextCPos = mCursorPos < nglyphs ? mCursorPos + 1 : nglyphs;
+        float prevCX = cursorIndex2Position(prevCPos, textBound[2], glyphs, nglyphs);
+        float nextCX = cursorIndex2Position(nextCPos, textBound[2], glyphs, nglyphs);
+
+        if (nextCX > clipX + clipWidth)
+            mTextOffset -= nextCX - (clipX + clipWidth) + 1;
+        if (prevCX < clipX)
+            mTextOffset += clipX - prevCX + 1;
+
+        drawPos.x() = oldDrawPos.x() + mTextOffset;
+
+        // draw text with offset
+        nvgText(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(), nullptr);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+                      nullptr, textBound);
+
+        // recompute cursor positions
+        nglyphs = nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
+                mValueTemp.c_str(), nullptr, glyphs, maxGlyphs);
+
+        if (mCursorPos > -1) {
+            if (mSelectionPos > -1) {
+                float caretx = cursorIndex2Position(mCursorPos, textBound[2],
+                                                    glyphs, nglyphs);
+                float selx = cursorIndex2Position(mSelectionPos, textBound[2],
+                                                  glyphs, nglyphs);
+
+                if (caretx > selx)
+                    std::swap(caretx, selx);
+
+                // draw selection
+                nvgBeginPath(ctx);
+                nvgFillColor(ctx, nvgRGBA(160, 255, 160, 160));
+                nvgRect(ctx, caretx, drawPos.y() - lineh * 0.5f, selx - caretx,
+                        lineh);
+                nvgFill(ctx);
+            }
+
+            float caretx = cursorIndex2Position(mCursorPos, textBound[2], glyphs, nglyphs);
+
+            // draw cursor
+            nvgBeginPath(ctx);
+            nvgMoveTo(ctx, caretx, drawPos.y() - lineh * 0.5f);
+            nvgLineTo(ctx, caretx, drawPos.y() + lineh * 0.5f);
+            nvgStrokeColor(ctx, nvgRGBA(255, 192, 0, 255));
+            nvgStrokeWidth(ctx, 1.0f);
+            nvgStroke(ctx);
+        }
+
+ 	   nvgFillColor(ctx,
+                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+        // draw text with offset
+        nvgText(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(), nullptr);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+                      nullptr, textBound);
+
+    }
+    nvgRestore(ctx);
+	if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+
+}
+
+void EditorTextBox::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+	EditorWidget::getPropertyNames(names);
+	names.insert(std::make_pair("Number format", this));
 }
 
 void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
@@ -3003,6 +3416,12 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 	}
 }
 
+void EditorImageView::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+    EditorWidget::getPropertyNames(names);
+    names.insert(std::make_pair("Image File", this));
+    names.insert(std::make_pair("Scale", this));
+}
+
 void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -3043,6 +3462,11 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 	}
 }
 
+void EditorLabel::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+    EditorWidget::getPropertyNames(names);
+    names.insert(std::make_pair("Caption", this));
+}
+
 void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -3080,6 +3504,13 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 	}
 }
 
+void EditorButton::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+    EditorWidget::getPropertyNames(names);
+    names.insert(std::make_pair("Background colour", this));
+    names.insert(std::make_pair("Text colour", this));
+    names.insert(std::make_pair("Behaviour", this));
+    names.insert(std::make_pair("Command", this));
+}
 
 void EditorButton::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
@@ -3133,6 +3564,17 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 				return 0; 
 			});
 	}
+}
+
+void EditorLinePlot::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
+    EditorWidget::getPropertyNames(names);
+    names.insert(std::make_pair("X scale", this));
+    names.insert(std::make_pair("X offset", this));
+    names.insert(std::make_pair("Grid Intensity", this));
+    names.insert(std::make_pair("Display Grid", this));
+    names.insert(std::make_pair("Overlay plots", this));
+    names.insert(std::make_pair("Line style", this));
+    names.insert(std::make_pair("Line thickness", this));
 }
 
 void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
@@ -3448,7 +3890,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 void ObjectWindow::loadItems(const std::string match) {
 	using namespace nanogui;
 	clearSelections();
-	while (palette_content->childCount() > 0) {
+	assert(palette_content);
+	if (!palette_content) return;
+	while (palette_content && palette_content->childCount() > 0) {
 		palette_content->removeChild(0);
 	}
 

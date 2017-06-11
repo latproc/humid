@@ -481,7 +481,7 @@ bool LinePlot::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vecto
 		double t_data = t - ts->getData()->getStartTime() + ts->getData()->getZeroTime();
 		double val = ts->getData()->getBufferValueAt(t_data);
 		char buf[80];
-		snprintf(buf, 80, "%s%s: %s,%5.2lf", sep,ts->getName().c_str(), display_time(t_data).c_str(), val);
+		snprintf(buf, 80, "%s%s: %5.2lf", sep,ts->getName().c_str(), /* display_time(t_data).c_str(), */ val);
 		sep = "\n";
 		tooltip += buf;
 	}
