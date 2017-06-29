@@ -5,7 +5,7 @@
 #pragma once
 
 #include <string>
-#include "draghandle.h"
+#include "DragHandle.h"
 /*
 Handles have a mode and a position. Each object has 9 handles but since only one object's handles are
 active at a time we can use a singleton ObjectHandles to hold the handles and initialise it based on

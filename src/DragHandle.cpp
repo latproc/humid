@@ -12,7 +12,7 @@
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
 //#include <nanogui/serializer/core.h>
-#include "propertymonitor.h"
+#include "PropertyMonitor.h"
 #include "DragHandle.h"
 #include <iostream>
 #include <nanogui/entypo.h>

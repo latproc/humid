@@ -3,7 +3,7 @@
 	3-clause BSD License in LICENSE.txt.
 */
 #include <value.h>
-#include "parameter.h"
+#include "Parameter.h"
 
 Parameter::Parameter(Value v) : val(v), machine(0) {
 	;
