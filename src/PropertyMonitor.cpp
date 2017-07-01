@@ -3,7 +3,7 @@
 	3-clause BSD License in LICENSE.txt.
 */
 #include <iostream>
-#include "propertymonitor.h"
+#include "PropertyMonitor.h"
 #include "DragHandle.h"
 #include <nanogui/imageview.h>
 #include <nanogui/theme.h>

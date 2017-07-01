@@ -8,6 +8,7 @@
 
 #include <ostream>
 #include <string>
+#include <memory>
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 

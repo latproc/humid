@@ -97,8 +97,8 @@ include_directories("${CLOCKWORK_DIR}")
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(HEADERS src/DragHandle.h	src/manuallayout.h	src/propertymonitor.h	src/skeleton.h 
-		  src/structure.h src/parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
+set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skeleton.h 
+		  src/structure.h src/Parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
 		  src/PropertyList.h src/GLTexture.h src/UIItem.h
 		  src/Selectable.h src/Palette.h src/SelectableWidget.h
 		  src/SelectableButton.h src/UserWindow.h src/SampleTrigger.h
@@ -135,7 +135,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/Parameter.h
 	   OUTPUT ${hmi_yacc_output})
 
 	# Add generated source to the list of sources
@@ -169,7 +169,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/Parameter.h
 	   OUTPUT ${settings_yacc_output})
 
 	# Add generated source to the list of sources
@@ -181,7 +181,7 @@ endif ()
 	SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
 
   add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp 
-		  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp 
+		  src/PropertyMonitor.cpp src/DragHandle.cpp src/structure.cpp src/Parameter.cpp 
 		  src/lineplot.cpp src/circularbuffer.cpp src/PropertyList.cpp
 		  src/GLTexture.cpp src/UIItem.cpp src/Selectable.cpp
 		  src/Palette.cpp src/SelectableWidget.cpp
