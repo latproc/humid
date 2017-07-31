@@ -11,6 +11,10 @@
 #include <ostream>
 #include <vector>
 #include <symboltable.h>
+#include "NamedObject.h"
+#include "ViewListController.h"
+#include "EditorObject.h"
+#include "LinkableObject.h"
 
 class Structure;
 
@@ -24,42 +28,66 @@ private:
 	std::vector<Parameter> parameters;
 };
 
-class StructureClass {
+bool writePropertyList(std::ostream &out, const SymbolTable &table);
+bool writePropertyDefaults(std::ostream &out, const SymbolTable &table);
+
+class StructureClass : public NamedObject {
 public:
-	StructureClass(const std::string class_name) : name(class_name) {}
-	StructureClass(const std::string class_name, const std::string base_class) : name(class_name), base(base_class) {};
+	StructureClass(const std::string class_name) : NamedObject(class_name), builtin(false) {}
+	StructureClass(const std::string class_name, const std::string base_class) : NamedObject(class_name), base(base_class), builtin(false) {};
 	std::map<std::string, Structure *> &getGlobalRefs() { return global_references; }
 	SymbolTable &getProperties() { return properties; }
 	void setProperties(const SymbolTable &other) { properties = other; }
 	std::vector<Parameter> &getParameters() { return parameters; }
 	std::map<std::string, Value> &getOptions() { return options; }
 	std::vector<Parameter> &getLocals() { return locals; }
+	void setDefinitionLocation(const std::string fnam, int lineno) {
+		internal_properties.add("file_name", fnam);
+	}
+
+	void addLocal(Parameter item) { locals.push_back(item); }
 
 	virtual void addProperty(const char *name);
 	virtual void addProperty(const std::string &name);
 	virtual void addPrivateProperty(const char *name);
-	virtual void addPrivateProperty(const std::string &name); 
+	virtual void addPrivateProperty(const std::string &name);
 
 	const std::string &getName() const { return name; }
 	const std::string &getBase() const { return base; }
 
-private:
+	virtual bool save(std::ostream &out);
+
+	Structure *instantiate();
+	Structure *instantiate(const std::string s_name);
+	
+	void setBuiltIn() { builtin = true; }
+	bool isBuiltIn() { return builtin; }
+
+protected:
 	std::map<std::string, Structure *>global_references;
-	std::string name;
 	std::string base;
+	SymbolTable internal_properties;
 	SymbolTable properties;
 	std::vector<Parameter> parameters;
 	std::vector<Parameter> locals;
 	std::map<std::string, Value> options;
 	std::set<std::string> local_properties;
 	std::set<std::string> property_names;
+	bool builtin;
 };
 
-class Structure {
+class Structure : public NamedObject {
 public:
-	Structure(const std::string sname, const std::string skind) : name(sname), kind(skind) {}
+	Structure(const std::string sname, const std::string skind);
+	virtual ~Structure() {}
 	std::list<Parameter> parameters;
-	void setDefinitionLocation(const std::string fnam, int lineno) { }
+	void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
+	StructureClass *getStructureDefinition() { return class_definition; }
+	// set the location of the instance of the structure (not its class)
+	void setDefinitionLocation(const std::string fnam, int lineno) {
+		internal_properties.add("file_name", fnam);
+	}
+	SymbolTable &getInternalProperties() { return internal_properties; }
 	void setProperties(const SymbolTable &props) { properties.add(props); }
 	SymbolTable &getProperties() { return properties; }
 	int getIntProperty(const std::string name, int default_value = 0);
@@ -71,12 +99,23 @@ public:
 	Structure *clone(const std::string new_name);
 
 	std::ostream &operator<<(std::ostream &out) const;
+	void setChanged( bool which) { changed_ = which; }
+	bool changed() { return changed_; }
+
+	void setOwner(Structure *other) { owner = other; }
+	Structure *getOwner() { return owner; }
+
+	virtual bool save(std::ostream &out);
+
 protected:
 	Structure(const Structure &other);
+	SymbolTable internal_properties;
+	StructureClass *class_definition;
+	Structure *owner;
 private:
 	SymbolTable properties;
-	std::string name;
 	std::string kind;
+	bool changed_; // in memory copy has been modified
 };
 std::ostream &operator<<(std::ostream &out, const Structure &s);
 

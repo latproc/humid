@@ -33,8 +33,6 @@
 #endif
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
-#define NANOVG_GL3_IMPLEMENTATION
-#include <nanovg_gl.h>
 
 #include <iostream>
 #include <fstream>
@@ -42,12 +40,17 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <functional>
+#include <regular_expressions.h>
 #include "PropertyMonitor.h"
 #include "DragHandle.h"
 #include "manuallayout.h"
 #include "skeleton.h"
 #include "lineplot.h"
 #include "PanelScreen.h"
+#include "EditorProject.h"
+#include "EditorSettings.h"
+#include "EditorGUI.h"
 
 #include <libgen.h>
 #include <zmq.hpp>
@@ -65,6 +68,7 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 #include "PropertyList.h"
 #include "GLTexture.h"
 #include "Palette.h"
@@ -72,6 +76,24 @@
 #include "SelectableButton.h"
 #include "UserWindow.h"
 #include "cJSON.h"
+#include "ViewListController.h"
+#include "EditorObject.h"
+#include "LinkableObject.h"
+#include "Editor.h"
+#include "FactoryButtons.h"
+#include "EditorWidget.h"
+#include "EditorButton.h"
+#include "EditorTextBox.h"
+#include "EditorLabel.h"
+#include "EditorImageView.h"
+#include "EditorLinePlot.h"
+#include "EditorProgressBar.h"
+#include "StructuresWindow.h"
+#include "ThemeWindow.h"
+#include "PropertyWindow.h"
+#include "helper.h"
+#include "curl_helper.h"
+#include "ScreensWindow.h"
 
 // settings file parser globals
 #define __MAIN__ 1
@@ -86,8 +108,8 @@ extern int st_yylineno;
 const char *st_yyfilename = 0;
 
 #include "hmilang.h"
-std::list<Structure *>hm_structures;
-std::list<StructureClass *> hm_classes;
+extern std::list<Structure *>hm_structures;
+extern std::list<StructureClass *> hm_classes;
 extern FILE *yyin;
 int yyparse();
 extern int yycharno;
@@ -100,6 +122,9 @@ std::map<std::string, LinkableProperty *> remotes;
 int num_errors = 0;
 std::list<std::string>error_messages;
 std::list<std::string>settings_files;
+std::list<std::string> source_files;
+
+Structure *system_settings = 0;
 
 using std::cout;
 using std::cerr;
@@ -127,25 +152,18 @@ extern const char *local_commands;
 extern ProgramState program_state;
 extern struct timeval start;
 
+struct Texture {
+	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
+	GLTexture texture;
+	GLTexture::handleType data;
+};
+std::map<std::string, Texture*> texture_cache;
+
 extern void setup_signals();
 
-
-std::string escapeQuotes(const std::string &s);
 std::string stripEscapes(const std::string &s);
 StructureClass *findClass(const std::string &name);
-
-class StartupWindow;
-class PropertyWindow;
-class ObjectWindow;
-class ThemeWindow;
-class Toolbar;
-class Editor;
-class StructuresWindow;
-class PatternsWindow;
-class UIStructure;
-class PropertyFormHelper;
-class ScreensWindow;
-class ViewsWindow;
+Structure *createScreenStructure();
 
 Handle::Mode all_handles[] = {
 	Handle::POSITION,
@@ -159,854 +177,30 @@ Handle::Mode all_handles[] = {
 	Handle::RESIZE_B
 };
 
-class SettingsItem {
-public:
-	SettingsItem(const std::string &n, const std::string &k, nanogui::Widget *w = 0) : widget(w),kind(k), name(n) {}
-	bool load(Structure *item);
-	bool save(std::ostream &out);
-	bool saveSettings(std::ostream &out);
-	bool loadSettings(Structure *item);
-	bool loadWindow(Structure *item);
-	bool saveWindow(std::ostream &out, const std::string &name);
-
-	
-private:
-	nanogui::Widget *widget;
-	std::string kind;
-	std::string name;
-};
-
-class EditorSettings {
-public:
-	void load(const std::string object_name, nanogui::Widget *widget) {
-		for (auto item : st_structures) {
-			if (item->getName() == object_name) {
-				SettingsItem(object_name, item->getKind(), widget).load(item);
-			}
-		}
-	}
-	Structure *find(const std::string object_name) {
-		for (auto item : st_structures) {
-			if (item->getName() == object_name) {
-				return item;
-			}
-		}
-		return nullptr;
-	}
-	void save() {
-		if (settings_files.size() == 0) return;
-		std::string fname(settings_files.front());
-		std::ofstream settings(fname);
-		SettingsItem("EditorSettings", "EDITORSETTINGS").save(settings);
-		for (auto w : widgets) {
-			SettingsItem(w.first, "WINDOW", w.second).save(settings);
-		}
-		settings.close();
-	}
-
-	void add(const std::string &name, nanogui::Widget *w) {
-		widgets[name] = w;
-	}
-
-private:
-	std::map<std::string, nanogui::Widget *> widgets;
-	std::list<SettingsItem>items;
-};
-
-class ViewOptions {
-public:
-	bool visible;
-};
-
-class ViewManager {
-public:
-	void set(nanogui::Widget *w, bool vis) {
-		items[w].visible = vis;
-		ViewOptions vo = items[w];
-		int x =1;
-	}
-	ViewOptions get(nanogui::Widget *w) {
-		// default is for views to be visible
-		if (items.find(w) == items.end())
-			set(w, true);
-		return items[w];
-	}
-	void remove(nanogui::Widget *w) { items.erase(w); }
-
-private:
-	std::map<nanogui::Widget*, ViewOptions> items;
-};
-
-class EditorObject {
-	public:
-		virtual ~EditorObject() { }
-};
-
-class LinkableObject {
-public:
-	virtual ~LinkableObject() { if (widget) widget->decRef(); }
-	LinkableObject(nanogui::Widget *w) : widget(w) { if (w) w->incRef(); }
-	virtual void update(const Value &value) {}
-	nanogui::Widget *linked() { return widget; }
-protected:
-	nanogui::Widget *widget;
-};
-
-class LinkableTextBox : public LinkableObject {
-	public:
-		LinkableTextBox(nanogui::Widget *w) : LinkableObject(w) { }
-		void update(const Value &value) override {
-			nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
-			if (tb) tb->setValue(value.asString());
-		}
-};
-
-class LinkableProperty {
-public:
-	LinkableProperty(const std::string group, int object_type,
-					const std::string &name, const std::string &addr_str,
-					const std::string &dtype, int dsize) 
-	: group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype), 
-		data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) {
-			char *rest = 0;
-			modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
-		}
-	const std::string &group() const { return group_name; }
-	void setGroup(const std::string g) { group_name = g; }
-	const std::string &tagName() const { return tag_name; }
-	const std::string &typeName() const { return data_type_name; }
-	void setTypeName(const std::string s) { data_type_name = s; }
-	CircularBuffer::DataType dataType() const { return data_type; }
-	void setDataTypeStr(const std::string dtype) { 
-		data_type = CircularBuffer::dataTypeFromString(dtype);
-		data_type_name = dtype;
-	}
-	int getKind() const { return kind; }
-	void setKind(int new_kind) { kind = new_kind; }
-	std::string addressStr() const { return address_str; }
-	void setAddressStr(const std::string s) { 
-		address_str = s;
-		char *rest = 0;
-		if (address_str.at(0) == '\'')
-			modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
-		else
-			modbus_address = (int)strtol(address_str.c_str()+1,&rest, 10);
-	}
-	void setAddressStr(int grp, int addr) {
-		char buf[10];
-		snprintf(buf,10, "'%d%04d", grp, addr);
-		modbus_address = addr;
-	}
-	void setValue(const Value &v);
-	Value & value() { return current; }
-	int dataSize() const { return data_size; }
-	void setDataSize(int new_size) { data_size = new_size; }
-	int address() const { return modbus_address; }
-	void setAddress(int a) { modbus_address = a; setAddressStr(address_group(), a); }
-	int address_group() const {
-		if (address_str.at(0) == '\'') return address_str.at(1)-'0'; else return address_str.at(0)-'0';
-	}
-
-	void link(LinkableObject *lo) { 
-		links.push_back(lo); 
-		lo->update(value());
-	}
-	void clearLink(nanogui::Widget*w) {
-		std::list<LinkableObject*>::iterator iter = links.begin();
-		while (iter != links.end()) {
-			LinkableObject *link = *iter;
-			if (link->linked() == w) {
-				iter = links.erase(iter);
-				delete link;
-			}
-			else iter++;
-		}
-	}
-	void save(std::ostream &out) const;
-private:
-	std::string group_name;
-	int kind;
-	std::string tag_name;
-	std::string address_str;
-	std::string data_type_name;
-	CircularBuffer::DataType data_type;
-	int data_size;
-	int modbus_address;
-	Value current;
-	std::list<LinkableObject*> links;
-};
-
-/** 
-Connectable objects have a reference to other objects for the purpose
-of updating values and sending events.
-*/
-class Connectable {
-public:
-	Connectable(const LinkableProperty *lp) : remote(lp) { }
-	int address() const { 
-		if (remote) return remote->address(); else return 0;
-	}
-	const LinkableProperty *getRemote() { return remote; }
-protected:
-	const LinkableProperty * remote;
-};
-
-class EditorGUI : public ClockworkClient {
-public:
-	enum STARTUP_STATES { sINIT, sSENT, sDONE };
-	enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };
-	EditorGUI();
-
-	void setTheme(nanogui::Theme *theme) override;
-	void createWindows();
-
-	GuiState getState() { return state; }
-	void setState(GuiState s);
-	void nextState();
-
-	StartupWindow *getStartupWindow();
-	PropertyWindow *getPropertyWindow();
-	ObjectWindow *getObjectWindow();
-	ThemeWindow *getThemeWindow();
-	UserWindow *getUserWindow();
-	Toolbar *getToolbar();
-	StructuresWindow *getStructuresWindow();
-	PatternsWindow *getPatternsWindow();
-	ScreensWindow *getScreensWindow();
-	ViewsWindow *getViewsWindow();
-	nanogui::Window *getActiveWindow();
-	void *setActiveWindow(nanogui::Window*);
-	void createStructures(const nanogui::Vector2i &p, std::set<Selectable *> selections);
-
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
-	virtual bool resizeEvent(const Vector2i &) override;
-	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
-
-	GLuint getImageId(const char *); 
-	void update() override;
-
-	void handleRawMessage(unsigned long time, void *data) override {};
-	void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) override;
-
-	void needsUpdate() { needs_update = true; }
-
-	unsigned int sampleBufferSize() const { return sample_buffer_size; }
-
-	void updateSettings(nanogui::Widget *source) {
-		settings.save();
-	}
-	void updateProperties() {
-		Structure *s = settings.find("EditorSettings");
-		if (s == nullptr) {
-			s = new Structure("EditorSettings", "EDITORSETTINGS");
-			st_structures.push_back(s);
-			structures["EditorSettings"] = s;
-		}
-		s->getProperties().add(properties);
-		settings.save();
-	}
-	ViewManager &getViewManager() { return views; }
-
-	std::list<PanelScreen*> &getScreens() { return user_screens; }
-	std::string nextName(EditorObject*);
-	bool changeName(EditorObject*, const std::string &oldname, const std::string &newname);
-
-	int getSampleBufferSize() { return sample_buffer_size; }
-	SymbolTable &getProperties() { return properties; }
-	void setProperties( const SymbolTable &st ) { properties.add(st); }
-	LinkableProperty *findLinkableProperty(const std::string name);
-	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
-	std::map<std::string, LinkableProperty*>getLinkableProperties() { return linkables; }
-
-	void refreshData() { startup = sINIT; }
-
-private:
-	SymbolTable properties;
-	std::map<std::string, LinkableProperty*>linkables;
-	ViewManager views;
-	std::list<PanelScreen*>user_screens;
-	nanogui::Vector2i old_size;
-	nanogui::Theme *theme;
-	EditorSettings settings;
-	STARTUP_STATES startup;
-	GuiState state;
-	Editor *editor;
-	Toolbar *w_toolbar;
-	PropertyWindow *w_properties;
-	ObjectWindow *w_objects;
-	ThemeWindow *w_theme;
-	UserWindow *w_user;
-	PatternsWindow *w_patterns;
-	StructuresWindow *w_structures;
-	PatternsWindow *w_connections;
-	StartupWindow *w_startup;
-	ScreensWindow *w_screens;
-	ViewsWindow *w_views;
-	std::map<std::string, EditorObject*>user_objects;
-	using imagesDataType = std::vector<std::pair<GLTexture, GLTexture::handleType>>;
-	imagesDataType mImagesData;
-	bool needs_update;
-	unsigned int sample_buffer_size;
-	int user_object_sequence;
-};
-
-class StructureFactoryButton : public SelectableButton {
-public:
-	StructureFactoryButton(EditorGUI *screen,
-						const std::string type_str, Palette *pal,
-						nanogui::Widget *parent,
-						int object_type,
-						const std::string &name, const std::string &addr_str)
-	: SelectableButton(type_str, pal, parent, name),
-	gui(screen), kind(object_type), tag_name(name), address_str(addr_str)
-	{}
-	nanogui::Widget *create(nanogui::Widget *container) const override;
-private:
-	EditorGUI *gui;
-	int kind;
-	std::string tag_name;
-	std::string address_str;
-};
-
-class ObjectFactoryButton : public SelectableButton {
-public:
-	ObjectFactoryButton(EditorGUI *screen,
-						const std::string type_str, Palette *pal,
-						nanogui::Widget *parent, const LinkableProperty *lp
-						)
-	: SelectableButton(type_str, pal, parent, lp->tagName()), gui(screen), properties(lp)	{}
-	nanogui::Widget *create(nanogui::Widget *container) const override;
-	const std::string &tagName() { return properties->tagName(); }
-	const LinkableProperty *details() { return properties; }
-private:
-	EditorGUI *gui;
-	const LinkableProperty *properties;
-};
-
-
-class Editor {
-
-public:
-	Editor(EditorGUI *gui);
-	static Editor *instance();
-	void setEditMode(bool which);
-	bool isEditMode() ;
-	bool isCreateMode();
-
-	void setCreateMode(bool which);
-	void refresh(bool );
-	nanogui::DragHandle *getDragHandle();
-
-	void save(const std::string &path);
-	void load(const std::string &path);
-
-	EditorGUI *gui() { return screen; }
-
-private:
-	static Editor *_instance;
-	bool mEditMode;
-	bool mCreateMode;
-	EditorGUI *screen;
-	nanogui::DragHandle *drag_handle;
-};
-
-#define EDITOR Editor::instance()
-
-Editor *Editor::_instance = 0;
-
-class EditorWidget : public Selectable, public EditorObject, public Connectable {
-
-public:
-
-	EditorWidget(const std::string structure_name, nanogui::Widget *w, const LinkableProperty *lp) 
-	: Selectable(0), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-		definition(0) {
-		assert(w != 0);
-		Palette *p = dynamic_cast<Palette*>(w);
-		if (!p) {
-			//assert(EDITOR->gui()->getUserWindow()->getWindow() == w);
-			p = EDITOR->gui()->getUserWindow();
-		}
-		this->palette = p;
-	}
-	~EditorWidget() { }
-
-	nanogui::Widget *getWidget() { return widget; }
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names);
-	virtual void loadProperties(PropertyFormHelper *pfh);
-	virtual void setProperty(const std::string &prop, const std::string value);
-	virtual std::string getProperty(const std::string &prop);
-
-	virtual bool editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, int button, bool down, int modifiers) {
-
-		using namespace nanogui;
-
-		if (EDITOR->isEditMode()) {
-			if (down) {
-				if (!mSelected && !(modifiers & GLFW_MOD_SHIFT) ) palette->clearSelections(); 
-				if (mSelected && modifiers & GLFW_MOD_SHIFT)
-					deselect();
-				else
-					select();
-				
-			}
-			return false;
-		}
-		else {
-			if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
-		}
-		return true; // caller should continue to call the default handler for the object
-	}
-
-	virtual bool editorMouseMotionEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
-		if ( !EDITOR->isEditMode() ) {
-			EDITOR->getDragHandle()->setVisible(false);
-			return true; // caller should continue to call the default handler for the object
-		}
-
-		Eigen::Vector2d pt(p.x(), p.y());
-
-		Eigen::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
-
-		double min = distances.row(0).x();
-
-		int idx = 0;
-
-		for (int i=1; i<9; ++i) {
-			if (distances.row(i).x() < min) {
-				min = distances.row(i).x();
-				idx = i;
-			}
-		}
-/*
-		if (min >= 24) {
-			EDITOR->getDragHandle()->setVisible(false);
-			updateHandles(widget);
-			return false;
-		}
-*/
-		nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
-		if (handles[idx].mode() != Handle::NONE) {
-			drag_handle->setTarget(widget);
-
-			drag_handle->setPosition(
-					Vector2i(handles[idx].position().x() - drag_handle->size().x()/2,
-							 handles[idx].position().y() - drag_handle->size().y()/2) ) ;
-
-			if (drag_handle->propertyMonitor())
-				drag_handle->propertyMonitor()->setMode( handles[idx].mode() );
-
-			updateHandles(widget);
-			drag_handle->setVisible(true);
-		}
-		else {
-			drag_handle->setPosition(
-					Vector2i(widget->position().x() + widget->width() - drag_handle->size().x()/2,
-							 widget->position().y() + widget->height() - drag_handle->size().y()/2) ) ;
-
-			updateHandles(widget);
-			drag_handle->setVisible(true);
-		}
-
-		return false;
-	}
-
-	virtual bool editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i &p, bool enter) {
-		if (enter) updateHandles(widget);
-		else {
-			EDITOR->getDragHandle()->setVisible(false);
-			updateHandles(widget);
-		}
-
-		return true;
-	}
-
-	void updateHandles(nanogui::Widget *w) {
-		for (int i=0; i<9; ++i) {
-			Handle h = Handle::create(all_handles[i], w->position(), w->size());
-			handle_coordinates(i,0) = h.position().x();
-			handle_coordinates(i,1) = h.position().y();
-			handles[i] = h;
-		}
-	}
-
-	virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size) {
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
-
-	}
-
-	std::string baseName() const { 
-		return base;
-	}
-
-	void setName(const std::string new_name) { 
-		if (EDITOR->gui()->changeName(this, name,new_name)) 
-			name = new_name;
-	}
-	const std::string &getName() const { return name; }
-
-	void justSelected() override;
-	void justDeselected() override;
-
-	void setPatterns(const std::string patterns) { pattern_list = patterns; }
-	const std::string &patterns() const { return pattern_list; }
-
-	void setDefinition(Structure *defn) { definition = defn; }
-	Structure *getDefinition() { return definition; }
-
-protected:
-	std::string base;
-	std::string name;
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
-	std::string pattern_list;
-	Structure *definition;
-};
-
-
-
-class EditorButton : public nanogui::Button, public EditorWidget {
-
-public:
-
-	EditorButton(Widget *parent, const LinkableProperty *lp, const std::string &caption = "Untitled", bool toggle = false, int icon = 0)
-	: Button(parent, caption, icon), EditorWidget("BUTTON", this, lp), is_toggle(toggle) {
-	}
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
-	void loadProperties(PropertyFormHelper* properties) override;
-
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
-
-		using namespace nanogui;
-		if (editorMouseButtonEvent(this, p, button, down, modifiers))
-			if (!is_toggle || (is_toggle && down))
-				return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
-
-		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-			return Button::mouseMotionEvent(p, rel, button, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
-
-		if (editorMouseEnterEvent(this, p, enter))
-			return Button::mouseEnterEvent(p, enter);
-
-		return true;
-	}
-
-	void setCommand(std::string cmd) {
-		command_str = stripEscapes(cmd);
-	}
-	const std::string &command() const { return command_str; }
-
-/*	bool keyboardEvent(int key, int scancode, int action, int modifiers) override {
-		if (focused() && isSelected() && action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
-			UserWindow *uw = EDITOR->gui()->getUserWindow();
-			if (uw && uw->hasSelections()) {
-				incRef();
-				uw->deleteSelections();
-				decRef();
-				return false;
-			}
-		}
-		return true;			
-	}
-*/
-
-	virtual void draw(NVGcontext *ctx) override {
-		nanogui::Button::draw(ctx);
-		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
-	}
-
-
-	bool is_toggle;
-	std::string command_str;
-};
-
-class EditorTextBox : public nanogui::TextBox, public EditorWidget {
-
-public:
-
-	EditorTextBox(Widget *parent, const LinkableProperty *lp, int icon = 0)
-	: TextBox(parent), EditorWidget("TEXT", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
-	}
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
-	void loadProperties(PropertyFormHelper* properties) override;
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
-
-		using namespace nanogui;
-
-		if (editorMouseButtonEvent(this, p, button, down, modifiers))
-			return nanogui::TextBox::mouseButtonEvent(p, button, down, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
-
-		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-			return TextBox::mouseMotionEvent(p, rel, button, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
-
-		if (editorMouseEnterEvent(this, p, enter))
-			return TextBox::mouseEnterEvent(p, enter);
-
-		return true;
-	}
-
-	virtual void draw(NVGcontext *ctx) override;	
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
-};
-
-
-class EditorLabel : public nanogui::Label, public EditorWidget {
-
-public:
-
-	EditorLabel(Widget *parent, const LinkableProperty *lp, const std::string caption, const std::string &font = "sans", int fontSize = -1, int icon = 0)
-	: Label(parent, caption), EditorWidget("LABEL", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
-	}
-
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
-
-		using namespace nanogui;
-
-		if (editorMouseButtonEvent(this, p, button, down, modifiers))
-			return nanogui::Label::mouseButtonEvent(p, button, down, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
-
-		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-			return Label::mouseMotionEvent(p, rel, button, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
-
-		if (editorMouseEnterEvent(this, p, enter))
-			return Label::mouseEnterEvent(p, enter);
-
-		return true;
-	}
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
-	void loadProperties(PropertyFormHelper* properties) override;
-
-	virtual void draw(NVGcontext *ctx) override {
-		nanogui::Label::draw(ctx);
-		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
-	}
-
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
-};
-
-
-class EditorImageView : public nanogui::ImageView, public EditorWidget {
-
-public:
-
-	EditorImageView(Widget *parent, const LinkableProperty *lp, GLuint image_id, int icon = 0)
-	: ImageView(parent, image_id), EditorWidget("IMAGE", this, lp), dh(0), handles(9), handle_coordinates(9,2) {
-	}
-
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
-
-		using namespace nanogui;
-
-		if (editorMouseButtonEvent(this, p, button, down, modifiers))
-			return nanogui::ImageView::mouseButtonEvent(p, button, down, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
-
-		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-			return ImageView::mouseMotionEvent(p, rel, button, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
-
-		if (editorMouseEnterEvent(this, p, enter))
-			return ImageView::mouseEnterEvent(p, enter);
-
-		return true;
-	}
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
-	virtual void loadProperties(PropertyFormHelper *pfh) override;
-
-	virtual void draw(NVGcontext *ctx) override {
-		nanogui::ImageView::draw(ctx);
-		if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
-	}
-
-	void setImageName(const std::string new_name) { 
-		image_name = new_name;
-		GLuint img = EDITOR->gui()->getImageId(new_name.c_str());
-		mImageID = img;
-		updateImageParameters();
-	}
-	const std::string &imageName() const { return image_name; }
-
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
-	std::string image_name;
-};
-
-
-class EditorLinePlot : public nanogui::LinePlot, public EditorWidget {
-
-public:
-
-	EditorLinePlot(Widget *parent, const LinkableProperty *lp = nullptr, int icon = 0)
-	: LinePlot(parent, "Test"), EditorWidget("PLOT", this, lp), handle_coordinates(9,2),
-		start_trigger_value(0), stop_trigger_value(0)
- 	{
-	}
-
-	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
-
-		using namespace nanogui;
-
-		if (editorMouseButtonEvent(this, p, button, down, modifiers))
-			return nanogui::LinePlot::mouseButtonEvent(p, button, down, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
-
-		if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-			return nanogui::LinePlot::mouseMotionEvent(p, rel, button, modifiers);
-
-		return true;
-	}
-
-	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override {
-
-		if (editorMouseEnterEvent(this, p, enter))
-			return nanogui::LinePlot::mouseEnterEvent(p, enter);
-
-		return true;
-	}
-
-	virtual void getPropertyNames(std::multimap<std::string, EditorWidget *> &names) override;
-	virtual void loadProperties(PropertyFormHelper *pfh) override;
-
-	virtual void draw(NVGcontext *ctx) override {
-		nanogui::LinePlot::draw(ctx);
-		if (mSelected) {
-			nvgStrokeWidth(ctx, 4.0f);
-			nvgBeginPath(ctx);
-			nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
-			nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-			nvgStroke(ctx);
-		}
-	}
-
-	void setTriggerName(UserWindow *user_window, SampleTrigger::Event evt, const std::string name);
-	void setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val);
-
-private:
-	MatrixXd handle_coordinates;
-	std::string name;
-	std::string monitored_objects;
-	std::string start_trigger_name;
-	int start_trigger_value;
-	std::string stop_trigger_name;
-	int stop_trigger_value;
-};
-
-EditorGUI::EditorGUI() : theme(0), startup(sINIT), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
-	w_structures(0), w_connections(0), w_startup(0), needs_update(false),
-	sample_buffer_size(5000),user_object_sequence(1)
-{
-	old_size = mSize;
-	std::vector<std::pair<int, std::string>> icons = nanogui::loadImageDirectory(mNVGContext, "images");
-	// Load all of the images by creating a GLTexture object and saving the pixel data.
-	std::string resourcesFolderPath("./");
-	for (auto& icon : icons) {
-		GLTexture texture(icon.second);
-		auto data = texture.load(resourcesFolderPath + icon.second + ".png");
-		cout << "loaded image " << icon.second << " with id " << texture.texture() << "\n";
-		mImagesData.emplace_back(std::move(texture), std::move(data));
-	}
-	assert(mImagesData.size() > 0);
-}
-
-bool EditorGUI::changeName(EditorObject *o, const std::string &oldname, const std::string &newname) {
-	if (oldname == newname) return true;
-	std::map<std::string, EditorObject*>::iterator found = user_objects.find(newname);
-	if (found != user_objects.end()) return false;
-	user_objects[newname] = o;
-	found = user_objects.find(oldname);
-	if (found != user_objects.end()) user_objects.erase(found);
-	return true;
-}
-std::string EditorGUI::nextName(EditorObject *o) {
-	char buf[40];
-	snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
-	while (user_objects.find(buf) != user_objects.end()) {
-		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
-	}
-	std::string result(buf);
-	EditorWidget *w = dynamic_cast<EditorWidget*>(o);
-	if (w) w->setName(result);
-	user_objects[result] = o;
-	return result;
-}
-
-void LinkableProperty::setValue(const Value &v) {  
-	current = v; 
-	for (auto link : links) 
-		link->update(v); 
-}
-
-
 class Toolbar : public nanogui::Window {
 public:
 	Toolbar(EditorGUI *screen, nanogui::Theme *);
 	nanogui::Window *getWindow() { return this; }
 	bool mouseDragEvent(const Vector2i &p, const Vector2i &rel, int button, int modifiers) override {
 		bool res = nanogui::Window::mouseDragEvent(p, rel, button, modifiers);
-		if (gui) gui->updateSettings(this);
+		updateSettingsStructure("ToolBar", this);
 		return res;
 	}
 private:
 	EditorGUI *gui;
+};
+
+class ListPanel : public nanogui::Widget, public Palette {
+public:
+	ListPanel(nanogui::Widget *owner);
+	virtual ~ListPanel() {}
+	void update();
+	Selectable *getSelectedItem();
+	void selectFirst();
+	void select(const std::string path);
+private:
+	nanogui::VScrollPanel *palette_scroller;
+	nanogui::Widget *palette_content;
 };
 
 class StartupWindow : public Skeleton {
@@ -1017,31 +211,66 @@ public:
 private:
 	std::string message;
 	EditorGUI *gui;
+	ListPanel *project_box;
+};
+
+class PropertyFormWindow : public SkeletonWindow {
+public:
+	PropertyFormWindow(nanogui::Widget *parent, const std::string &title = "Untitled") : SkeletonWindow(parent, title), mContent(0) { }
+
+	void setContent(nanogui::Widget *content) { mContent = content; }
+
+	virtual bool focusEvent(bool focused) override {
+		using namespace nanogui;
+		/*
+		if (mContent && !focused) {
+			for (auto widget : mContent->children()) {
+				ColorPicker *b = dynamic_cast<ColorPicker *>(widget);
+				if (b)
+					int x = 1;
+				if (b && (b->flags() & Button::PopupButton) && b->pushed()) {
+					b->setPushed(false);
+					if (b->changeCallback())
+						b->changeCallback()(false);
+				}
+			}
+		}
+		*/
+		return nanogui::Window::focusEvent(focused);
+	}
+private:
+	nanogui::Widget *mContent;
 };
 
 class PropertyFormHelper : public nanogui::FormHelper {
 public:
 	PropertyFormHelper(nanogui::Screen *screen) : nanogui::FormHelper(screen), mContent(0) { }
 	void clear() {
-		while (window()->childCount())
+		using namespace nanogui;
+		while (window()->childCount()) {
 			window()->removeChild(0);
+		}
 	}
 
 	nanogui::Window *addWindow(const Vector2i &pos,
 							  const std::string &title = "Untitled") override {
 		assert(mScreen);
-		if (mWindow) mWindow->decRef();
-		mWindow = new nanogui::Window(mScreen, title);
-		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		if (mWindow) { mWindow->decRef(); mWindow = 0; }
+		PropertyFormWindow *pfw = new PropertyFormWindow(mScreen, title);
+		mWindow = pfw;
+		mWindow->setSize(nanogui::Vector2i(320, 640));
+		mWindow->setFixedSize(nanogui::Vector2i(320, 640));
 		nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
+		palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
 		palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
 		palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 		mContent = new nanogui::Widget(palette_scroller);
-		//mContent->setFixedSize(Vector2i(palette_scroller->width()-10, palette_scroller->height()));
-		mContent->setSize(Vector2i(palette_scroller->width(), palette_scroller->height()));
-		mContent->setLayout(mLayout);
-		mLayout->setMargin(20);
+		pfw->setContent(mContent);
+		mContent->setSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
+		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		mLayout->setMargin(1);
 		mLayout->setColStretch(2, 1);
+		mContent->setLayout(mLayout);
 		mWindow->setPosition(pos);
 		mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
 		mWindow->setVisible(true);
@@ -1051,15 +280,19 @@ public:
 	void setWindow(nanogui::Window *wind) override {
 		assert(mScreen);
 		mWindow = wind;
-		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
-		mLayout->setMargin(20);
-		mLayout->setColStretch(2, 1);
+		mWindow->setSize(nanogui::Vector2i(320, 640));
+		mWindow->setFixedSize(nanogui::Vector2i(320, 640));
 		nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
+		palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
 		palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
 		palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 		mContent = new nanogui::Widget(palette_scroller);
-		//mContent->setFixedSize(Vector2i(palette_scroller->width()-10, palette_scroller->height()));
-		mContent->setSize(Vector2i(palette_scroller->width(), palette_scroller->height()));
+		PropertyFormWindow *pfw = dynamic_cast<PropertyFormWindow*>(wind);
+		if (pfw) pfw->setContent(mContent);
+		mContent->setSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
+		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		mLayout->setMargin(1);
+		mLayout->setColStretch(2, 1);
 		mContent->setLayout(mLayout);
 		mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
 		mWindow->setVisible(true);
@@ -1105,22 +338,6 @@ private:
 	nanogui::Widget *item;
 };
 
-class PropertyWindow : public nanogui::Object {
-public:
-	PropertyWindow(nanogui::Screen *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-	nanogui::Window *getWindow()  { return window; }
-	PropertyFormHelper *getFormHelper() { return properties; }
-	void update();
-	nanogui::Screen *getScreen() { return screen; }
-	void show(nanogui::Widget &w);
-
-protected:
-	nanogui::Screen *screen;
-	nanogui::Window *window;
-	PropertyFormHelper *properties;
-	//ItemProxy *item_proxy;
-};
 
 /* an ObjectWindow is a palette of elements from a clockwork connection.
 
@@ -1153,27 +370,6 @@ protected:
     std::map<std::string, nanogui::Widget *> layers;
 };
 
-class ThemeWindow : public nanogui::Object {
-public:
-	ThemeWindow(nanogui::Screen *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-	nanogui::Window *getWindow()  { return window; }
-	void loadTheme(nanogui::Theme*);
-private:
-	nanogui::Window *window;
-	nanogui::FormHelper *properties;
-};
-
-class StructuresWindow : public Skeleton, public Palette {
-public:
-	StructuresWindow(EditorGUI *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-	Structure *createStructure(const std::string kind);
-private:
-	EditorGUI *gui;
-	std::map<std::string, Structure *>starters;
-};
-
 class PatternsWindow : public Skeleton, public Palette {
 public:
 	PatternsWindow(EditorGUI *screen, nanogui::Theme *theme);
@@ -1182,16 +378,6 @@ private:
 	EditorGUI *gui;
 };
 
-class ScreensWindow : public Skeleton, public Palette {
-public:
-	ScreensWindow(EditorGUI *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-	void update();
-private:
-	EditorGUI *gui;
-	nanogui::VScrollPanel *palette_scroller;
-	nanogui::Widget *palette_content;
-};
 
 class ViewsWindow : public nanogui::Object {
 public:
@@ -1237,9 +423,11 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 		Editor *editor = EDITOR;
 		if (editor) {
 			std::string file_path(file_dialog(
-				{ {"humid", "Humid layout file"},
-				  {"txt", "Text file"} }, false));
-			if (file_path.length()) editor->load(file_path);
+				{ {"humid", "Humid layout file"} }, false));
+			if (file_path.length()) {
+				editor->load(file_path);
+				editor->gui()->getScreensWindow()->update();
+			}
 		}
 	});
 
@@ -1250,10 +438,29 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setCallback([this] {
 		Editor *editor = EDITOR;
 		if (editor) {
-			std::string file_path(file_dialog(
-				{ {"humid", "Humid layout file"},
-				  {"txt", "Text file"} }, true));
-			if (file_path.length()) editor->save(file_path);
+			Structure *es = EditorSettings::find("EditorSettings");
+			if (!es) return;
+			Value &base_v = es->getProperties().find("project_base");
+			if (base_v == SymbolTable::Null) {
+				std::string file_path(file_dialog(
+					{ {"humid", "Humid layout file"},
+					{"txt", "Text file"} }, true));
+				if (file_path.length()) {
+					editor->saveAs(file_path);
+					editor->gui()->updateProperties();
+					Structure &s(editor->gui()->getSettings());
+					std::string base = source_files.front();
+					size_t delim_pos = base.rfind('/');
+					if (delim_pos != std::string::npos) {
+						base.erase(delim_pos);
+					}
+					s.getProperties().add("project_base", base);
+					EditorSettings::flush();
+				}
+			}
+			else {
+				editor->save();
+			}
 		}
 	});
 	tb->setFixedSize(Vector2i(32,32));
@@ -1271,7 +478,7 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
-	tb->setChangeCallback([this](bool state) { 
+	tb->setChangeCallback([this](bool state) {
 		const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
 		std::set<std::string>groups;
 		for (auto item : properties) {
@@ -1286,8 +493,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
 	settings_button->setFixedSize(Vector2i(32,32));
 	settings_button->setTooltip("Theme properties");
-	settings_button->setChangeCallback([this](bool state) { 
-		this->gui->getThemeWindow()->setVisible(state); 
+	settings_button->setChangeCallback([this](bool state) {
+		this->gui->getThemeWindow()->setVisible(state);
 		if (state)
 			this->gui->getThemeWindow()->getWindow()->requestFocus();
 	});
@@ -1313,64 +520,34 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 }
 
 
-Editor::Editor(EditorGUI *gui) :mEditMode(false), mCreateMode(false), screen(gui)  {
-	_instance = this;
-	drag_handle = new nanogui::DragHandle(screen, new PositionMonitor);
+ListPanel::ListPanel(nanogui::Widget *parent) : nanogui::Widget(parent) {
+
+}
+void ListPanel::update() {
+
+}
+Selectable *ListPanel::getSelectedItem() {
+	if (!hasSelections()) return 0;
+	return *selections.begin();
+}
+void ListPanel::selectFirst() {
+
+}
+void ListPanel::select(const std::string path) {
+
 }
 
-Editor *Editor::instance() {
-	return _instance;
-}
+class ScreenProjectButton : public SelectableButton {
+	public:
+	ScreenProjectButton(const std::string kind, Palette *pal, nanogui::Widget *parent,
+			const std::string &caption)
+		: SelectableButton(kind, pal, parent, caption), project(0) { }
+	void setProject( Structure *s) { project = s; }
+	Structure *getScreen() { return project; }
+	private:
+	Structure *project;
+};
 
-void Editor::setEditMode(bool which) {
-	mEditMode = which;
-	if (!mEditMode) {
-		if (drag_handle) drag_handle->setVisible(false);
-		screen->getUserWindow()->clearSelections();
-	}
-}
-
-bool Editor::isEditMode() {
-	return mEditMode;
-}
-
-bool Editor::isCreateMode() {
-	return mCreateMode;
-}
-
-void Editor::setCreateMode(bool which) {
-	mCreateMode = which;
-}
-
-void Editor::refresh(bool ) {
-	if (screen) {
-		if (screen->getUserWindow() ) {
-			nanogui::Window *mainWindow = screen->getUserWindow()->getWindow();
-			nanogui::Theme *theme = mainWindow->theme();
-			theme->incRef();
-			mainWindow->setTheme(new nanogui::Theme(screen->nvgContext()));
-			mainWindow->setTheme(theme);
-			theme->decRef();
-		}
-
-		screen->performLayout();
-
-	}
-}
-
-nanogui::DragHandle *Editor::getDragHandle() { return drag_handle; }
-
-void Editor::load(const std::string &path) {
-	using namespace nanogui;
-	UserWindow *uw = screen->getUserWindow();
-	if (uw) uw->load(path);
-}
-
-void Editor::save(const std::string &path) {
-	using namespace nanogui;
-	UserWindow *uw = screen->getUserWindow();
-	if (uw) uw->save(path);
-}
 
 StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen) {
 	using namespace nanogui;
@@ -1382,7 +559,12 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	itemText->setCaption("Select a project to open");
 	itemText->setVisible(true);
 
-	Button *newProjectButton = new Button(window, "New");
+	project_box = new ListPanel(window);
+	project_box->setSize(Vector2i(300, 100));
+	project_box->setPosition(Vector2i(50,100));
+	project_box->setLayout(new BoxLayout(Orientation::Vertical, Alignment::Fill));
+
+	Button *newProjectButton = new Button(project_box, "New");
 	newProjectButton->setPosition(Vector2i(80, 80));
 	newProjectButton->setFixedSize(Vector2i(120, 40));
 	newProjectButton->setSize(Vector2i(120, 40));
@@ -1400,31 +582,135 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 
 class UserWindowWin : public SkeletonWindow, public EditorObject {
 public:
-	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), gui(s) {
+	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), gui(s), current_item(-1) {
 	}
 
 	bool keyboardEvent(int key, int /* scancode */, int action, int modifiers) override;
 
 	bool mouseEnterEvent(const Vector2i &p, bool enter) override;
 
+	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
+		if (button == GLFW_MOUSE_BUTTON_RIGHT && !down) return true;
+		return SkeletonWindow::mouseButtonEvent(p, button, down, modifiers);
+	}
+
 	void update();
+	virtual void draw(NVGcontext *ctx) override;
+
+	void setCurrentItem(int n) { current_item = n; }
+	int currentItem() { return current_item; }
 
 private:
 	EditorGUI *gui;
+	int current_item;
 };
+
+void UserWindowWin::draw(NVGcontext *ctx) {
+	nvgSave(ctx);
+//    glMatrixMode(GL_PROJECTION);
+//    glLoadIdentity();
+//	float aspect = (float)width() / (float)height();
+//    glOrtho(3.0 * aspect, 3.0 * aspect, -3.0, 3.0, 1.0, 50.0);
+//	glMatrixMode(GL_MODELVIEW);
+//    glLoadIdentity();
+//nvgScale(ctx, 0.9f, 0.9f);
+	nanogui::Window::draw(ctx);
+	//nvgScale(ctx, 1.0f/0.9f, 1.0f/1.9f);
+	nvgRestore(ctx);
+
+}
 
 bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifiers) {
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
 		if (EDITOR && EDITOR->isEditMode()) {
+			UserWindow *uw = gui->getUserWindow();
 			if (action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
-				UserWindow *uw = gui->getUserWindow();
 				if (uw && uw->hasSelections()) {
 					uw->deleteSelections();
 					return false;
 				}
 			}
+			else if ( action == GLFW_PRESS && key == GLFW_KEY_TAB && childCount() > 1) {
+				bool backward = modifiers & GLFW_MOD_SHIFT;
+				int start = current_item;
+				int n = childCount();
+				int i = start;
+				int maxpos = -1;
+				int minpos = -1;
+				int maxidx = start;
+				int minidx = start;
+				int start_pos = -1;
+				if (start >= 0) {
+					nanogui::Widget *w = childAt(start);
+					EditorWidget *ew = dynamic_cast<EditorWidget*>(childAt(start));
+					if (ew) { start_pos = ew->tabPosition(); }
+				}
+
+
+				// search for a widget with a lower tab position
+				while (--i != start) {
+					if (i < 0) i = n-1;
+					if (i == start) break;
+					nanogui::Widget *w = childAt(i);
+					EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
+					if (!ew) continue;
+					int pos = ew->tabPosition();
+					if (pos>0) {
+						if (backward) {
+							if (pos > minpos && (start_pos == -1 || pos <= start_pos) ) { minpos = pos; minidx = i; }
+							if ( (pos > maxpos || maxpos == -1) && pos >= start_pos ) { maxpos = pos; maxidx = i; }
+						}
+						else {
+							if ( (pos < minpos || minpos == -1) && (start_pos == -1 || pos <= start_pos) ) { minpos = pos; minidx = i; }
+							if ( (pos < maxpos || maxpos == -1) && pos >= start_pos ) { maxpos = pos; maxidx = i; }
+						}
+					}
+				}
+				int new_sel = current_item;
+				if (backward) {
+					if (minidx != start) new_sel = minidx; else if (maxidx != start) new_sel = maxidx;
+				}
+				else {
+					if (maxidx != start) new_sel = maxidx; else if (minidx != start) new_sel = minidx;
+				}
+				if (new_sel >= 0 && new_sel != start) {
+					EditorWidget *ew = 0;
+					if (start >= 0) ew = dynamic_cast<EditorWidget*>(childAt(start));
+					if (ew) ew->deselect();
+					ew = dynamic_cast<EditorWidget*>(childAt(new_sel));
+					if (ew) ew->select();
+				}
 		}
-		bool handled = false;		
+			else if ( uw->hasSelections() &&
+						( key == GLFW_KEY_LEFT || key == GLFW_KEY_UP || key == GLFW_KEY_RIGHT || key == GLFW_KEY_DOWN ) ) {
+				if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
+				for (auto item : uw->getSelected() ) {
+					nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(item);
+					if (!w) continue;
+					switch (key) {
+						case GLFW_KEY_LEFT:
+							if (w->position().x()> 0)
+								w->setPosition( nanogui::Vector2i(w->position().x()-1, w->position().y()) );
+							break;
+						case GLFW_KEY_RIGHT:
+							if (w->position().x() + w->width() < w->parent()->width())
+								w->setPosition( nanogui::Vector2i(w->position().x()+1, w->position().y()) );
+							break;
+						case GLFW_KEY_UP:
+							if (w->position().y()> w->parent()->theme()->mWindowHeaderHeight)
+								w->setPosition( nanogui::Vector2i(w->position().x(), w->position().y()-1) );
+							break;
+						case GLFW_KEY_DOWN:
+							if (w->position().y() + w->height() < w->parent()->height())
+								w->setPosition( nanogui::Vector2i(w->position().x(), w->position().y()+1) );
+							break;
+						default:
+							break;
+					}
+				}
+			}
+		}
+		bool handled = false;
 		for (auto item : children() ) {
 			nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(item);
 			if (lp && lp->focused()) { lp->handleKey(key, scancode, action, modifiers); handled = true; }
@@ -1442,22 +728,10 @@ bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 		requestFocus();
 	//else if (focused() && !enter)
 	//		setFocused(false);
-	
+
 	return res;
 }
 
-
-/*
-UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen), current_layer(0), mDefaultSize(1024,768) {
-	using namespace nanogui;
-	gui = screen;
-	window->setTheme(theme);
-	window->setFixedSize(mDefaultSize);
-	window->setSize(mDefaultSize);
-	window->setVisible(false);
-	window->setTitle("Untitled");
-}
-*/
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
 : Skeleton(screen, uww), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
 	using namespace nanogui;
@@ -1466,27 +740,52 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setFixedSize(mDefaultSize);
 	window->setSize(mDefaultSize);
 	window->setVisible(false);
-	window->setTitle("Untitled");
+	window->setTitle("");
 	window->setPosition(nanogui::Vector2i(200,48));
 	push(window);
-	
-	/* TBD
-	TabWidget* tabWidget = window->add<TabWidget>();
-	current_layer = tabWidget->createTab("Screen 1");
-	layers.push_back(current_layer);
-	 */
+}
+
+void UserWindow::select(Selectable * w) {
+	Palette::select(w);
+	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
+	nanogui::Widget *widget = dynamic_cast<nanogui::Widget *>(w);
+	if (widget && wnd) wnd->setCurrentItem(window->childIndex(widget));
+}
+void UserWindow::deselect(Selectable *w) {
+	Palette::deselect(w);
+	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
+	if (wnd) wnd->setCurrentItem(-1);
 }
 
 void UserWindow::setStructure( Structure *s) {
 	if (!s) return;
 	StructureClass *sc = findClass(s->getKind());
 	if ( s->getKind() != "SCREEN" && (!sc || sc->getBase() != "SCREEN") ) return;
+
+	// save current settings
+	if (structure()) {
+		std::cout << "saving structure " << structure()->getName() << " : " << structure()->getKind() << "\n";
+		std::list<std::string>props;
+		getPropertyNames(props);
+		for (auto prop : props) {
+			Value v = getPropertyValue(prop);
+			if (v != SymbolTable::Null) {
+				structure()->getProperties().add(prop, v);
+				std::cout << " saving property " << prop << " (" << v  <<")\n";
+			}
+		}
+	}
+
 	clearSelections();
     nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
 	drag_handle->incRef();
     window->removeChild(drag_handle);
     PropertyMonitor *pm = drag_handle->propertyMonitor();
     drag_handle->setPropertyMonitor(0);
+	int n = window->childCount();
+	while (n--) {
+		window->removeChild(0);
+	}
 
 	loadStructure(s);
 	current_structure = s;
@@ -1510,6 +809,28 @@ void UserWindow::deleteSelections() {
 		if (w) getWindow()->removeChild(w);
 	}
 	clearSelections();
+}
+
+void UserWindow::clear() {
+	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
+	if (drag_handle) drag_handle->setVisible(false);
+	drag_handle->incRef();
+	window->removeChild(drag_handle);
+	PropertyMonitor *pm = drag_handle->propertyMonitor();
+	drag_handle->setPropertyMonitor(0);
+
+	int n = window->childCount();
+	int idx = 0;
+	while (n--) {
+		NamedObject *no = dynamic_cast<NamedObject *>(window->childAt(idx));
+		window->removeChild(idx);
+	}
+	window->addChild(drag_handle);
+
+	drag_handle->setPropertyMonitor(pm);
+	drag_handle->decRef();
+
+	window->performLayout( gui->nvgContext() );
 }
 
 CircularBuffer *UserWindow::getValues(const std::string name) {
@@ -1552,64 +873,82 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 	return res;
 }
 
-std::string stripChar(const std::string &s, char ch) {
-	size_t n = s.length()+1;
-	char buf[n*2];
-	char *p = buf;
-	for (auto c : s) {
-		if (c != ch) *p++ = c;
+void push_files_for(boost::filesystem::path fp, std::list<boost::filesystem::path> &files) {
+		using namespace boost::filesystem;
+		assert(is_directory(fp));
+		typedef std::vector<path> path_vec;
+		path_vec items;
+		std::copy(directory_iterator(fp), directory_iterator(), std::back_inserter(items));
+		std::sort(items.begin(), items.end());
+		for (path_vec::const_iterator iter(items.begin()); iter != items.end(); ++iter) {
+				if (is_regular_file(*iter) ) {
+						path fn(*iter);
+						std::string ext = boost::filesystem::extension(fn);
+						if (ext == ".humid") files.push_back(fn);
+				}
+				else if (is_directory(fp)) {
+						push_files_for( fp / (*iter), files);
+				}
+		}
+}
+
+void loadProjectFiles(std::list<std::string> &files_and_directories) {
+	using namespace boost::filesystem;
+
+	Structure *settings = EditorSettings::find("EditorSettings");
+	std::string base = "";
+	if (settings) base = settings->getProperties().find("project_base").asString();
+
+	std::list<path> files;
+	{
+		std::list<std::string>::iterator fd_iter = files_and_directories.begin();
+		while (fd_iter != files_and_directories.end()) {
+			path fp = (*fd_iter++).c_str();
+			if (!exists(fp)) continue;
+			std::string ext = boost::filesystem::extension(fp);
+			if (is_regular_file(fp) && ext == ".humid")
+					files.push_back(fp);
+			else if (is_directory(fp)) {
+				push_files_for(fp, files);
+			}
+		}
 	}
-	*p = 0;
-	return buf;
-}
 
-std::string shortName(const std::string s) {
-	size_t pos = s.rfind("/");
-	std::string n;
-	if (pos != std::string::npos) n = s.substr(++pos); else n = s;
-	pos = n.rfind('.');
-	if (pos != std::string::npos) n.at(pos) = 0;
-	n = stripChar(n, '-');
-	n = stripChar(n, '.');
-	return n;
-}
-
-void LinkableProperty::save(std::ostream &out) const {
-	out << "group:" << shortName(group_name) << ", "
-		<< "kind:" << kind << ", "
-		<< "address:" << address_str << ", "
-		<< "type:" << data_type_name << ", "
-		<< "size:" << data_size << ", "
-		<< "remote:" << tag_name;
-}
-
-void loadProjectFiles(std::list<std::string> &files) {
 
 	/* load configuration from files named on the commandline */
 	int opened_file = 0;
-	std::list<std::string>::iterator f_iter = files.begin();
+	std::list<path>::const_iterator f_iter = files.begin();
 	while (f_iter != files.end())
 	{
-		const char *filename = (*f_iter).c_str();
+		const char *filename = (*f_iter).string().c_str();
+		std::string fname(filename);
+
+		// strip project path from the file name
+		if (base.length() && fname.find(base) == 0) {
+			fname = fname.substr(base.length()+1);
+		}
 		if (filename[0] != '-')
 		{
-			opened_file = 1;
-			yyin = fopen(filename, "r");
-			if (yyin)
-			{
-				std::cerr << "Processing file: " << filename << "\n";
-				yylineno = 1;
-				yycharno = 1;
-				yyfilename = filename;
-				yyparse();
-				fclose(yyin);
-			}
-			else
-			{
-				std::stringstream ss;
-				ss << "## - Error: failed to load project file: " << filename;
-				error_messages.push_back(ss.str());
-				++num_errors;
+			if (exists(filename)) {
+				std::cout << "reading project file " << fname << "\n";
+				opened_file = 1;
+				yyin = fopen(filename, "r");
+				if (yyin)
+				{
+					std::cerr << "Processing file: " << filename << "\n";
+					yylineno = 1;
+					yycharno = 1;
+					yyfilename = fname.c_str();
+					yyparse();
+					fclose(yyin);
+				}
+				else
+				{
+					std::stringstream ss;
+					ss << "## - Error: failed to load project file: " << filename;
+					error_messages.push_back(ss.str());
+					++num_errors;
+				}
 			}
 		}
 		else if (strlen(filename) == 1) /* '-' means stdin */
@@ -1644,17 +983,12 @@ void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
 	}
 }
 
-StructureClass *findClass(const std::string &name) {
-		StructureClass *sc = nullptr;
-		for (auto item : hm_classes) {
-			if (item->getName() == name) return item;
-		}
-		return nullptr;
-}
 
 void UserWindow::loadStructure( Structure *s) {
 	StructureClass *sc = findClass(s->getKind());
 	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
+		if (sc && !s->getStructureDefinition())
+			s->setStructureDefinition(sc);
 		int pnum = 0;
 		for (auto param : sc->getLocals()) {
 			++pnum;
@@ -1669,40 +1003,68 @@ void UserWindow::loadStructure( Structure *s) {
 			Value &font_size_val = element->getProperties().find("font_size");
 			long font_size = 0;
 			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
+			Value &scale_val = element->getProperties().find("value_scale");
+			double value_scale = 1.0f;
+			if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
+			long tab_pos = 0;
+			Value &tab_pos_val = element->getProperties().find("tab_pos");
+			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
 			LinkableProperty *lp = nullptr;
-			if (remote != SymbolTable::Null) 
+			if (remote != SymbolTable::Null)
 				lp = gui->findLinkableProperty(remote.asString());
 			if (kind == "LABEL") {
-				EditorLabel *el = new EditorLabel(window, nullptr, element->getProperties().find("caption").asString());
+				Value caption_v = element->getProperties().find("caption");
+				EditorLabel *el = new EditorLabel(window, element->getName(), nullptr,
+												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				el->setName(element->getName());
+				el->setDefinition(element);
+				if (lp)
+					lp->link(new LinkableText(el));
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
+				if (value_scale != 1.0) el->setValueScale( value_scale );
+				if (tab_pos) el->setTabPosition(tab_pos);
+				el->setChanged(false);
+			}
+			if (kind == "PROGRESS") {
+				EditorProgressBar *ep = new EditorProgressBar(window, element->getName(), nullptr);
+				ep->setDefinition(element);
+				if (lp)
+					lp->link(new LinkableNumber(ep));
+				fixElementPosition( ep, element->getProperties());
+				fixElementSize( ep, element->getProperties());
+				if (value_scale != 1.0) ep->setValueScale( value_scale );
+				if (tab_pos) ep->setTabPosition(tab_pos);
+				ep->setChanged(false);
 			}
 			if (kind == "TEXT") {
-				EditorTextBox *textBox = new EditorTextBox(window, lp);
-				textBox->setName(element->getName());
+				EditorTextBox *textBox = new EditorTextBox(window, element->getName(), lp);
+				textBox->setDefinition(element);
 				textBox->setValue("");
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
+				if (value_scale != 1.0) textBox->setValueScale( value_scale );
 				fixElementPosition( textBox, element->getProperties());
 				fixElementSize( textBox, element->getProperties());
 				if (font_size) textBox->setFontSize(font_size);
-				if (lp) 
-					lp->link(new LinkableTextBox(textBox));
+				if (tab_pos) textBox->setTabPosition(tab_pos);
+				if (lp)
+					lp->link(new LinkableText(textBox));
 				textBox->setName(element->getName());
 				if (lp)
 					textBox->setTooltip(remote.asString());
 				else
 					textBox->setTooltip(element->getName());
 				EditorGUI *gui = this->gui;
+				textBox->setChanged(false);
 				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
-					if (!textBox->getRemote()) return true; 
+					if (!textBox->getRemote()) return true;
 					char *rest = 0;
 					{
-						long val = strtol(value.c_str(),&rest,10); 
+						long val = strtol(value.c_str(),&rest,10);
 						if (*rest == 0) {
-							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val), 
+							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val),
 								[](std::string s){std::cout << s << "\n"; });
 							return true;
 						}
@@ -1718,43 +1080,71 @@ void UserWindow::loadStructure( Structure *s) {
 				});
 			}
 			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
-				EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
-				lp->setName(element->getName());
+				EditorLinePlot *lp = new EditorLinePlot(window, element->getName(), nullptr);
+				lp->setDefinition(element);
 				lp->setBufferSize(gui->sampleBufferSize());
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
+				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
+				if (tab_pos) lp->setTabPosition(tab_pos);
 				if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
 				Value &monitors = element->getProperties().find("monitors");
 				if (monitors != SymbolTable::Null) {
 					lp->setMonitors(this, monitors.asString());
 				}
+				lp->setChanged(false);
 			}
-			else if (kind == "BUTTON") {
-				EditorButton *b = new EditorButton(window, lp, element->getName());
-				b->setName(element->getName());
-				b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+			else if (kind == "BUTTON" || kind == "INDICATOR") {
+				Value caption_v = element->getProperties().find("caption");
+				EditorButton *b = new EditorButton(window, element->getName(), lp,
+												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
+				b->setDefinition(element);
+				Value &bg_colour = element->getProperties().find("bg_color");
+				if (bg_colour != SymbolTable::Null) {
+					std::vector<std::string> tokens;
+					std::string colour_str = bg_colour.asString();
+					boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
+					if (tokens.size() == 4) {
+						std::vector<float>fields(4);
+						for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
+						b->setBackgroundColor(nanogui::Color(fields[0], fields[1], fields[2], fields[3]));
+					}
+					else
+						b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+				}
+				else
+					b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+				if (lp)
+					lp->link(new LinkableIndicator(b));
 				fixElementPosition( b, element->getProperties());
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
+				if (tab_pos) b->setTabPosition(tab_pos);
 				b->setCaption(element->getProperties().find("caption").asString());
 				{
 					const Value &cmd = element->getProperties().find("command");
 					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
 				}
 
-				b->setChangeCallback([b, this] (bool state) {
-					if (b->getRemote()) {
-						gui->queueMessage(
-									gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-						gui->queueMessage(
-									gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
-					}
-					else if (b->command().length()) {
-						gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
-					}
+				if (kind == "BUTTON") {
+					b->setChangeCallback([b, this] (bool state) {
+						if (b->getRemote()) {
+							gui->queueMessage(
+										gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
+							gui->queueMessage(
+										gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+						}
+						else if (b->command().length()) {
+							gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+						}
 
-				});
+					});
+				}
+				else {
+					b->setChangeCallback([b, this] (bool state) {	});
+				}
+				b->setChanged(false);
 			}
 		}
 	}
@@ -1769,9 +1159,21 @@ void UserWindow::loadStructure( Structure *s) {
 	}
 	if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
 		const Value &title = s->getProperties().find("caption");
-		if (title != SymbolTable::Null) window->setTitle(title.asString());
+		//if (title != SymbolTable::Null) window->setTitle(title.asString());
 		PanelScreen *ps = getActivePanel();
 		if (ps) ps->setName(s->getName());
+
+		ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(EDITOR->gui()->getUserWindow()->getWindow());
+		if (w && tw && tw->getWindow()->visible() ) {
+			tw->loadTheme(w->theme());
+		}
+		PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
+		if (prop) {
+			prop->update();
+			EDITOR->gui()->needsUpdate();
+		}
+		s->setChanged(false);
 	}
 }
 
@@ -1779,9 +1181,9 @@ void UserWindow::load(const std::string &path) {
 	std::list<std::string> files;
 	files.push_back(path);
 	loadProjectFiles(files);
-
+/*
 	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
-	
+
 	drag_handle->incRef();
 	window->removeChild(drag_handle);
 	PropertyMonitor *pm = drag_handle->propertyMonitor();
@@ -1796,6 +1198,7 @@ void UserWindow::load(const std::string &path) {
 	drag_handle->decRef();
 
 	window->performLayout( gui->nvgContext() );
+*/
 }
 
 void UserWindow::save(const std::string &path) {
@@ -1813,7 +1216,7 @@ void UserWindow::save(const std::string &path) {
 		}
 	}
 	std::stringstream pending_definitions;
-	std::set<const LinkableProperty*> used_properties;	
+	std::set<LinkableProperty*> used_properties;
 	for (auto screen : gui->getScreens()) {
 		std::string screen_type(screen->getName());
 		boost::to_upper(screen_type);
@@ -1828,13 +1231,16 @@ void UserWindow::save(const std::string &path) {
 					<< "pos_x: " << b->position().x() << ", pos_y: " << b->position().y()
 					<< ", width: " << b->width() << ", height: " << b->height()
 					<< ", caption: \"" << b->caption() << '"'
-					<< ", font_size: " << b->fontSize();
-					if (b->command().length()) out << ", command: " << escapeQuotes(b->command());
-					if (b->getRemote()) {
-						used_properties.insert(b->getRemote());
-						out << ", remote:" << b->getRemote()->tagName();
-					}
-					out << ");\n";
+					<< ", font_size: " << b->fontSize()
+					<< ", tab_pos: " << b->tabPosition();
+				const nanogui::Color color = b->backgroundColor();
+				out << ", bg_color: \"" << color.r() <<"," << color.g()<<","<<color.b()<<","<<color.w()<<"\"";
+				if (b->command().length()) out << ", command: " << escapeQuotes(b->command());
+				if (b->getRemote()) {
+					used_properties.insert(b->getRemote());
+					out << ", remote: \"" << b->getRemote()->tagName() << "\"";
+				}
+				out << ");\n";
 				continue;
 			}
 			}
@@ -1842,22 +1248,47 @@ void UserWindow::save(const std::string &path) {
 			EditorLabel *el = dynamic_cast<EditorLabel*>(child);
 			if (el) {
 				out << el->getName() << " " << el->baseName() << " ("
-					<< "pos_x: " << el->position().x() 
+					<< "pos_x: " << el->position().x()
 					<< ", pos_y: " << el->position().y()
 					<< ", width: " << el->width() << ", height: " << el->height()
 					<< ", caption: \"" << el->caption() << '"'
 					<< ", font_size: " << el->fontSize()
-					<< ");\n";
+					<< ", tab_pos: " << el->tabPosition();
+				if (el->getRemote()) {
+					used_properties.insert(el->getRemote());
+					out << ", remote: \"" << el->getRemote()->tagName() << "\"";
+				}
+				out << ");\n";
 				continue;
 			}
 			}
+
+			{
+			EditorProgressBar *eb = dynamic_cast<EditorProgressBar*>(child);
+			if (eb) {
+				out << eb->getName() << " " << eb->baseName() << " ("
+					<< "pos_x: " << eb->position().x()
+					<< ", pos_y: " << eb->position().y()
+					<< ", width: " << eb->width() << ", height: " << eb->height()
+					<< ", tab_pos: " << eb->tabPosition();
+				if (eb->getRemote()) {
+					used_properties.insert(eb->getRemote());
+					out << ", remote:\"" << eb->getRemote()->tagName() << "\"";
+				}
+				out << ");\n";
+				continue;
+			}
+			}
+
+
 			{
 			EditorTextBox *t = dynamic_cast<EditorTextBox*>(child);
 			if (t) {
 				out << t->getName() << " " << t->baseName() << " ("
 				<< "pos_x: " << t->position().x() << ", pos_y: " << t->position().y()
 				<< ", width: " << t->width() << ", height: " << t->height()
-				<< ", font_size: " << t->fontSize();
+				<< ", font_size: " << t->fontSize()
+				<< ", tab_pos: " << t->tabPosition();
 				if (!t->getRemote())
 					out << ", value: " << escapeQuotes(t->value());
 				/*else if (t->getRemote() && t->getRemote()->dataType() == CircularBuffer::STR)
@@ -1866,7 +1297,7 @@ void UserWindow::save(const std::string &path) {
 					out << ", value: " << t->value();*/
 				if (t->getRemote()) {
 					used_properties.insert(t->getRemote());
-					out << ", remote:" << t->getRemote()->tagName();
+					out << ", remote: \"" << t->getRemote()->tagName() << "\"";
 				}
 				out << ");\n";
 				continue;
@@ -1878,10 +1309,11 @@ void UserWindow::save(const std::string &path) {
 				out << ip->getName() << " " << ip->baseName() << " ("
 				<< "pos_x: " << ip->position().x() << ", pos_y: " << ip->position().y()
 				<< ", width: " << ip->width() << ", height: " << ip->height()
-				<< ", location: \"" << ip->imageName() << '"';
+				<< ", location: \"" << ip->imageName() << '"'
+				<< ", tab_pos: " << ip->tabPosition();
 				if (ip->getRemote()) {
 					used_properties.insert(ip->getRemote());
-					out << ", remote:" << ip->getRemote()->tagName();
+					out << ", remote: \"" << ip->getRemote()->tagName() << "\"";
 				}
 				out <<  ");\n";
 				continue;
@@ -1891,12 +1323,13 @@ void UserWindow::save(const std::string &path) {
 			EditorLinePlot *lp = dynamic_cast<EditorLinePlot*>(child);
 			if (lp) {
 				if (lp->getName().length() == 0)
-					lp->setName(gui->nextName(lp));
-				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName() 
+					lp->setName(NamedObject::nextName(lp));
+				out << lp->getName() << " " << lp->baseName()<< "_" << lp->getName()
 					<< " ("
 					<< "pos_x: " << lp->position().x() << ", pos_y: " << lp->position().y()
 					<< ", width: " << lp->width() << ", height: " << lp->height()
-					<< ", x_scale: " << lp->xScale() 
+					<< ", tab_pos: " << lp->tabPosition()
+					<< ", x_scale: " << lp->xScale()
 					<< ", grid_intensity: " << lp->gridIntensity()
 					<< ", display_grid: " << lp->displayGrid()
 					<< ", monitors: \"" << lp->monitors() << '"'
@@ -1921,15 +1354,15 @@ void UserWindow::save(const std::string &path) {
 			}
 		}
 		PanelScreen *ps = getActivePanel();
-		out << "}\n" << ps->getName() << " " << screen_type 
-			<< " (caption: " << escapeQuotes(window->title()) << ");\n\n";
+		out << "}\n" << ps->getName() << " " << screen_type
+			<< " (caption: \"" << escapeQuotes(window->title()) << "\");\n\n";
 		out << pending_definitions.str() << "\n";
 
 		for (auto link : used_properties) {
 			out << link->tagName() << " REMOTE (";
 			link->save(out);
 			out << ");\n";
-			
+
 		}
 
 	}
@@ -1941,8 +1374,7 @@ void UserWindow::update() {
 }
 
 void UserWindowWin::update() {
-	// if the window contains a line plot, that object should
-	// be updated
+	// if the window contains a line plot, that object should be updated
 	for (auto child : children()) {
 		nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(child);
 		lp->update();
@@ -1975,8 +1407,27 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		Structure *s = new Structure("Start_Button", "BUTTON"); 
+		Structure *s = new Structure("Start_Button", "BUTTON");
 		starters["BUTTON"] = s;
+		StructureClass *sc = new StructureClass("BUTTON", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
+
+		s->getProperties().add("width",120);
+		s->getProperties().add("height",60);
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "INDICATOR", this, cell, 0, "INDICATOR", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Indicator", "INDICATOR");
+		starters["INDICATOR"] = s;
+		sc = new StructureClass("INDICATOR", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
+
 		s->getProperties().add("width",120);
 		s->getProperties().add("height",60);
 
@@ -1987,8 +1438,11 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Image", "IMAGE"); 
+		s = new Structure("Start_Image", "IMAGE");
 		starters["IMAGE"] = s;
+		sc = new StructureClass("IMAGE", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
 		s->getProperties().add("width",128);
 		s->getProperties().add("height",128);
 
@@ -1998,8 +1452,11 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Rect", "RECT"); 
+		s = new Structure("Start_Rect", "RECT");
 		starters["RECT"] = s;
+		sc = new StructureClass("RECT", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
 		s->getProperties().add("width",128);
 		s->getProperties().add("height",128);
 
@@ -2009,8 +1466,11 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Label", "LABEL"); 
+		s = new Structure("Start_Label", "LABEL");
 		starters["LABEL"] = s;
+		sc = new StructureClass("LABEL", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
 		s->getProperties().add("width",80);
 		s->getProperties().add("height",40);
 
@@ -2020,8 +1480,11 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Text", "TEXT"); 
+		s = new Structure("Start_Text", "TEXT");
 		starters["TEXT"] = s;
+		sc = new StructureClass("TEXT", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
 		s->getProperties().add("width",80);
 		s->getProperties().add("height",40);
 
@@ -2031,18 +1494,37 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Plot", "PLOT"); 
+		s = new Structure("Start_Plot", "PLOT");
 		starters["PLOT"] = s;
+		sc = new StructureClass("PLOT", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
 		s->getProperties().add("width",256);
 		s->getProperties().add("height",128);
+
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "PROGRESS", this, cell, 0, "PROGRESS", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure("Start_Progress", "PROGRESS");
+		starters["PROGRESS"] = s;
+		sc = new StructureClass("PROGRESS", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
+		s->getProperties().add("width",256);
+		s->getProperties().add("height",32);
+
 	}
 
 }
 
 Structure *StructuresWindow::createStructure(const std::string kind) {
-	auto found = starters.find(kind);
-	if (found == starters.end()) return nullptr;
-	return (*found).second->clone( "" );
+	StructureClass *sc = findClass(kind);
+	if (sc) return sc->instantiate();
+	return 0;
 }
 
 
@@ -2057,12 +1539,17 @@ PatternsWindow::PatternsWindow(EditorGUI *screen, nanogui::Theme *theme) : Skele
 	window->setTitle("Patterns");
 	window->setVisible(false);
 
-	ToolButton *tb = new ToolButton(window, ENTYPO_ICON_PENCIL);
+	const int tool_button_size = 32;
+	Widget *items = new Widget(window);
+	items->setPosition(Vector2i(1, window->theme()->mWindowHeaderHeight+1));
+	items->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Fill));
+	items->setFixedSize(Vector2i(window->width(), tool_button_size+5));
+	items->setSize(Vector2i(window->width(), tool_button_size+5));
+
+	ToolButton *tb = new ToolButton(items, ENTYPO_ICON_PENCIL);
 	tb->setFlags(Button::ToggleButton);
-	tb->setFixedSize(Vector2i(32,32));
-	tb->setPosition(Vector2i(32, 64));
-
-
+	tb->setFixedSize(Vector2i(tool_button_size, tool_button_size));
+	tb->setSize(Vector2i(tool_button_size, tool_button_size));
 
 	{
 		VScrollPanel *palette_scroller = new VScrollPanel(window);
@@ -2107,11 +1594,45 @@ PatternsWindow::PatternsWindow(EditorGUI *screen, nanogui::Theme *theme) : Skele
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
 }
-	
+
 }
 
+class ScreenSelectButton : public SelectableButton {
+	public:
+	ScreenSelectButton(const std::string kind, Palette *pal, nanogui::Widget *parent,
+			const std::string &caption, ScreensWindow*sw)
+		: SelectableButton(kind, pal, parent, caption),  screens_window(sw) {
+			screen = findScreen(caption);
+			if (screen)
+				std::cout << "screen select button " << caption << " selects structure "
+				<< screen->getName() << ":" << screen->getKind() << "\n";
+			else
+				std::cout << "screen select button " << caption << " has no screen\n";
+		 }
+	virtual void justDeselected() override {
+		UserWindow *uw = screens_window->getUserWindow();
+		if (uw) uw->clear();
+	}
+	virtual void justSelected() override {
+		if (!getScreen()) setScreen(findScreen(caption()));
+		UserWindow *uw = EDITOR->gui()->getUserWindow();
+		if (uw && getScreen()) {
+			uw->setStructure(getScreen());
+			uw->refresh();
+		}
+	}
 
-ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen) {
+	void setScreen( Structure *s) {
+		screen = s;
+	}
+	Structure *getScreen() { return screen; }
+	private:
+	ScreensWindow *screens_window;
+	Structure *screen;
+};
+
+ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen),
+		Palette(PT_SINGLE_SELECT), gui(screen) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
@@ -2130,14 +1651,20 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	items->setSize(Vector2i(window->width(), tool_button_size+5));
 
 	ToolButton *tb = new ToolButton(items, ENTYPO_ICON_PLUS);
-	tb->setFlags(Button::ToggleButton);
+	tb->setFlags(Button::NormalButton);
 	tb->setFixedSize(Vector2i(tool_button_size, tool_button_size));
 	tb->setSize(Vector2i(tool_button_size, tool_button_size));
 	//tb->setPosition(Vector2i(32, 64));
-	tb->setChangeCallback([this](bool state) {
-		//gui->getUserWindow()->createScreen();
-	});
+	UserWindow *uw = gui->getUserWindow();
+	tb->setCallback([this, uw]() {
+		uw->clearSelections();
 
+		createScreenStructure();
+		if (gui->getScreensWindow()) {
+			this->update();
+			this->selectFirst();
+		}
+	});
 
 	{
 		palette_scroller = new VScrollPanel(window);
@@ -2149,23 +1676,105 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 		Widget *cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
 	}
+	update();
 	window->performLayout(gui->nvgContext());
 }
 
+void ScreensWindow::clearSelections(Selectable * except) {
+	if (except == 0)
+		int x = 1;
+	return Palette::clearSelections(except);
+}
+
+UserWindow *ScreensWindow::getUserWindow() {
+	return gui->getUserWindow();
+}
+
+Structure *ScreensWindow::getSelectedStructure() {
+	if (!hasSelections()) return 0;
+	auto found = selections.begin();
+	ScreenSelectButton *btn = dynamic_cast<ScreenSelectButton*>(*found);
+	if (btn)
+		return btn->getScreen();
+	return 0;
+}
+
 void ScreensWindow::update() {
-	getWindow()->requestFocus();
+	gui->getUserWindow()->clearSelections();
+
+	if (getWindow()->visible())
+		getWindow()->requestFocus();
+	Selectable *current = nullptr;
+	//if (hasSelections())
+		//current = *(selections.begin());
+	clearSelections();
 	int button_width = window->width() - 20;
 	int n = palette_content->childCount();
-	while (n--) palette_content->removeChild(0);
-	for (auto screen : gui->getScreens() ) {
-		nanogui::Widget *cell = new nanogui::Widget(palette_content);
-		cell->setFixedSize(Vector2i(button_width+4,35));
-		SelectableButton *b = new SelectableButton("BUTTON", this, cell, screen->getName());
-		b->setEnabled(true);
-		b->setFixedSize(Vector2i(button_width, 30));
-		b->setPosition(Vector2i(2,2));
+	while (n--) {
+		palette_content->removeChild(0);
+	}
+	EditorGUI *app = gui;
+	for (auto item : hm_structures ) {
+		Structure *s = item;
+		StructureClass *sc = findClass(s->getKind());
+		int count = 0;
+		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
+			++count;
+			nanogui::Widget *cell = new nanogui::Widget(palette_content);
+			cell->setFixedSize(Vector2i(button_width+4,35));
+			ScreenSelectButton *b = new ScreenSelectButton("BUTTON", this, cell, s->getName(), this);
+			b->setEnabled(true);
+			b->setFixedSize(Vector2i(button_width, 30));
+			b->setPosition(Vector2i(2,2));
+			b->setPassThrough(true);
+			b->setCallback( [app,b](){
+				app->getScreensWindow()->getWindow()->requestFocus();
+				app->getUserWindow()->clearSelections();
+				app->getScreensWindow()->clearSelections(b);
+				b->select();
+			});
+		}
+
+	}
+	if (!palette_content->childCount()) {
+			nanogui::Widget *cell = new nanogui::Widget(palette_content);
+			cell->setFixedSize(Vector2i(button_width+4,35));
+			ScreenSelectButton *b = new ScreenSelectButton("BUTTON", this, cell, "Untitled", this);
+			b->setEnabled(true);
+			b->setFixedSize(Vector2i(button_width, 30));
+			b->setPosition(Vector2i(2,2));
+			b->setPassThrough(true);
+			b->setCallback( [app,b](){
+				app->getScreensWindow()->clearSelections(b);
+				b->select();
+				Structure *st = findScreen(b->caption());
+				if (st) {
+					UserWindow *uw = app->getUserWindow();
+					if (uw) {
+						uw->setStructure(st);
+						system_settings->getProperties().add("active_screen", st->getName());
+					}
+				}
+			});
 	}
 	getWindow()->performLayout(gui->nvgContext());
+	selectFirst();
+	/*if (current) {
+		SelectableButton *btn = dynamic_cast<SelectableButton*>(current);
+		if (btn)
+			btn->callback()();
+	}*/
+
+}
+
+void ScreensWindow::selectFirst() {
+	if (hasSelections()) return;
+	int n = palette_content->childCount();
+	if (!n) return;
+	nanogui::Widget *cell = palette_content->childAt(0);
+	if (!cell->childCount()) return;
+	Selectable *s = dynamic_cast<Selectable*>(cell->childAt(0));
+	if (s) s->select();
 }
 
 
@@ -2186,23 +1795,174 @@ void ViewsWindow::addWindows() {
 }
 
 void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
-	//gui->getViewManager().set(w, true);
 	assert(w);
 	properties->addVariable<bool> (
 		name,
 		  [&,w,this](bool value) mutable{
 			  w->setVisible(value); gui->getViewManager().set(w, value);
-			  this->gui->updateSettings(nullptr);
+			  EditorSettings::flush();
 		  },
-		  [&,w,this]()->bool{ 
-			  return this->gui->getViewManager().get(w).visible; 
+		  [&,w,this]()->bool{
+			  return this->gui->getViewManager().get(w).visible;
 		  });
 }
+
+void UserWindow::getPropertyNames(std::list<std::string> &names) {
+	names.push_back("Screen Width");
+	names.push_back("Screen Height");
+	names.push_back("Screen Id");
+	names.push_back("Window Width");
+	names.push_back("Window Height");
+	names.push_back("File Name");
+}
+
+void UserWindow::loadProperties(PropertyFormHelper *properties) {
+	UserWindow *uw = this;
+	{
+		std::string label("Screen Title");
+		properties->addVariable<std::string>(label,
+				 [uw](std::string value) {
+					 PanelScreen *ps = uw->getActivePanel();
+					 if (ps) {
+						 uw->getWindow()->setTitle(value);
+						 assert(uw->structure());
+						 uw->structure()->getProperties().add("Title", value);
+					 }
+					 uw->getWindow()->requestFocus();
+				 },
+				 [uw]()->std::string{
+					 PanelScreen *ps = uw->getActivePanel();
+					 if (ps) return uw->getWindow()->title();
+					 return "";
+				 });
+	}
+	{
+	std::string label("Screen Name");
+	properties->addVariable<std::string>(label,
+							 [uw](std::string value) {
+								 PanelScreen *ps = uw->getActivePanel();
+								 if (ps) {
+									 ps->setName(value);
+									 assert(uw->structure());
+									 uw->structure()->setName(value);
+								 }
+								 uw->getWindow()->requestFocus();
+								 if (uw->app()->getScreensWindow())
+									 uw->app()->getScreensWindow()->update();
+							 },
+							 [uw]()->std::string{
+								 PanelScreen *ps = uw->getActivePanel();
+								 if (ps) return ps->getName();
+								 return "";
+							 });
+	}
+	{
+	std::string label("Screen Class");
+	properties->addVariable<std::string>(label,
+							 [uw](std::string value) {
+								 assert(uw->structure());
+								 StructureClass *sc = findClass(value);
+								 if (sc && sc != uw->structure()->getStructureDefinition())  {
+									 std::cout << "Error: structure class " << value << " already exists\n";
+									 return;
+								 }
+								 if (uw->structure()->getStructureDefinition())
+								 uw->structure()->getStructureDefinition()->setName(value);
+							 },
+							 [uw]()->std::string{
+								 ScreensWindow *sw = (uw->app()->getScreensWindow());
+								 if (!sw) return "";
+								 if (!uw->structure()) return "Untitled";
+								  if (!uw->structure()->getStructureDefinition()) return "Unknown";
+								 return uw->structure()->getStructureDefinition()->getName();
+							 });
+	}
+	{
+	std::string label("File Name");
+	properties->addVariable<std::string>(label,
+							 [uw](std::string value) {
+								ScreensWindow *sw = (uw->app()->getScreensWindow());
+								if (!sw) return;
+								Structure *current_screen = sw->getSelectedStructure();
+								if (current_screen)
+									current_screen->getInternalProperties().add("file_name", value);
+							 },
+							 [uw]()->std::string{
+								ScreensWindow *sw = (uw->app()->getScreensWindow());
+								if (!sw) return "";
+								Structure *current_screen = sw->getSelectedStructure();
+								if (!current_screen) return "";
+								const Value &vx = current_screen->getInternalProperties().find("file_name");
+								if (vx != SymbolTable::Null) return vx.asString();
+								return vx.asString();
+							 });
+	}
+	std::string label = "Window Width";
+	properties->addVariable<int>(label,
+							 [uw](int value) mutable {
+								 nanogui::Window *w = uw->getWindow();
+								 w->setWidth(value);
+								 w->setFixedWidth(value);
+								 },
+							 [uw]()->int{ return uw->getWindow()->width(); });
+	label = "Window Height";
+	properties->addVariable<int>(label,
+							 [uw](int value) mutable {
+								 nanogui::Window *w = uw->getWindow();
+								 w->setHeight(value);
+								 w->setFixedHeight(value);
+								 },
+							 [uw]()->int{ return uw->getWindow()->height(); });
+	label = "Screen Width";
+	properties->addVariable<int>(label,
+							 [uw](int value) mutable {
+								 nanogui::Window *w = uw->getWindow();
+								 w->setWidth(value);
+								 w->setFixedWidth(value);
+								 },
+							 [uw]()->int{ return uw->getWindow()->width(); });
+	label = "Screen Height";
+	properties->addVariable<int>(label,
+							 [uw](int value) mutable {
+								 nanogui::Window *w = uw->getWindow();
+								 w->setHeight(value);
+								 w->setFixedHeight(value);
+								 },
+							 [uw]()->int{ return uw->getWindow()->height(); });
+	label = "Screen Id";
+	properties->addVariable<int>(label,
+		[uw](int value) mutable {
+			nanogui::Window *w = uw->getWindow();
+			Structure *s = uw->structure();
+			if (s) s->getProperties().add("screen_id", value);
+		},
+		[uw]()->int{
+			Structure *s = uw->structure();
+			if (s) {
+				const Value &v = s->getProperties().find("screen_id");
+				long res = 0;
+				if (v.asInteger(res)) return res;
+			}
+			return 0;
+		});
+}
+
+Value UserWindow::getPropertyValue(const std::string &prop) {
+	if (prop == "Screen Width") return getWindow()->width();
+	if (prop == "Screen Height") return getWindow()->height();
+	if (prop == "Window Width") return getWindow()->width();
+	if (prop == "Window Height") return getWindow()->height();
+	Structure *current_screen = structure();
+	if (prop == "File Name" && current_screen)
+		return current_screen->getInternalProperties().find("file_name");
+	return SymbolTable::Null;
+}
+
 
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);
-	properties->setFixedSize(nanogui::Vector2i(120,28));
+	//properties->setFixedSize(nanogui::Vector2i(120,28));
 	//item_proxy = new ItemProxy(properties, 0);
 	window = properties->addWindow(Eigen::Vector2i(30, 50), "Property List");
 	window->setTheme(theme);
@@ -2211,9 +1971,9 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	window->setVisible(false);
 }
 
+void PropertyWindow::setVisible(bool which) { window->setVisible(which); }
+
 void PropertyWindow::update() {
-	std::cout << "PropertyWindow::update\n";
-#if 1
 	EditorGUI *gui = dynamic_cast<EditorGUI*>(screen);
 	UserWindow *uw = 0;
 	if (gui) {
@@ -2227,14 +1987,24 @@ void PropertyWindow::update() {
 		int n = pw->children().size();
 
 		if (uw->getSelected().size()) {
-			// collect a map of all properties to their objects and then load the 
+			// collect a map of all properties to their objects and then load the
 			// properties that are common to all selected objects
 			int num_sel = uw->getSelected().size();
 			if (num_sel>1) {
 				std::multimap<std::string, EditorWidget*> items;
+				std::set<std::string>non_shared_properties;
+				non_shared_properties.insert("Name");
+				non_shared_properties.insert("Structure");
 				for (auto sel : uw->getSelected()) {
 					EditorWidget *ew = dynamic_cast<EditorWidget*>(sel);
-					if (ew) ew->getPropertyNames(items);
+					if (ew) {
+						std::list<std::string> names;
+						ew->getPropertyNames(names);
+						for (auto pn : names) {
+							if (non_shared_properties.count(pn) == 0)
+								items.insert( std::make_pair(pn, ew) );
+						}
+					}
 				}
 				std::set<std::string> common;
 				std::string last;
@@ -2258,16 +2028,16 @@ void PropertyWindow::update() {
 					for (auto prop : common) {
 						std::string label(prop);
 						properties->addVariable<std::string>(label,
-									[widgets, label](std::string value) { 
+									[widgets, label](std::string value) {
 										for (auto sel : widgets) {
 											assert(sel);
 											sel->setProperty(label, value);
 										}
 									},
-									[widgets, label]()->std::string{ 
+									[widgets, label]()->std::string{
 										EditorWidget *ew = widgets.front();
 										assert(ew);
-										return ew->getProperty(label); 
+										return ew->getProperty(label);
 									});
 						}
 				}
@@ -2299,75 +2069,11 @@ void PropertyWindow::update() {
 			}
 		}
 		else {
-			{
-			std::string label("Screen Title");
-			properties->addVariable<std::string>(label,
-								   [uw](std::string value) {
-									   PanelScreen *ps = uw->getActivePanel();
-									   if (ps) {
-										   uw->getWindow()->setTitle(value);
-									   }
-									   if (uw->app()->getScreensWindow()) uw->app()->getScreensWindow()->update();
-								   },
-								   [uw]()->std::string{
-									   PanelScreen *ps = uw->getActivePanel();
-									   if (ps) return uw->getWindow()->title();
-									   return "";
-								   });
-			}
-			{
-			std::string label("Screen Name");
-			properties->addVariable<std::string>(label,
-								   [uw](std::string value) {
-									   PanelScreen *ps = uw->getActivePanel();
-									   if (ps) {
-										   ps->setName(value);
-									   }
-									   if (uw->app()->getScreensWindow()) uw->app()->getScreensWindow()->update();
-								   },
-								   [uw]()->std::string{
-									   PanelScreen *ps = uw->getActivePanel();
-									   if (ps) return ps->getName();
-									   return "";
-								   });
-			}
-			std::string label = "Window Width";
-			properties->addVariable<int>(label,
-								   [uw](int value) mutable {
-									   nanogui::Window *w = uw->getWindow(); 
-									   w->setWidth(value);
-									   w->setFixedWidth(value);
-									   },
-								   [uw]()->int{ return uw->getWindow()->width(); });
-			label = "Window Height";
-			properties->addVariable<int>(label,
-								   [uw](int value) mutable {
-									   nanogui::Window *w = uw->getWindow();
-									   w->setHeight(value);
-									   w->setFixedHeight(value);
-									   },
-								   [uw]()->int{ return uw->getWindow()->height(); });
-			label = "Screen Width";
-			properties->addVariable<int>(label,
-								   [uw](int value) mutable {
-									   nanogui::Window *w = uw->getWindow(); 
-									   w->setWidth(value);
-									   w->setFixedWidth(value);
-									   },
-								   [uw]()->int{ return uw->getWindow()->width(); });
-			label = "Screen Height";
-			properties->addVariable<int>(label,
-								   [uw](int value) mutable {
-									   nanogui::Window *w = uw->getWindow();
-									   w->setHeight(value);
-									   w->setFixedHeight(value);
-									   },
-								   [uw]()->int{ return uw->getWindow()->height(); });
+			uw->loadProperties(properties);
 		}
 		n = pw->children().size();
 		gui->performLayout();
 	}
-#endif
 }
 
 ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char *tfn)
@@ -2405,7 +2111,7 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	layers["Local"] = layer;
 	current_layer = layer;
 	tab_region->setActiveTab(0);
-	
+
 	if (tag_file_name.length()) loadTagFile(tag_file_name);
 	window->performLayout(screen->nvgContext());
 	window->setVisible(false);
@@ -2432,13 +2138,13 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 	current_layer = container;
 	tag_file_name = tags;
 	VScrollPanel *palette_scroller = new VScrollPanel(container);
-	palette_scroller->setPosition( Vector2i(1,search_height+5)); 
+	palette_scroller->setPosition( Vector2i(1,search_height+5));
 	palette_content = new Widget(palette_scroller);
 	palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
 
 	createPanelPage(tag_file_name.c_str(), palette_content);
 	GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
-	palette_layout->setSpacing(4);
+	palette_layout->setSpacing(1);
 	palette_layout->setMargin(4);
 	palette_layout->setColAlignment(nanogui::Alignment::Fill);
 	palette_layout->setRowAlignment(nanogui::Alignment::Fill);
@@ -2454,9 +2160,9 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 	window->performLayout(gui->nvgContext());
 }
 
-ThemeWindow::ThemeWindow(nanogui::Screen *screen, nanogui::Theme *theme) {
+ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme) :gui(screen) {
 	using namespace nanogui;
-	properties = new FormHelper(screen);
+	properties = new PropertyFormHelper(screen);
 	window = properties->addWindow(Eigen::Vector2i(80, 50), "Theme Properties");
 	window->setTheme(theme);
 	loadTheme(theme);
@@ -2464,9 +2170,21 @@ ThemeWindow::ThemeWindow(nanogui::Screen *screen, nanogui::Theme *theme) {
 }
 
 void ThemeWindow::loadTheme(nanogui::Theme *theme) {
+	nanogui::Window *pw =getWindow();
+	if (!pw) return;
+	EditorGUI *app = gui;
+
+	properties->clear();
+	properties->setWindow(pw); // reset the grid layout
 	properties->addVariable("Standard Font Size", theme->mStandardFontSize);
 	properties->addVariable("Button Font Size", theme->mButtonFontSize);
-	properties->addVariable("TextBox Font Size", theme->mTextBoxFontSize);
+	//properties->addVariable("TextBox Font Size", theme->mTextBoxFontSize);
+	properties->addVariable<int> ("TextBox Font Size",
+									  [theme, app](int value) {
+										  theme->mTextBoxFontSize = value;
+										  app->getUserWindow()->getWindow()->performLayout( app->nvgContext() );
+									   },
+									  [theme]()->int{ return theme->mTextBoxFontSize; });
 	properties->addVariable("Corner Radius", theme->mWindowCornerRadius);
 	properties->addVariable("Header Height", theme->mWindowHeaderHeight);
 	properties->addVariable("Drop Shadow Size", theme->mWindowDropShadowSize);
@@ -2490,13 +2208,14 @@ void ThemeWindow::loadTheme(nanogui::Theme *theme) {
 	properties->addVariable("Focussed Win Colour", theme->mWindowFillFocused);
 	properties->addVariable("Window Title Colour", theme->mWindowTitleUnfocused);
 	properties->addVariable("Focussed Win Title Colour", theme->mWindowTitleFocused);
+	gui->performLayout();
 }
 
 void setupTheme(nanogui::Theme *theme) {
 	using namespace nanogui;
 	theme->mStandardFontSize                 = 20;
 	theme->mButtonFontSize                   = 20;
-	theme->mTextBoxFontSize                  = 20;
+	theme->mTextBoxFontSize                  = -1;
 	theme->mWindowCornerRadius               = 2;
 	theme->mWindowHeaderHeight               = 30;
 	theme->mWindowDropShadowSize             = 10;
@@ -2523,12 +2242,12 @@ void setupTheme(nanogui::Theme *theme) {
 	theme->mButtonGradientBotFocused         = Color(240, 255);
 	theme->mButtonGradientTopUnfocused       = Color(240, 255);
 	theme->mButtonGradientBotUnfocused       = Color(235, 255);
-	theme->mButtonGradientTopPushed          = Color(235, 255);
-	theme->mButtonGradientBotPushed          = Color(222, 255);
+	theme->mButtonGradientTopPushed          = Color(180, 255);
+	theme->mButtonGradientBotPushed          = Color(196, 255);
 
 	/* Window-related */
-	theme->mWindowFillUnfocused              = Color(245, 230);
-	theme->mWindowFillFocused                = Color(255, 230);
+	theme->mWindowFillUnfocused              = Color(220, 230);
+	theme->mWindowFillFocused                = Color(225, 230);
 	theme->mWindowTitleUnfocused             = theme->mDisabledTextColor;
 	theme->mWindowTitleFocused               = theme->mTextColor;
 
@@ -2547,134 +2266,149 @@ void EditorGUI::createWindows() {
 	using namespace nanogui;
 	editor = new Editor(this);
 
-	w_theme = new ThemeWindow(this, theme);
-	w_properties = new PropertyWindow(this, theme);
 	UserWindowWin *uww = new UserWindowWin(this, "Untitled");
 	user_screens.push_back(uww);
 	nanogui::Theme *uwTheme = new nanogui::Theme(nvgContext());
 	setupTheme(uwTheme);
+	uwTheme->mWindowHeaderHeight = 0;
 	w_user = new UserWindow(this, uwTheme, uww);
+	w_theme = new ThemeWindow(this, theme);
+	w_properties = new PropertyWindow(this, theme);
 	w_toolbar = new Toolbar(this, theme);
 	w_startup = new StartupWindow(this, theme);
 	w_objects = new ObjectWindow(this, theme);
 
-	w_structures = new StructuresWindow(this, theme);
+	w_structures = StructuresWindow::create(this, theme);
 
 	w_patterns = new PatternsWindow(this, theme);
 	w_screens = new ScreensWindow(this, theme);
 	w_views = new ViewsWindow(this, theme);
 
-	ConfirmDialog *s = new ConfirmDialog(this, "Humid V0.19");
-	s->setCallback([s,this]{
-		s->setVisible(false);
+	ConfirmDialog *cd = new ConfirmDialog(this, "Humid V0.19");
+	cd->setCallback([cd,this]{
+		cd->setVisible(false);
 		this->setState(EditorGUI::GUISELECTPROJECT);
 	});
-	window = s->getWindow();
+	window = cd->getWindow();
 	window->setTheme(theme);
 
-	{
-		Structure *s = settings.find("EditorSettings");
-		if (s) properties.add(s->getProperties());
-	}
-	settings.load("MainWindow", this);
-	settings.load("ThemeSettings", w_theme->getWindow());
-	settings.load("Properties", w_properties->getWindow());
-	settings.load("Structures", w_structures->getWindow());
-	settings.load("Patterns", w_patterns->getWindow());
-	settings.load("Objects", w_objects->getWindow());
-	settings.load("UserWindow", w_user->getWindow());
-	settings.load("ScreensWindow", w_screens->getWindow());
+	EditorSettings::applySettings("MainWindow", this);
+	EditorSettings::applySettings("ThemeSettings", w_theme->getWindow());
+	EditorSettings::applySettings("Properties", w_properties->getWindow());
+	EditorSettings::applySettings("Structures", w_structures->getWindow());
+	EditorSettings::applySettings("Patterns", w_patterns->getWindow());
+	EditorSettings::applySettings("Objects", w_objects->getWindow());
+	EditorSettings::applySettings("ScreensWindow", w_screens->getWindow());
 
 	// delayed adding windows to the view manager window until the visibility settings are loaded.
 	w_views->addWindows();
 
-	settings.add("MainWindow", this);
-	settings.add("ThemeSettings", w_theme->getWindow());
-	settings.add("Properties", w_properties->getWindow());
-	settings.add("Structures", w_structures->getWindow());
-	settings.add("Patterns", w_patterns->getWindow());
-	settings.add("Objects", w_objects->getWindow());
-	settings.add("UserWindow", w_user->getWindow());
-	settings.add("ScreensWindow", w_screens->getWindow());
+	EditorSettings::add("MainWindow", this);
+	EditorSettings::add("ThemeSettings", w_theme->getWindow());
+	EditorSettings::add("Properties", w_properties->getWindow());
+	EditorSettings::add("Structures", w_structures->getWindow());
+	EditorSettings::add("Patterns", w_patterns->getWindow());
+	EditorSettings::add("Objects", w_objects->getWindow());
+	EditorSettings::add("ScreensWindow", w_screens->getWindow());
 
-	uww->setMoveListener([this](nanogui::Window *value) {
-		this->updateSettings(value);
+	uww->setMoveListener([](nanogui::Window *value) {
+		updateSettingsStructure("MainWindow", value);
 	});
 	w_objects->getSkeletonWindow()->setMoveListener(
-		[this](nanogui::Window *value) { this->updateSettings(value); }
+		[](nanogui::Window *value) { updateSettingsStructure("Objects", value); }
 	);
 	w_patterns->getSkeletonWindow()->setMoveListener(
-													[this](nanogui::Window *value) { this->updateSettings(value); }
-													);
+		[](nanogui::Window *value) { updateSettingsStructure("Patterns", value); }
+	);
 	w_structures->getSkeletonWindow()->setMoveListener(
-													 [this](nanogui::Window *value) { this->updateSettings(value); }
-													 );
-
+		[](nanogui::Window *value) { updateSettingsStructure("Structures", value); }
+	);
+	w_screens->getSkeletonWindow()->setMoveListener(
+		[](nanogui::Window *value) { updateSettingsStructure("ScreensWindow", value); }
+	);
 	w_screens->update();
 	performLayout(mNVGContext);
 }
 
-void EditorWidget::justSelected() {
-	EDITOR->gui()->getUserWindow()->select(this);
-	PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
-	if (prop) {
-		//prop->show(*getWidget());
-		prop->update();
-	}
-	//EDITOR->gui()->getUserWindow()->getWindow()->requestFocus();
-}
-
-void EditorWidget::justDeselected() {
-	EDITOR->gui()->getUserWindow()->deselect(this);
-	PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
-	if (prop) {
-		prop->update();
-		EDITOR->gui()->needsUpdate();
-	}
-}
-
-
 
 void EditorGUI::setState(EditorGUI::GuiState s) {
-	bool state = false;
-	switch(s) {
-		case GUIWELCOME:
-			break;
-		case GUISELECTPROJECT:
-			window = getStartupWindow()->getWindow();
-			window->setVisible(true);
-			break;
-		case GUICREATEPROJECT:
-			getStartupWindow()->setVisible(false);
-			getUserWindow()->setVisible(true);
-			getToolbar()->setVisible(true);
-			break;
-		case GUIEDITMODE:
-			state = true;
-			// fall through
-		case GUIWORKING:
-			if (getPropertyWindow()) {
-				nanogui::Window *w = getPropertyWindow()->getWindow();
-				ViewOptions vo(views.get(w));
-				w->setVisible(state && vo.visible);
+	bool editmode = false;
+	bool done = false;
+	while (!done) {
+		switch(s) {
+			case GUIWELCOME:
+				done = true;
+				break;
+			case GUISELECTPROJECT:
+				if (hm_structures.size()>1) { // files were specified on the commandline
+					getStartupWindow()->setVisible(false);
+					getScreensWindow()->update();
+					Structure *project = EditorSettings::find("ProjectSettings");
+					if (!project) {
+						project = new Structure("ProjectSettings", "PROJECTSETTINGS");
+						hm_structures.push_back(project);
+						std::string base = source_files.front();
+						size_t delim_pos = base.rfind('/');
+						if (delim_pos != std::string::npos) {
+							base.erase(delim_pos);
+							getSettings().getProperties().add("project_base", Value(base, Value::t_string));
+						}
+					}
+					s = GUIWORKING;
+					done = false;
+				}
+				else {
+					window = getStartupWindow()->getWindow();
+					window->setVisible(true);
+					done = true;
+				}
+				break;
+			case GUICREATEPROJECT:
+			{
+				getStartupWindow()->setVisible(false);
+				Structure &settings(getSettings());
+				Value &path = settings.getProperties().find("project_base");
+				if (path != SymbolTable::Null)
+					project = new EditorProject(path.asString().c_str());
+				if (!project)
+					project = new EditorProject("UntitledProject");
+				getUserWindow()->setStructure(createScreenStructure());
+				getUserWindow()->setVisible(true);
+				getToolbar()->setVisible(true);
+				done = true;
 			}
-			if (getPatternsWindow()) {
-				nanogui::Window *w = getPatternsWindow()->getWindow();
-				w->setVisible(state && views.get(w).visible);
-			}
-			if (getStructuresWindow()) {
-				nanogui::Window *w = getStructuresWindow()->getWindow();
-				w->setVisible(state && views.get(w).visible);
-			}
-			if (getObjectWindow()) {
-				nanogui::Window *w = getObjectWindow()->getWindow();
-				w->setVisible(state && views.get(w).visible);
-			}
-			if (getScreensWindow()) {
-				nanogui::Window *w = getScreensWindow()->getWindow();
-				w->setVisible(state && views.get(w).visible);
-			}
-			break;
+				break;
+			case GUIEDITMODE:
+				editmode = true;
+				// fall through
+			case GUIWORKING:
+				getUserWindow()->setVisible(true);
+				getScreensWindow()->selectFirst();
+				getToolbar()->setVisible(true);
+				if (getPropertyWindow()) {
+					nanogui::Window *w = getPropertyWindow()->getWindow();
+					ViewOptions vo(views.get(w));
+					w->setVisible(editmode && vo.visible);
+				}
+				if (getPatternsWindow()) {
+					nanogui::Window *w = getPatternsWindow()->getWindow();
+					w->setVisible(editmode && views.get(w).visible);
+				}
+				if (getStructuresWindow()) {
+					nanogui::Window *w = getStructuresWindow()->getWindow();
+					w->setVisible(editmode && views.get(w).visible);
+				}
+				if (getObjectWindow()) {
+					nanogui::Window *w = getObjectWindow()->getWindow();
+					w->setVisible(editmode && views.get(w).visible);
+				}
+				if (getScreensWindow()) {
+					nanogui::Window *w = getScreensWindow()->getWindow();
+					w->setVisible(editmode && views.get(w).visible);
+				}
+				done = true;
+				break;
+		}
 	}
 	state = s;
 }
@@ -2692,11 +2426,15 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 
 	Widget *window = w_user->getWindow();
 	DragHandle *drag_handle = editor->getDragHandle();
-	
+
 	drag_handle->incRef();
 	removeChild(drag_handle);
 	PropertyMonitor *pm = drag_handle->propertyMonitor();
 	drag_handle->setPropertyMonitor(0);
+
+	assert(w_user->structure());
+	StructureClass *screen_sc = w_user->structure()->getStructureDefinition();
+	assert(screen_sc);
 
 	unsigned int offset = 0;
 	for(Selectable *sel : selections) {
@@ -2706,7 +2444,13 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 		nanogui::Widget *w = item->create(window);
 		if (w) {
 			EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
-			if (ew) ew->setName( nextName(ew) );
+			Parameter param(ew->getName());
+			ew->updateStructure();
+			param.machine = ew->getDefinition();
+			screen_sc->addLocal(param);
+			ew->getDefinition()->setOwner(w_user->structure());
+
+			//if (ew) ew->setName( NamedObject::nextName(ew) );
 			Vector2i pos(p - window->position() - w->size()/2 + nanogui::Vector2i(0, offset));
 			w->setPosition(fixPlacement(w, window, pos));
 			offset += w->height() + 8;
@@ -2726,12 +2470,12 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	if (!window || !window->visible()) return Screen::mouseButtonEvent(p, button, down, modifiers);
 
 	Widget *clicked = findWidget(p);
-	
+
 	Widget *ww = dynamic_cast<Widget*>(window);
 
 	bool is_user = EDITOR->gui()->getUserWindow()->getWindow()->focused();
 
-	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {	
+	if (button != GLFW_MOUSE_BUTTON_1 || !is_user || !window->contains(p /*- window->position()*/)) {
 		if (!clicked) return Screen::mouseButtonEvent(p, button, down, modifiers);
 		Widget *parent = clicked->parent();
 		while (parent && parent->parent()) { clicked = parent; parent = clicked->parent(); }
@@ -2799,21 +2543,74 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	}
 }
 
-GLuint EditorGUI::getImageId(const char *name) {
+bool isURL(const std::string name) {
+	//if (matches(name.c_str(), "((http[s]?|ftp):/)?/?([^:/\\s]+)((/\\w+)*/)([\\w-\\.]+[^#?\\s]+)(.*)?(#[\\w\\-]+)?")) return true;
+	return matches(name.c_str(), "^http://.*");
+}
+
+GLuint EditorGUI::getImageId(const char *source, bool reload) {
+	GLuint blank_id = 0;
+	std::string blank_name = "images/blank";
+	std::string name(source);
 	for(auto it = mImagesData.begin(); it != mImagesData.end(); ++it) {
 		const GLTexture &tex = (*it).first;
 		if (tex.textureName() == name) {
 			cout << "found image " << tex.textureName() << "\n";
 			return tex.texture();
 		}
+		else if (blank_name == tex.textureName())
+			blank_id = tex.texture();
 	}
-	return 0;
+	if (isURL(name)) {
+		std::string cache_name = "cache";
+		if (!boost::filesystem::exists(cache_name))
+			boost::filesystem::create_directory(cache_name);
+		cache_name += "/" + shortName(name) + "." + extn(name);
+		// example: http://www.valeparksoftwaredevelopment.com/cmsimages/logo-full-1.png
+		if (!get_file(name, cache_name) ) {
+			std::cerr << "Error fetching image file\n";
+			return blank_id;
+		}
+		name = cache_name;
+	}
+	std::string tex_name = shortName(name);
+	auto found = texture_cache.find(tex_name);
+	if (reload || found == texture_cache.end()) {
+		if (found != texture_cache.end()) {
+			Texture *old = (*found).second;
+			texture_cache.erase(found);
+			delete old;
+		}
+
+		// not already loaded, attempt to load from file
+		GLTexture tex(tex_name);
+		try {
+			auto tex_data = tex.load(name);
+			GLuint res = tex.texture();
+			texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+			std::cout << "added texture " << tex_name << " id " << res << " to cache\n";
+			return res;
+		}
+		catch(std::invalid_argument &err) {
+			std::cerr << err.what() << "\n";
+		}
+	}
+	return blank_id;
 }
+nanogui::Vector2i fixPositionInWindow(const nanogui::Vector2i &pos, const nanogui::Vector2i &siz, const nanogui::Vector2i &area);
 
 bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 	if (old_size == new_size) {
 		return false;
 	}
+
+	if (glfwWindow()) {
+		int width, height;
+		glfwGetFramebufferSize(glfwWindow(), &width, &height);
+		glViewport(0, 0, 2880, 1800);
+	}
+
+
 	nanogui::Window * windows[] = {
 		this->getStructuresWindow()->getWindow(),
 		this->getPropertyWindow()->getWindow(),
@@ -2849,11 +2646,21 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 		//if(bot < lhs) pos.x() = new_size.x() - rhs - w->width();
 		pos.y() = (int) ((float)item.second.y() * y_scale);
 
+		if (pos.x() < 0) pos.x() = 0;
+		if (pos.y() < 0) pos.y() = 0;
+		if (pos.x() + w->width() > new_size.x()) pos.x() = new_size.x() - w->width();
+		if (pos.y() + w->height() > new_size.y()) pos.y() = new_size.y() - w->height();
+
 		item.first->setPosition(pos);
 	}
 	//cout << "\n";
 	old_size = mSize;
-	return res;
+	if (w_user) {
+		w_user->getWindow()->setFixedSize(new_size);
+		w_user->getWindow()->setPosition(nanogui::Vector2i(0,0));
+		performLayout();
+	}
+	return true;
 }
 
 LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
@@ -2887,7 +2694,7 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 			}
 			else if (buf && pos == 4) {
 				CircularBuffer::DataType dt = buf->getDataType();
-				if (lp) 
+				if (lp)
 					lp->setValue(v);
 				if (v.asInteger(val)) {
 					if (dt == CircularBuffer::INT16) {
@@ -2904,7 +2711,7 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				else if (v.asFloat(dval)) {
 					buf->addSample(now, dval);
 				}
-				else 
+				else
 					std::cout << "cannot interpret " << name << " value '" << v << "' as an integer or float\n";
 			}
 			++pos;
@@ -2951,7 +2758,7 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 						long v;
 						double fv;
 						buf->clear();
-						if (value.asInteger(v)) 
+						if (value.asInteger(v))
 							buf->addSample( buf->getZeroTime(), v);
 						else if (value.asFloat(fv))
 							buf->addSample( buf->getZeroTime(), fv);
@@ -2974,12 +2781,12 @@ void EditorGUI::update() {
 		if (linkables.size() && startup == sINIT) {
 			std::cout << "Sending data initialisation request\n";
 			startup = sSENT;
-			queueMessage("MODBUS REFRESH", 
-				[this](std::string s) { 
+			queueMessage("MODBUS REFRESH",
+				[this](std::string s) {
 					std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
 						cJSON *obj = cJSON_Parse(s.c_str());
-						if (!obj) { 
+						if (!obj) {
 							startup = sINIT;
 							return;
 						}
@@ -2991,14 +2798,30 @@ void EditorGUI::update() {
 					else
 						startup = sINIT;
 				}
-			); 
+			);
 		}
 	}
-	if (w_user) w_user->update();
+
+	if (w_user) {
+		Value &active = system_settings->getProperties().find("active_screen");
+		if (active != SymbolTable::Null) {
+			Structure *s = findScreen(active.asString());
+			if (s) {
+				w_user->getWindow()->requestFocus();
+				w_user->clearSelections();
+				w_user->setStructure(s);
+			}
+		}
+		w_user->update();
+	}
+
+	if (w_user)
+		w_user->update();
 	if (needs_update) {
 		w_properties->getWindow()->performLayout(nvgContext());
 		needs_update = false;
 	}
+	EditorSettings::flush();
 }
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
@@ -3020,6 +2843,9 @@ CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 	//	addDataBuffer(item, gui->sampleBufferSize());
 	return (*found).second;
 }
+
+void UserWindow::refresh() { window->performLayout(gui->nvgContext()); }
+
 
 nanogui::Window *ObjectWindow::createPanelPage(
 		   const char *filename,
@@ -3049,161 +2875,12 @@ struct comma_is_space : std::ctype<char> {
 	}
 };
 
-nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
-	using namespace nanogui;
-
-	Structure *s = EDITOR->gui()->getStructuresWindow()->createStructure(this->getClass());
-	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
-	int object_height = (s) ? s->getIntProperty("height", 60) : 60;
-	Widget *result = 0;
-	if (this->getClass() == "BUTTON") {
-		EditorButton *b = new EditorButton(window, nullptr, caption());
-		if (s) b->setDefinition(s);
-		b->setName( EDITOR->gui()->nextName(b));
-		if (s) s->setName(b->getName());
-		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
-		b->setChangeCallback([b, this] (bool state) {
-			if (b->getRemote()) {
-				gui->queueMessage(
-							gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-				gui->queueMessage(
-							gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
-			}
-			else if (b->command().length()) {
-				gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
-			}
-		});
-
-		result = b;
-	}
-	else if (getClass() == "LABEL") {
-		EditorLabel *eb = new EditorLabel(window, nullptr, "untitled");
-		if (s) eb->setDefinition(s);
-		eb->setName( EDITOR->gui()->nextName(eb));
-		if (s) s->setName(eb->getName());
-		result = eb;
-	}
-	else if (getClass() == "TEXT") {
-		EditorGUI *gui = EDITOR->gui();
-		EditorTextBox *eb = new EditorTextBox(window, nullptr);
-		if (s) eb->setDefinition(s);
-		eb->setName( EDITOR->gui()->nextName(eb));
-		if (s) s->setName(eb->getName());
-		eb->setEditable(true);
-		eb->setCallback( [eb, gui](const std::string &value)->bool{ 
-			if (!eb->getRemote()) return true;
-			char *rest = 0;
-			{
-				long val = strtol(value.c_str(),&rest,10); 
-				if (*rest == 0) {
-					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
-					return true;
-				}
-			}
-			{
-				double val = strtod(value.c_str(),&rest);
-				if (*rest == 0)  {
-					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
-					return true;
-				}
-			}
-			return false;
-		});
-		result = eb;
-	}
-	else if (getClass() == "IMAGE") {
-		GLuint img = gui->getImageId("images/blank");
-		EditorImageView *iv = new EditorImageView(window, nullptr, img);
-		if (s) iv->setDefinition(s);
-		iv->setName( EDITOR->gui()->nextName(iv));
-		if (s) s->setName(iv->getName());
-		iv->setGridThreshold(20);
-		iv->setPixelInfoThreshold(20);
-		iv->setImageName("images/blank");
-		result = iv;
-	}
-	else if (getClass() == "PLOT") {
-		EditorLinePlot *lp = new EditorLinePlot(window, nullptr);
-		lp->setName( EDITOR->gui()->nextName(lp));
-		if (s) lp->setDefinition(s);
-		if (s) s->setName(lp->getName());
-		lp->setBufferSize(gui->sampleBufferSize());
-		result = lp;
-	}
-	if (result) {
-		result->setFixedSize(Vector2i(object_width, object_height));
-		result->setSize(Vector2i(object_width, object_height));
-	}
-	return result;
-}
-
-void EditorWidget::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-	names.insert(std::make_pair("Structure", this));
-	names.insert(std::make_pair("Horizontal Pos", this));
-	names.insert(std::make_pair("Vertical Pos", this));
-	names.insert(std::make_pair("Width", this));
-	names.insert(std::make_pair("Height", this));
-	names.insert(std::make_pair("Name", this)); // not common
-	names.insert(std::make_pair("FontSize", this));
-}
-
-void EditorWidget::setProperty(const std::string &prop, const std::string value) {
-	std::string::size_type sz;
-	if (prop == "Horizontal Pos") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		w->setPosition( nanogui::Vector2i(std::stoi(value,&sz),w->position().y()) );
-		return;
-	}
-	if (prop == "Vertical Pos") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		w->setPosition( nanogui::Vector2i(w->position().x(), std::stoi(value,&sz)) );
-		return;
-	}
-	if (prop == "Width") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		w->setWidth(std::stoi(value,&sz)); 
-		return;
-	}
-	if (prop == "Height") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		w->setHeight(std::stoi(value,&sz));
-		return;
-	}
-	if (prop == "FontSize") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		w->setFontSize(std::stoi(value,&sz));
-		return;
-	}
-}
-
-std::string EditorWidget::getProperty(const std::string &prop) {
-	if (prop == "Structure") return base;
-	if (prop == "Horizontal Pos") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		char buf[10]; snprintf(buf, 10, "%d", w->position().x()); return buf;
-	}
-	if (prop == "Vertical Pos") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		char buf[10]; snprintf(buf, 10, "%d", w->position().y()); return buf;
-	}
-	if (prop == "Width") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		char buf[10]; snprintf(buf, 10, "%d", w->width()); return buf;
-	}
-	if (prop == "Height") {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-		char buf[10]; snprintf(buf, 10, "%d", w->height()); return buf;
-	}
-	return "";
-}
-
-
 void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
 		properties->addVariable<std::string> ("Structure",
 									  [&,w](const std::string value) { },
-									  [&,w]()->std::string{ return base; });
+									  [&,w]()->std::string{ return getDefinition()->getKind(); });
 		properties->addVariable<int> ("Horizontal Pos",
 									  [&,w](int value) mutable{
 										  Eigen::Vector2i pos(value, w->position().y());
@@ -3223,11 +2900,22 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 								  [&,w](int value) mutable{ w->setHeight(value); },
 								  [&,w]()->int{ return w->height(); });
 		properties->addVariable<std::string> ("Name",
-											  [&](std::string value) mutable{ setName(value); },
+											  [&](std::string value) mutable{
+													setName(value);
+													if (getDefinition()) {
+														getDefinition()->setName(value);
+													}
+												},
 											  [&]()->std::string{ return getName(); });
 		properties->addVariable<int> ("FontSize",
 									  [&,w](int value) mutable{ w->setFontSize(value); },
 									  [&,w]()->int{ return w->fontSize(); });
+		properties->addVariable<int> ("Tab Position",
+									  [&,w](int value) mutable{ setTabPosition(value); },
+									  [&,w]()->int{ return tabPosition(); });
+		properties->addVariable<int> ("Value Scale",
+									  [&,w](int value) mutable{ setValueScale(value); },
+									  [&,w]()->int{ return valueScale(); });
 		properties->addVariable<std::string> ("Patterns",
 											  [&,w](std::string value) mutable{ setPatterns(value); },
 											  [&,w]()->std::string{ return patterns(); }
@@ -3447,15 +3135,20 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
 }
 
-void EditorTextBox::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-	EditorWidget::getPropertyNames(names);
-	names.insert(std::make_pair("Number format", this));
-}
-
 void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
+		{
+			nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox* >(this);
+			if (tb) {
+				properties->addVariable<std::string> (
+					"Text",
+					[&,tb](std::string value) { tb->setValue(value); },
+					[&,tb]()->std::string{ return tb->value(); });
+			}
+		}
+		{
 		nanogui::FloatBox<double> *tb = dynamic_cast<nanogui::FloatBox<double>* >(this);
 		if (tb) {
 			properties->addVariable<std::string> (
@@ -3463,14 +3156,19 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				[&,tb](std::string value) { tb->numberFormat(value); },
 				[&,tb]()->std::string{ return tb->numberFormat(); });
 		}
+		}
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&](std::string value) { /*setName(value);*/ },
+			[&,this](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (remote) remote->unlink(this);
+				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
+			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
 			"Modbus address",
-			[&](unsigned int value) { 
+			[&](unsigned int value) {
 				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
 				lp->addr = value;*/
 			},
@@ -3478,24 +3176,18 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<unsigned int> (
 			"Data Type",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataType();
-				return 0; 
+				return 0;
 			});
 		properties->addVariable<unsigned int> (
 			"Data Size",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataSize();
-				return 0; 
+				return 0;
 			});
 	}
-}
-
-void EditorImageView::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-    EditorWidget::getPropertyNames(names);
-    names.insert(std::make_pair("Image File", this));
-    names.insert(std::make_pair("Scale", this));
 }
 
 void EditorImageView::loadProperties(PropertyFormHelper* properties) {
@@ -3512,11 +3204,15 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&](std::string value) { /*setName(value);*/ },
+			[&,this](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (remote) remote->unlink(this);
+				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
+			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
 			"Modbus address",
-			[&](unsigned int value) { 
+			[&](unsigned int value) {
 				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
 				lp->addr = value;*/
 			},
@@ -3524,23 +3220,18 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<unsigned int> (
 			"Data Type",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataType();
-				return 0; 
+				return 0;
 			});
 		properties->addVariable<unsigned int> (
 			"Data Size",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataSize();
-				return 0; 
+				return 0;
 			});
 	}
-}
-
-void EditorLabel::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-    EditorWidget::getPropertyNames(names);
-    names.insert(std::make_pair("Caption", this));
 }
 
 void EditorLabel::loadProperties(PropertyFormHelper* properties) {
@@ -3554,11 +3245,15 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&](std::string value) { /*setName(value);*/ },
+			[&,this](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (remote) remote->unlink(this);
+				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
+			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
 			"Modbus address",
-			[&](unsigned int value) { 
+			[&](unsigned int value) {
 				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
 				lp->addr = value;*/
 			},
@@ -3566,26 +3261,59 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<unsigned int> (
 			"Data Type",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataType();
-				return 0; 
+				return 0;
 			});
 		properties->addVariable<unsigned int> (
 			"Data Size",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataSize();
-				return 0; 
+				return 0;
 			});
 	}
 }
 
-void EditorButton::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-    EditorWidget::getPropertyNames(names);
-    names.insert(std::make_pair("Background colour", this));
-    names.insert(std::make_pair("Text colour", this));
-    names.insert(std::make_pair("Behaviour", this));
-    names.insert(std::make_pair("Command", this));
+void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addVariable<float> (
+			"Value",
+			[&](float value) mutable { setValue(value); },
+			[&]()->float{ return value(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&, w, this](std::string value) mutable {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (remote) remote->unlink(this);
+				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
+			 },
+			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+		properties->addVariable<unsigned int> (
+			"Modbus address",
+			[&](unsigned int value) {
+				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
+				lp->addr = value;*/
+			},
+			[&]()->unsigned int{ return remote ? remote->address() : 0; });
+		properties->addVariable<unsigned int> (
+			"Data Type",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{
+				if (remote) return remote->dataType();
+				return 0;
+			});
+		properties->addVariable<unsigned int> (
+			"Data Size",
+			[&](unsigned int value) {  },
+			[&]()->unsigned int{
+				if (remote) return remote->dataSize();
+				return 0;
+			});
+	}
 }
 
 void EditorButton::loadProperties(PropertyFormHelper* properties) {
@@ -3605,6 +3333,34 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Caption",
 			[&](std::string value) mutable{ setCaption(value); },
 			[&]()->std::string{ return caption(); });
+		properties->addVariable<int> (
+			"Icon",
+			[&](int value) mutable{ setIcon(value); },
+			[&]()->int{ return icon(); });
+		properties->addVariable<int> (
+			"IconPosition",
+			[&](int value) mutable{
+				nanogui::Button::IconPosition icon_pos(nanogui::Button::IconPosition::Left);
+				switch(value) {
+					case 0: break;
+					case 1: icon_pos = nanogui::Button::IconPosition::LeftCentered; break;
+					case 2: icon_pos = nanogui::Button::IconPosition::RightCentered; break;
+					case 3: icon_pos = nanogui::Button::IconPosition::Right; break;
+					case 4: icon_pos = nanogui::Button::IconPosition::Filled; break;
+					default: break;
+				}
+				setIconPosition(icon_pos);
+				},
+			[&]()->int{
+				switch(iconPosition()) {
+					case nanogui::Button::IconPosition::Left: return 0;
+					case nanogui::Button::IconPosition::LeftCentered: return 1;
+					case nanogui::Button::IconPosition::RightCentered: return 2;
+					case nanogui::Button::IconPosition::Right: return 3;
+					case nanogui::Button::IconPosition::Filled: return 4;
+				}
+				return 0;
+			});
 		properties->addVariable<unsigned int> (
 			"Behaviour",
 			[&](unsigned int value) mutable{ setFlags(value & 0x0f); },
@@ -3613,14 +3369,26 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Command",
 			[&](std::string value) { setCommand(value); },
 			[&]()->std::string{ return command(); });
+		properties->addVariable<bool> (
+			"Pushed",
+			[&](bool value) { setPushed(value); },
+			[&]()->bool{ return pushed(); });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&](std::string value) { /*setName(value);*/ },
+			[&,btn,this](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (remote) remote->unlink(this);
+				if (lp) {
+					remote = lp;
+					if (getDefinition()->getKind() == "INDICATOR")
+						lp->link(new LinkableIndicator(this));
+				}
+			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
 			"Modbus address",
-			[&](unsigned int value) { 
+			[&](unsigned int value) {
 				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
 				lp->addr = value;*/
 			},
@@ -3628,29 +3396,22 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<unsigned int> (
 			"Data Type",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataType();
-				return 0; 
+				return 0;
 			});
 		properties->addVariable<unsigned int> (
 			"Data Size",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				if (remote) return remote->dataSize();
-				return 0; 
+				return 0;
 			});
 	}
 }
-
-void EditorLinePlot::getPropertyNames(std::multimap<std::string, EditorWidget *> &names) {
-    EditorWidget::getPropertyNames(names);
-    names.insert(std::make_pair("X scale", this));
-    names.insert(std::make_pair("X offset", this));
-    names.insert(std::make_pair("Grid Intensity", this));
-    names.insert(std::make_pair("Display Grid", this));
-    names.insert(std::make_pair("Overlay plots", this));
-    names.insert(std::make_pair("Line style", this));
-    names.insert(std::make_pair("Line thickness", this));
+void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val) {
+	if (evt == SampleTrigger::START) start_trigger_value = val;
+	else if (evt == SampleTrigger::STOP) stop_trigger_value = val;
 }
 
 void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
@@ -3728,7 +3489,7 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 			[&]()->std::string{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->tagName() : ""; });
 		properties->addVariable<unsigned int> (
 			"Modbus address",
-			[&](unsigned int value) { 
+			[&](unsigned int value) {
 				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
 				lp->addr = value;*/
 			},
@@ -3736,22 +3497,22 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 		properties->addVariable<unsigned int> (
 			"Data Type",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
 				if (lp)
 					return lp->dataType();
-				return 0; 
+				return 0;
 			});
 		properties->addVariable<unsigned int> (
 			"Data Size",
 			[&](unsigned int value) {  },
-			[&]()->unsigned int{ 
+			[&]()->unsigned int{
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
 				if (lp)
 					return lp->dataSize();
-				return 0; 
+				return 0;
 			});
-		
+
 	}
 	properties->addGroup("Triggers");
 	properties->addVariable<std::string> (
@@ -3783,6 +3544,7 @@ void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Even
 	if (!user_window) return;
 
 	CircularBuffer *buf = user_window->getDataBuffer(name);
+	if (!buf) return;
 	SampleTrigger *t = buf->getTrigger(evt);
 	if (!t) {
 		t = new SampleTrigger(name, 0);
@@ -3792,175 +3554,6 @@ void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Even
 	}
 	else
 		t->setPropertyName(name);
-}
-
-void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val) {
-	if (evt == SampleTrigger::START) start_trigger_value = val;
-	else if (evt == SampleTrigger::STOP) stop_trigger_value = val;
-}
-
-
-nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
-	using namespace nanogui;
-	Widget *result = 0;
-	int object_width = 60;
-	int object_height = 25;
-
-	int kind = properties->getKind();
-	const std::string &address_str(properties->addressStr());
-	const std::string &tag_name(properties->tagName());
-
-	switch (properties->getKind()) {
-
-		case '0': {
-			size_t p = tag_name.find(".cmd_");
-
-			if (p != std::string::npos) {
-				char *rest = 0;
-				int address_int = (int)strtol(address_str.c_str()+2,&rest, 10);
-
-				if (*rest) {
-					std::cerr << "Unexpected data in address\n";
-					address_int = 0;
-				}
-
-				EditorButton *b = new EditorButton(container, properties, tag_name.substr(p+5), false);
-				b->setSize(Vector2i(object_width, object_height));
-				b->setName(tag_name);
-
-				b->setChangeCallback([b, this] (bool state) {
-					gui->queueMessage(
-									  gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-					gui->queueMessage(
-									  gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
-
-				});
-				result = b;
-			}
-			else {
-				EditorButton *b = new EditorButton(container, properties);
-				b->setSize(Vector2i(object_width, object_height));
-				b->setFlags(Button::ToggleButton);
-				b->setName(tag_name);
-				b->setChangeCallback([this,b](bool state) {
-					gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
-					if (state)
-						b->setBackgroundColor(Color(255, 80, 0, 255));
-					else
-						b->setBackgroundColor(b->theme()->mButtonGradientBotUnfocused   );
-				});
-				result = b;
-			}
-		}
-
-			break;
-
-		case '1': {
-			char *rest = 0;
-			//int address_int = (int)strtol(address_str.c_str()+2,&rest, 10);
-			EditorButton *b = new EditorButton(container, properties, tag_name, true);
-			b->setSize(Vector2i(object_width, object_height));
-			b->setFixedSize(Vector2i(object_width, object_height));
-			b->setFlags(Button::ToggleButton);
-			b->setName(tag_name);
-			b->setChangeCallback([this,b](bool state) {
-				gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
-				if (state)
-					b->setBackgroundColor(Color(255, 80, 0, 255));
-				else
-					b->setBackgroundColor(b->theme()->mButtonGradientBotUnfocused   );
-			});
-			result = b;
-		}
-
-			break;
-
-		case '3': {
-			//EditorLabel *el = new EditorLabel(container, nullptr, tag_name, std::string("sans-bold"));
-			//el->setSize(Vector2i(object_width, object_height));
-			//el->setFixedSize(Vector2i(object_width, object_height));
-			//CheckBox *b = new CheckBox(container, tag_name);
-			//img->setPolicy(ImageView::SizePolicy::Expand);
-			//b->setBackgroundColor(Color(200, 200, 200, 255));
-			//b->setFixedSize(Vector2i(25, 25));
-			//result = new Label(container, tag_name, "sans-bold");
-
-			EditorTextBox *textBox = new EditorTextBox(container, properties);
-			textBox->setName(tag_name);
-			textBox->setValue("");
-			textBox->setEnabled(true);
-			textBox->setEditable(true);
-			textBox->setTooltip(tag_name);
-			textBox->setSize(Vector2i(object_width, object_height));
-			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
-			if (lp) lp->link(new LinkableTextBox(textBox));
-			EditorGUI *gui = EDITOR->gui();
-			textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
-				char *rest = 0;
-				{
-					long val = strtol(value.c_str(),&rest,10); 
-					if (*rest == 0) {
-						gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
-						return true;
-					}
-				}
-				{
-					double val = strtod(value.c_str(),&rest);
-					if (*rest == 0)  {
-						gui->queueMessage( gui->getIODSyncCommand(3, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
-						return true;
-					}
-				}
-				return false;
-			});
-			result = textBox;
-		}
-
-			break;
-
-		case '4': {
-			//new Label(container, tag_name, "sans-bold");
-			auto textBox = new EditorTextBox(container, properties);
-			textBox->setEditable(true);
-			textBox->setSize(Vector2i(object_width, object_height));
-			textBox->setFixedSize(Vector2i(object_width, object_height));
-			textBox->setTooltip(tag_name);
-			//textBox->setDefaultValue("0");
-			//textBox->setFontSize(16);
-			//textBox->setFormat("[1-9][0-9]*");
-			//textBox->setSpinnable(true);
-			//textBox->setMinValue(1);
-			//textBox->setValueIncrement(1);
-			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
-			if (lp) lp->link(new LinkableTextBox(textBox));
-			EditorGUI *gui = EDITOR->gui();
-			textBox->setCallback( [textBox, gui](const std::string &value)->bool{ 
-				char *rest = 0;
-				{
-					long val = strtol(value.c_str(),&rest,10); 
-					if (*rest == 0) {
-						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
-						return true;
-					}
-				}
-				{
-					double val = strtod(value.c_str(),&rest);
-					if (*rest == 0)  {
-						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
-						return true;
-					}
-				}
-				return false;
-			});
-			result = textBox;
-		}
-
-			break;
-
-		default:
-			;
-	}
-	return result;
 }
 
 void ObjectWindow::loadItems(const std::string match) {
@@ -3974,7 +3567,7 @@ void ObjectWindow::loadItems(const std::string match) {
 
 	std::vector<std::string> tokens;
 	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
-	
+
 	int n = tokens.size();
 	for (auto item : gui->getLinkableProperties() ) {
 		for (auto nam : tokens) {
@@ -4031,7 +3624,7 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		char kind = address_str[1];
 		if (tag_name.length()) {
 			LinkableProperty *lp = gui->findLinkableProperty(tag_name);
-			if (lp == nullptr) 
+			if (lp == nullptr)
 				lp = new LinkableProperty(group_name, kind, tag_name, address_str, data_type, data_count);
 			else {
 				const std::string &old_group(lp->group());
@@ -4055,100 +3648,106 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 
 	}
 	loadItems(search_box->value());
-	
+
 	return true;
 }
 
-bool SettingsItem::load(Structure *item) {
-	if (item->getKind() == "WINDOW") { return loadWindow(item); }
-	if (item->getKind() == "EDITORSETTINGS") { return loadSettings(item); }
-	return false;
-}
-bool SettingsItem::loadWindow(Structure *item) {
+bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 	if (widget) {
 		nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
-		const Value &vx = item->getProperties().find("x");
-		const Value &vy = item->getProperties().find("y");
-		long x, y;
-		if (vx.asInteger(x) && vy.asInteger(y)) {
-			if (screen)
-				screen->setPosition(nanogui::Vector2i(x, y));
-			else
-				widget->setPosition(nanogui::Vector2i(x, y));
-		}
-		const Value &vw = item->getProperties().find("w");
-		const Value &vh = item->getProperties().find("h");
-		long w, h;
-		if (vw.asInteger(w) && vh.asInteger(h)) {
-			if (screen) {
-				screen->setSize(nanogui::Vector2i(w, h));
-			}
-			else {
-				widget->setSize(nanogui::Vector2i(w, h));
-				widget->setFixedSize(nanogui::Vector2i(w, h));
+		{
+			const Value &vw = item->getProperties().find("w");
+			const Value &vh = item->getProperties().find("h");
+			long w, h;
+			if (vw.asInteger(w) && vh.asInteger(h)) {
+				if (screen) {
+					screen->setSize(nanogui::Vector2i(w, h));
+				}
+				else {
+					widget->setSize(nanogui::Vector2i(w, h));
+					widget->setFixedSize(nanogui::Vector2i(w, h));
+				}
 			}
 		}
+		{
+			const Value &vx = item->getProperties().find("x");
+			const Value &vy = item->getProperties().find("y");
+			long x, y;
+			if (vx.asInteger(x) && vy.asInteger(y)) {
+				if (screen)
+					screen->setPosition(nanogui::Vector2i(x, y));
+				else {
+					nanogui::Vector2i pos(x,y);
+					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
+					widget->setPosition(pos);
+				}
+			}
+		}
+		{
+			SkeletonWindow *skel = dynamic_cast<SkeletonWindow*>(widget);
+			if (skel) {
+				const Value &sx = item->getProperties().find("sx"); // position when shrunk
+				const Value &sy = item->getProperties().find("sy"); // position when shrunk
+				long x, y;
+				if (sx.asInteger(x) && sy.asInteger(y)) {
+					nanogui::Vector2i pos(x, y);
+					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
+					skel->setShrunkPos(pos);
+				}
+			}
+		}
+
 		long vis = 0;
 		const Value &vis_prop(item->getProperties().find("visible"));
 		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
 			EDITOR->gui()->getViewManager().set(widget, vis);
+		else
+			EDITOR->gui()->getViewManager().set(widget, true);
 		return true;
 	}
 	else return false;
 }
 
+bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
+	if (!widget) return false;
+	SkeletonWindow *skel = dynamic_cast<SkeletonWindow *>(widget);
 
-bool SettingsItem::saveSettings(std::ostream &out) {
-	std::map<std::string, Structure*>::iterator iter = structures.find("EditorSettings");
-	if (iter == structures.end()) return false;
-	Structure *s = (*iter).second;
-	if (s) {
-		SymbolTable &properties = s->getProperties();
-		SymbolTableConstIterator iter = properties.begin();
-		out << name << kind << "{\n";
-		while (iter != properties.end()) {
-			const SymbolTableNode &item = *iter++;
-			out << item.first << " PROPERTY " << item.second << ";\n";
-		}
-		out << "}\n";
+	EditorSettings::setDirty();
+	Structure *s = EditorSettings::find(name);
+	if (!s) {
+		s = new Structure(name, "WINDOW");
+		st_structures.push_back(s);
+		std::cout << "added structure for window " << name << "\n";
 	}
-	return false;
+	const nanogui::Vector2i &pos(widget->position());
+	SymbolTable &properties(s->getProperties());
+	if (skel && skel->isShrunk()) {
+		properties.add("sx", pos.x());
+		properties.add("sy", pos.y());
+		skel->setShrunkPos(pos);
+		std::cout << "set shrunk position to " << pos.x() << "," << pos.y() << "\n";
+	}
+	else {
+		properties.add("x", pos.x());
+		properties.add("y", pos.y());
+		properties.add("w", widget->width());
+		properties.add("h", widget->height());
+	}
+	if (!EDITOR->gui()->getViewManager().get(widget).visible)
+		properties.add("visible", 0);
+	return true;
 }
 
-bool SettingsItem::loadSettings(Structure *item) {
-	if (widget) {
-		EditorGUI *gui = dynamic_cast<EditorGUI*>(widget);
-		if (!gui) return false;
-		gui->setProperties(item->getProperties());
-		const Value &vis(item->getProperties().lookup("visible"));
-		if (vis != SymbolTable::Null) {
-			long torf = 0;
-			if (vis.asInteger(torf))
-				EDITOR->gui()->getViewManager().set(widget, (bool)torf);
-		}
+void LinkableText::update(const Value &value) {
+	nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
+	if (tb) { tb->setValue(value.asString()); return; }
+	nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(widget);
+	if (lbl) { lbl->setCaption(value.asString()); return; }
+	EditorImageView *iv = dynamic_cast<EditorImageView*>(widget);
+	if (iv) {
+		iv->setImageName(value.asString());
+		return;
 	}
-	return false;
-}
-
-
-bool SettingsItem::save(std::ostream &out) {
-	if (kind == "WINDOW") return saveWindow(out, name);
-	if (kind == "EDITORSETTINGS") return saveSettings(out);
-	return false;
-}
-
-bool SettingsItem::saveWindow(std::ostream &out, const std::string &name) {
-	if (widget) {
-		nanogui::Vector2i pos = widget->position();
-		nanogui::Vector2i siz = widget->size();
-		out << name << " WINDOW " << "("
-		<< "x:" << pos.x() << ",y:" << pos.y()
-		<< ",w:" << siz.x() << ",h:" << siz.y()
-		<< ",visible:" << EDITOR->gui()->getViewManager().get(widget).visible
-		<< ");\n";
-		return true;
-	}
-	return false;
 }
 
 StartupWindow *EditorGUI::getStartupWindow() { return w_startup; }
@@ -4205,43 +3804,6 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	}
 }
 
-
-	std::string escapeQuotes(const std::string &s) {
-		size_t n = s.length()+1;
-		char buf[n*2];
-		char *p = buf;
-		char last = 0;
-		bool need_quote = false;
-		for (auto c : s) {
-			if (p+n*2-buf <= 2) break;
-			if (last == 0 && c != '"') {*p++ = '"'; need_quote = true; }
-			if (last != '\\' && c == '"') *p++ = '\\';
-			*p++ = c;
-			last = c;
-		}
-		if (need_quote) *p++ = '"';
-		*p = 0;
-		return buf;
-	}
-
-	std::string stripEscapes(const std::string &s) {
-		size_t n = s.length()+1;
-		char buf[n*2];
-		char *p = buf;
-		char last = 0;
-		for (auto c : s) {
-			if (last==0) { if (c == '"') continue; last=c; continue;}
-			if (p+n*2-buf <= 2) break;
-			if (last != '\\' || c != '"') *p++ = last;
-			last = c;
-		}
-		*p++ = last;
-		*p = 0;
-		return buf;
-	}
-
-
-
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
@@ -4255,20 +3817,37 @@ int main(int argc, const char ** argv ) {
 
 	setup_signals();
 
-	po::options_description desc("Allowed options");
-	desc.add_options()
+	po::options_description generic("Commandline options");
+	generic.add_options()
 	("help", "produce help message")
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
 	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
 	("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
 	("tags", po::value<std::string>(&hostname)->default_value(""),"clockwork tag file")
 	;
+	po::options_description hidden("Hidden options");
+	hidden.add_options()
+    ("source-file", po::value< std::vector<std::string> >(), "source file")
+    ;
+	po::options_description cmdline_options;
+	cmdline_options.add(generic).add(hidden);
+
+	po::positional_options_description p;
+	p.add("source-file", -1);
+
 	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
+	try {
+	po::store(po::command_line_parser(argc, argv).
+		options(cmdline_options).positional(p).run(), vm);
 	po::notify(vm);
+	}
+	catch (std::exception e) {
+		std::cerr << e.what() << "\n";
+		exit(2);
+	}
 
 	if (vm.count("help")) {
-		std::cout << desc << "\n";
+		std::cout << generic << "\n";
 		return 1;
 	}
 
@@ -4299,6 +3878,38 @@ int main(int argc, const char ** argv ) {
 			setupTheme(myTheme);
 			app->setTheme(myTheme);
 			app->createWindows();
+
+			if (vm.count("source-file")) {
+				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
+				std::copy(files.begin(), files.end(), back_inserter(source_files));
+				loadProjectFiles(source_files);
+			}
+			StructureClass *system_class = findClass("SYSTEM");
+			if (!system_class) {
+				system_class = new StructureClass("SYSTEM", "");
+				hm_classes.push_back(system_class);
+			}
+			system_settings = findStructure("System");
+			if (!system_settings) {
+				system_settings = system_class->instantiate("System");
+				Structure *curr = app->getUserWindow()->structure();
+				if (curr)
+					system_settings->getProperties().add("active_screen", curr->getName());
+				else {
+					curr = app->getScreensWindow()->getSelectedStructure();
+					if (curr)
+						system_settings->getProperties().add("active_screen",curr->getName());
+/*					else {
+						Structure *scr = firstScreen();
+						if (!scr)
+							system_settings->getProperties().add("active_screen","Untitled");
+						else
+							system_settings->getProperties().add("active_screen",scr->getName());
+					}
+*/
+				}
+			}
+
 			app->setVisible(true);
 
 			nanogui::mainloop();
@@ -4318,4 +3929,3 @@ int main(int argc, const char ** argv ) {
 
 	return 0;
 }
-

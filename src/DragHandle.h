@@ -22,6 +22,7 @@ NAMESPACE_BEGIN(nanogui)
 class NANOGUI_EXPORT DragHandle : public ToolButton {
 public:
 	DragHandle(Widget *parent, PropertyMonitor *pm);
+	virtual ~DragHandle() {}
 
 	float value() const { return mValue; }
 	void setValue(float value) { mValue = value; }

@@ -136,16 +136,19 @@ definition_header '{' definition_body '}' {
 definition_header:
 SYMBOL STRUCTURE parameters {
     hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
 }
 | SYMBOL STRUCTURE parameters extension {
     hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
 }
 | SYMBOL STRUCTURE property_block parameters  {
     hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     hps.properties = hps.property_stack.back();
     hps.property_stack.pop_back();
     hps.current_machineclass->setProperties(hps.properties);
@@ -155,6 +158,7 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL STRUCTURE property_block parameters extension  {
     hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     hps.properties = hps.property_stack.back();
     hps.property_stack.pop_back();
     hps.current_machineclass->setProperties(hps.properties);
@@ -164,11 +168,13 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL SCREEN parameters {
     hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
 }
 | SYMBOL SCREEN property_block parameters  {
     hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     hps.properties = hps.property_stack.back();
     hps.property_stack.pop_back();
     hps.current_machineclass->setProperties(hps.properties);
@@ -379,4 +385,3 @@ void yyerror(const char *str)
 	std::cerr << ss.str() << "\n";
 	num_errors++;
 }
-

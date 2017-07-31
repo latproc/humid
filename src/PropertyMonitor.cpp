@@ -3,6 +3,7 @@
 	3-clause BSD License in LICENSE.txt.
 */
 #include <iostream>
+#include <nanogui/common.h>
 #include "PropertyMonitor.h"
 #include "DragHandle.h"
 #include <nanogui/imageview.h>
@@ -12,6 +13,44 @@
 using Eigen::Vector2i;
 
 #define TO_STRING( ID ) #ID
+
+Handle Handle::create(Handle::Mode which, nanogui::Vector2i pos, nanogui::Vector2i size) {
+	Handle result;
+	result.setMode(which);
+	switch(which) {
+		case NONE:
+			break;
+		case POSITION:
+			result.setPosition( Vector2i(pos.x() + size.x()/2, pos.y()+size.y()/2) );
+			break;
+		case RESIZE_TL:
+			result.setPosition( Vector2i(pos.x(), pos.y()) );
+			break;
+		case RESIZE_T:
+			result.setPosition( Vector2i(pos.x() + size.x()/2, pos.y()) );
+			break;
+		case RESIZE_TR:
+			result.setPosition( Vector2i(pos.x() + size.x(), pos.y()) );
+			break;
+		case RESIZE_R:
+			result.setPosition( Vector2i(pos.x() + size.x(), pos.y()+size.y()/2) );
+			break;
+		case RESIZE_BL:
+			result.setPosition( Vector2i(pos.x(), pos.y()+size.y()) );
+			break;
+		case RESIZE_L:
+			result.setPosition( Vector2i(pos.x(), pos.y()+size.y()/2) );
+			break;
+		case RESIZE_BR:
+			result.setPosition( Vector2i(pos.x() + size.x(), pos.y()+size.y()) );
+			break;
+		case RESIZE_B:
+			result.setPosition( Vector2i(pos.x() + size.x()/2, pos.y()+size.y()) );
+			break;
+	}
+	return result;
+}
+
 
 void PositionMonitor::update(nanogui::DragHandle *dh) {
 	if (dh && dh->getTarget()) {

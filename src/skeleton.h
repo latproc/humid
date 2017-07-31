@@ -8,6 +8,7 @@
 #include <nanogui/screen.h>
 #include <nanogui/window.h>
 #include <nanogui/widget.h>
+#include <nanogui/opengl.h>
 #include <MessageEncoding.h>
 #include <MessagingInterface.h>
 #include <signal.h>
@@ -20,8 +21,8 @@ enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finish
 class SkeletonWindow : public nanogui::Window, public PanelScreen {
 public:
 	SkeletonWindow(Widget *parent, const std::string &title = "Untitled")
-	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ) {
-
+	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ), 
+		shrunk_pos(nanogui::Vector2i(0,0)), shrunk(false) {
 	}
 	void setMoveListener( std::function<void(nanogui::Window*)> f) {
 		move_listener = f;
@@ -32,8 +33,17 @@ public:
 		move_listener(this);
 		return res;
 	}
-private:
+	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
+	nanogui::Vector2i shrunkPos() { return shrunk_pos; }
+	void setShrunkPos( const nanogui::Vector2i &sp ) { shrunk_pos = sp; }
+	bool isShrunk() { return shrunk; }
+protected:
 	std::function<void(nanogui::Window*)> move_listener;
+	nanogui::Vector2i saved_size;
+	nanogui::Vector2i saved_pos;
+	nanogui::Vector2i shrunk_pos;
+	
+	bool shrunk;
 };
 
 class Skeleton {
@@ -79,7 +89,7 @@ class ClockworkClient : public nanogui::Screen {
 public:
 	enum CommandState { WaitingCommand, WaitingResponse };
 
-	ClockworkClient();
+	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption);
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 
@@ -104,6 +114,7 @@ public:
 	std::string getIODSyncCommand(int group, int addr, int new_value);
 	std::string getIODSyncCommand(int group, int addr, unsigned int new_value);
 	std::string getIODSyncCommand(int group, int addr, float new_value);
+	std::string getIODSyncCommand(int group, int addr, const char *new_value);
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) {};

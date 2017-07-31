@@ -25,8 +25,11 @@ public:
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 	virtual void draw(NVGcontext *ctx) override;
 	virtual nanogui::Widget *create(nanogui::Widget *container) const;
+
+	void setPassThrough(bool which) { pass_through = which; }
 private:
 	std::string display_caption;
+	bool pass_through; // pass mouse events through to button handlers
 };
 
 

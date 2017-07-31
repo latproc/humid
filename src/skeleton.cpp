@@ -75,6 +75,45 @@ void ConfirmDialog::setCallback(const std::function<void()> &callback) {
 	ok_button->setCallback(callback);
 }
 
+nanogui::Vector2i fixPositionInWindow(const nanogui::Vector2i &pos, const nanogui::Vector2i &siz, const nanogui::Vector2i &area) {
+	nanogui::Vector2i res(pos);
+	if (pos.x() < 0) res.x() = 0;
+	if (pos.y() < 0) res.y() = 0;
+	if (pos.x() + siz.x() > area.x()) res.x() = area.x() - siz.x();
+	if (pos.y() + siz.y() > area.y()) res.y() = area.y() - siz.y();
+	return res;
+}
+
+bool SkeletonWindow::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && !down) {
+		if (shrunk) {
+			shrunk = false;
+			setFixedSize(saved_size);
+			saved_pos = fixPositionInWindow(saved_pos, size(), parent()->size());
+			setPosition(saved_pos);
+		}
+		else {
+			saved_size = fixedSize(); saved_pos = position();
+			setFixedSize(nanogui::Vector2i(80, 20));
+			if (shrunk_pos != nanogui::Vector2i(0,0) ) setPosition(shrunk_pos);
+			shrunk = true;
+		}
+		requestFocus();
+		nanogui::Widget *p = parent();
+		nanogui::Widget *w = this;
+		while (p && p->parent()) {
+			if (p->parent()) { w = p; p = p->parent(); }
+		}
+		if (w) {
+			nanogui::Screen *s = dynamic_cast<nanogui::Screen *>(p);
+			if (s)
+				s->performLayout();
+		}
+	}
+	return nanogui::Window::mouseButtonEvent(p, button, down, modifiers);
+}
+
+
 class SkeletonButton : public nanogui::Button {
 
 public:
@@ -111,7 +150,7 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg) : Skeleto
 	itemText->setSize(Vector2i(260, 20));
 	itemText->setFixedSize(Vector2i(260, 20));
 	itemText->setCaption(message.c_str());
-	
+
 	ok_button = new Button(window, "OK");
 	ok_button->setPosition(Vector2i(160, 80));
 	ok_button->setFixedSize(Vector2i(60, 20));
@@ -196,8 +235,8 @@ nanogui::Vector2i WindowStagger::pos() {
 		return pos;
 }
 
-ClockworkClient::ClockworkClient()
-: nanogui::Screen(Eigen::Vector2i(1024, 768), "NanoGUI Test", true, false),
+ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption)
+: nanogui::Screen(size, caption, true, false),
 	window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
 	iosh_cmd(0), cmd_interface(0), command_state(WaitingCommand), next_device_num(0), next_state_num(0),
 	first_message_time(0), scale(1000),
@@ -226,7 +265,6 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 void ClockworkClient::draw(NVGcontext *ctx) {
 	/* Draw the user interface */
 	Screen::draw(ctx);
-
 }
 
 bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -273,7 +311,7 @@ void ClockworkClient::idle() {
 			subscription_manager->setupConnections();
 			program_state = s_running;
 		}
-		else if (program_state == s_running) { 
+		else if (program_state == s_running) {
 			update();
 			if (!cmd_interface) {
 				cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
@@ -537,8 +575,21 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, float new_va
 
 	return s;
 }
+std::string ClockworkClient::getIODSyncCommand(int group, int addr, const char *new_value) {
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	sendIODMessage(msg);
+
+	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+
+	std::string s(msg);
+
+	free(msg);
+
+	return s;
+}
 char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
 	std::string s(getIODSyncCommand(group, addr, new_value));
+	std::cout << "sendIOD sending " << s << "\n";
 
 	if (g_iodcmd)
 		return g_iodcmd->send(s.c_str());
@@ -550,21 +601,20 @@ char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
 }
 
 char *ClockworkClient::sendIODMessage(const std::string &s) {
-	std::cout << "sending " << s << "\n";
-	
+	std::cout << "sendIODMessage sending " << s << "\n";
+
 	if (g_iodcmd)
 		return g_iodcmd->send(s.c_str());
 	else {
 		if (DEBUG_BASIC) std::cout << "IOD interface not ready\n";
-		
+
 		return strdup("IOD interface not ready\n");
 	}
-}    
+}
 
-void ClockworkClient::update() { }  
+void ClockworkClient::update() { }
 
 void ClockworkClient::drawAll() {
 	idle();
 	Screen::drawAll();
 }
-

@@ -1,6 +1,16 @@
 /*
-	All rights reserved. Use of this source code is governed by the
-	3-clause BSD License in LICENSE.txt.
+	This code was largely taken from nanogui example1.cpp:
+
+    src/example1.cpp -- C++ version of an example application that shows
+    how to use the various widget classes. For a Python implementation, see
+    '../python/example1.py'.
+
+    NanoGUI was developed by Wenzel Jakob <wenzel.jakob@epfl.ch>.
+    The widget drawing code is based on the NanoVG demo application
+    by Mikko Mononen.
+
+    All rights reserved. Use of this source code is governed by a
+    BSD-style license that can be found in the LICENSE.txt file.
 */
 
 #include <iostream>
@@ -9,9 +19,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-GLTexture::GLTexture(const char *msg) {
-    
-}
 GLTexture::handleType GLTexture::load(const std::string& fileName) {
 	if (mTextureId) {
 		glDeleteTextures(1, &mTextureId);
@@ -40,28 +47,4 @@ GLTexture::handleType GLTexture::load(const std::string& fileName) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	return textureData;
 }
-
-#if 0
-GLTexture::GLTexture(const GLTexture &orig){
-    text = orig.text;
-}
-
-GLTexture &GLTexture::operator=(const GLTexture &other) {
-    text = other.text;
-    return *this;
-}
-
-std::ostream &GLTexture::operator<<(std::ostream &out) const  {
-    out << text;
-    return out;
-}
-
-std::ostream &operator<<(std::ostream &out, const GLTexture &m) {
-    return m.operator<<(out);
-}
-
-bool GLTexture::operator==(const GLTexture &other) {
-    return text == other.text;
-}
-#endif
 

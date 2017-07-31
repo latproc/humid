@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include "SelectableButton.h"
+#include "Palette.h"
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 #include <nanovg_gl.h>
@@ -12,23 +13,30 @@
 SelectableButton::SelectableButton(const std::string kind, Palette *pal,
 				nanogui::Widget *parent,
 				 const std::string &caption)
-: nanogui::Button(parent, caption), Selectable(pal), UIItem(kind), display_caption(caption) {
-	setButton(this);
+: nanogui::Button(parent, caption), Selectable(pal), UIItem(kind), display_caption(caption), 
+	pass_through(false) 
+{
+	//setButton(this);
 }
 
 bool SelectableButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
 
 	using namespace nanogui;
-
-	//if (editorMouseButtonEvent(this, p, button, down, modifiers))
-	//	return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
-	//else
-	//	if (down && EDITOR->selector()) //EDITOR->selector()->select(this);
+	 
 	if (this->contains(p)) {
 		if (down) {
-			if (!mSelected) select(); else deselect();
-			return true;
+			if (palette && palette->getType() == Palette::PT_MULTIPLE_SELECT) {
+				if (!mSelected) select(); else deselect();
+			}
+			else
+				if (!mSelected) {
+					if (palette) select();
+					if (pass_through)
+						return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
+				}
 		}
+		else 
+			return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
 	}
 	return false;
 }

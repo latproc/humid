@@ -192,7 +192,7 @@ class WidgetSelector {
 		
 		void select(nanogui::Widget *select) { 
 			current = select; 
-			if (select) cout << "Selected\n"; else cout << "Deselect\n"; 
+			select->requestFocus();
 		}
 		nanogui::Widget *selected() const { return current; }
 		void draw(NVGcontext *ctx) {

@@ -7,6 +7,9 @@ if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 	include("${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 endif()
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+
+
 set(NANOGUI_BUILD_SHARED ON)
 if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
@@ -42,6 +45,9 @@ include_directories("/opt/local/include")
 
 #LINK_DIRECTORIES("/usr/local/lib")
 #LINK_DIRECTORIES("/opt/local/lib")
+
+find_package(ZeroMQ REQUIRED)
+find_package(CURL REQUIRED)
 
 #set(BOOST_ROOT "/usr/local/")
 FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono REQUIRED )
@@ -88,7 +94,8 @@ ${CLOCKWORK_DIR}/Message.cpp
 ${CLOCKWORK_DIR}/watchdog.cpp
 ${HEADER_FILES}
 )
-target_link_libraries(Clockwork "zmq" ${Boost_LIBRARIES})
+target_link_libraries(Clockwork "zmq" ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
+target_include_directories(Clockwork PUBLIC ${ZeroMQ_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
 
 include_directories("${CLOCKWORK_DIR}")
 
@@ -102,11 +109,18 @@ set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skelet
 		  src/PropertyList.h src/GLTexture.h src/UIItem.h
 		  src/Selectable.h src/Palette.h src/SelectableWidget.h
 		  src/SelectableButton.h src/UserWindow.h src/SampleTrigger.h
-		  src/PanelScreen.h
+		  src/PanelScreen.h src/NamedObject.h src/EditorProject.h
+		  src/ViewListController.h src/EditorSettings.h
+		  src/EditorObject.h src/LinkableObject.h src/EditorGUI.h
+		  src/FactoryButtons.h src/Editor.h src/Connectable.h
+		  src/EditorWidget.h src/EditorButton.h src/EditorTextBox.h src/EditorLabel.h
+		  src/EditorImageView.h src/EditorLinePlot.h src/EditorProgressBar.h
+		  src/StructuresWindow.h src/ThemeWindow.h src/PropertyWindow.h
+		  src/helper.h src/curl_helper.h src/ScreensWindow.h
   )
 
-add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/PanelScreen.cpp ${HEADERS})
-target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
+#add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/PanelScreen.cpp ${HEADERS})
+#target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
 
 # based on yacc instructions from Andy Cedilnik 2002.
 
@@ -173,7 +187,7 @@ endif ()
 	   OUTPUT ${settings_yacc_output})
 
 	# Add generated source to the list of sources
-	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
+	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/NamedObject.cpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
 
 	# Since the parser source does not exist yet when cmake is run, mark
 	# it as generated
@@ -187,17 +201,29 @@ endif ()
 		  src/Palette.cpp src/SelectableWidget.cpp
 		  src/SelectableButton.cpp 
 		  src/PanelScreen.cpp
+		  src/NamedObject.cpp
 		  src/SampleTrigger.cpp ${SETTINGCHECK_PARSER}
+		  src/EditorProject.cpp src/ViewListController.cpp
+		  src/EditorSettings.cpp src/EditorObject.cpp
+		  src/LinkableObject.cpp src/EditorGUI.cpp src/FactoryButtons.cpp
+		  src/Editor.cpp src/Connectable.cpp src/EditorWidget.cpp
+		  src/EditorButton.cpp src/EditorTextBox.cpp src/EditorLabel.cpp
+		  src/EditorImageView.cpp src/EditorLinePlot.cpp
+		  src/EditorProgressBar.cpp src/StructuresWindow.cpp
+		  src/ThemeWindow.cpp src/PropertyWindow.cpp src/helper.cpp
+		  src/curl_helper.cpp src/ScreensWindow.cpp
 		  ${HEADERS})
 		
-  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
+  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork "zmq" ${Boost_LIBRARIES})
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/Parameter.cpp src/structure.cpp)
   target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
-  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp)
-  target_link_libraries(hmifile_check Clockwork "zmq" ${Boost_LIBRARIES})
+  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp 
+  		src/NamedObject.cpp 	  
+	)
+  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
 
 
   # Copy icons for example application

@@ -9,18 +9,25 @@
 #include "Palette.h"
 #include "Selectable.h"
 
-Palette::Palette() {}
+Palette::Palette(PaletteType pt) : kind(pt) { }
 
 bool Palette::hasSelections() const { return selections.size() > 0; }
-void Palette::select(Selectable * w) { selections.insert(w); }
+void Palette::select(Selectable * w) {
+	if (kind == PT_SINGLE_SELECT)
+		clearSelections(w);
+	selections.insert(w);
+}
 void Palette::deselect(Selectable *w) { selections.erase(w); }
 
-void Palette::clearSelections() {
+void Palette::clearSelections(Selectable * except) {
 	if (!selections.empty()) {
 		std::list<Selectable*> to_deselect;
 		std::copy(selections.begin(), selections.end(), std::back_inserter(to_deselect) );
-		for (auto iter = to_deselect.begin(); iter != to_deselect.end(); ++iter)
-			(*iter)->deselect();
+		for (auto iter = to_deselect.begin(); iter != to_deselect.end(); ++iter) {
+			Selectable *sel = *iter;
+			if (sel != except && sel->isSelected()) 
+				sel->deselect();
+		}
 	}
 }
 
@@ -51,4 +58,3 @@ bool Palette::operator==(const Palette &other) {
     return text == other.text;
 }
 #endif
-

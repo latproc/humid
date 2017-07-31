@@ -10,7 +10,7 @@
 #include "SelectableButton.h"
 
 Selectable::Selectable(Palette *pal)
-: palette(pal), mSelected(false), widget(0), button(0)
+: palette(pal), mSelected(false)//, widget(0), button(0)
 {
 }
 Selectable::~Selectable() {
@@ -29,20 +29,24 @@ void Selectable::deselect() {
 	if (palette) palette->deselect(this);
 	justDeselected();
 }
+/*
 nanogui::Widget *Selectable::getWidget() const {
 	return widget;
 }
 nanogui::Button *Selectable::getButton() const {
 	return button;
 }
+*/
 void Selectable::justSelected() { }
 void Selectable::justDeselected() { }
+/*
 void Selectable::setWidget(SelectableWidget *w) {
 	widget = w->getWidget();
 }
 void Selectable::setButton(SelectableButton *w) {
 	button = w->getButton();
 }
+*/
 
 #if 0
 Selectable::Selectable(const Selectable &orig){

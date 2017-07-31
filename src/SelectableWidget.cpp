@@ -13,7 +13,7 @@
 SelectableWidget::SelectableWidget(const std::string kind, Palette *pal, nanogui::Widget *parent,
 				 const std::string &caption)
 : nanogui::Widget(parent), Selectable(pal), UIItem(kind), display_caption(caption) {
-	setWidget(this);
+	//setWidget(this);
 }
 
 SelectableWidget::~SelectableWidget() { }

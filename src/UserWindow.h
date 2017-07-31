@@ -19,6 +19,7 @@ class EditorGUI;
 class UserWindowWin;
 class PanelScreen;
 class Structure;
+class PropertyFormHelper;
 
 class UserWindow : public Skeleton, public Palette {
 public:
@@ -32,6 +33,7 @@ public:
 	CircularBuffer * addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len);
 	std::map<std::string, CircularBuffer *> &getData() { return data; }
 	void update();
+	void refresh();
 	nanogui::Widget *current() { return current_layer; }
 	void deleteSelections();
 	EditorGUI *app() { return gui; }
@@ -50,6 +52,16 @@ public:
 	Structure *structure() { return current_structure; }
 	void setStructure( Structure *s);
 	void loadStructure( Structure *s);
+	void clear();
+
+	virtual void select(Selectable * w) override;
+	virtual void deselect(Selectable *w) override;
+
+	virtual void getPropertyNames(std::list<std::string> &names);
+	virtual void loadProperties(PropertyFormHelper *pfh);
+	virtual Value getPropertyValue(const std::string &prop);
+
+
 private:
 	EditorGUI *gui;
 	std::list<PanelScreen*>active_screens;

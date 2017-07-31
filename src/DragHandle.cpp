@@ -25,6 +25,7 @@ DragHandle::DragHandle(Widget *parent, PropertyMonitor *pm)
 		setCursor(nanogui::Cursor::Hand);
 		setTextColor(Color(255,50,255, 255));
 		setVisible(false);
+		setFontSize(18);
 }
 
 Vector2i DragHandle::preferredSize(NVGcontext *) const {

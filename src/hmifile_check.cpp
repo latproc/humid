@@ -23,8 +23,8 @@ std::list<std::string>error_messages;
 int num_errors = 0;
 
 #include "hmilang.h"
-std::list<Structure *>hm_structures;
-std::list<StructureClass *> hm_classes;
+extern std::list<Structure *>hm_structures;
+extern std::list<StructureClass *> hm_classes;
 extern FILE *yyin;
 int yyparse();
 extern int yycharno;

@@ -27,18 +27,18 @@ public:
 	bool isSelected();
 	void select();
 	void deselect();
-	nanogui::Widget *getWidget() const;
-	nanogui::Button *getButton() const;
+	//nanogui::Widget *getWidget() const;
+	//nanogui::Button *getButton() const;
 	virtual void justSelected();
 	virtual void justDeselected();
-	void setWidget(SelectableWidget *w);
-	void setButton(SelectableButton *w);
+	//void setWidget(SelectableWidget *w);
+	//void setButton(SelectableButton *w);
 
 protected:
 	Palette *palette;
 	bool mSelected;
-	nanogui::Widget *widget;
-	nanogui::Button *button;
+	//nanogui::Widget *widget;
+	//nanogui::Button *button;
 };
 
 std::ostream &operator<<(std::ostream &out, const Selectable &m);

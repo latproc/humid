@@ -83,7 +83,7 @@ extern void setup_signals();
 
 class MyGUI : public ClockworkClient {
 public:
-	MyGUI() {
+	MyGUI() : ClockworkClient(nanogui::Vector2i(1024,768), "Clockwork Client") {
 
 		using namespace nanogui;
 
