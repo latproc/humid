@@ -39,7 +39,13 @@ LinkableObject::LinkableObject(EditorObject *ew) : widget(ew) {
 }
 
 LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) { }
-
+/*void LinkableNumber::update(const Value &value) {
+  EditorImageView *eiv = dynamic_cast<EditorImageView*>(widget);
+  if (eiv) {
+    iev->setValue(value.asString());
+  }
+}
+*/
 LinkableNumber::LinkableNumber(EditorObject *w) : LinkableObject(w) { }
 void LinkableNumber::update(const Value &value) {
     EditorProgressBar *pb = dynamic_cast<EditorProgressBar*>(widget);
