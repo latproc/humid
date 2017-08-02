@@ -16,7 +16,7 @@
 #include <string>
 #include <mutex>
 #include <map>
-#include "SampleTrigger.h"
+#include "sampletrigger.h"
 
 class CircularBuffer;
 class UserWindow;

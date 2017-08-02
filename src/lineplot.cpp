@@ -20,7 +20,7 @@
 #include <nanogui/button.h>
 #include <nanogui/label.h>
 #include <nanogui/layout.h>
-#include "UserWindow.h"
+#include "userwindow.h"
 
 #include <iostream>
 

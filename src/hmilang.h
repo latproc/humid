@@ -7,10 +7,10 @@
 
 #include <list>
 #include <symboltable.h>
-#include "Parameter.h"
+#include "parameter.h"
 #include "structure.h"
-#include "Anchor.h"
-#include "LinkableProperty.h"
+#include "anchor.h"
+#include "linkableproperty.h"
 
 void yyerror(const char *str);
 

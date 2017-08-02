@@ -14,7 +14,7 @@
 #include <signal.h>
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
-#include "PanelScreen.h"
+#include "panelscreen.h"
 
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 

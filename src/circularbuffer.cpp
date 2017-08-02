@@ -12,7 +12,7 @@
 #include <math.h>
 #include <value.h>
 #include <map>
-#include "SampleTrigger.h"
+#include "sampletrigger.h"
 
 CircularBuffer::CircularBuffer(int size, DataType dt)
 {

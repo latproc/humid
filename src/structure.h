@@ -5,17 +5,17 @@
 #ifndef __hmi_structure_h__
 #define __hmi_structure_h__
 
-#include "Parameter.h"
+#include "parameter.h"
 #include <list>
 #include <map>
 #include <ostream>
 #include <vector>
 #include <symboltable.h>
-#include "NamedObject.h"
-#include "ViewListController.h"
-#include "EditorObject.h"
-#include "LinkableObject.h"
-#include "LinkableProperty.h"
+#include "namedobject.h"
+#include "viewlistcontroller.h"
+#include "editorobject.h"
+#include "linkableobject.h"
+#include "linkableproperty.h"
 
 class Structure;
 

@@ -34,8 +34,8 @@
 #include <fstream>
 #include <locale>
 #include <string>
-#include "PropertyMonitor.h"
-#include "DragHandle.h"
+#include "propertymonitor.h"
+#include "draghandle.h"
 #include "manuallayout.h"
 #include "skeleton.h"
 

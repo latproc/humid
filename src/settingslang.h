@@ -7,7 +7,7 @@
 
 #include <list>
 #include <symboltable.h>
-#include "Parameter.h"
+#include "parameter.h"
 #include "structure.h"
 
 void yyerror(const char *str);

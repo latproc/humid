@@ -32,7 +32,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-register")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-register -Wno-deprecated-declarations")
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
@@ -104,23 +104,23 @@ include_directories("${CLOCKWORK_DIR}")
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skeleton.h
-		  src/structure.h src/Parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
-		  src/PropertyList.h src/GLTexture.h src/UIItem.h
-		  src/Selectable.h src/Palette.h src/SelectableWidget.h
-		  src/SelectableButton.h src/UserWindow.h src/SampleTrigger.h
-		  src/PanelScreen.h src/NamedObject.h src/EditorProject.h
-		  src/ViewListController.h src/EditorSettings.h
-		  src/EditorObject.h src/LinkableObject.h src/EditorGUI.h
-		  src/FactoryButtons.h src/Editor.h src/Connectable.h
-		  src/EditorWidget.h src/EditorButton.h src/EditorTextBox.h src/EditorLabel.h
-		  src/EditorImageView.h src/EditorLinePlot.h src/EditorProgressBar.h
-		  src/StructuresWindow.h src/ThemeWindow.h src/PropertyWindow.h
-		  src/helper.h src/curl_helper.h src/ScreensWindow.h
-			src/LinkableProperty.h src/Anchor.h
+set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skeleton.h
+		  src/structure.h src/parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
+		  src/propertylist.h src/gltexture.h src/uiitem.h
+		  src/selectable.h src/palette.h src/selectablewidget.h
+		  src/selectablebutton.h src/userwindow.h src/sampletrigger.h
+		  src/panelscreen.h src/namedobject.h src/editorproject.h
+		  src/viewlistcontroller.h src/editorsettings.h
+		  src/editorobject.h src/linkableobject.h src/editorgui.h
+		  src/factorybuttons.h src/editor.h src/connectable.h
+		  src/editorwidget.h src/editorbutton.h src/editortextbox.h src/editorlabel.h
+		  src/editorimageview.h src/editorlineplot.h src/editorprogressbar.h
+		  src/structureswindow.h src/themewindow.h src/propertywindow.h
+		  src/helper.h src/curl_helper.h src/screenswindow.h
+			src/linkableproperty.h src/anchor.h
   )
 
-#add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/PanelScreen.cpp ${HEADERS})
+#add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
 #target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
 
 # based on yacc instructions from Andy Cedilnik 2002.
@@ -150,7 +150,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/Parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
 	   OUTPUT ${hmi_yacc_output})
 
 	# Add generated source to the list of sources
@@ -184,11 +184,11 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/Parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
 	   OUTPUT ${settings_yacc_output})
 
 	# Add generated source to the list of sources
-	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/NamedObject.cpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
+	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/namedobject.cpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
 
 	# Since the parser source does not exist yet when cmake is run, mark
 	# it as generated
@@ -196,34 +196,34 @@ endif ()
 	SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
 
   add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
-		  src/PropertyMonitor.cpp src/DragHandle.cpp src/structure.cpp src/Parameter.cpp
-		  src/lineplot.cpp src/circularbuffer.cpp src/PropertyList.cpp
-		  src/GLTexture.cpp src/UIItem.cpp src/Selectable.cpp
-		  src/Palette.cpp src/SelectableWidget.cpp
-		  src/SelectableButton.cpp
-		  src/PanelScreen.cpp
-		  src/NamedObject.cpp
-		  src/SampleTrigger.cpp ${SETTINGCHECK_PARSER}
-		  src/EditorProject.cpp src/ViewListController.cpp
-		  src/EditorSettings.cpp src/EditorObject.cpp
-		  src/LinkableObject.cpp src/EditorGUI.cpp src/FactoryButtons.cpp
-		  src/Editor.cpp src/Connectable.cpp src/EditorWidget.cpp
-		  src/EditorButton.cpp src/EditorTextBox.cpp src/EditorLabel.cpp
-		  src/EditorImageView.cpp src/EditorLinePlot.cpp
-		  src/EditorProgressBar.cpp src/StructuresWindow.cpp
-		  src/ThemeWindow.cpp src/PropertyWindow.cpp src/helper.cpp
-		  src/curl_helper.cpp src/ScreensWindow.cpp
-			src/LinkableProperty.cpp src/Anchor.cpp
+		  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp
+		  src/lineplot.cpp src/circularbuffer.cpp src/propertylist.cpp
+		  src/gltexture.cpp src/uiitem.cpp src/selectable.cpp
+		  src/palette.cpp src/selectablewidget.cpp
+		  src/selectablebutton.cpp
+		  src/panelscreen.cpp
+		  src/namedobject.cpp
+		  src/sampletrigger.cpp ${SETTINGCHECK_PARSER}
+		  src/editorproject.cpp src/viewlistcontroller.cpp
+		  src/editorsettings.cpp src/editorobject.cpp
+		  src/linkableobject.cpp src/editorgui.cpp src/factorybuttons.cpp
+		  src/editor.cpp src/connectable.cpp src/editorwidget.cpp
+		  src/editorbutton.cpp src/editortextbox.cpp src/editorlabel.cpp
+		  src/editorimageview.cpp src/editorlineplot.cpp
+		  src/editorprogressbar.cpp src/structureswindow.cpp
+		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
+		  src/curl_helper.cpp src/screenswindow.cpp
+			src/linkableproperty.cpp src/anchor.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork "zmq" ${Boost_LIBRARIES})
 
-  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/Parameter.cpp src/structure.cpp)
+  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp)
   target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
-  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp
-  		src/NamedObject.cpp src/Anchor.cpp
+  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
+  		src/namedobject.cpp src/anchor.cpp
 	)
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
 

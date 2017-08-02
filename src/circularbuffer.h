@@ -8,7 +8,7 @@
 #include <inttypes.h>
 #include <thread>
 #include <mutex>
-#include "SampleTrigger.h"
+#include "sampletrigger.h"
 
 class CircularBuffer {
 public:

@@ -7,10 +7,10 @@
 
 #include <iostream>
 #include "helper.h"
-#include "NamedObject.h"
+#include "namedobject.h"
 #include "structure.h"
-#include "Editor.h"
-#include "ScreensWindow.h"
+#include "editor.h"
+#include "screenswindow.h"
 
 extern std::list<Structure *>hm_structures;
 extern std::list<StructureClass *> hm_classes;

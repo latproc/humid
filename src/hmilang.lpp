@@ -6,7 +6,7 @@
 	#include <stdlib.h>
 	#include "hmilang.h"
 	#include "hmilang.tab.hpp"
-	#include "LinkableObject.h"
+	#include "linkableobject.h"
 	
 	void yyerror(const char *);
 
