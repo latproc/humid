@@ -14,6 +14,7 @@
 #include "skeleton.h"
 #include "palette.h"
 #include "circularbuffer.h"
+#include "linkableobject.h"
 
 class EditorGUI;
 class UserWindowWin;
@@ -21,13 +22,15 @@ class PanelScreen;
 class Structure;
 class PropertyFormHelper;
 
-class UserWindow : public Skeleton, public Palette {
+class UserWindow : public Skeleton, public Palette, public LinkableObject {
 public:
 	//UserWindow(EditorGUI *screen, nanogui::Theme *theme);
 	UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww);
 	void setVisible(bool which) { window->setVisible(which); }
 	void save(const std::string &path);
 	void load(const std::string &path);
+
+	virtual void update(const Value &value) override;
 
 	CircularBuffer *getValues(const std::string name);
 	CircularBuffer * addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len);

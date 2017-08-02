@@ -596,6 +596,7 @@ public:
 	}
 
 	void update();
+
 	virtual void draw(NVGcontext *ctx) override;
 
 	void setCurrentItem(int n) { current_item = n; }
@@ -734,7 +735,7 @@ bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 }
 
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
-: Skeleton(screen, uww), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
+: Skeleton(screen, uww), LinkableObject(0), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
@@ -744,6 +745,14 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setTitle("");
 	window->setPosition(nanogui::Vector2i(200,48));
 	push(window);
+}
+
+void UserWindow::update(const Value &value) {
+	if (!EDITOR->isEditMode()) {
+		Structure *s = findScreen(value.asString());
+		if (s)
+			system_settings->getProperties().add("active_screen", Value(s->getName(), Value::t_string));
+	}
 }
 
 void UserWindow::select(Selectable * w) {
@@ -2347,7 +2356,10 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					getScreensWindow()->update();
 					Structure *project = EditorSettings::find("ProjectSettings");
 					if (!project) {
-						project = new Structure(nullptr, "ProjectSettings", "PROJECTSETTINGS");
+						project = findStructureFromClass("PROJECTSETTINGS");
+						if (!project)
+							project = new Structure(nullptr, "ProjectSettings", "PROJECTSETTINGS");
+						project->setStructureDefinition(findClass("PROJECTSETTINGS"));
 						hm_structures.push_back(project);
 						std::string base = source_files.front();
 						size_t delim_pos = base.rfind('/');
@@ -3906,6 +3918,15 @@ int main(int argc, const char ** argv ) {
 			}
 			app->createWindows();
 
+			Value &remote_screen = system_settings->getProperties().find("remote_screen");
+
+			if (remote_screen == SymbolTable::Null) {
+				remote_screen = Value("P_Screen", Value::t_string);
+				system_settings->getProperties().add("remote_screen", remote_screen);
+			}
+
+			LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
+			if (lp) lp->link(app->getUserWindow());
 			app->setVisible(true);
 
 			nanogui::mainloop();

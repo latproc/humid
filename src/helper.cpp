@@ -112,15 +112,17 @@ Structure *findScreen(const std::string &seek) {
 		if (s->getName() == seek && s->getStructureDefinition()
 					&& (s->getStructureDefinition()->getName() == "SCREEN" || s->getStructureDefinition()->getBase() == "SCREEN") )
 				return s;
-		else {
-			std::cout << "Skipping " << s->getName() << " : " << s->getKind() << " looking for " << seek << "\n";
-		}
+		//else {
+			//std::cout << "Skipping " << s->getName() << " : " << s->getKind() << " looking for " << seek << "\n";
+		//}
 	}
+	/*
 	std::cout << "Screen " << seek << " not found\n";
 	std::cout << "structures:\n";
 	for (auto s : hm_structures) {
 		std::cout << s->getName() << " : " << s->getKind() << "\n";
 	}
+	*/
 	return 0;
 }
 
@@ -208,7 +210,7 @@ Structure *createStructure(const std::string sc_name) {
 
 void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files) {
 		using namespace boost::filesystem;
-		assert(is_directory(fp));
+		if (!is_directory(fp)) return;
 		typedef std::vector<path> path_vec;
 		path_vec items;
 		std::copy(directory_iterator(fp), directory_iterator(), std::back_inserter(items));

@@ -376,6 +376,10 @@ void EditorWidget::updateStructure() {
         }
         const char *mapped = (*found).second.c_str();
         std::cout << s->getName() << " setting " << mapped << " to " << v << "\n";
+        if (mapped == "width" && v.kind == Value::t_integer && v.iValue < 40)
+          v = 40;
+        if (mapped == "height" && v.kind == Value::t_integer && v.iValue < 20)
+          v = 20;
         s->getProperties().add(mapped, v);
       }
       else {
