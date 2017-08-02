@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/dir.h>
-#endif 
+#endif
 
 #include <symboltable.h>
 #define __MAIN__ 1
@@ -34,6 +34,11 @@ const char *filename = 0;
 class LinkableProperty;
 std::map<std::string, LinkableProperty *> remotes;
 
+/* dummy routins */
+void LinkableProperty::setValue(const Value &v) {}
+Value & LinkableProperty::value() { return current; }
+
+
 const char *program_name;
 
 static void listDirectory( const std::string pathToCheck, std::list<std::string> &file_list)
@@ -52,7 +57,7 @@ static void listDirectory( const std::string pathToCheck, std::list<std::string>
             else if (file_stat.st_mode & S_IFDIR){
                 listDirectory(path_str, file_list);
             }
-            else if (boost::filesystem::exists(file.path()) && 
+            else if (boost::filesystem::exists(file.path()) &&
 				(file.path().extension() == ".lpc" || file.path().extension() == ".cw") )
             {
                 file_list.push_back( file.path().native() );
@@ -64,7 +69,7 @@ static void listDirectory( const std::string pathToCheck, std::list<std::string>
     {
         std::cerr << ex.what() << '\n';
     }
-}  
+}
 
 void loadFiles(std::list<std::string> &files) {
 
@@ -114,10 +119,10 @@ int main (int argc, char const *argv[])
 {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
-	free(pn); 
-	
-	std::list<std::string> files; 
-	
+	free(pn);
+
+	std::list<std::string> files;
+
 	for (int i=1; i<argc; ++i) {
 		if (*(argv[i]) == '-') {
 			files.push_back(argv[i]);
@@ -136,7 +141,7 @@ int main (int argc, char const *argv[])
             }
         }
 	}
-    
+
 	loadFiles(files);
 	std::cout << files.size() << " files loaded\n";
 	std::cout << hm_structures.size() << " structures found\n";
@@ -144,6 +149,6 @@ int main (int argc, char const *argv[])
     if (num_errors) {
         for (auto e : error_messages) std::cerr << "ERROR: " << e << "\n";
     }
-   
+
 	return 0;
 }

@@ -104,7 +104,7 @@ include_directories("${CLOCKWORK_DIR}")
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skeleton.h 
+set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skeleton.h
 		  src/structure.h src/Parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
 		  src/PropertyList.h src/GLTexture.h src/UIItem.h
 		  src/Selectable.h src/Palette.h src/SelectableWidget.h
@@ -117,6 +117,7 @@ set(HEADERS src/DragHandle.h	src/manuallayout.h	src/PropertyMonitor.h	src/skelet
 		  src/EditorImageView.h src/EditorLinePlot.h src/EditorProgressBar.h
 		  src/StructuresWindow.h src/ThemeWindow.h src/PropertyWindow.h
 		  src/helper.h src/curl_helper.h src/ScreensWindow.h
+			src/LinkableProperty.h src/Anchor.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/PanelScreen.cpp ${HEADERS})
@@ -134,7 +135,7 @@ endif ()
 	set(hmi_yacc_output ${CMAKE_BINARY_DIR}/hmilang.tab.cpp)
 	# Create custom command for flex/lex (note the outputs)
 	 ADD_CUSTOM_COMMAND(
-	   COMMAND ${FLEX_EXECUTABLE} 
+	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/hmilang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
@@ -142,8 +143,8 @@ endif ()
 
 	# Create custom command for bison/yacc (note the DEPENDS)
 	 ADD_CUSTOM_COMMAND(
-	   COMMAND ${BISON_EXECUTABLE} 
-	   ARGS -y 
+	   COMMAND ${BISON_EXECUTABLE}
+	   ARGS -y
 			-o ${CMAKE_BINARY_DIR}/hmilang.tab.cpp
 			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
@@ -168,7 +169,7 @@ endif ()
 	set(settings_yacc_output ${CMAKE_BINARY_DIR}/settingslang.tab.cpp)
 	# Create custom command for flex/lex (note the outputs)
 	 ADD_CUSTOM_COMMAND(
-	   COMMAND ${FLEX_EXECUTABLE} 
+	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/settingslang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
@@ -176,8 +177,8 @@ endif ()
 
 	# Create custom command for bison/yacc (note the DEPENDS)
 	 ADD_CUSTOM_COMMAND(
-	   COMMAND ${BISON_EXECUTABLE} 
-	   ARGS -y 
+	   COMMAND ${BISON_EXECUTABLE}
+	   ARGS -y
 			-o ${CMAKE_BINARY_DIR}/settingslang.tab.cpp
 			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
@@ -194,12 +195,12 @@ endif ()
 	SET_SOURCE_FILES_PROPERTIES(${settings_lex_output} GENERATED)
 	SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
 
-  add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp 
-		  src/PropertyMonitor.cpp src/DragHandle.cpp src/structure.cpp src/Parameter.cpp 
+  add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
+		  src/PropertyMonitor.cpp src/DragHandle.cpp src/structure.cpp src/Parameter.cpp
 		  src/lineplot.cpp src/circularbuffer.cpp src/PropertyList.cpp
 		  src/GLTexture.cpp src/UIItem.cpp src/Selectable.cpp
 		  src/Palette.cpp src/SelectableWidget.cpp
-		  src/SelectableButton.cpp 
+		  src/SelectableButton.cpp
 		  src/PanelScreen.cpp
 		  src/NamedObject.cpp
 		  src/SampleTrigger.cpp ${SETTINGCHECK_PARSER}
@@ -212,16 +213,17 @@ endif ()
 		  src/EditorProgressBar.cpp src/StructuresWindow.cpp
 		  src/ThemeWindow.cpp src/PropertyWindow.cpp src/helper.cpp
 		  src/curl_helper.cpp src/ScreensWindow.cpp
+			src/LinkableProperty.cpp src/Anchor.cpp
 		  ${HEADERS})
-		
+
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork "zmq" ${Boost_LIBRARIES})
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/Parameter.cpp src/structure.cpp)
   target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
-  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp 
-  		src/NamedObject.cpp 	  
+  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/Parameter.cpp src/structure.cpp
+  		src/NamedObject.cpp src/Anchor.cpp
 	)
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
 
@@ -241,9 +243,8 @@ else()
   # Create documentation for python plugin (optional target for developers)
   add_custom_target(mkdoc COMMAND
 		  python3 ${NANO_GUI_BUILD_DIR}/ext/pybind11/tools/mkdoc.py
-		  #		  -I${NANO_GUI_BUILD_DIR}/include 
-		  -I${NANO_GUI_BUILD_DIR}/ext/nanovg/src 
+		  #		  -I${NANO_GUI_BUILD_DIR}/include
+		  -I${NANO_GUI_BUILD_DIR}/ext/nanovg/src
 		  -I${NANO_GUI_BUILD_DIR}/ext/eigen -I${NANO_GUI_BUILD_DIR}/ext/glfw/include
 	${NANO_GUI_BUILD_DIR}/include/nanogui/*.h > ${NANO_GUI_BUILD_DIR}/python/py_doc.h)
 endif()
- 

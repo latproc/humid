@@ -16,6 +16,7 @@
 #include "LinkableObject.h"
 #include "EditorGUI.h"
 #include "helper.h"
+#include "LinkableProperty.h"
 
 class StructureFactoryButton : public SelectableButton {
 public:

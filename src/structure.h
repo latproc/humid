@@ -15,6 +15,7 @@
 #include "ViewListController.h"
 #include "EditorObject.h"
 #include "LinkableObject.h"
+#include "LinkableProperty.h"
 
 class Structure;
 
@@ -59,7 +60,7 @@ public:
 
 	Structure *instantiate();
 	Structure *instantiate(const std::string s_name);
-	
+
 	void setBuiltIn() { builtin = true; }
 	bool isBuiltIn() { return builtin; }
 

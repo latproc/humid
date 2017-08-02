@@ -6,6 +6,8 @@
 	#include <stdlib.h>
 	#include "hmilang.h"
 	#include "hmilang.tab.hpp"
+	#include "LinkableObject.h"
+	
 	void yyerror(const char *);
 
 	static char *buf;
@@ -32,6 +34,7 @@
 16BIT               return WORD;
 32BIT               return DOUBLEWORD;
 ABORT				return ABORT;
+action			return ACTION;
 ALL                 return ALL;
 AND                 return AND;
 ANY                 return ANY;
@@ -99,6 +102,7 @@ IS[ ]*NOT           return NE;
 KEY                 return KEY;
 LAST                return LAST;
 LENGTH              return LENGTH;
+LINK								return LINK;
 LOCK				return LOCK;
 LOG                 return LOG;
 MACHINE             return STATEMACHINE;
@@ -124,6 +128,7 @@ PUBLISHER			return tokPUBLISHER;
 PUSH				return PUSH;
 READONLY            return READONLY;
 READWRITE           return READWRITE;
+REMOTE							return REMOTE;
 REPLACE             return REPLACE;
 REPORTS				return REPORTS;
 PRIVATE				{

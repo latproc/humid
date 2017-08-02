@@ -110,8 +110,10 @@ void Editor::save() {
 		structure_files[s] = file_path;
 	}
 	for (auto s : hm_structures) {
-		if (s->getOwner())
+		if (s->getOwner()) {
+			std::cout << s->getName() << " is owened by " << s->getOwner()->getName() << "\n";
 			continue;
+		}
 		Value &filename = s->getProperties().find("file_name");
 		std::string fname(s->getName());
 		fname += ".humid";
@@ -152,12 +154,13 @@ void Editor::save() {
 			std::cout << "skipping save of owned structure " << s->getName() << "\n";
 			continue; // skip items that are local to another structure
 		}
-		if (findStructureFromClass(sc->getName()) == 0
-				&&sc->getLocals().empty()
+		/*if (sc && findStructureFromClass(sc->getName()) == 0
+				&& sc->getLocals().empty()
 				&& sc->getProperties().begin() == sc->getProperties().end()) {
-			std::cout << "skipping save of empty structure class " << s->getName() << "\n";
+			std::cout << "skipping save of empty structure class " << sc->getName() << "\n";
 			continue;
 		}
+		*/
 		std::ofstream out;
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {

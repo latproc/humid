@@ -51,6 +51,8 @@
 #include "EditorProject.h"
 #include "EditorSettings.h"
 #include "EditorGUI.h"
+#include "Anchor.h"
+#include "LinkableProperty.h"
 
 #include <libgen.h>
 #include <zmq.hpp>
@@ -1894,7 +1896,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 								if (!current_screen) return "";
 								const Value &vx = current_screen->getInternalProperties().find("file_name");
 								if (vx != SymbolTable::Null) return vx.asString();
-								return vx.asString();
+								return "";
 							 });
 	}
 	std::string label = "Window Width";

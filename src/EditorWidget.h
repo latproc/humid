@@ -23,6 +23,8 @@
 #include "PropertyMonitor.h"
 #include "structure.h"
 #include "DragHandle.h"
+#include "LinkableProperty.h"
+#include "Anchor.h"
 
 using Eigen::Vector2d;
 using Eigen::MatrixXd;

@@ -18,6 +18,7 @@
 
 #include "LinkableObject.h"
 #include "EditorWidget.h"
+#include "LinkableProperty.h"
 
 class EditorProgressBar : public nanogui::ProgressBar, public EditorWidget {
 

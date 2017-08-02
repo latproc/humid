@@ -55,18 +55,22 @@ Structure *StructureClass::instantiate(const std::string s_name) {
 	return s;
 }
 
-Structure::Structure(const std::string sname, const std::string skind) : NamedObject(sname), kind(skind), changed_(false), class_definition(0) {
+Structure::Structure(const std::string sname, const std::string skind)
+	: NamedObject(sname), kind(skind), changed_(false), class_definition(0), owner(0) {
 }
 
 Structure *Structure::clone(std::string new_name) {
 	Structure *s = new Structure(*this);
 	s->name = new_name;
+	hm_structures.push_back(s);
 	return s;
 }
 
-Structure::Structure(const Structure &other) : NamedObject(""), kind(other.kind), class_definition(other.class_definition) {
+Structure::Structure(const Structure &other)
+	: NamedObject(""), kind(other.kind), class_definition(other.class_definition), owner(0) {
 	properties.add(other.properties);
 	nextName(this);
+	hm_structures.push_back(this);
 }
 
 int Structure::getIntProperty(const std::string name, int default_value) {
@@ -126,7 +130,7 @@ bool Structure::save(std::ostream &out) {
 
 bool StructureClass::save(std::ostream &out) {
 	using namespace nanogui;
-	if (locals.empty() && properties.begin() == properties.end()) return true;
+	//if (locals.empty() && properties.begin() == properties.end()) return true;
 	out << getName() << " STRUCTURE";
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
 	out << " {\n";

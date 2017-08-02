@@ -11,15 +11,16 @@
 #include <ostream>
 #include <string>
 #include "LinkableObject.h"
+#include "LinkableProperty.h"
 
-/** 
+/**
 Connectable objects have a reference to other objects for the purpose
 of updating values and sending events.
 */
 class Connectable {
 public:
 	Connectable(LinkableProperty *lp) : remote(lp) { }
-	int address() const { 
+	int address() const {
 		if (remote) return remote->address(); else return 0;
 	}
 	LinkableProperty *getRemote() { return remote; }

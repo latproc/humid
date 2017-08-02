@@ -30,9 +30,10 @@ struct HumidParserState {
 	Value current_value;
 	SymbolTable properties;
 	std::list<Parameter> current_parameters;
-    std::list<Parameter> current_locals;
-    std::list<std::string> current_name_list;
+  std::list<Parameter> current_locals;
+  std::list<std::string> current_name_list;
 	std::list<SymbolTable> property_stack;
+	std::list<Command*> command_list;
 	Structure *current_machine;
 	StructureClass *current_machineclass;
 	ClassExtension *current_base;
@@ -67,6 +68,7 @@ static char *timeout_message_name = 0;
 %token THROW CATCH ABORT RETURN ERROR ERRORS TIMEOUT
 %token REPORTS STATE_CHANGES PROPERTY_CHANGES MODBUS
 %token LINKED SDO LOCAL CLASS STRUCTURE SCREEN
+%token LINK REMOTE ACTION
 
 %union {
 	int iVal;
@@ -77,6 +79,7 @@ static char *timeout_message_name = 0;
 	Value *val;
 	Parameter *param;
 	ClassExtension *extension;
+	Anchor *anchor;
 };
 
 %token <iVal> INTEGER
@@ -101,6 +104,9 @@ static char *timeout_message_name = 0;
 %type <val> value
 %type <param> parameter
 %type <extension> extension
+%type <anchor> basic_anchor
+%type <anchor> source_anchor
+%type <anchor> destination_anchor
 
 %%
 
@@ -206,7 +212,29 @@ definition_section:
 GLOBAL global_references ';'
 | OPTION option_settings ';'
 | LOCAL OPTION local_option_settings ';'
+| LINK source_anchor TO destination_anchor ';'
 | local_machine_instantiation;
+;
+
+basic_anchor:
+REMOTE PROPERTY SYMBOL
+{ $$ = new RemoteAnchor($3); }
+| PROPERTY SYMBOL
+{ $$ = new StructurePropertyAnchor($2, 0); }
+| SYMBOL /* state */
+{ $$ = new StateAnchor($1, 0); }
+;
+
+source_anchor:
+basic_anchor
+| KEY INTEGER
+{ $$ = new KeyAnchor($2); }
+;
+
+destination_anchor:
+basic_anchor
+| ACTION SYMBOL parameters
+{ $$ = new ActionAnchor(new Action($2, hps.current_parameters, hps.command_list)); }
 ;
 
 machine_instantiation:
@@ -252,7 +280,30 @@ SYMBOL SYMBOL parameters
 	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
 	hps.properties.clear();
 }
+SYMBOL SYMBOL '<' pattern_list '>' parameters
+{
+	hps.current_machine = new Structure($1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties.clear();
+}
 | SYMBOL SYMBOL property_block parameters
+{
+	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
+	//__FILE__, __LINE__, properties,
+	//MachineInstance::MACHINE_INSTANCE));
+	//current_machine = 0;
+	hps.current_machine = new Structure($1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties = hps.property_stack.back();
+	hps.property_stack.pop_back();
+	hps.current_machine->setProperties(hps.properties);
+	hps.properties.clear();
+}
+| SYMBOL SYMBOL '<' pattern_list '>' property_block parameters
 {
 	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
 	//__FILE__, __LINE__, properties,
@@ -272,6 +323,11 @@ SYMBOL SYMBOL parameters
 parameters:
 parameter
 | parameters COMMA parameter
+;
+
+pattern_list:
+SYMBOL
+| SYMBOL COMMA SYMBOL
 ;
 
 parameter:

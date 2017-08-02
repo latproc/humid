@@ -9,6 +9,8 @@
 #include <symboltable.h>
 #include "Parameter.h"
 #include "structure.h"
+#include "Anchor.h"
+#include "LinkableProperty.h"
 
 void yyerror(const char *str);
 
