@@ -67,7 +67,6 @@ void EditorSettings::flush() {
     }
     std::cout << "saving settings for " << widgets.size() << " windows\n";
     for (auto w : widgets) {
-        std::cout << "attempting to save properties for " << w.first << "\n";
         s = find(w.first);
         if (s) s->save(settings_file);
     }
@@ -80,4 +79,3 @@ void EditorSettings::add(const std::string &name, nanogui::Widget *w) {
     updateSettingsStructure(name, w);
     widgets[name] = w;
 }
-

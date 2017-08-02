@@ -14,24 +14,23 @@
 
 class NamedObject {
 public:
-    NamedObject();
-    NamedObject(const char *object_name);
-    NamedObject(const std::string &object_name);
- 
-    NamedObject &operator=(const NamedObject &other);
-    std::ostream &operator<<(std::ostream &out) const;
-    bool operator==(const NamedObject &other);
+    NamedObject(NamedObject *parent = 0);
+    NamedObject(NamedObject *parent, const char *object_name);
+    NamedObject(NamedObject *parent, const std::string &object_name);
+
     virtual ~NamedObject();
     void setName(const std::string new_name);
-    std::string fullName();
+    std::string fullName() const;
+    std::string getName() const { return name; }
 
-	static std::string nextName(NamedObject*, const std::string prefix = "");
+  	static std::string nextName(NamedObject*, const std::string prefix = "");
     static bool changeName(NamedObject *o, const std::string &oldname, const std::string &newname);
-    std::string newChildName(NamedObject*, const std::string prefix = ""); 
     std::map<std::string, NamedObject*> &siblings();
 
     void remove( const std::string &name);
     void add( const std::string &name, NamedObject *child);
+
+    NamedObject *getParent() const { return parent; }
 
 protected:
     NamedObject *parent;
@@ -41,7 +40,9 @@ protected:
 	static unsigned int user_object_sequence;
 private:
    NamedObject(const NamedObject &orig);
-
+   NamedObject &operator=(const NamedObject &other);
+   std::ostream &operator<<(std::ostream &out) const;
+   bool operator==(const NamedObject &other);
 };
 
 std::ostream &operator<<(std::ostream &out, const NamedObject &m);

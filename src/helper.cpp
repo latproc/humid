@@ -132,19 +132,27 @@ Structure * findStructureFromClass(std::string class_name) {
 					&& (s->getStructureDefinition()->getName() == class_name
 						|| s->getStructureDefinition()->getBase() == class_name) )
 				return s;
+		else if (!s->getStructureDefinition() && s->getKind() == class_name) {
+			s->setStructureDefinition(findClass(class_name));
+			std::cout << "Notice: structure " << s->getName() << " is now linked to class " << class_name << "\n";
+			return s;
+		}
 	}
 	return 0;
 }
 
-void createScreens() {
+int createScreens() {
+	int res = 0;
 	for (auto sc : hm_classes) {
 		if (sc->getBase() == "SCREEN") {
 			if (! findStructureFromClass(sc->getName())) {
-				sc->instantiate();
+				sc->instantiate(nullptr);
 				std::cout << "Instantiated screen " << sc->getName() << "\n";
+				++res;
 			}
 		}
 	}
+	return res;
 }
 
 
@@ -168,7 +176,7 @@ Structure *createScreenStructure() {
 	StructureClass *sc = new StructureClass(sc_name, "SCREEN");
 	hm_classes.push_back(sc);
 	std::string scrn_name(NamedObject::nextName(nullptr));
-	Structure *s = new Structure(scrn_name, sc_name);
+	Structure *s = new Structure(nullptr, scrn_name, sc_name);
 	s->getProperties().add("screen_id", ++screen_id);
 	hm_structures.push_back(s);
 	if (EDITOR->gui()->getScreensWindow())
@@ -191,9 +199,49 @@ StructureClass *extendStructureClass(const std::string base) {
 
 Structure *createStructure(const std::string sc_name) {
 	std::string s_name(NamedObject::nextName(nullptr));
-	Structure *s = new Structure(s_name, sc_name);
+	Structure *s = new Structure(nullptr, s_name, sc_name);
 	hm_structures.push_back(s);
 	if (EDITOR->gui()->getScreensWindow())
 		EDITOR->gui()->getScreensWindow()->update();
 	return s;
+}
+
+void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files) {
+		using namespace boost::filesystem;
+		assert(is_directory(fp));
+		typedef std::vector<path> path_vec;
+		path_vec items;
+		std::copy(directory_iterator(fp), directory_iterator(), std::back_inserter(items));
+		std::sort(items.begin(), items.end());
+		for (path_vec::const_iterator iter(items.begin()); iter != items.end(); ++iter) {
+				if (is_regular_file(*iter) ) {
+						path fn(*iter);
+						std::string ext = boost::filesystem::extension(fn);
+						if (ext == ".humid") files.push_back(fn);
+				}
+				else if (is_directory(fp)) {
+						collect_humid_files( fp / (*iter), files);
+				}
+		}
+}
+
+void backup_humid_files(boost::filesystem::path base) {
+		using namespace boost::filesystem;
+
+		std::list<path> all_humid_files;
+
+		collect_humid_files(base, all_humid_files);
+
+		// backup all .humid files
+		for (auto item : all_humid_files) {
+			std::cout << "backing up humid file: " << item.string();
+			if (!exists(item)) {
+				std::cout << " aborted: file does not exist\n";
+				continue;
+			}
+			path backup(item);
+			backup += '_';
+			std::cout << " to " << backup << "\n";
+			boost::filesystem::rename(item,backup);
+		}
 }

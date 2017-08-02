@@ -10,10 +10,11 @@
 #include <map>
 #include "namedobject.h"
 
-std::map<std::string, NamedObject*>NamedObject::global_objects;
+typedef std::map<std::string, NamedObject*> Dict;
+Dict NamedObject::global_objects;
 unsigned int NamedObject::user_object_sequence = 1;
 
-NamedObject::NamedObject() : parent(0) {
+NamedObject::NamedObject(NamedObject *owner) : parent(owner) {
     nextName(this);
 }
 
@@ -28,43 +29,50 @@ NamedObject::~NamedObject() {
   else parent->remove(name);
 }
 
-NamedObject::NamedObject(const char *msg) : parent(0), name(msg) {
-	if (!parent) {
-		auto found = global_objects.find( name );
-    if (found != global_objects.end()) {
-      const std::string &found_name((*found).first);
-      NamedObject *found_object = (*found).second;
-      //assert(found == global_objects.end());
+void addNamedObjectToMap(NamedObject *no, Dict &dict) {
+  if (!no) return;
+  auto found = dict.find(no->getName());
+  if (found != dict.end()) {
+    NamedObject *other = (*found).second;
+    if (!other || other == no) {
+      (*found).second = no;
     }
-		global_objects[name] = this;
-	}
-	else {
-		parent->add(name, this);
-	}
+    else {
+      std::string name = no->getName();
+      while (name.substr(0,3) == "rn_") name = name.substr(3);
+      name = NamedObject::nextName(no, "rn");
+      std::cout << "Warning: named " << no->getName()
+        << " was already allocated to a different object; "
+        << " renamed this one to " << name << "\n";
+      no->setName(name);
+    }
+  }
+  else
+    dict[no->getName()] = no;
 }
 
-NamedObject::NamedObject(const std::string &msg) : parent(0), name(msg) {
-  auto found = global_objects.find( name );
-  if (found != global_objects.end() && (*found).second != this && (*found).second) {
-		// strip rn_ prefixes in case this object was renamed previouslly..
-		while (name.substr(0,3) == "rn_") name = name.substr(3);
-		name = nextName(this, "rn");
-		std::cout << "Error: " << msg << " already defined, renamed new object to " << name << "\n";
-	}
-	//assert(found == global_objects.end());
-  global_objects[name] = this;
+NamedObject::NamedObject(NamedObject *owner, const char *msg) : parent(owner), name(msg) {
+	if (!parent)
+    addNamedObjectToMap(this, global_objects);
+	else
+		parent->add(name, this);
+}
+
+NamedObject::NamedObject(NamedObject *owner, const std::string &msg) : parent(owner), name(msg) {
+  if (!parent)
+    addNamedObjectToMap(this, global_objects);
+	else
+		parent->add(name, this);
 }
 
 void NamedObject::add(const std::string &object_name, NamedObject *child) {
-	auto found = child_objects.find( name );
-	assert(found == child_objects.end());
-	child_objects[name] = child;
+  addNamedObjectToMap(child, child_objects);
 }
 void NamedObject::remove( const std::string &object_name) {
 	child_objects.erase(name);
 }
 
-std::string NamedObject::fullName() {
+std::string NamedObject::fullName() const {
 	std::string parent_name;
 	if (parent) {
 		parent_name = parent->fullName();
@@ -74,13 +82,14 @@ std::string NamedObject::fullName() {
 }
 
 std::ostream &NamedObject::operator<<(std::ostream &out) const  {
-    out << name;
+    out << fullName();
     return out;
 }
-
+/*
 std::ostream &operator<<(std::ostream &out, const NamedObject &m) {
     return m.operator<<(out);
 }
+*/
 
 void NamedObject::setName(const std::string new_name) {
     if (NamedObject::changeName(this, name,new_name))
@@ -98,9 +107,9 @@ NamedObject &NamedObject::operator=(const NamedObject &other) {
 }
 */
 
-bool NamedObject::operator==(const NamedObject &other) {
+/*bool NamedObject::operator==(const NamedObject &other) {
     return name == other.name;
-}
+}*/
 
 std::string NamedObject::nextName(NamedObject *o, const std::string prefix) {
 	char buf[40];
@@ -109,35 +118,16 @@ std::string NamedObject::nextName(NamedObject *o, const std::string prefix) {
 	else
 		snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
 
-	if (!o) {
-		while (global_objects.find(buf) != global_objects.end()) {
-			snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
-		}
-		return buf;
-	}
-	std::map<std::string, NamedObject*>&siblings = o->siblings();
-	std::string result(buf);
-	o->setName(result);
-	siblings[result] = o;
-	return result;
-}
+  Dict &dict( (o) ? o->siblings() : global_objects);
 
-std::string NamedObject::newChildName(NamedObject *o, const std::string prefix) {
-	char buf[40];
-	if (prefix.length())
-		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), user_object_sequence);
-	else
-		snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
-
-	while (child_objects.find(buf) != child_objects.end()) {
-		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
+	while (dict.find(buf) != dict.end()) {
+    if (prefix.length())
+  		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), ++user_object_sequence);
+  	else
+  		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
 	}
-	if (o) {
-		std::string result(buf);
-		o->setName(result);
-		child_objects[result] = o;
-		return result;
-	}
+  if (0)
+    addNamedObjectToMap(o, dict);
 	return buf;
 }
 

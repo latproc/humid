@@ -22,7 +22,7 @@ int st_yylex(void);
 extern int st_yylineno;
 extern int st_yycharno;
 extern char *st_yytext;
-  
+
 int st_line_num = 1;   /* updated by the lexical analysis and used for error reporting */
 extern int num_errors;
 extern std::list<std::string>error_messages;
@@ -102,7 +102,7 @@ instantiation ';'
 instantiation:
 SYMBOL SYMBOL parameters
 {
-	sts.current_machine = new Structure($1, $2);
+	sts.current_machine = new Structure(nullptr, $1, $2);
 	std::copy(sts.current_parameters.begin(), sts.current_parameters.end(),back_inserter(sts.current_machine->parameters));
 	sts.current_parameters.clear();
 	sts.current_machine->setDefinitionLocation(st_yyfilename, st_yylineno);
@@ -114,7 +114,7 @@ SYMBOL SYMBOL parameters
 	//__FILE__, __LINE__, sts.properties,
 	//MachineInstance::MACHINE_INSTANCE));
 	//sts.current_machine = 0;
-	sts.current_machine = new Structure($1, $2);
+	sts.current_machine = new Structure(nullptr, $1, $2);
 	std::copy(sts.current_parameters.begin(), sts.current_parameters.end(),back_inserter(sts.current_machine->parameters));
 	sts.current_parameters.clear();
 	sts.current_machine->setDefinitionLocation(st_yyfilename, st_yylineno);
@@ -198,4 +198,3 @@ void st_yyerror(const char *str)
 	std::cerr << ss.str() << "\n";
 	num_errors++;
 }
-

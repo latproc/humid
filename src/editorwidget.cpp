@@ -40,7 +40,7 @@ EditorWidget::EditorWidget(const std::string structure_name, nanogui::Widget *w,
 
 EditorWidget::EditorWidget(const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
-  : Selectable(0), EditorObject(nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
+  : Selectable(0), EditorObject(nullptr, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
   definition(0), value_scale(1.0f), tab_position(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
@@ -356,7 +356,7 @@ void EditorWidget::updateStructure() {
     if (base == "SCREEN")
       s = createScreenStructure();
     else
-      s = sc->instantiate();
+      s = sc->instantiate(nullptr);
     definition = s;
   }
   if (!s) return;

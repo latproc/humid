@@ -86,12 +86,16 @@ void Editor::saveAs(const std::string &path) {
 }
 void Editor::save() {
 	using namespace nanogui;
+	using namespace boost::filesystem;
 	UserWindow *uw = screen->getUserWindow();
 	//if (uw) uw->save(path);
 	Structure *settings = EditorSettings::find("EditorSettings");
 	assert(settings);
 	Value base_v = settings->getProperties().find("project_base");
 	assert(base_v != SymbolTable::Null);
+
+	path project_base_path(base_v.asString());
+  backup_humid_files(project_base_path);
 
 	// collect a list of files to save to
 	std::map<NamedObject*, std::string> structure_files;
@@ -125,20 +129,6 @@ void Editor::save() {
 
 		std::string file_path = base_v.asString() + "/" + fname;
 		structure_files[s] = file_path;
-	}
-
-	// backup all files
-	for (auto item : structure_files) {
-		std::cout << "backing up project file: " << item.second;
-		if (!boost::filesystem::exists(item.second)) {
-			std::cout << " does not exist\n";
-			continue;
-		}
-		std::string backup(item.second);
-		backup += '_';
-		std::cout << " to " << backup << "\n";
-		boost::filesystem::rename(item.second,backup);
-		//boost::filesystem::resize_file(item.second, 0);
 	}
 	// save to the files
 	std::set<StructureClass*>saved_classes;

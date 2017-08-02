@@ -18,7 +18,7 @@
 LinkableProperty::LinkableProperty(const std::string group, int object_type,
                 const std::string &name, const std::string &addr_str,
                 const std::string &dtype, int dsize)
-: EditorObject(name), group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype),
+: EditorObject(nullptr, name), group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype),
     data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) {
         char *rest = 0;
         modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);

@@ -165,7 +165,6 @@ extern void setup_signals();
 
 std::string stripEscapes(const std::string &s);
 StructureClass *findClass(const std::string &name);
-Structure *createScreenStructure();
 
 Handle::Mode all_handles[] = {
 	Handle::POSITION,
@@ -768,22 +767,28 @@ void UserWindow::setStructure( Structure *s) {
 	if (structure()) {
 		std::cout << "saving structure " << structure()->getName() << " : " << structure()->getKind() << "\n";
 		std::list<std::string>props;
+		std::map<std::string, std::string> property_map;
+		loadPropertyToStructureMap(property_map);
 		getPropertyNames(props);
 		for (auto prop : props) {
 			Value v = getPropertyValue(prop);
 			if (v != SymbolTable::Null) {
-				structure()->getProperties().add(prop, v);
+				auto item = property_map.find(prop);
+				if (item != property_map.end())
+					structure()->getProperties().add((*item).second, v);
+				else
+					structure()->getProperties().add(prop, v);
 				std::cout << " saving property " << prop << " (" << v  <<")\n";
 			}
 		}
 	}
 
 	clearSelections();
-    nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
+	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
 	drag_handle->incRef();
-    window->removeChild(drag_handle);
-    PropertyMonitor *pm = drag_handle->propertyMonitor();
-    drag_handle->setPropertyMonitor(0);
+	window->removeChild(drag_handle);
+	PropertyMonitor *pm = drag_handle->propertyMonitor();
+	drag_handle->setPropertyMonitor(0);
 	int n = window->childCount();
 	while (n--) {
 		window->removeChild(0);
@@ -791,13 +796,12 @@ void UserWindow::setStructure( Structure *s) {
 
 	loadStructure(s);
 	current_structure = s;
+	system_settings->getProperties().add("active_screen", Value(s->getName(), Value::t_string));
 
-    window->addChild(drag_handle);
-
-    drag_handle->setPropertyMonitor(pm);
-    drag_handle->decRef();
-
-    window->performLayout( gui->nvgContext() );
+  window->addChild(drag_handle);
+  drag_handle->setPropertyMonitor(pm);
+  drag_handle->decRef();
+  window->performLayout( gui->nvgContext() );
 
 }
 
@@ -857,11 +861,11 @@ CircularBuffer * UserWindow::addDataBuffer(const std::string name, CircularBuffe
 		return new_buf;
 	}
 	else {
-	std::cout << "adding data buffer for " << name << "\n";
-	CircularBuffer *buf = new CircularBuffer(len, dt);
-	data[name] = buf;
-	return buf;
-}
+		std::cout << "adding data buffer for " << name << "\n";
+		CircularBuffer *buf = new CircularBuffer(len, dt);
+		data[name] = buf;
+		return buf;
+  }
 }
 
 // TBD remove this hack (see lineplot)
@@ -873,25 +877,6 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 			res = addDataBuffer(name, lp->dataType(), gui->sampleBufferSize());
 	}
 	return res;
-}
-
-void push_files_for(boost::filesystem::path fp, std::list<boost::filesystem::path> &files) {
-		using namespace boost::filesystem;
-		assert(is_directory(fp));
-		typedef std::vector<path> path_vec;
-		path_vec items;
-		std::copy(directory_iterator(fp), directory_iterator(), std::back_inserter(items));
-		std::sort(items.begin(), items.end());
-		for (path_vec::const_iterator iter(items.begin()); iter != items.end(); ++iter) {
-				if (is_regular_file(*iter) ) {
-						path fn(*iter);
-						std::string ext = boost::filesystem::extension(fn);
-						if (ext == ".humid") files.push_back(fn);
-				}
-				else if (is_directory(fp)) {
-						push_files_for( fp / (*iter), files);
-				}
-		}
 }
 
 void loadProjectFiles(std::list<std::string> &files_and_directories) {
@@ -911,26 +896,31 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 			if (is_regular_file(fp) && ext == ".humid")
 					files.push_back(fp);
 			else if (is_directory(fp)) {
-				push_files_for(fp, files);
+				collect_humid_files(fp, files);
 			}
 		}
 	}
 
-
 	/* load configuration from files named on the commandline */
 	int opened_file = 0;
+	std::set<std::string>loaded_files;
 	std::list<path>::const_iterator f_iter = files.begin();
 	while (f_iter != files.end())
 	{
 		const char *filename = (*f_iter).string().c_str();
 		std::string fname(filename);
 
-		// strip project path from the file name
-		if (base.length() && fname.find(base) == 0) {
-			fname = fname.substr(base.length()+1);
-		}
 		if (filename[0] != '-')
 		{
+			// strip project path from the file name
+			if (base.length() && fname.find(base) == 0) {
+				fname = fname.substr(base.length()+1);
+				if (loaded_files.count(fname)) {
+					std::cout << "Skipping second load of " << fname << "\n";
+					continue; // already loaded this one-line
+				}
+				loaded_files.insert(fname);
+			}
 			if (exists(filename)) {
 				std::cout << "reading project file " << fname << "\n";
 				opened_file = 1;
@@ -1409,7 +1399,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		Structure *s = new Structure("Start_Button", "BUTTON");
+		Structure *s = new Structure(nullptr, "Start_Button", "BUTTON");
 		starters["BUTTON"] = s;
 		StructureClass *sc = new StructureClass("BUTTON", "");
 		sc->setBuiltIn();
@@ -1424,7 +1414,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Indicator", "INDICATOR");
+		s = new Structure(nullptr, "Start_Indicator", "INDICATOR");
 		starters["INDICATOR"] = s;
 		sc = new StructureClass("INDICATOR", "");
 		sc->setBuiltIn();
@@ -1440,7 +1430,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Image", "IMAGE");
+		s = new Structure(nullptr, "Start_Image", "IMAGE");
 		starters["IMAGE"] = s;
 		sc = new StructureClass("IMAGE", "");
 		sc->setBuiltIn();
@@ -1454,7 +1444,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Rect", "RECT");
+		s = new Structure(nullptr, "Start_Rect", "RECT");
 		starters["RECT"] = s;
 		sc = new StructureClass("RECT", "");
 		sc->setBuiltIn();
@@ -1468,7 +1458,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Label", "LABEL");
+		s = new Structure(nullptr, "Start_Label", "LABEL");
 		starters["LABEL"] = s;
 		sc = new StructureClass("LABEL", "");
 		sc->setBuiltIn();
@@ -1482,7 +1472,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Text", "TEXT");
+		s = new Structure(nullptr, "Start_Text", "TEXT");
 		starters["TEXT"] = s;
 		sc = new StructureClass("TEXT", "");
 		sc->setBuiltIn();
@@ -1496,7 +1486,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Plot", "PLOT");
+		s = new Structure(nullptr, "Start_Plot", "PLOT");
 		starters["PLOT"] = s;
 		sc = new StructureClass("PLOT", "");
 		sc->setBuiltIn();
@@ -1511,7 +1501,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
 		b->setPosition(Vector2i(2,2));
-		s = new Structure("Start_Progress", "PROGRESS");
+		s = new Structure(nullptr, "Start_Progress", "PROGRESS");
 		starters["PROGRESS"] = s;
 		sc = new StructureClass("PROGRESS", "");
 		sc->setBuiltIn();
@@ -1525,7 +1515,7 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 Structure *StructuresWindow::createStructure(const std::string kind) {
 	StructureClass *sc = findClass(kind);
-	if (sc) return sc->instantiate();
+	if (sc) return sc->instantiate(nullptr);
 	return 0;
 }
 
@@ -1716,8 +1706,15 @@ void ScreensWindow::update() {
 		palette_content->removeChild(0);
 	}
 	EditorGUI *app = gui;
+
+	// check whether all screens are instantiated
+	int created = createScreens();
+	if (created)
+		std::cout << "Warning: " << created << " screen instances were missing!\n";
+
 	for (auto item : hm_structures ) {
 		Structure *s = item;
+		std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
 		StructureClass *sc = findClass(s->getKind());
 		int count = 0;
 		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
@@ -1736,27 +1733,22 @@ void ScreensWindow::update() {
 				b->select();
 			});
 		}
-
 	}
+
 	if (!palette_content->childCount()) {
+			Structure *screen = createScreenStructure();
 			nanogui::Widget *cell = new nanogui::Widget(palette_content);
 			cell->setFixedSize(Vector2i(button_width+4,35));
-			ScreenSelectButton *b = new ScreenSelectButton("BUTTON", this, cell, "Untitled", this);
+			ScreenSelectButton *b = new ScreenSelectButton("BUTTON", this, cell, screen->getName(), this);
 			b->setEnabled(true);
 			b->setFixedSize(Vector2i(button_width, 30));
 			b->setPosition(Vector2i(2,2));
 			b->setPassThrough(true);
 			b->setCallback( [app,b](){
+				app->getScreensWindow()->getWindow()->requestFocus();
+				app->getUserWindow()->clearSelections();
 				app->getScreensWindow()->clearSelections(b);
 				b->select();
-				Structure *st = findScreen(b->caption());
-				if (st) {
-					UserWindow *uw = app->getUserWindow();
-					if (uw) {
-						uw->setStructure(st);
-						system_settings->getProperties().add("active_screen", st->getName());
-					}
-				}
 			});
 	}
 	getWindow()->performLayout(gui->nvgContext());
@@ -1813,10 +1805,18 @@ void UserWindow::getPropertyNames(std::list<std::string> &names) {
 	names.push_back("Screen Width");
 	names.push_back("Screen Height");
 	names.push_back("Screen Id");
-	names.push_back("Window Width");
-	names.push_back("Window Height");
+	//names.push_back("Window Width");
+	//names.push_back("Window Height");
 	names.push_back("File Name");
 }
+
+void UserWindow::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
+	property_map["Screen Width"] = "screen_width";
+	property_map["Screen Height"] = "screen_height";
+	property_map["Screen Id"] = "screen_id";
+	property_map["File Name"] = "file_name";
+}
+
 
 void UserWindow::loadProperties(PropertyFormHelper *properties) {
 	UserWindow *uw = this;
@@ -2347,7 +2347,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					getScreensWindow()->update();
 					Structure *project = EditorSettings::find("ProjectSettings");
 					if (!project) {
-						project = new Structure("ProjectSettings", "PROJECTSETTINGS");
+						project = new Structure(nullptr, "ProjectSettings", "PROJECTSETTINGS");
 						hm_structures.push_back(project);
 						std::string base = source_files.front();
 						size_t delim_pos = base.rfind('/');
@@ -2458,8 +2458,13 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 			offset += w->height() + 8;
 		}
 	}
-	window->addChild(drag_handle);
+	window->performLayout(nvgContext());
+	for (auto child : window->children()) {
+		EditorWidget *ew = dynamic_cast<EditorWidget*>(child);
+		if (ew) ew->updateStructure();
+	}
 
+	window->addChild(drag_handle);
 	drag_handle->setPropertyMonitor(pm);
 	drag_handle->decRef();
 }
@@ -2805,16 +2810,21 @@ void EditorGUI::update() {
 	}
 
 	if (w_user) {
+		bool changed = false;
 		Value &active = system_settings->getProperties().find("active_screen");
 		if (active != SymbolTable::Null) {
-			Structure *s = findScreen(active.asString());
-			if (s) {
-				w_user->getWindow()->requestFocus();
-				w_user->clearSelections();
-				w_user->setStructure(s);
+			if (w_user->structure() && w_user->structure()->getName() != active.asString()) {
+				Structure *s = findScreen(active.asString());
+				if (s && w_user->structure() != s) {
+					w_user->getWindow()->requestFocus();
+					w_user->clearSelections();
+					w_user->setStructure(s);
+					changed = true;
+				}
 			}
 		}
-		w_user->update();
+		if (changed)
+			w_user->update();
 	}
 
 	if (w_user)
@@ -3717,7 +3727,7 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	EditorSettings::setDirty();
 	Structure *s = EditorSettings::find(name);
 	if (!s) {
-		s = new Structure(name, "WINDOW");
+		s = new Structure(nullptr, name, "WINDOW");
 		st_structures.push_back(s);
 		std::cout << "added structure for window " << name << "\n";
 	}
@@ -3879,7 +3889,6 @@ int main(int argc, const char ** argv ) {
 			nanogui::Theme *myTheme = new nanogui::Theme(app->nvgContext());
 			setupTheme(myTheme);
 			app->setTheme(myTheme);
-			app->createWindows();
 
 			if (vm.count("source-file")) {
 				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
@@ -3893,24 +3902,9 @@ int main(int argc, const char ** argv ) {
 			}
 			system_settings = findStructure("System");
 			if (!system_settings) {
-				system_settings = system_class->instantiate("System");
-				Structure *curr = app->getUserWindow()->structure();
-				if (curr)
-					system_settings->getProperties().add("active_screen", curr->getName());
-				else {
-					curr = app->getScreensWindow()->getSelectedStructure();
-					if (curr)
-						system_settings->getProperties().add("active_screen",curr->getName());
-/*					else {
-						Structure *scr = firstScreen();
-						if (!scr)
-							system_settings->getProperties().add("active_screen","Untitled");
-						else
-							system_settings->getProperties().add("active_screen",scr->getName());
-					}
-*/
-				}
+				system_settings = system_class->instantiate(nullptr, "System");
 			}
+			app->createWindows();
 
 			app->setVisible(true);
 

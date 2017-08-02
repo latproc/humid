@@ -20,8 +20,8 @@ class PropertyLink;
 class EditorObject : public NamedObject {
 	public:
 		EditorObject() {}
-		EditorObject(const std::string &name) : NamedObject(name), changed_(true) {}
-		EditorObject(const char *name) : NamedObject(name) {}
+		EditorObject(NamedObject *owner, const std::string &name) : NamedObject(owner, name), changed_(true) {}
+		EditorObject(NamedObject *owner, const char *name) : NamedObject(owner, name) {}
 		virtual ~EditorObject() { }
 		void setChanged(bool which) { changed_ = which; }
 		bool changed() { return changed_; }

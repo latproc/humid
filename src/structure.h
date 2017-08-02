@@ -34,8 +34,8 @@ bool writePropertyDefaults(std::ostream &out, const SymbolTable &table);
 
 class StructureClass : public NamedObject {
 public:
-	StructureClass(const std::string class_name) : NamedObject(class_name), builtin(false) {}
-	StructureClass(const std::string class_name, const std::string base_class) : NamedObject(class_name), base(base_class), builtin(false) {};
+	StructureClass(const std::string class_name) : NamedObject(nullptr, class_name), builtin(false) {}
+	StructureClass(const std::string class_name, const std::string base_class) : NamedObject(nullptr, class_name), base(base_class), builtin(false) {};
 	std::map<std::string, Structure *> &getGlobalRefs() { return global_references; }
 	SymbolTable &getProperties() { return properties; }
 	void setProperties(const SymbolTable &other) { properties = other; }
@@ -58,8 +58,8 @@ public:
 
 	virtual bool save(std::ostream &out);
 
-	Structure *instantiate();
-	Structure *instantiate(const std::string s_name);
+	Structure *instantiate(Structure *parent);
+	Structure *instantiate(Structure *parent,const std::string s_name);
 
 	void setBuiltIn() { builtin = true; }
 	bool isBuiltIn() { return builtin; }
@@ -79,7 +79,7 @@ protected:
 
 class Structure : public NamedObject {
 public:
-	Structure(const std::string sname, const std::string skind);
+	Structure(Structure *owner, const std::string sname, const std::string skind);
 	virtual ~Structure() {}
 	std::list<Parameter> parameters;
 	void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
@@ -97,7 +97,7 @@ public:
 	void setName( const std::string new_name) { name = new_name; }
 	const std::string &getKind() { return kind; }
 
-	Structure *clone(const std::string new_name);
+	//Structure *clone(const std::string new_name);
 
 	std::ostream &operator<<(std::ostream &out) const;
 	void setChanged( bool which) { changed_ = which; }

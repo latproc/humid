@@ -10,6 +10,7 @@
 
 #include <ostream>
 #include <string>
+#include <boost/filesystem.hpp>
 
 class StructureClass;
 class Structure;
@@ -30,5 +31,9 @@ Structure *createScreenStructure();
 StructureClass *createStructureClass(const std::string kind);
 StructureClass *extendStructureClass(const std::string base);
 Structure *createStructure(const std::string base);
+int createScreens();
+
+void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files);
+void backup_humid_files(boost::filesystem::path base);
 
 #endif

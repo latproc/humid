@@ -35,7 +35,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 
 	StructureClass *sc = findClass(getClass());
 	assert(sc);
-	Structure *s = sc->instantiate();
+	Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 	assert(s);
 	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
 	int object_height = (s) ? s->getIntProperty("height", 60) : 60;
@@ -166,7 +166,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			if (p != std::string::npos) {
 				StructureClass *sc = findClass("BUTTON");
 				assert(sc);
-				Structure *s = sc->instantiate();
+				Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 				assert(s);
 
 				char *rest = 0;
@@ -198,7 +198,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			else {
 				StructureClass *sc = findClass("INDICATOR");
 				assert(sc);
-				Structure *s = sc->instantiate();
+				Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 				assert(s);
 				EditorButton *b = new EditorButton(container, NamedObject::nextName(0), properties);
 				b->setSize(Vector2i(object_width, object_height));
@@ -224,7 +224,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			char *rest = 0;
 			StructureClass *sc = findClass("INDICATOR");
 			assert(sc);
-			Structure *s = sc->instantiate();
+			Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 			assert(s);
 			EditorButton *b = new EditorButton(container, NamedObject::nextName(0), properties, tag_name, true);
 			b->setDefinition(s);

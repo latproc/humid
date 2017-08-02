@@ -58,6 +58,7 @@ public:
 	virtual void deselect(Selectable *w) override;
 
 	virtual void getPropertyNames(std::list<std::string> &names);
+	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
 	virtual void loadProperties(PropertyFormHelper *pfh);
 	virtual Value getPropertyValue(const std::string &prop);
 
