@@ -11,7 +11,7 @@
 #include <ostream>
 #include <string>
 #include <map>
-#include <nanogui/Widget.h>
+#include <nanogui/widget.h>
 #include "structure.h"
 
 bool updateSettingsStructure(const std::string name, nanogui::Widget *widget);
