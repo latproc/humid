@@ -52,25 +52,20 @@ Structure *EditorSettings::find(const std::string object_name) {
 void EditorSettings::flush() {
     if (!dirty) return;
     dirty = false;
-    std::cout << "flushing settings\n";
     if (settings_files.size() == 0) return;
     std::string fname(settings_files.front());
     std::ofstream settings_file(fname);
-    std::cout << "saving settings instance to " << fname << "\n";
     Structure *s = find("EditorSettings");
-	if (!s) s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
+	  if (!s) s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
     if (s) s->save(settings_file);
     s = find("ProjectSettings");
     if (s) {
-        std::cout << "saving project settings\n";
         s->save(settings_file);
     }
-    std::cout << "saving settings for " << widgets.size() << " windows\n";
     for (auto w : widgets) {
         s = find(w.first);
         if (s) s->save(settings_file);
     }
-    std::cout << "save done\n";
     settings_file.close();
 }
 

@@ -14,7 +14,7 @@ typedef std::map<std::string, NamedObject*> Dict;
 Dict NamedObject::global_objects;
 unsigned int NamedObject::user_object_sequence = 1;
 
-NamedObject::NamedObject(NamedObject *owner) : parent(owner) {
+NamedObject::NamedObject(NamedObject *owner) : _named(false), parent(owner) {
     nextName(this);
 }
 
@@ -31,6 +31,9 @@ NamedObject::~NamedObject() {
 
 void addNamedObjectToMap(NamedObject *no, Dict &dict) {
   if (!no) return;
+  dict[no->getName()] = no;
+  /*
+  //Dict &dict( (no) ? no->siblings() : NamedObject::globals());
   auto found = dict.find(no->getName());
   if (found != dict.end()) {
     NamedObject *other = (*found).second;
@@ -49,16 +52,17 @@ void addNamedObjectToMap(NamedObject *no, Dict &dict) {
   }
   else
     dict[no->getName()] = no;
+    */
 }
 
-NamedObject::NamedObject(NamedObject *owner, const char *msg) : parent(owner), name(msg) {
+NamedObject::NamedObject(NamedObject *owner, const char *msg) : _named(false), parent(owner), name(msg) {
 	if (!parent)
     addNamedObjectToMap(this, global_objects);
 	else
 		parent->add(name, this);
 }
 
-NamedObject::NamedObject(NamedObject *owner, const std::string &msg) : parent(owner), name(msg) {
+NamedObject::NamedObject(NamedObject *owner, const std::string &msg) : _named(false), parent(owner), name(msg) {
   if (!parent)
     addNamedObjectToMap(this, global_objects);
 	else
@@ -120,13 +124,16 @@ std::string NamedObject::nextName(NamedObject *o, const std::string prefix) {
 
   Dict &dict( (o) ? o->siblings() : global_objects);
 
-	while (dict.find(buf) != dict.end()) {
+  auto item = dict.find(buf);
+	while ( item != dict.end()) {
+    if ((*item).second == o) return buf; // this name is already assigned to the object
     if (prefix.length())
   		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), ++user_object_sequence);
   	else
   		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
+    item = dict.find(buf);
 	}
-  if (0)
+  if (o)
     addNamedObjectToMap(o, dict);
 	return buf;
 }

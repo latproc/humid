@@ -11,9 +11,9 @@
 
 std::string stripEscapes(const std::string &s);
 
-EditorButton::EditorButton(Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption,
+EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption,
             bool toggle, int icon)
-	: Button(parent, caption, icon), EditorWidget("BUTTON", btn_name, this, lp), is_toggle(toggle){
+	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle){
 }
 
 bool EditorButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -81,14 +81,14 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
     char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f%5.4f",
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
       backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
     return Value(buf, Value::t_string);
   }
   if (prop == "Text colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f%5.4f", mTextColor.r(), mTextColor.g(), mTextColor.b(), mTextColor.w());
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", mTextColor.r(), mTextColor.g(), mTextColor.b(), mTextColor.w());
     return Value(buf, Value::t_string);
   }
   if (prop == "Command" && command().length()) {

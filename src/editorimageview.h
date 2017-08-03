@@ -17,7 +17,7 @@ class EditorImageView : public nanogui::ImageView, public EditorWidget {
 
 public:
 
-	EditorImageView(Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon = 0);
+	EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon = 0);
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 

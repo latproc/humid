@@ -27,8 +27,8 @@
 
 extern Handle::Mode all_handles[];
 
-EditorWidget::EditorWidget(const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
-  : Selectable(0), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
+EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
+  : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
     definition(0), value_scale(1.0f), tab_position(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
@@ -38,9 +38,9 @@ EditorWidget::EditorWidget(const std::string structure_name, nanogui::Widget *w,
     palette = p;
 }
 
-EditorWidget::EditorWidget(const std::string structure_name, const std::string &nam,
+EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
-  : Selectable(0), EditorObject(nullptr, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
+  : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
   definition(0), value_scale(1.0f), tab_position(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
@@ -374,7 +374,7 @@ void EditorWidget::updateStructure() {
           std::cout << s->getName() << " skipping update of widget property " << item << "\n";
           continue;
         }
-        const char *mapped = (*found).second.c_str();
+        std::string mapped((*found).second.c_str());
         std::cout << s->getName() << " setting " << mapped << " to " << v << "\n";
         if (mapped == "width" && v.kind == Value::t_integer && v.iValue < 40)
           v = 40;

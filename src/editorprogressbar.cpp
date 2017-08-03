@@ -15,8 +15,8 @@
 #include "editorwidget.h"
 #include "editorprogressbar.h"
 
-EditorProgressBar::EditorProgressBar(Widget *parent, const std::string nam, LinkableProperty *lp)
-	: ProgressBar(parent), EditorWidget("ProgressBar", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+EditorProgressBar::EditorProgressBar(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp)
+	: ProgressBar(parent), EditorWidget(owner, "ProgressBar", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 	}
 
 bool EditorProgressBar::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

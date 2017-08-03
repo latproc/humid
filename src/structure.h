@@ -39,6 +39,8 @@ public:
 	std::map<std::string, Structure *> &getGlobalRefs() { return global_references; }
 	SymbolTable &getProperties() { return properties; }
 	void setProperties(const SymbolTable &other) { properties = other; }
+	SymbolTable &getInternalProperties() { return internal_properties; }
+
 	std::vector<Parameter> &getParameters() { return parameters; }
 	std::map<std::string, Value> &getOptions() { return options; }
 	std::vector<Parameter> &getLocals() { return locals; }

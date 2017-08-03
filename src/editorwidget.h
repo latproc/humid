@@ -36,8 +36,8 @@ class EditorWidget : public Selectable, public EditorObject, public Connectable 
 
 public:
 
-	EditorWidget(const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp);
-	EditorWidget(const std::string structure_name, const std::string &nam,
+	EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp);
+	EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
 				 nanogui::Widget *w, LinkableProperty *lp);
 	~EditorWidget();
 

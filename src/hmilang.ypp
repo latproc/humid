@@ -142,7 +142,7 @@ definition_header '{' definition_body '}' {
 definition_header:
 SYMBOL STRUCTURE parameters {
     hps.current_machineclass = new StructureClass($1);
-	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
 }
@@ -164,7 +164,7 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL STRUCTURE property_block parameters extension  {
     hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
-	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     hps.properties = hps.property_stack.back();
     hps.property_stack.pop_back();
     hps.current_machineclass->setProperties(hps.properties);
@@ -174,7 +174,7 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL SCREEN parameters {
     hps.current_machineclass = new StructureClass($1);
-	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
 }
@@ -354,7 +354,6 @@ value {
 property_block:
 '(' properties ')'
 {
-	std::cerr << "properties " << hps.properties << "\n";
 	hps.property_stack.push_back(hps.properties);
 	hps.properties.clear();
 }

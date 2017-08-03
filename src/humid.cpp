@@ -583,7 +583,7 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 
 class UserWindowWin : public SkeletonWindow, public EditorObject {
 public:
-	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), gui(s), current_item(-1) {
+	UserWindowWin(EditorGUI *s, const std::string caption) : SkeletonWindow(s, caption), EditorObject(0), gui(s), current_item(-1) {
 	}
 
 	bool keyboardEvent(int key, int /* scancode */, int action, int modifiers) override;
@@ -769,12 +769,13 @@ void UserWindow::deselect(Selectable *w) {
 
 void UserWindow::setStructure( Structure *s) {
 	if (!s) return;
+
 	StructureClass *sc = findClass(s->getKind());
 	if ( s->getKind() != "SCREEN" && (!sc || sc->getBase() != "SCREEN") ) return;
 
 	// save current settings
 	if (structure()) {
-		std::cout << "saving structure " << structure()->getName() << " : " << structure()->getKind() << "\n";
+		std::cout << "updating structure " << structure()->getName() << " : " << structure()->getKind() << "\n";
 		std::list<std::string>props;
 		std::map<std::string, std::string> property_map;
 		loadPropertyToStructureMap(property_map);
@@ -805,12 +806,11 @@ void UserWindow::setStructure( Structure *s) {
 
 	loadStructure(s);
 	current_structure = s;
-	system_settings->getProperties().add("active_screen", Value(s->getName(), Value::t_string));
 
   window->addChild(drag_handle);
   drag_handle->setPropertyMonitor(pm);
   drag_handle->decRef();
-  window->performLayout( gui->nvgContext() );
+  gui->performLayout();
 
 }
 
@@ -892,8 +892,6 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 	using namespace boost::filesystem;
 
 	Structure *settings = EditorSettings::find("EditorSettings");
-	std::string base = "";
-	if (settings) base = settings->getProperties().find("project_base").asString();
 
 	std::list<path> files;
 	{
@@ -905,10 +903,15 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 			if (is_regular_file(fp) && ext == ".humid")
 					files.push_back(fp);
 			else if (is_directory(fp)) {
+				settings->getProperties().add("project_base", Value(fp.string().c_str(), Value::t_string));
 				collect_humid_files(fp, files);
 			}
 		}
 	}
+
+	std::string base = "";
+	if (settings) base = settings->getProperties().find("project_base").asString();
+	std::cout << "Project Base: " << base << "\n";
 
 	/* load configuration from files named on the commandline */
 	int opened_file = 0;
@@ -1015,7 +1018,7 @@ void UserWindow::loadStructure( Structure *s) {
 				lp = gui->findLinkableProperty(remote.asString());
 			if (kind == "LABEL") {
 				Value caption_v = element->getProperties().find("caption");
-				EditorLabel *el = new EditorLabel(window, element->getName(), nullptr,
+				EditorLabel *el = new EditorLabel(s, window, element->getName(), nullptr,
 												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				el->setName(element->getName());
 				el->setDefinition(element);
@@ -1029,7 +1032,7 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setChanged(false);
 			}
 			if (kind == "PROGRESS") {
-				EditorProgressBar *ep = new EditorProgressBar(window, element->getName(), nullptr);
+				EditorProgressBar *ep = new EditorProgressBar(s, window, element->getName(), nullptr);
 				ep->setDefinition(element);
 				if (lp)
 					lp->link(new LinkableNumber(ep));
@@ -1040,9 +1043,10 @@ void UserWindow::loadStructure( Structure *s) {
 				ep->setChanged(false);
 			}
 			if (kind == "TEXT") {
-				EditorTextBox *textBox = new EditorTextBox(window, element->getName(), lp);
+				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
 				textBox->setDefinition(element);
-				textBox->setValue("");
+				const Value &text_v = element->getProperties().find("text");
+				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (value_scale != 1.0) textBox->setValueScale( value_scale );
@@ -1081,7 +1085,7 @@ void UserWindow::loadStructure( Structure *s) {
 				});
 			}
 			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
-				EditorLinePlot *lp = new EditorLinePlot(window, element->getName(), nullptr);
+				EditorLinePlot *lp = new EditorLinePlot(s, window, element->getName(), nullptr);
 				lp->setDefinition(element);
 				lp->setBufferSize(gui->sampleBufferSize());
 				fixElementPosition( lp, element->getProperties());
@@ -1098,9 +1102,10 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			else if (kind == "BUTTON" || kind == "INDICATOR") {
 				Value caption_v = element->getProperties().find("caption");
-				EditorButton *b = new EditorButton(window, element->getName(), lp,
+				EditorButton *b = new EditorButton(s, window, element->getName(), lp,
 												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				b->setDefinition(element);
+				{
 				Value &bg_colour = element->getProperties().find("bg_color");
 				if (bg_colour != SymbolTable::Null) {
 					std::vector<std::string> tokens;
@@ -1111,11 +1116,21 @@ void UserWindow::loadStructure( Structure *s) {
 						for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
 						b->setBackgroundColor(nanogui::Color(fields[0], fields[1], fields[2], fields[3]));
 					}
-					else
-						b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
 				}
-				else
-					b->setBackgroundColor(nanogui::Color(200, 30, 30, 255));
+				}
+				{
+					Value &bg_colour = element->getProperties().find("text_color");
+					if (bg_colour != SymbolTable::Null) {
+						std::vector<std::string> tokens;
+						std::string colour_str = bg_colour.asString();
+						boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
+						if (tokens.size() == 4) {
+							std::vector<float>fields(4);
+							for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
+							b->setTextColor(nanogui::Color(fields[0], fields[1], fields[2], fields[3]));
+						}
+					}
+				}
 				if (lp)
 					lp->link(new LinkableIndicator(b));
 				fixElementPosition( b, element->getProperties());
@@ -1618,6 +1633,9 @@ class ScreenSelectButton : public SelectableButton {
 		if (!getScreen()) setScreen(findScreen(caption()));
 		UserWindow *uw = EDITOR->gui()->getUserWindow();
 		if (uw && getScreen()) {
+			// in edit mode the active screen is set by user actions.
+			// otherwise it is only changed by a property change from the remote end
+			system_settings->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
 			uw->setStructure(getScreen());
 			uw->refresh();
 		}
@@ -1698,6 +1716,16 @@ Structure *ScreensWindow::getSelectedStructure() {
 	if (btn)
 		return btn->getScreen();
 	return 0;
+}
+
+void ScreensWindow::updateSelectedName() {
+	if (!hasSelections()) return;
+	auto found = selections.begin();
+	ScreenSelectButton *btn = dynamic_cast<ScreenSelectButton*>(*found);
+	if (btn) {
+		Structure *s = btn->getScreen();
+		btn->setCaption(s->getName());
+	}
 }
 
 void ScreensWindow::update() {
@@ -1858,13 +1886,28 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 									 uw->structure()->setName(value);
 								 }
 								 uw->getWindow()->requestFocus();
-								 if (uw->app()->getScreensWindow())
-									 uw->app()->getScreensWindow()->update();
+								 if (uw->app()->getScreensWindow()) {
+									 uw->app()->getScreensWindow()->updateSelectedName();
+								 }
 							 },
 							 [uw]()->std::string{
 								 PanelScreen *ps = uw->getActivePanel();
 								 if (ps) return ps->getName();
 								 return "";
+							 });
+	}
+	{
+	std::string label("File Name");
+	properties->addVariable<std::string>(label,
+							 [uw](std::string value) {
+								 	if (uw->structure())
+									uw->structure()->getInternalProperties().add("file_name", Value(value, Value::t_string));
+							 },
+							 [uw]()->std::string{
+									if (!uw->structure()) return "";
+									const Value &vx = uw->structure()->getInternalProperties().find("file_name");
+									if (vx != SymbolTable::Null) return vx.asString();
+									return "";
 							 });
 	}
 	{
@@ -1889,25 +1932,22 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 							 });
 	}
 	{
-	std::string label("File Name");
+	std::string label("Class File");
 	properties->addVariable<std::string>(label,
 							 [uw](std::string value) {
-								ScreensWindow *sw = (uw->app()->getScreensWindow());
-								if (!sw) return;
-								Structure *current_screen = sw->getSelectedStructure();
-								if (current_screen)
-									current_screen->getInternalProperties().add("file_name", value);
+								 	if (uw->structure() && uw->structure()->getStructureDefinition())
+										uw->structure()->getStructureDefinition()->getInternalProperties()
+											.add("file_name", Value(value, Value::t_string));
 							 },
 							 [uw]()->std::string{
-								ScreensWindow *sw = (uw->app()->getScreensWindow());
-								if (!sw) return "";
-								Structure *current_screen = sw->getSelectedStructure();
-								if (!current_screen) return "";
-								const Value &vx = current_screen->getInternalProperties().find("file_name");
-								if (vx != SymbolTable::Null) return vx.asString();
-								return "";
+									if (!uw->structure() || uw->structure()->getStructureDefinition()) return "";
+									const Value &vx = uw->structure()->getStructureDefinition()->getInternalProperties().find("file_name");
+									if (vx != SymbolTable::Null)
+										return vx.asString();
+									return "";
 							 });
 	}
+	{
 	std::string label = "Window Width";
 	properties->addVariable<int>(label,
 							 [uw](int value) mutable {
@@ -1956,6 +1996,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 			}
 			return 0;
 		});
+	}
 }
 
 Value UserWindow::getPropertyValue(const std::string &prop) {
@@ -3686,10 +3727,12 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 			if (vw.asInteger(w) && vh.asInteger(h)) {
 				if (screen) {
 					screen->setSize(nanogui::Vector2i(w, h));
+					std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
 				}
 				else {
 					widget->setSize(nanogui::Vector2i(w, h));
 					widget->setFixedSize(nanogui::Vector2i(w, h));
+					std::cout << item->getName() << " size: " << w << "," << h << "\n";
 				}
 			}
 		}
@@ -3703,6 +3746,8 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 				else {
 					nanogui::Vector2i pos(x,y);
 					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
+					std::cout << item->getName() << " position: " << pos.x() << "," << pos.y() << "\n";
+
 					widget->setPosition(pos);
 				}
 			}
@@ -3716,6 +3761,8 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 				if (sx.asInteger(x) && sy.asInteger(y)) {
 					nanogui::Vector2i pos(x, y);
 					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
+					std::cout << item->getName() << " shrunk position: " << pos.x() << "," << pos.y() << "\n";
+
 					skel->setShrunkPos(pos);
 				}
 			}
@@ -3724,7 +3771,10 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		long vis = 0;
 		const Value &vis_prop(item->getProperties().find("visible"));
 		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
+		{
+			if (!vis) std::cout << item->getName() << " is invisible\n";
 			EDITOR->gui()->getViewManager().set(widget, vis);
+		}
 		else
 			EDITOR->gui()->getViewManager().set(widget, true);
 		return true;
@@ -3838,6 +3888,7 @@ int main(int argc, const char ** argv ) {
 
 	int cw_port;
 	std::string hostname;
+	std::string tag_file_name;
 
 	setup_signals();
 
@@ -3847,7 +3898,7 @@ int main(int argc, const char ** argv ) {
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
 	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
 	("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
-	("tags", po::value<std::string>(&hostname)->default_value(""),"clockwork tag file")
+	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
@@ -3889,7 +3940,10 @@ int main(int argc, const char ** argv ) {
 	fname += "/.humidrc";
 	settings_files.push_back(fname);
 	loadSettingsFiles(settings_files);
-	for (auto item : st_structures) structures[item->getName()] = item;
+	for (auto item : st_structures) {
+		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
+		structures[item->getName()] = item;
+	}
 
 	gettimeofday(&start, 0);
 

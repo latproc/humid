@@ -15,8 +15,8 @@
 
 #include "editorlineplot.h"
 
-EditorLinePlot::EditorLinePlot(Widget *parent, std::string nam, LinkableProperty *lp, int icon)
-: LinePlot(parent, "Test"), EditorWidget("PLOT", nam, this, lp), handle_coordinates(9,2),
+EditorLinePlot::EditorLinePlot(NamedObject *owner, Widget *parent, std::string nam, LinkableProperty *lp, int icon)
+: LinePlot(parent, "Test"), EditorWidget(owner, "PLOT", nam, this, lp), handle_coordinates(9,2),
     start_trigger_value(0), stop_trigger_value(0)
 {
 }

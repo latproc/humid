@@ -24,7 +24,7 @@ class EditorProgressBar : public nanogui::ProgressBar, public EditorWidget {
 
 public:
 
-	EditorProgressBar(Widget *parent, const std::string nam, LinkableProperty *lp);
+	EditorProgressBar(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp);
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 

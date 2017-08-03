@@ -9,10 +9,10 @@
 #include "editorwidget.h"
 #include "editorlabel.h"
 
-EditorLabel::EditorLabel(Widget *parent, const std::string nam,
+EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
-: Label(parent, caption), EditorWidget("LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 }
 
 bool EditorLabel::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -48,11 +48,14 @@ void EditorLabel::draw(NVGcontext *ctx) {
 
 void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
   EditorWidget::loadPropertyToStructureMap(property_map);
+  property_map["Caption"] = "caption";
+  property_map["Font Size"] = "font_size";
 }
 
 void EditorLabel::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
     names.push_back("Caption");
+    names.push_back("Font Size");
 }
 
 Value EditorLabel::getPropertyValue(const std::string &prop) {
@@ -60,5 +63,6 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
   if (res != SymbolTable::Null)
     return res;
   if (prop == "Caption") return Value(caption(), Value::t_string);
+  if (prop == "Font Size") return fontSize();
   return SymbolTable::Null;
 }

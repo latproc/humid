@@ -23,7 +23,7 @@ class EditorButton : public nanogui::Button, public EditorWidget {
 
 public:
 
-	EditorButton(Widget *parent, const std::string &btn_name, LinkableProperty *lp,
+	EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp,
             const std::string &caption = "Untitled", bool toggle = false, int icon = 0);
 
 	virtual void getPropertyNames(std::list<std::string> &names) override;

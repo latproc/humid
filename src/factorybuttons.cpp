@@ -35,13 +35,14 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 
 	StructureClass *sc = findClass(getClass());
 	assert(sc);
-	Structure *s = sc->instantiate(gui->getUserWindow()->structure());
+	Structure *parent = gui->getUserWindow()->structure();
+	Structure *s = sc->instantiate(parent);
 	assert(s);
 	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
 	int object_height = (s) ? s->getIntProperty("height", 60) : 60;
 	Widget *result = 0;
 	if (sc->getName() == "BUTTON") {
-		EditorButton *b = new EditorButton(window, NamedObject::nextName(0), nullptr, caption());
+		EditorButton *b = new EditorButton(parent, window, NamedObject::nextName(parent), nullptr, caption());
 		b->setDefinition(s);
 		s->setName(b->getName());
 		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
@@ -60,7 +61,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = b;
 	}
 	if (sc->getName() == "INDICATOR") {
-		EditorButton *b = new EditorButton(window, NamedObject::nextName(0), nullptr, caption());
+		EditorButton *b = new EditorButton(parent, window, NamedObject::nextName(parent), nullptr, caption());
 		b->setDefinition(s);
 		s->setName(b->getName());
 		b->setBackgroundColor(Color(200, 200, 30, 200)); // TBD use structure value
@@ -79,7 +80,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = b;
 	}
 	else if (sc->getName() == "LABEL") {
-		EditorLabel *eb = new EditorLabel(window, NamedObject::nextName(0), nullptr, "untitled");
+		EditorLabel *eb = new EditorLabel(parent, window, NamedObject::nextName(parent), nullptr, "untitled");
 		eb->setDefinition(s);
 		eb->setName(eb->getName());
 		if (s) s->setName(eb->getName());
@@ -87,7 +88,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();
-		EditorTextBox *eb = new EditorTextBox(window, NamedObject::nextName(0), nullptr);
+		EditorTextBox *eb = new EditorTextBox(parent, window, NamedObject::nextName(parent), nullptr);
 		eb->setDefinition(s);
 		s->setName(eb->getName());
 		eb->setEditable(true);
@@ -114,7 +115,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank");
-		EditorImageView *iv = new EditorImageView(window, NamedObject::nextName(0), nullptr, img);
+		EditorImageView *iv = new EditorImageView(parent, window, NamedObject::nextName(parent), nullptr, img);
 		iv->setDefinition(s);
 		s->setName(iv->getName());
 		iv->setGridThreshold(20);
@@ -123,14 +124,14 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = iv;
 	}
 	else if (sc->getName() == "PLOT") {
-		EditorLinePlot *lp = new EditorLinePlot(window, NamedObject::nextName(0), nullptr);
+		EditorLinePlot *lp = new EditorLinePlot(parent, window, NamedObject::nextName(parent), nullptr);
 		lp->setDefinition(s);
 		s->setName(lp->getName());
 		lp->setBufferSize(gui->sampleBufferSize());
 		result = lp;
 	}
 	else if (sc->getName() == "PROGRESS") {
-		EditorProgressBar *ep = new EditorProgressBar(window, NamedObject::nextName(0), nullptr);
+		EditorProgressBar *ep = new EditorProgressBar(parent, window, NamedObject::nextName(parent), nullptr);
 		s->setName(ep->getName());
 		ep->setDefinition(s);
 		result = ep;
@@ -158,6 +159,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 	const std::string &address_str(properties->addressStr());
 	const std::string &tag_name(properties->tagName());
 
+	Structure *parent = gui->getUserWindow()->structure();
+	assert(parent);
+
 	switch (properties->getKind()) {
 
 		case '0': {
@@ -177,7 +181,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 					address_int = 0;
 				}
 
-				EditorButton *b = new EditorButton(container, NamedObject::nextName(0),
+				EditorButton *b = new EditorButton(parent, container, NamedObject::nextName(parent),
 					properties, tag_name.substr(p+5), false);
 				b->setSize(Vector2i(object_width, object_height));
 				b->setDefinition(s);
@@ -200,7 +204,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				assert(sc);
 				Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 				assert(s);
-				EditorButton *b = new EditorButton(container, NamedObject::nextName(0), properties);
+				EditorButton *b = new EditorButton(parent, container, NamedObject::nextName(parent), properties);
 				b->setSize(Vector2i(object_width, object_height));
 				b->setFlags(Button::ToggleButton);
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
@@ -226,7 +230,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			assert(sc);
 			Structure *s = sc->instantiate(gui->getUserWindow()->structure());
 			assert(s);
-			EditorButton *b = new EditorButton(container, NamedObject::nextName(0), properties, tag_name, true);
+			EditorButton *b = new EditorButton(parent, container, NamedObject::nextName(parent), properties, tag_name, true);
 			b->setDefinition(s);
 			b->setSize(Vector2i(object_width, object_height));
 			b->setFixedSize(Vector2i(object_width, object_height));
@@ -257,7 +261,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			//b->setFixedSize(Vector2i(25, 25));
 			//result = new Label(container, tag_name, "sans-bold");
 
-			EditorLabel *lbl = new EditorLabel(container, NamedObject::nextName(0), properties, "");
+			EditorLabel *lbl = new EditorLabel(parent, container, NamedObject::nextName(parent), properties, "");
 			lbl->setName(tag_name);
 			lbl->setCaption("");
 			lbl->setEnabled(true);
@@ -273,7 +277,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 
 		case '4': {
 			//new Label(container, tag_name, "sans-bold");
-			auto textBox = new EditorTextBox(container, NamedObject::nextName(0), properties);
+			auto textBox = new EditorTextBox(parent, container, NamedObject::nextName(parent), properties);
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
 			textBox->setFixedSize(Vector2i(object_width, object_height));

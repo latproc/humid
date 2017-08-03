@@ -8,8 +8,8 @@
 #include <iostream>
 #include "editortextbox.h"
 
-EditorTextBox::EditorTextBox(Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget("TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
 }
 
 bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

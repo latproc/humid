@@ -31,8 +31,11 @@ public:
     void add( const std::string &name, NamedObject *child);
 
     NamedObject *getParent() const { return parent; }
+    static std::map<std::string, NamedObject*> &globals() { return global_objects; }
+    bool named() { return _named; }
 
 protected:
+    bool _named;
     NamedObject *parent;
     std::map<std::string, NamedObject*>child_objects;
     std::string name;

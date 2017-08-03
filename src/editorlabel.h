@@ -17,7 +17,7 @@ class EditorLabel : public nanogui::Label, public EditorWidget {
 
 public:
 
-	EditorLabel(Widget *parent, const std::string nam,
+	EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
 				LinkableProperty *lp, const std::string caption,
 				const std::string &font = "sans", int fontSize = -1, int icon = 0);
 

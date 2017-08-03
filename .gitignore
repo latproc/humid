@@ -53,3 +53,8 @@ xcode/
 
 #local cmake settings
 LocalCMakeLists.txt
+
+#editor files
+.vscode/
+.project
+.cproject

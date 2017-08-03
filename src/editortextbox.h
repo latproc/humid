@@ -18,7 +18,7 @@ class EditorTextBox : public nanogui::TextBox, public EditorWidget {
 
 public:
 
-	EditorTextBox(Widget *parent, const std::string nam, LinkableProperty *lp, int icon = 0);
+	EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon = 0);
 	virtual ~EditorTextBox() { }
 
 	virtual void getPropertyNames(std::list<std::string> &names) override;

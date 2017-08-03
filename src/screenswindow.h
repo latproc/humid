@@ -29,6 +29,7 @@ public:
 	virtual void clearSelections(Selectable * except = 0) override;
 	Structure *getSelectedStructure();
 	void selectFirst();
+	void updateSelectedName();
 private:
 	EditorGUI *gui;
 	nanogui::VScrollPanel *palette_scroller;

@@ -95,6 +95,7 @@ void Editor::save() {
 	assert(base_v != SymbolTable::Null);
 
 	path project_base_path(base_v.asString());
+	std::cout << "backing up project fimes from " << project_base_path.string() << "\n";
   backup_humid_files(project_base_path);
 
 	// collect a list of files to save to
@@ -102,16 +103,17 @@ void Editor::save() {
 	for (auto s : hm_classes) {
 
 		Value &filename = s->getProperties().find("file_name");
+		if (filename == SymbolTable::Null)
+			filename = 	s->getInternalProperties().find("file_name");
 		std::string fname(s->getName());
 		fname += ".humid";
 		if (filename != SymbolTable::Null) {
 			fname = filename.asString();
 		}
 
-		std::cout << "writing class " << s->getName() << " into fname\n";
-
 		std::string file_path = base_v.asString() + "/" + fname;
 		structure_files[s] = file_path;
+		std::cout << "writing class " << s->getName() << " into " << file_path << "\n";
 	}
 	for (auto s : hm_structures) {
 		if (s->getOwner()) {
@@ -119,6 +121,8 @@ void Editor::save() {
 			continue;
 		}
 		Value &filename = s->getProperties().find("file_name");
+		if (filename == SymbolTable::Null)
+			filename = 	s->getInternalProperties().find("file_name");
 		std::string fname(s->getName());
 		fname += ".humid";
 		if (filename != SymbolTable::Null) {

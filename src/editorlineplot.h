@@ -17,7 +17,7 @@ class EditorLinePlot : public nanogui::LinePlot, public EditorWidget {
 
 public:
 
-	EditorLinePlot(Widget *parent, std::string nam, LinkableProperty *lp = nullptr, int icon = 0);
+	EditorLinePlot(NamedObject *owner, Widget *parent, std::string nam, LinkableProperty *lp = nullptr, int icon = 0);
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 
