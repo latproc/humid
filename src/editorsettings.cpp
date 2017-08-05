@@ -14,6 +14,7 @@
 std::map<std::string, nanogui::Widget *> EditorSettings::widgets;
 extern std::list<std::string>settings_files;
 bool EditorSettings::dirty = false;
+extern std::map<std::string, Structure *>structures;
 
 std::ostream &EditorSettings::operator<<(std::ostream &out) const  {
     return out;
@@ -41,27 +42,39 @@ void EditorSettings::applySettings(const std::string object_name, nanogui::Widge
 }
 
 Structure *EditorSettings::find(const std::string object_name) {
-    for (auto item : st_structures) {
-        if (item->getName() == object_name) {
-            return item;
-        }
-    }
-    return nullptr;
+  auto found = structures.find(object_name);
+  if (found != structures.end()) return (*found).second;
+  for (auto item : st_structures) {
+      if (item->getName() == object_name) {
+          return item;
+      }
+  }
+  return nullptr;
+}
+
+Structure *EditorSettings::create() {
+  Structure *s = find("EditorSettings");
+  if (!s) s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
+  st_structures.push_back(s);
+  structures["EditorSettings"] = s;
+  flush();
+  return s;
 }
 
 void EditorSettings::flush() {
-    if (!dirty) return;
-    dirty = false;
+    //if (!dirty) return;
+    //dirty = false;
     if (settings_files.size() == 0) return;
     std::string fname(settings_files.front());
     std::ofstream settings_file(fname);
-    Structure *s = find("EditorSettings");
-	  if (!s) s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
-    if (s) s->save(settings_file);
-    s = find("ProjectSettings");
+    Structure *s = EditorSettings::find("EditorSettings");
+    assert(s);
+    s->save(settings_file);
+    /*s = find("ProjectSettings");
     if (s) {
         s->save(settings_file);
     }
+    */
     for (auto w : widgets) {
         s = find(w.first);
         if (s) s->save(settings_file);

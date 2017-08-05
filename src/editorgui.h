@@ -72,7 +72,7 @@ public:
 	virtual bool resizeEvent(const nanogui::Vector2i &) override;
 	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
 
-	GLuint getImageId(const char *, bool reload = false); 
+	GLuint getImageId(const char *, bool reload = false);
 	void update() override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
@@ -82,7 +82,7 @@ public:
 
 	unsigned int sampleBufferSize() const { return sample_buffer_size; }
 
-	Structure &getSettings();
+	Structure *getSettings();
 	void updateProperties() {
 		EditorSettings::flush();
 	}

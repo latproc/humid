@@ -267,9 +267,11 @@ public:
 		palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 		mContent = new nanogui::Widget(palette_scroller);
 		pfw->setContent(mContent);
-		mContent->setSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
-		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		mContent->setFixedSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
+		mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
 		mLayout->setMargin(1);
+		setFixedSize(Vector2i(150, 30));
+		//mLayout->setColStretch(1, 0);
 		mLayout->setColStretch(2, 1);
 		mContent->setLayout(mLayout);
 		mWindow->setPosition(pos);
@@ -290,10 +292,12 @@ public:
 		mContent = new nanogui::Widget(palette_scroller);
 		PropertyFormWindow *pfw = dynamic_cast<PropertyFormWindow*>(wind);
 		if (pfw) pfw->setContent(mContent);
-		mContent->setSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
-		mLayout = new nanogui::AdvancedGridLayout({0, 0, 0, 0}, {});
+		mContent->setFixedSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
+		mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
 		mLayout->setMargin(1);
-		mLayout->setColStretch(2, 1);
+		setFixedSize(Vector2i(150, 30));
+		//mLayout->setColStretch(1, 0);
+		//mLayout->setColStretch(2, 1);
 		mContent->setLayout(mLayout);
 		mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
 		mWindow->setVisible(true);
@@ -440,8 +444,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 		Editor *editor = EDITOR;
 		if (editor) {
 			Structure *es = EditorSettings::find("EditorSettings");
-			if (!es) return;
-			Value &base_v = es->getProperties().find("project_base");
+			if (!es) es = EditorSettings::create();
+			const Value &base_v(es->getProperties().find("project_base"));
 			if (base_v == SymbolTable::Null) {
 				std::string file_path(file_dialog(
 					{ {"humid", "Humid layout file"},
@@ -449,13 +453,13 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 				if (file_path.length()) {
 					editor->saveAs(file_path);
 					editor->gui()->updateProperties();
-					Structure &s(editor->gui()->getSettings());
-					std::string base = source_files.front();
-					size_t delim_pos = base.rfind('/');
-					if (delim_pos != std::string::npos) {
-						base.erase(delim_pos);
-					}
-					s.getProperties().add("project_base", base);
+					Structure *s = editor->gui()->getSettings();
+					boost::filesystem::path base(source_files.front());
+					if (boost::filesystem::is_regular_file(base))
+						base = base.parent_path();
+					assert(boost::filesystem::is_directory(base));
+					s->getProperties().add("project_base", Value(base.string(), Value::t_string));
+					EditorSettings::setDirty(); // TBD fix this
 					EditorSettings::flush();
 				}
 			}
@@ -870,7 +874,6 @@ CircularBuffer * UserWindow::addDataBuffer(const std::string name, CircularBuffe
 		return new_buf;
 	}
 	else {
-		std::cout << "adding data buffer for " << name << "\n";
 		CircularBuffer *buf = new CircularBuffer(len, dt);
 		data[name] = buf;
 		return buf;
@@ -892,6 +895,9 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 	using namespace boost::filesystem;
 
 	Structure *settings = EditorSettings::find("EditorSettings");
+	if (!settings) settings = EditorSettings::create();
+	assert(settings);
+	bool base_checked = false;
 
 	std::list<path> files;
 	{
@@ -899,11 +905,17 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 		while (fd_iter != files_and_directories.end()) {
 			path fp = (*fd_iter++).c_str();
 			if (!exists(fp)) continue;
-			std::string ext = boost::filesystem::extension(fp);
-			if (is_regular_file(fp) && ext == ".humid")
-					files.push_back(fp);
+			if (is_regular_file(fp)) {
+				std::string ext = boost::filesystem::extension(fp);
+			 	if (ext == ".humid") files.push_back(fp);
+			}
 			else if (is_directory(fp)) {
-				settings->getProperties().add("project_base", Value(fp.string().c_str(), Value::t_string));
+				if (!base_checked) {
+					base_checked = true;
+					settings->getProperties().add("project_base", Value(fp.string().c_str(), Value::t_string));
+					EditorSettings::setDirty();
+					EditorSettings::flush();
+				}
 				collect_humid_files(fp, files);
 			}
 		}
@@ -911,6 +923,7 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 
 	std::string base = "";
 	if (settings) base = settings->getProperties().find("project_base").asString();
+	assert(boost::filesystem::is_directory(base));
 	std::cout << "Project Base: " << base << "\n";
 
 	/* load configuration from files named on the commandline */
@@ -983,7 +996,10 @@ void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
 	Value vy = properties.find("height");
 	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
 		long x, y;
-		if (vx.asInteger(x) && vy.asInteger(y)) w->setSize(nanogui::Vector2i(x,y));
+		if (vx.asInteger(x) && vy.asInteger(y)) {
+			w->setSize(nanogui::Vector2i(x,y));
+			w->setFixedSize(nanogui::Vector2i(x,y));
+		}
 	}
 }
 
@@ -1003,21 +1019,21 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
-			Value &remote = element->getProperties().find("remote");
-			Value &font_size_val = element->getProperties().find("font_size");
+			const Value &remote(element->getProperties().find("remote"));
+			const Value &font_size_val(element->getProperties().find("font_size"));
 			long font_size = 0;
 			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
-			Value &scale_val = element->getProperties().find("value_scale");
+			const Value &scale_val(element->getProperties().find("value_scale"));
 			double value_scale = 1.0f;
 			if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
 			long tab_pos = 0;
-			Value &tab_pos_val = element->getProperties().find("tab_pos");
+			const Value &tab_pos_val(element->getProperties().find("tab_pos"));
 			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
 			LinkableProperty *lp = nullptr;
 			if (remote != SymbolTable::Null)
 				lp = gui->findLinkableProperty(remote.asString());
 			if (kind == "LABEL") {
-				Value caption_v = element->getProperties().find("caption");
+				const Value &caption_v(element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), nullptr,
 												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				el->setName(element->getName());
@@ -1045,7 +1061,7 @@ void UserWindow::loadStructure( Structure *s) {
 			if (kind == "TEXT") {
 				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
 				textBox->setDefinition(element);
-				const Value &text_v = element->getProperties().find("text");
+				const Value &text_v(element->getProperties().find("text"));
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
@@ -1094,19 +1110,19 @@ void UserWindow::loadStructure( Structure *s) {
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
 				if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
-				Value &monitors = element->getProperties().find("monitors");
+				const Value &monitors(element->getProperties().find("monitors"));
 				if (monitors != SymbolTable::Null) {
 					lp->setMonitors(this, monitors.asString());
 				}
 				lp->setChanged(false);
 			}
 			else if (kind == "BUTTON" || kind == "INDICATOR") {
-				Value caption_v = element->getProperties().find("caption");
+				const Value &caption_v(element->getProperties().find("caption"));
 				EditorButton *b = new EditorButton(s, window, element->getName(), lp,
 												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				b->setDefinition(element);
 				{
-				Value &bg_colour = element->getProperties().find("bg_color");
+				const Value &bg_colour(element->getProperties().find("bg_color"));
 				if (bg_colour != SymbolTable::Null) {
 					std::vector<std::string> tokens;
 					std::string colour_str = bg_colour.asString();
@@ -1119,7 +1135,7 @@ void UserWindow::loadStructure( Structure *s) {
 				}
 				}
 				{
-					Value &bg_colour = element->getProperties().find("text_color");
+					const Value &bg_colour(element->getProperties().find("text_color"));
 					if (bg_colour != SymbolTable::Null) {
 						std::vector<std::string> tokens;
 						std::string colour_str = bg_colour.asString();
@@ -1139,7 +1155,7 @@ void UserWindow::loadStructure( Structure *s) {
 				if (tab_pos) b->setTabPosition(tab_pos);
 				b->setCaption(element->getProperties().find("caption").asString());
 				{
-					const Value &cmd = element->getProperties().find("command");
+					const Value &cmd(element->getProperties().find("command"));
 					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
 				}
 
@@ -1165,7 +1181,7 @@ void UserWindow::loadStructure( Structure *s) {
 		}
 	}
 	if (s->getKind() == "REMOTE") {
-		Value &rname = s->getProperties().find("NAME");
+		const Value &rname(s->getProperties().find("NAME"));
 		if (rname != SymbolTable::Null) {
 			LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
 			if (lp) {
@@ -1174,7 +1190,7 @@ void UserWindow::loadStructure( Structure *s) {
 		}
 	}
 	if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
-		const Value &title = s->getProperties().find("caption");
+		const Value &title(s->getProperties().find("caption"));
 		//if (title != SymbolTable::Null) window->setTitle(title.asString());
 		PanelScreen *ps = getActivePanel();
 		if (ps) ps->setName(s->getName());
@@ -1900,6 +1916,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 	std::string label("File Name");
 	properties->addVariable<std::string>(label,
 							 [uw](std::string value) {
+								 std::cout << "setting file name for " << uw->structure()->getName() << " to " << value << "\n";
 								 	if (uw->structure())
 									uw->structure()->getInternalProperties().add("file_name", Value(value, Value::t_string));
 							 },
@@ -1990,7 +2007,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 		[uw]()->int{
 			Structure *s = uw->structure();
 			if (s) {
-				const Value &v = s->getProperties().find("screen_id");
+				const Value &v(s->getProperties().find("screen_id"));
 				long res = 0;
 				if (v.asInteger(res)) return res;
 			}
@@ -2133,7 +2150,7 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 {
 	using namespace nanogui;
 	gui = screen;
-	if (tfn) tag_file_name = tfn;
+	if (tfn && *tfn) tag_file_name = tfn;
 	window->setTheme(theme);
 	window->setFixedSize(Vector2i(360, 600));
 	window->setSize(Vector2i(360, 600));
@@ -2395,19 +2412,27 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				if (hm_structures.size()>1) { // files were specified on the commandline
 					getStartupWindow()->setVisible(false);
 					getScreensWindow()->update();
+					/*
 					Structure *project = EditorSettings::find("ProjectSettings");
 					if (!project) {
+						std::cout << "No project settings found. Adding a settings entry\n";
 						project = findStructureFromClass("PROJECTSETTINGS");
 						if (!project)
 							project = new Structure(nullptr, "ProjectSettings", "PROJECTSETTINGS");
 						project->setStructureDefinition(findClass("PROJECTSETTINGS"));
 						hm_structures.push_back(project);
-						std::string base = source_files.front();
-						size_t delim_pos = base.rfind('/');
-						if (delim_pos != std::string::npos) {
-							base.erase(delim_pos);
-							getSettings().getProperties().add("project_base", Value(base, Value::t_string));
-						}
+						boost::filesystem::path base(source_files.front());
+						if (boost::filesystem::is_regular_file(base))
+							base = base.parent_path();
+						assert(boost::filesystem::is_directory(base));
+						getSettings()->getProperties().add("project_base", Value(base.string(), Value::t_string));
+					}
+					*/
+					Structure *settings = EditorSettings::find("EditorSettings");
+					assert(settings);
+					const Value &project_base_v(settings->getProperties().find("project_base"));
+					if (project_base_v == SymbolTable::Null) {
+						s = GUICREATEPROJECT; done = false; break;
 					}
 					s = GUIWORKING;
 					done = false;
@@ -2421,8 +2446,8 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 			case GUICREATEPROJECT:
 			{
 				getStartupWindow()->setVisible(false);
-				Structure &settings(getSettings());
-				Value &path = settings.getProperties().find("project_base");
+				Structure *settings(getSettings());
+				const Value &path(settings->getProperties().find("project_base"));
 				if (path != SymbolTable::Null)
 					project = new EditorProject(path.asString().c_str());
 				if (!project)
@@ -2843,7 +2868,7 @@ void EditorGUI::update() {
 			startup = sSENT;
 			queueMessage("MODBUS REFRESH",
 				[this](std::string s) {
-					std::cout << "MODBUS REFRESH returned: " << s << "\n";
+					//std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
 						cJSON *obj = cJSON_Parse(s.c_str());
 						if (!obj) {
@@ -2864,7 +2889,7 @@ void EditorGUI::update() {
 
 	if (w_user) {
 		bool changed = false;
-		Value &active = system_settings->getProperties().find("active_screen");
+		const Value &active(system_settings->getProperties().find("active_screen"));
 		if (active != SymbolTable::Null) {
 			if (w_user->structure() && w_user->structure()->getName() != active.asString()) {
 				Structure *s = findScreen(active.asString());
@@ -3706,11 +3731,11 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 			gui->getUserWindow()->addDataBuffer(tag_name, CircularBuffer::dataTypeFromString(data_type), gui->getSampleBufferSize());
 			gui->addLinkableProperty(tag_name, lp);
 		}
-
+/*
 		cout << kind << " " << tag_name << " "
 		<< data_type << " " << data_count << " " << address_str
 		<< "\n";
-
+*/
 	}
 	loadItems(search_box->value());
 
@@ -3721,24 +3746,24 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 	if (widget) {
 		nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
 		{
-			const Value &vw = item->getProperties().find("w");
-			const Value &vh = item->getProperties().find("h");
+			const Value &vw(item->getProperties().find("w"));
+			const Value &vh(item->getProperties().find("h"));
 			long w, h;
 			if (vw.asInteger(w) && vh.asInteger(h)) {
 				if (screen) {
 					screen->setSize(nanogui::Vector2i(w, h));
-					std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
+					//std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
 				}
 				else {
 					widget->setSize(nanogui::Vector2i(w, h));
 					widget->setFixedSize(nanogui::Vector2i(w, h));
-					std::cout << item->getName() << " size: " << w << "," << h << "\n";
+					//std::cout << item->getName() << " size: " << w << "," << h << "\n";
 				}
 			}
 		}
 		{
-			const Value &vx = item->getProperties().find("x");
-			const Value &vy = item->getProperties().find("y");
+			const Value &vx(item->getProperties().find("x"));
+			const Value &vy(item->getProperties().find("y"));
 			long x, y;
 			if (vx.asInteger(x) && vy.asInteger(y)) {
 				if (screen)
@@ -3746,7 +3771,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 				else {
 					nanogui::Vector2i pos(x,y);
 					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
-					std::cout << item->getName() << " position: " << pos.x() << "," << pos.y() << "\n";
+					//std::cout << item->getName() << " position: " << pos.x() << "," << pos.y() << "\n";
 
 					widget->setPosition(pos);
 				}
@@ -3755,13 +3780,13 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		{
 			SkeletonWindow *skel = dynamic_cast<SkeletonWindow*>(widget);
 			if (skel) {
-				const Value &sx = item->getProperties().find("sx"); // position when shrunk
-				const Value &sy = item->getProperties().find("sy"); // position when shrunk
+				const Value &sx(item->getProperties().find("sx")); // position when shrunk
+				const Value &sy(item->getProperties().find("sy")); // position when shrunk
 				long x, y;
 				if (sx.asInteger(x) && sy.asInteger(y)) {
 					nanogui::Vector2i pos(x, y);
 					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
-					std::cout << item->getName() << " shrunk position: " << pos.x() << "," << pos.y() << "\n";
+					//std::cout << item->getName() << " shrunk position: " << pos.x() << "," << pos.y() << "\n";
 
 					skel->setShrunkPos(pos);
 				}
@@ -3883,12 +3908,14 @@ int main(int argc, const char ** argv ) {
 	program_name = strdup(basename(pn));
 	free(pn);
 
+	std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n";
+
 	zmq::context_t context;
 	MessagingInterface::setContext(&context);
 
 	int cw_port;
 	std::string hostname;
-	std::string tag_file_name;
+	//std::string tag_file_name;
 
 	setup_signals();
 
@@ -3972,15 +3999,16 @@ int main(int argc, const char ** argv ) {
 			}
 			app->createWindows();
 
-			Value &remote_screen = system_settings->getProperties().find("remote_screen");
+			Value remote_screen(system_settings->getProperties().find("remote_screen"));
 
 			if (remote_screen == SymbolTable::Null) {
-				remote_screen = Value("P_Screen", Value::t_string);
-				system_settings->getProperties().add("remote_screen", remote_screen);
+				system_settings->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));
+				remote_screen = system_settings->getProperties().find("remote_screen");
 			}
-
-			LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
-			if (lp) lp->link(app->getUserWindow());
+			else {
+				LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
+				if (lp) lp->link(app->getUserWindow());
+			}
 			app->setVisible(true);
 
 			nanogui::mainloop();

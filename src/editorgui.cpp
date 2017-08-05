@@ -46,14 +46,9 @@ EditorGUI::EditorGUI() : ClockworkClient(Eigen::Vector2i(1024, 768), "Humid"), t
 
 }
 
-Structure &EditorGUI::getSettings() {
-    auto found = structures.find("EditorSettings");
-    if (found == structures.end()) {
-        EditorSettings *es = new EditorSettings("EditorSettings", "EDITORSETTINGS");
-        st_structures.push_back(es);
-        structures["EditorSettings"] = es;
-        return *es;
-    }
-    Structure *s = (*found).second;
-    return *s;
+Structure *EditorGUI::getSettings() {
+    Structure *es = EditorSettings::find("EditorSettings");
+    if (es) return es;
+		else
+        return EditorSettings::create();
 }

@@ -91,27 +91,35 @@ void Editor::save() {
 	//if (uw) uw->save(path);
 	Structure *settings = EditorSettings::find("EditorSettings");
 	assert(settings);
-	Value base_v = settings->getProperties().find("project_base");
+	const Value &base_v(settings->getProperties().find("project_base"));
 	assert(base_v != SymbolTable::Null);
-
-	path project_base_path(base_v.asString());
-	std::cout << "backing up project fimes from " << project_base_path.string() << "\n";
-  backup_humid_files(project_base_path);
+	std::string base_path_str = base_v.asString();
+	path project_base_path(base_path_str);
+	std::cout << "backing up project files in " << base_path_str << "\n";
+	{
+		std::string x = settings->getProperties().find("project_base").asString();
+		assert(boost::filesystem::is_directory(x));
+	}
+	backup_humid_files(project_base_path);
+	{
+		std::string x = settings->getProperties().find("project_base").asString();
+		assert(boost::filesystem::is_directory(x));
+	}
 
 	// collect a list of files to save to
 	std::map<NamedObject*, std::string> structure_files;
 	for (auto s : hm_classes) {
-
-		Value &filename = s->getProperties().find("file_name");
-		if (filename == SymbolTable::Null)
-			filename = 	s->getInternalProperties().find("file_name");
-		std::string fname(s->getName());
+		assert(s);
+		std::string fname = s->getName();
 		fname += ".humid";
-		if (filename != SymbolTable::Null) {
-			fname = filename.asString();
-		}
 
-		std::string file_path = base_v.asString() + "/" + fname;
+		Value filename(s->getProperties().find("file_name"));
+		if (filename == SymbolTable::Null)
+			filename = s->getInternalProperties().find("file_name");
+		if (filename != SymbolTable::Null)
+			fname = filename.asString();
+
+		std::string file_path = base_path_str + "/" + fname;
 		structure_files[s] = file_path;
 		std::cout << "writing class " << s->getName() << " into " << file_path << "\n";
 	}
@@ -120,7 +128,7 @@ void Editor::save() {
 			std::cout << s->getName() << " is owened by " << s->getOwner()->getName() << "\n";
 			continue;
 		}
-		Value &filename = s->getProperties().find("file_name");
+		Value filename = s->getProperties().find("file_name");
 		if (filename == SymbolTable::Null)
 			filename = 	s->getInternalProperties().find("file_name");
 		std::string fname(s->getName());
@@ -129,9 +137,10 @@ void Editor::save() {
 			fname = filename.asString();
 		}
 
-		std::cout << "filing structure " << s->getName() << " into fname\n";
+		std::cout << "filing structure " << s->getName() << " into " << base_v << "/"<< fname << "\n";
 
-		std::string file_path = base_v.asString() + "/" + fname;
+		std::string file_path(base_v.asString());
+		file_path += "/" + fname;
 		structure_files[s] = file_path;
 	}
 	// save to the files
@@ -155,7 +164,7 @@ void Editor::save() {
 			continue;
 		}
 		*/
-		std::ofstream out;
+	std::ofstream out;
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {
 			char buf[200];
@@ -163,7 +172,7 @@ void Editor::save() {
 			std::cerr << buf << "\n";
 			continue;
 		}
-		if (sc) std::cout << "attempting to write structure class " << sc->getName() << "\n";
+		if (sc) std::cout << "attempting to write structure class " << sc->getName() <<" to " << fn << "\n";
 		if (sc && !sc->isBuiltIn() && !sc->save(out)) {
 			char buf[200];
 			snprintf(buf, 200, "error when writing structure class to %s", fn.c_str());
@@ -181,5 +190,13 @@ void Editor::save() {
 			//	std::cout << "Dialog result: " << result << std::endl;
 			//});
 		out.close();
+	}
+
+	{
+		const Value &x = settings->getProperties().find("project_base");
+		assert(x != SymbolTable::Null);
+		std::string xs = x.asString();
+		std::cout << "checking project base path: " << xs << "\n";
+		assert(boost::filesystem::is_directory(xs));
 	}
 }

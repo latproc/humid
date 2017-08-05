@@ -288,6 +288,7 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 void ClockworkClient::idle() {
 	{
 		using namespace nanogui;
+		static uint64_t last_update = 0;
 
 		boost::mutex::scoped_lock lock(update_mutex);
 
@@ -312,7 +313,11 @@ void ClockworkClient::idle() {
 			program_state = s_running;
 		}
 		else if (program_state == s_running) {
-			update();
+			uint64_t update_time = microsecs();
+			if (update_time - last_update > 10000) {
+				if (update_time - last_update > 15000) last_update = update_time; else last_update += 10000;
+				update();
+			}
 			if (!cmd_interface) {
 				cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
 				cmd_interface->connect(local_commands);

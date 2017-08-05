@@ -22,6 +22,7 @@ public:
 	EditorSettings(const std::string sname, const std::string skind) : Structure(nullptr, sname, skind) {}
 	static void applySettings(const std::string object_name, nanogui::Widget *widget);
 	static Structure *find(const std::string object_name);
+	static Structure *create();
 	static void flush();
 
 	static void add(const std::string &name, nanogui::Widget *w);
