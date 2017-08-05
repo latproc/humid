@@ -14,16 +14,20 @@
 */
 
 #include <iostream>
+#include <boost/filesystem.hpp>
 #include "gltexture.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 GLTexture::handleType GLTexture::load(const std::string& fileName) {
+	using namespace boost::filesystem;
 	if (mTextureId) {
 		glDeleteTextures(1, &mTextureId);
 		mTextureId = 0;
 	}
+	path filepath(fileName);
+	if (!is_regular_file(filepath)) throw std::invalid_argument("No such image file " + fileName);
 	int force_channels = 0;
 	int w, h, n;
 	handleType textureData(stbi_load(fileName.c_str(), &w, &h, &n, force_channels), stbi_image_free);
@@ -47,4 +51,3 @@ GLTexture::handleType GLTexture::load(const std::string& fileName) {
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	return textureData;
 }
-

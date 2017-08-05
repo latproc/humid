@@ -44,9 +44,9 @@ void EditorImageView::draw(NVGcontext *ctx) {
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 }
 
-void EditorImageView::setImageName(const std::string new_name) {
+void EditorImageView::setImageName(const std::string new_name, bool reload) {
     image_name = new_name;
-    GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), true);
+    GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), reload);
     mImageID = img;
     updateImageParameters();
 }
@@ -74,8 +74,26 @@ Value EditorImageView::getPropertyValue(const std::string &prop) {
   if (res != SymbolTable::Null)
     return res;
   if (prop == "Image File")
-    return Value(image_name, Value::t_string);
+    return Value(imageName(), Value::t_string);
   else if (prop == "Scale")
-    return prop;
+    return scale();
   return SymbolTable::Null;
+}
+
+void EditorImageView::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Image File") {
+    setImageName(value);
+    fit();
+  }
+  else if (prop == "Remote") {
+    if (remote) remote->unlink(this);
+    remote = EDITOR->gui()->findLinkableProperty(value);
+    if (remote) {
+        remote->link(new LinkableText(this));
+    }
+  }
+  else if (prop == "Scale") {
+    setScale(std::atof(value.c_str()));
+  }
 }

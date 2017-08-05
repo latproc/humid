@@ -33,6 +33,7 @@ EditorGUI::EditorGUI() : ClockworkClient(Eigen::Vector2i(1024, 768), "Humid"), t
 	sample_buffer_size(5000), project(0)
 {
 	old_size = mSize;
+	/*
 	std::vector<std::pair<int, std::string>> icons = nanogui::loadImageDirectory(mNVGContext, "images");
 	// Load all of the images by creating a GLTexture object and saving the pixel data.
 	std::string resourcesFolderPath("./");
@@ -43,7 +44,7 @@ EditorGUI::EditorGUI() : ClockworkClient(Eigen::Vector2i(1024, 768), "Humid"), t
 		mImagesData.emplace_back(std::move(texture), std::move(data));
 	}
 	assert(mImagesData.size() > 0);
-
+	*/
 }
 
 Structure *EditorGUI::getSettings() {

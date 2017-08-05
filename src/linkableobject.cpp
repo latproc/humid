@@ -13,6 +13,9 @@
 #include "editorwidget.h"
 #include "editorbutton.h"
 #include "editorprogressbar.h"
+#include "editorimageview.h"
+#include "nanogui/textbox.h"
+#include "nanogui/label.h"
 
 extern std::string shortName(const std::string s);
 
@@ -38,14 +41,21 @@ LinkableObject::LinkableObject(EditorObject *ew) : widget(ew) {
     if (w) w->incRef();
 }
 
-LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) { }
-/*void LinkableNumber::update(const Value &value) {
-  EditorImageView *eiv = dynamic_cast<EditorImageView*>(widget);
-  if (eiv) {
-    iev->setValue(value.asString());
-  }
+LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) {}
+
+void LinkableText::update(const Value &value) {
+	nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
+	if (tb) { tb->setValue(value.asString()); return; }
+	nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(widget);
+	if (lbl) { lbl->setCaption(value.asString()); return; }
+	EditorImageView *iv = dynamic_cast<EditorImageView*>(widget);
+	if (iv) {
+		iv->setImageName(value.asString()); iv->fit();
+		return;
+	}
 }
-*/
+
+
 LinkableNumber::LinkableNumber(EditorObject *w) : LinkableObject(w) { }
 void LinkableNumber::update(const Value &value) {
     EditorProgressBar *pb = dynamic_cast<EditorProgressBar*>(widget);

@@ -815,7 +815,6 @@ void UserWindow::setStructure( Structure *s) {
   drag_handle->setPropertyMonitor(pm);
   drag_handle->decRef();
   gui->performLayout();
-
 }
 
 NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
@@ -1044,6 +1043,24 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
+				if (tab_pos) el->setTabPosition(tab_pos);
+				el->setChanged(false);
+			}
+			if (kind == "IMAGE") {
+				const Value &image_file_v(element->getProperties().find("image_file"));
+				EditorImageView *el = new EditorImageView(s, window, element->getName(), nullptr, 0);
+				el->setName(element->getName());
+				el->setDefinition(element);
+				const Value &img_scale_val(element->getProperties().find("scale"));
+				double img_scale = 1.0f;
+				if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
+				if (lp)
+					lp->link(new LinkableText(el));
+				fixElementPosition( el, element->getProperties());
+				fixElementSize( el, element->getProperties());
+				if (font_size) el->setFontSize(font_size);
+				if (value_scale != 1.0) el->setValueScale( value_scale );
+				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				el->setChanged(false);
 			}
@@ -2140,7 +2157,6 @@ void PropertyWindow::update() {
 		else {
 			uw->loadProperties(properties);
 		}
-		n = pw->children().size();
 		gui->performLayout();
 	}
 }
@@ -2652,7 +2668,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			boost::filesystem::create_directory(cache_name);
 		cache_name += "/" + shortName(name) + "." + extn(name);
 		// example: http://www.valeparksoftwaredevelopment.com/cmsimages/logo-full-1.png
-		if (!get_file(name, cache_name) ) {
+		if (!boost::filesystem::exists(cache_name) && !get_file(name, cache_name) ) {
 			std::cerr << "Error fetching image file\n";
 			return blank_id;
 		}
@@ -2660,7 +2676,9 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	}
 	std::string tex_name = shortName(name);
 	auto found = texture_cache.find(tex_name);
-	if (reload || found == texture_cache.end()) {
+	if (!reload && found != texture_cache.end())
+		return (*found).second->texture.texture();
+	else if (reload || found == texture_cache.end()) {
 		if (found != texture_cache.end()) {
 			Texture *old = (*found).second;
 			texture_cache.erase(found);
@@ -2769,35 +2787,34 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				name = v.asString();
 				lp = findLinkableProperty(name);
 				buf = w_user->getValues(name);
-				if (!buf || !lp) {
-					if (lp)
-						buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
-					else
-						std::cout << "no linkable property for " << name << "\n";
+				if (!buf && lp && lp->dataType() != CircularBuffer::STR) {
+					buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
 					if (!buf) std::cout << "no buffer for " << name << "\n";
 				}
 			}
-			else if (buf && pos == 4) {
-				CircularBuffer::DataType dt = buf->getDataType();
+			else if (pos == 4) {
 				if (lp)
 					lp->setValue(v);
-				if (v.asInteger(val)) {
-					if (dt == CircularBuffer::INT16) {
-						buf->addSample(now, (int16_t)(val & 0xffff));
-						//std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
+				if (buf) {
+					CircularBuffer::DataType dt = buf->getDataType();
+					if (v.asInteger(val)) {
+						if (dt == CircularBuffer::INT16) {
+							buf->addSample(now, (int16_t)(val & 0xffff));
+							//std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
+						}
+						else if (dt == CircularBuffer::INT32) {
+							buf->addSample(now, (int32_t)(val & 0xffffffff));
+							//std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
+						}
+						else
+							buf->addSample(now, val);
 					}
-					else if (dt == CircularBuffer::INT32) {
-						buf->addSample(now, (int32_t)(val & 0xffffffff));
-						//std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
+					else if (v.asFloat(dval)) {
+						buf->addSample(now, dval);
 					}
-					else
-						buf->addSample(now, val);
+					//else
+					//	std::cout << "cannot interpret " << name << " value '" << v << "' as an integer or float\n";
 				}
-				else if (v.asFloat(dval)) {
-					buf->addSample(now, dval);
-				}
-				else
-					std::cout << "cannot interpret " << name << " value '" << v << "' as an integer or float\n";
 			}
 			++pos;
 		}
@@ -3010,6 +3027,26 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 											  [&,w](std::string value) mutable{ setPatterns(value); },
 											  [&,w]()->std::string{ return patterns(); }
 											  );
+		EditorGUI *gui = EDITOR->gui();
+		properties->addButton("Link to Remote", [&,gui,this,properties]() mutable{
+										if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
+											gui->getUserWindow()->getWindow()->requestFocus();
+											std::string items;
+											for (auto sel : gui->getObjectWindow()->getSelected()) {
+												ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+												LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+												if (remote) remote->unlink(this);
+												remote = lp;
+												setProperty("Remote", btn->tagName());
+												break;
+											}
+											gui->getObjectWindow()->clearSelections();
+											//properties->refresh();
+											gui->getUserWindow()->clearSelections();
+											gui->getPropertyWindow()->update();
+											//gui->getUserWindow()->select(this);
+										}
+									});
 
 	}
 }
@@ -3250,10 +3287,11 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&,this](std::string value) {
+			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
 				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
+				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3286,15 +3324,15 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 	if (w) {
 		properties->addVariable<std::string> (
 			"Image File",
-			[&](std::string value) mutable{ setImageName(value); },
-			[&]()->std::string{ return imageName(); });
+			[&,properties](std::string value) mutable{ setImageName(value, true); fit(); },
+			[&,properties]()->std::string{ return imageName(); });
 		properties->addVariable<float> ("Scale",
-									[&](float value) mutable{ setScale(value); },
-									[&]()->float { return scale(); });
+									[&](float value) mutable{ setScale(value); center(); },
+									[&]()->float { return scale();  });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&,this](std::string value) {
+			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
 				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
@@ -3335,10 +3373,11 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&,this](std::string value) {
+			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
 				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
+				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3376,10 +3415,11 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&, w, this](std::string value) mutable {
+			[&, w, this,properties](std::string value) mutable {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
 				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
+				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3466,7 +3506,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&,btn,this](std::string value) {
+			[&,btn,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
 				if (lp) {
@@ -3474,6 +3514,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 					if (getDefinition()->getKind() == "INDICATOR")
 						lp->link(new LinkableIndicator(this));
 				}
+				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3835,18 +3876,6 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	if (!EDITOR->gui()->getViewManager().get(widget).visible)
 		properties.add("visible", 0);
 	return true;
-}
-
-void LinkableText::update(const Value &value) {
-	nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
-	if (tb) { tb->setValue(value.asString()); return; }
-	nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(widget);
-	if (lbl) { lbl->setCaption(value.asString()); return; }
-	EditorImageView *iv = dynamic_cast<EditorImageView*>(widget);
-	if (iv) {
-		iv->setImageName(value.asString());
-		return;
-	}
 }
 
 StartupWindow *EditorGUI::getStartupWindow() { return w_startup; }

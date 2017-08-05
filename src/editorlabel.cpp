@@ -66,3 +66,11 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
   if (prop == "Font Size") return fontSize();
   return SymbolTable::Null;
 }
+
+void EditorLabel::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Remote") {
+    if (remote) {
+        remote->link(new LinkableText(this));  }
+    }
+}

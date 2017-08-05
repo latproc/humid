@@ -61,6 +61,16 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
     names.push_back("Command");
 }
 
+void EditorButton::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Remote") {
+    if (remote) {
+      if (getDefinition()->getKind() == "INDICATOR")
+        remote->link(new LinkableIndicator(this));  }
+    }
+}
+
+
 void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
   EditorWidget::loadPropertyToStructureMap(property_map);
   property_map["Caption"] = "caption";

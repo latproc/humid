@@ -36,6 +36,7 @@ public:
 	void loadProperties(PropertyFormHelper* properties) override;
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
 	virtual Value getPropertyValue(const std::string &prop) override;
+	virtual void setProperty(const std::string &prop, const std::string value) override;
 
 	virtual void draw(NVGcontext *ctx) override;
 

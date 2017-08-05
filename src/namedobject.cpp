@@ -118,9 +118,9 @@ NamedObject &NamedObject::operator=(const NamedObject &other) {
 std::string NamedObject::nextName(NamedObject *o, const std::string prefix) {
 	char buf[40];
 	if (prefix.length())
-		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), user_object_sequence);
+		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), ++user_object_sequence);
 	else
-		snprintf(buf, 40, "Untitled_%03d", user_object_sequence);
+		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
 
   Dict &dict( (o) ? o->siblings() : global_objects);
 

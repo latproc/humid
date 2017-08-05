@@ -63,3 +63,11 @@ Value EditorProgressBar::getPropertyValue(const std::string &prop) {
     return res;
   return SymbolTable::Null;
 }
+
+void EditorProgressBar::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Remote") {
+    if (remote) {
+        remote->link(new LinkableNumber(this));  }
+    }
+}

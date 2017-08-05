@@ -58,3 +58,12 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
   }
   return SymbolTable::Null;
 }
+
+
+void EditorTextBox::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Remote") {
+    if (remote) {
+        remote->link(new LinkableText(this));  }
+    }
+}

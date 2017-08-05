@@ -235,6 +235,7 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("FontSize");
   names.push_back("Value Scale");
   names.push_back("Tab Position");
+  names.push_back("Remote");
 }
 
 void EditorWidget::setPropertyValue(const std::string &prop, const Value &v) {
@@ -278,6 +279,12 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (pos != 0) setTabPosition(pos);
     return;
   }
+  if (prop == "Remote") {
+    if (remote) remote->unlink(this);
+    remote = EDITOR->gui()->findLinkableProperty(value);
+    // note: remote->link() not yet called. see subclass method.
+  }
+
 }
 
 Value EditorWidget::getPropertyValue(const std::string &prop) {
@@ -301,6 +308,9 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
   if (prop == "Value Scale") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return valueScale();
+  }
+  if (prop == "Remote") {
+    return remote ? Value(remote->tagName(), Value::t_string) : "";
   }
   return SymbolTable::Null;
 }
@@ -343,6 +353,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["FontSize"] = "font_size";
   property_map["Value Scale"] = "value_scale";
   property_map["Tab Position"] = "tab_position";
+  property_map["Remote"] = "remote";
 }
 
 // generate or update structure properties from the widget
