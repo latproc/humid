@@ -88,6 +88,7 @@ void Editor::save() {
 	using namespace nanogui;
 	using namespace boost::filesystem;
 	UserWindow *uw = screen->getUserWindow();
+	uw->clearSelections();
 	//if (uw) uw->save(path);
 	Structure *settings = EditorSettings::find("EditorSettings");
 	assert(settings);

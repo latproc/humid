@@ -91,7 +91,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
-		if (item.second != SymbolTable::Null) {
+		if (item.second != SymbolTable::Null && item.second.asString() != "") {
 			if (item.second.kind == Value::t_string)
 				out << delim << item.first << ": " << item.second; // quotes are automatically added to string values
 			else

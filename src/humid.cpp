@@ -1033,7 +1033,7 @@ void UserWindow::loadStructure( Structure *s) {
 				lp = gui->findLinkableProperty(remote.asString());
 			if (kind == "LABEL") {
 				const Value &caption_v(element->getProperties().find("caption"));
-				EditorLabel *el = new EditorLabel(s, window, element->getName(), nullptr,
+				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
 												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				el->setName(element->getName());
 				el->setDefinition(element);
@@ -1048,7 +1048,7 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			if (kind == "IMAGE") {
 				const Value &image_file_v(element->getProperties().find("image_file"));
-				EditorImageView *el = new EditorImageView(s, window, element->getName(), nullptr, 0);
+				EditorImageView *el = new EditorImageView(s, window, element->getName(), lp, 0);
 				el->setName(element->getName());
 				el->setDefinition(element);
 				const Value &img_scale_val(element->getProperties().find("scale"));
@@ -1065,7 +1065,7 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setChanged(false);
 			}
 			if (kind == "PROGRESS") {
-				EditorProgressBar *ep = new EditorProgressBar(s, window, element->getName(), nullptr);
+				EditorProgressBar *ep = new EditorProgressBar(s, window, element->getName(), lp);
 				ep->setDefinition(element);
 				if (lp)
 					lp->link(new LinkableNumber(ep));
@@ -3290,8 +3290,8 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
-				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
-				//properties->refresh();
+				remote = lp;
+				if (lp) { lp->link(new LinkableNumber(this)); }
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3335,7 +3335,8 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
-				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
+				remote = lp;
+				if (lp) { lp->link(new LinkableText(this)); }
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
 		properties->addVariable<unsigned int> (
@@ -3376,7 +3377,8 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
-				if (lp) { remote = lp; lp->link(new LinkableText(this)); }
+				remote = lp;
+				if (lp) { lp->link(new LinkableText(this)); }
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
@@ -3418,7 +3420,8 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 			[&, w, this,properties](std::string value) mutable {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
-				if (lp) { remote = lp; lp->link(new LinkableNumber(this)); }
+				remote = lp;
+				if (lp) { lp->link(new LinkableNumber(this)); }
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
@@ -3509,11 +3512,9 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			[&,btn,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
 				if (remote) remote->unlink(this);
-				if (lp) {
-					remote = lp;
-					if (getDefinition()->getKind() == "INDICATOR")
-						lp->link(new LinkableIndicator(this));
-				}
+				remote = lp;
+				if (lp &&getDefinition()->getKind() == "INDICATOR")
+					lp->link(new LinkableIndicator(this));
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
