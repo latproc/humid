@@ -998,13 +998,13 @@ void UserWindow::loadStructure( Structure *s) {
 												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				el->setName(element->getName());
 				el->setDefinition(element);
-				if (lp)
-					lp->link(new LinkableText(el));
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
+				if (lp)
+					lp->link(new LinkableText(el));
 				el->setChanged(false);
 			}
 			if (kind == "IMAGE") {
@@ -1034,13 +1034,13 @@ void UserWindow::loadStructure( Structure *s) {
 			if (kind == "PROGRESS") {
 				EditorProgressBar *ep = new EditorProgressBar(s, window, element->getName(), lp);
 				ep->setDefinition(element);
-				if (lp)
-					lp->link(new LinkableNumber(ep));
 				fixElementPosition( ep, element->getProperties());
 				fixElementSize( ep, element->getProperties());
 				if (value_scale != 1.0) ep->setValueScale( value_scale );
 				if (tab_pos) ep->setTabPosition(tab_pos);
 				ep->setChanged(false);
+				if (lp)
+					lp->link(new LinkableNumber(ep));
 			}
 			if (kind == "TEXT") {
 				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
@@ -1054,14 +1054,14 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementSize( textBox, element->getProperties());
 				if (font_size) textBox->setFontSize(font_size);
 				if (tab_pos) textBox->setTabPosition(tab_pos);
-				if (lp)
-					lp->link(new LinkableText(textBox));
 				textBox->setName(element->getName());
 				if (lp)
 					textBox->setTooltip(remote.asString());
 				else
 					textBox->setTooltip(element->getName());
 				EditorGUI *gui = this->gui;
+				if (lp)
+					lp->link(new LinkableText(textBox));
 				textBox->setChanged(false);
 				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
 					if (!textBox->getRemote()) return true;
@@ -1131,8 +1131,6 @@ void UserWindow::loadStructure( Structure *s) {
 						}
 					}
 				}
-				if (lp)
-					lp->link(new LinkableIndicator(b));
 				fixElementPosition( b, element->getProperties());
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
@@ -1142,7 +1140,8 @@ void UserWindow::loadStructure( Structure *s) {
 					const Value &cmd(element->getProperties().find("command"));
 					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
 				}
-
+				if (lp)
+					lp->link(new LinkableIndicator(b));
 				if (kind == "BUTTON") {
 					b->setChangeCallback([b, this] (bool state) {
 						if (b->getRemote()) {
@@ -1655,9 +1654,9 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(180,240));
-	window->setSize(Vector2i(180,240));
-	window->setPosition(Vector2i(screen->width() - 200, 40));
+	window->setFixedSize(Vector2i(220,320));
+	window->setSize(Vector2i(220,320));
+	window->setPosition(Vector2i(screen->width() - 220, 40));
 	window->setLayout(new BoxLayout(Orientation::Vertical,Alignment::Fill));
 	window->setTitle("Screens");
 	window->setVisible(false);
@@ -1691,7 +1690,7 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 		palette_scroller->setFixedSize(Vector2i(window->width(), window->height() - window->theme()->mWindowHeaderHeight - tool_button_size));
 		palette_scroller->setPosition( Vector2i(5, window->theme()->mWindowHeaderHeight + 10 + tool_button_size));
 		palette_content = new Widget(palette_scroller);
-		palette_content->setLayout(new GridLayout(Orientation::Vertical,10));
+		palette_content->setLayout(new GridLayout(Orientation::Vertical,100));
 		Widget *cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
 	}

@@ -42,11 +42,13 @@ void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
 	EditorWidget::getPropertyNames(names);
 	names.push_back("Number format");
   names.push_back("Text");
+  names.push_back("Font Size");
 }
 
 void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
   EditorWidget::loadPropertyToStructureMap(property_map);
   property_map["Text"] = "text";
+  property_map["Font Size"] = "font_size";
 }
 
 Value EditorTextBox::getPropertyValue(const std::string &prop) {
@@ -56,6 +58,7 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
   if (prop == "Text") {
     return Value(value(), Value::t_string);
   }
+  if (prop == "Font Size") return fontSize();
   return SymbolTable::Null;
 }
 
@@ -65,5 +68,12 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
   if (prop == "Remote") {
     if (remote) {
         remote->link(new LinkableText(this));  }
+    }
+    if (prop == "Text") {
+      setValue(value);
+    }
+    if (prop == "Font Size") {
+      int fs = std::atoi(value.c_str());
+      setFontSize(fs);
     }
 }

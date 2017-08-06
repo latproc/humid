@@ -45,7 +45,7 @@ public:
 	std::map<std::string, Value> &getOptions() { return options; }
 	std::vector<Parameter> &getLocals() { return locals; }
 	void setDefinitionLocation(const std::string fnam, int lineno) {
-		internal_properties.add("file_name", fnam);
+		internal_properties.add("file_name", Value(fnam, Value::t_string));
 	}
 
 	void addLocal(Parameter item) { locals.push_back(item); }
@@ -88,7 +88,7 @@ public:
 	StructureClass *getStructureDefinition() { return class_definition; }
 	// set the location of the instance of the structure (not its class)
 	void setDefinitionLocation(const std::string fnam, int lineno) {
-		internal_properties.add("file_name", fnam);
+		internal_properties.add("file_name", Value(fnam, Value::t_string));
 	}
 	SymbolTable &getInternalProperties() { return internal_properties; }
 	void setProperties(const SymbolTable &props) { properties.add(props); }

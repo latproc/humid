@@ -73,4 +73,8 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     if (remote) {
         remote->link(new LinkableText(this));  }
     }
+    if (prop == "Font Size") {
+      int fs = std::atoi(value.c_str());
+      setFontSize(fs);
+    }
 }

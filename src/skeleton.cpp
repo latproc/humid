@@ -301,7 +301,7 @@ void ClockworkClient::idle() {
 
 			iosh_cmd = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REP);
 			iosh_cmd->bind(local_commands);
-			usleep(100);
+			usleep(1000);
 
 			subscription_manager = new SubscriptionManager("PANEL_CHANNEL", eCLOCKWORK, host.c_str(), 5555);
 			subscription_manager->configureSetupConnection(host.c_str(), cw_out);
