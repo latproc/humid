@@ -384,9 +384,12 @@ void ClockworkClient::idle() {
 					MessageHeader mh;
 					char *data = 0;
 					size_t len = 0;
+					static int msg_count = 0;
 					if (!safeRecv(subscription_manager->subscriber(), &data, &len, false, 0, mh) ) {
 						return;
 					}
+					if (msg_count++ < 10)
+						std::cout << "Message header start time: " << mh.start_time << "\n";
 					if (first_message_time == 0) first_message_time = mh.start_time;
 
 					{
@@ -403,8 +406,10 @@ void ClockworkClient::idle() {
 						uint64_t now = microsecs();
 
 						if (MessageEncoding::getCommand(data, op, &message)) {
-							assert(mh.start_time != 0);
-							assert(first_message_time != 0);
+							//assert(mh.start_time != 0);
+							//assert(first_message_time != 0);
+							if (first_message_time == 0) first_message_time = microsecs();
+							if (mh.start_time == 0) mh.start_time = microsecs();
 							const unsigned long t = ( mh.start_time - first_message_time)/scale;
 							handleClockworkMessage(t, op, message);
 						}

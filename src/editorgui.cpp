@@ -21,6 +21,11 @@
 #include "panelscreen.h"
 #include "editor.h"
 #include "helper.h"
+#include "structureswindow.h"
+#include "propertywindow.h"
+#include "patternswindow.h"
+#include "screenswindow.h"
+#include "objectwindow.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -52,4 +57,13 @@ Structure *EditorGUI::getSettings() {
     if (es) return es;
 		else
         return EditorSettings::create();
+}
+
+nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
+	if (name == "Structures") return (getStructuresWindow()) ? getStructuresWindow()->getWindow() : nullptr;
+	if (name == "Properties") return (getPropertyWindow()) ? getPropertyWindow()->getWindow() : nullptr;
+	if (name == "Objects") return (getObjectWindow()) ? getObjectWindow()->getWindow() : nullptr;
+	if (name == "Patterns") return (getPatternsWindow()) ? getPatternsWindow()->getWindow() : nullptr;
+	if (name == "Screens") return (getScreensWindow()) ? getScreensWindow()->getWindow() : nullptr;
+	return nullptr;
 }

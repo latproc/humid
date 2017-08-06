@@ -91,6 +91,8 @@
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
 #include "structureswindow.h"
+#include "objectwindow.h"
+#include "patternswindow.h"
 #include "themewindow.h"
 #include "propertywindow.h"
 #include "helper.h"
@@ -342,47 +344,6 @@ private:
 	PropertyFormHelper *helper;
 	nanogui::Widget *item;
 };
-
-
-/* an ObjectWindow is a palette of elements from a clockwork connection.
-
- The device can collect clockwork object from a tag file or from direct
- connection (TBD).
- */
-class ObjectWindow : public Skeleton, public Palette {
-public:
-	ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char *tag_fname = 0);
-	void setVisible(bool which) { window->setVisible(which); }
-	void update();
-	nanogui::Screen *getScreen() { return gui; }
-	void show(nanogui::Widget &w);
-	void loadTagFile(const std::string tagfn);
-	nanogui::Window *createPanelPage(const char *filename = 0,
-									 nanogui::Widget *palette_content = 0);
-	bool importModbusInterface(const std::string group_name, std::istream &init,
-							   nanogui::Widget *palette_content,
-							   nanogui::Widget *container);
-	nanogui::Widget *getItems() { return items; }
-	void loadItems(const std::string match);
-	nanogui::Widget * getPaletteContent() { return palette_content; }
-protected:
-	EditorGUI *gui;
-	nanogui::Widget *items;
-	nanogui::TextBox *search_box;
-	nanogui::Widget *palette_content;
-	nanogui::TabWidget *tab_region;
-	nanogui::Widget *current_layer;
-    std::map<std::string, nanogui::Widget *> layers;
-};
-
-class PatternsWindow : public Skeleton, public Palette {
-public:
-	PatternsWindow(EditorGUI *screen, nanogui::Theme *theme);
-	void setVisible(bool which) { window->setVisible(which); }
-private:
-	EditorGUI *gui;
-};
-
 
 class ViewsWindow : public nanogui::Object {
 public:
@@ -1868,12 +1829,14 @@ void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
 	assert(w);
 	properties->addVariable<bool> (
 		name,
-		  [&,w,this](bool value) mutable{
-			  w->setVisible(value); gui->getViewManager().set(w, value);
+		  [&,name,this](bool value) mutable{
+				nanogui::Widget *w = gui->getNamedWindow(name);
+			  if (w) w->setVisible(value);
+				gui->getViewManager().set(name, value);
 			  EditorSettings::flush();
 		  },
-		  [&,w,this]()->bool{
-			  return this->gui->getViewManager().get(w).visible;
+		  [&,name,this]()->bool{
+			  return this->gui->getViewManager().get(name).visible;
 		  });
 }
 
@@ -2489,24 +2452,23 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				getToolbar()->setVisible(true);
 				if (getPropertyWindow()) {
 					nanogui::Window *w = getPropertyWindow()->getWindow();
-					ViewOptions vo(views.get(w));
-					w->setVisible(editmode && vo.visible);
+					w->setVisible(editmode && views.get("Properties").visible);
 				}
 				if (getPatternsWindow()) {
 					nanogui::Window *w = getPatternsWindow()->getWindow();
-					w->setVisible(editmode && views.get(w).visible);
+					w->setVisible(editmode && views.get("Patterns").visible);
 				}
 				if (getStructuresWindow()) {
 					nanogui::Window *w = getStructuresWindow()->getWindow();
-					w->setVisible(editmode && views.get(w).visible);
+					w->setVisible(editmode && views.get("Structures").visible);
 				}
 				if (getObjectWindow()) {
 					nanogui::Window *w = getObjectWindow()->getWindow();
-					w->setVisible(editmode && views.get(w).visible);
+					w->setVisible(editmode && views.get("Objects").visible);
 				}
 				if (getScreensWindow()) {
 					nanogui::Window *w = getScreensWindow()->getWindow();
-					w->setVisible(editmode && views.get(w).visible);
+					w->setVisible(editmode && views.get("ScreensWindow").visible);
 				}
 				done = true;
 				break;
@@ -3846,10 +3808,10 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
 		{
 			if (!vis) std::cout << item->getName() << " is invisible\n";
-			EDITOR->gui()->getViewManager().set(widget, vis);
+			EDITOR->gui()->getViewManager().set(item->getName(), vis);
 		}
 		else
-			EDITOR->gui()->getViewManager().set(widget, true);
+			EDITOR->gui()->getViewManager().set(item->getName(), true);
 		return true;
 	}
 	else return false;
@@ -3880,7 +3842,7 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 		properties.add("w", widget->width());
 		properties.add("h", widget->height());
 	}
-	if (!EDITOR->gui()->getViewManager().get(widget).visible)
+	if (!EDITOR->gui()->getViewManager().get(name).visible)
 		properties.add("visible", 0);
 	return true;
 }

@@ -16,27 +16,30 @@
 
 class ViewOptions {
 public:
+	ViewOptions() : visible(false) {}
 	bool visible;
 };
 
 class ViewListController {
 public:
-	void set(nanogui::Widget *w, bool vis) {
-		items[w].visible = vis;
-		ViewOptions vo = items[w];
-		int x =1;
+	ViewListController() {}
+	void set(std::string name, bool vis) {
+		items[name].visible = vis;
 	}
-	ViewOptions get(nanogui::Widget *w) {
+	ViewOptions get(std::string name) {
 		// default is for views to be visible
-		if (items.find(w) == items.end())
-			set(w, true);
-		return items[w];
+		auto found = items.find(name);
+		if (found == items.end()) {
+			set(name, true);
+			return items[name];
+		}
+		return (*found).second;
 	}
-	void remove(nanogui::Widget *w) { items.erase(w); }
+	void remove(std::string name) { items.erase(name); }
     std::ostream &operator<<(std::ostream &out) const;
 
 private:
-	std::map<nanogui::Widget*, ViewOptions> items;
+	std::map<std::string, ViewOptions> items;
 };
 
 std::ostream &operator<<(std::ostream &out, const ViewListController &m);

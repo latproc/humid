@@ -65,6 +65,9 @@ public:
 	ScreensWindow *getScreensWindow();
 	ViewsWindow *getViewsWindow();
 	nanogui::Window *getActiveWindow();
+
+	nanogui::Window *getNamedWindow(const std::string name);
+
 	void *setActiveWindow(nanogui::Window*);
 	void createStructures(const nanogui::Vector2i &p, std::set<Selectable *> selections);
 
