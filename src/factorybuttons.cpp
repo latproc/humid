@@ -114,13 +114,14 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = eb;
 	}
 	else if (sc->getName() == "IMAGE") {
-		GLuint img = gui->getImageId("images/blank");
+		GLuint img = gui->getImageId("images/blank.png");
 		EditorImageView *iv = new EditorImageView(parent, window, NamedObject::nextName(parent), nullptr, img);
 		iv->setDefinition(s);
 		s->setName(iv->getName());
 		iv->setGridThreshold(20);
 		iv->setPixelInfoThreshold(20);
-		iv->setImageName("images/blank");
+		iv->setImageName("images/blank.png");
+		iv->fit();
 		result = iv;
 	}
 	else if (sc->getName() == "PLOT") {

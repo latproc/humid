@@ -1054,14 +1054,20 @@ void UserWindow::loadStructure( Structure *s) {
 				const Value &img_scale_val(element->getProperties().find("scale"));
 				double img_scale = 1.0f;
 				if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
-				if (lp)
-					lp->link(new LinkableText(el));
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
+				if (image_file_v != SymbolTable::Null) {
+					std::string ifn = image_file_v.asString();
+					el->setImageName(ifn);
+					el->fit();
+				}
+				if (lp) {
+					lp->link(new LinkableText(el));
+				}
 				el->setChanged(false);
 			}
 			if (kind == "PROGRESS") {
