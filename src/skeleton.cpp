@@ -33,6 +33,18 @@
 #include <boost/thread/mutex.hpp>
 #include <boost/program_options.hpp>
 
+#include "helper.h"
+#include "structure.h"
+
+long collect_history = 0;
+
+class ConnectionInfo {
+	std::string channel_name;
+	std::string host_name;
+	int port;
+	ConnectionInfo(std::string ch, std::string h, int p) : channel_name(ch), host_name(h), port(p) {}
+};
+
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
 using namespace nanogui;
 	window = new SkeletonWindow(screen, "");
@@ -291,6 +303,7 @@ void ClockworkClient::idle() {
 		static uint64_t last_update = 0;
 
 		boost::mutex::scoped_lock lock(update_mutex);
+		Structure *connection = 0;
 
 		if (program_state == s_initialising) {
 
@@ -303,20 +316,64 @@ void ClockworkClient::idle() {
 			iosh_cmd->bind(local_commands);
 			usleep(1000);
 
-			subscription_manager = new SubscriptionManager("PANEL_CHANNEL", eCLOCKWORK, host.c_str(), 5555);
-			subscription_manager->configureSetupConnection(host.c_str(), cw_out);
-			disconnect_responder = new SetupDisconnectMonitor;
-			connect_responder = new SetupConnectMonitor;
-			subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
-			subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
-			subscription_manager->setupConnections();
+			subscription_manager = 0;
+			Structure *project_settings = findStructure("ProjectSettings");
+			if (project_settings ) {
+				Structure *project_settings = findStructure("ProjectSettings");
+				if (project_settings) {
+					const Value &collect_history_v(project_settings->getProperties().find("project_history"));
+					if (collect_history_v != SymbolTable::Null) {
+						collect_history_v.asInteger(collect_history);
+					}
+				}
+				StructureClass *sc = project_settings->getStructureDefinition();
+				if (sc) {
+					for (auto p : sc->getLocals()) {
+						Structure *conn = p.machine;
+						assert(conn);
+						if (conn) {
+								const Value &chn = conn->getProperties().find("channel");
+								const Value &host = conn->getProperties().find("host");
+								const Value &port = conn->getProperties().find("port");
+								std::cout << "Loaded connection details " << chn << " " << host << " " << port << "\n";
+								if (chn != SymbolTable::Null && host != SymbolTable::Null && port != SymbolTable::Null) {
+									subscription_manager = new SubscriptionManager(chn.asString().c_str(),
+										eCLOCKWORK, host.asString().c_str(), std::atoi(port.asString().c_str()));
+										subscription_manager->configureSetupConnection(host.asString().c_str(), cw_out);
+										disconnect_responder = new SetupDisconnectMonitor;
+										connect_responder = new SetupConnectMonitor;
+										subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+										subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+										subscription_manager->setupConnections();
+								}
+							assert(conn);
+							connections.push_back(std::make_pair(conn, subscription_manager));
+						}
+					}
+				}
+			}
+			if (!subscription_manager) {
+				std::cout << "Warning: using default clockwork connection to localhost\n";
+				subscription_manager = new SubscriptionManager("PANEL_CHANNEL", eCLOCKWORK, host.c_str(), 5555);
+				subscription_manager->configureSetupConnection(host.c_str(), cw_out);
+				disconnect_responder = new SetupDisconnectMonitor;
+				connect_responder = new SetupConnectMonitor;
+				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+				subscription_manager->setupConnections();
+			}
 			program_state = s_running;
 		}
 		else if (program_state == s_running) {
+			if (connections.size()) {
+				connection = connections.front().first;
+				subscription_manager = connections.front().second;
+				assert(connection);
+			}
 			uint64_t update_time = microsecs();
 			if (update_time - last_update > 10000) {
 				if (update_time - last_update > 15000) last_update = update_time; else last_update += 10000;
-				update();
+				update(connection);
 			}
 			if (!cmd_interface) {
 				cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
@@ -622,7 +679,7 @@ char *ClockworkClient::sendIODMessage(const std::string &s) {
 	}
 }
 
-void ClockworkClient::update() { }
+void ClockworkClient::update(Structure *) { }
 
 void ClockworkClient::drawAll() {
 	idle();

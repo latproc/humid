@@ -33,13 +33,15 @@ public:
 	nanogui::Screen *getScreen() { return gui; }
 	void show(nanogui::Widget &w);
 	void loadTagFile(const std::string tagfn);
+	void rebuildWindow();
+	nanogui::Widget *createTab(const std::string tags);
 	nanogui::Window *createPanelPage(const char *filename = 0,
 									 nanogui::Widget *palette_content = 0);
 	bool importModbusInterface(const std::string group_name, std::istream &init,
 							   nanogui::Widget *palette_content,
 							   nanogui::Widget *container);
 	nanogui::Widget *getItems() { return items; }
-	void loadItems(const std::string match);
+	void loadItems(const std::string group, const std::string match);
 	nanogui::Widget * getPaletteContent() { return palette_content; }
 protected:
 	EditorGUI *gui;

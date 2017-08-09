@@ -25,6 +25,7 @@
 #include "editorsettings.h"
 #include "propertywindow.h"
 #include "themewindow.h"
+#include "cJSON.h"
 
 class StartupWindow;
 class PropertyWindow;
@@ -76,7 +77,7 @@ public:
 	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
 
 	GLuint getImageId(const char *, bool reload = false);
-	void update() override;
+	void update(Structure *connection) override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
 	void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) override;
@@ -96,12 +97,15 @@ public:
 
 	int getSampleBufferSize() { return sample_buffer_size; }
 	LinkableProperty *findLinkableProperty(const std::string name);
-	void addLinkableProperty(const std::string name, LinkableProperty*lp) { linkables[name] = lp; }
-	std::map<std::string, LinkableProperty*>getLinkableProperties() { return linkables; }
-
+	void addLinkableProperty(const std::string name, LinkableProperty*lp);
+	std::map<std::string, LinkableProperty*>getLinkableProperties() {
+		return linkables;
+	}
+	void processModbusInitialisation(const std::string group_name, cJSON *obj);
 	void refreshData() { startup = sINIT; }
 
 private:
+	std::recursive_mutex linkables_mutex;
 	std::map<std::string, LinkableProperty*>linkables;
 	ViewListController views;
 	std::list<PanelScreen*>user_screens;

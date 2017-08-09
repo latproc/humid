@@ -59,6 +59,12 @@ Structure *EditorGUI::getSettings() {
         return EditorSettings::create();
 }
 
+void EditorGUI::addLinkableProperty(const std::string name, LinkableProperty*lp) {
+	std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
+	linkables[name] = lp;
+}
+
+
 nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
 	if (name == "Structures") return (getStructuresWindow()) ? getStructuresWindow()->getWindow() : nullptr;
 	if (name == "Properties") return (getPropertyWindow()) ? getPropertyWindow()->getWindow() : nullptr;

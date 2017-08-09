@@ -18,10 +18,11 @@
 
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 
+class Structure;
 class SkeletonWindow : public nanogui::Window, public PanelScreen {
 public:
 	SkeletonWindow(Widget *parent, const std::string &title = "Untitled")
-	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ), 
+	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ),
 		shrunk_pos(nanogui::Vector2i(0,0)), shrunk(false) {
 	}
 	void setMoveListener( std::function<void(nanogui::Window*)> f) {
@@ -42,7 +43,7 @@ protected:
 	nanogui::Vector2i saved_size;
 	nanogui::Vector2i saved_pos;
 	nanogui::Vector2i shrunk_pos;
-	
+
 	bool shrunk;
 };
 
@@ -118,7 +119,7 @@ public:
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) {};
-	virtual void update();
+	virtual void update(Structure *connection);
 
 protected:
 	nanogui::Window *window;
@@ -130,16 +131,16 @@ protected:
 	std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
 	CommandState command_state;
 	nanogui::ref<nanogui::Window> property_window;
-	
-	MessagingInterface *g_iodcmd;
 
-	
+	MessagingInterface *g_iodcmd;
+	std::list<std::pair<Structure *,SubscriptionManager*> >connections;
+
 	std::map<std::string, int> state_map;
 	std::map<std::string, int> device_map;
-	
+
 	int next_device_num;
 	int next_state_num;
-	
+
 	struct timeval start;
 	uint64_t first_message_time;
 	long scale;

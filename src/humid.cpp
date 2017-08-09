@@ -123,6 +123,8 @@ const char *filename = 0;
 class LinkableProperty;
 std::map<std::string, LinkableProperty *> remotes;
 
+extern long collect_history;
+
 int num_errors = 0;
 std::list<std::string>error_messages;
 std::list<std::string>settings_files;
@@ -445,15 +447,6 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setChangeCallback([this](bool state) {
-		const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
-		std::set<std::string>groups;
-		for (auto item : properties) {
-			groups.insert(item.second->group());
-		}
-		for (auto group : groups) {
-			gui->getObjectWindow()->createPanelPage(group.c_str(), gui->getObjectWindow()->getPaletteContent());
-		}
-		gui->refreshData();
 	});
 
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
@@ -485,6 +478,21 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	toolbar->setVisible(false);
 }
 
+void ObjectWindow::rebuildWindow() {
+	std::cout << "rebuilding object window\n";
+	const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
+	std::set<std::string>groups;
+	for (auto item : properties) {
+		groups.insert(item.second->group());
+	}
+	for (auto group : groups) {
+		createTab(group.c_str());
+		if (boost::filesystem::exists(group)) // load a tag file if given
+			createPanelPage(group.c_str(), gui->getObjectWindow()->getPaletteContent());
+		loadItems(group, search_box->value());
+	}
+	//gui->refreshData();
+}
 
 ListPanel::ListPanel(nanogui::Widget *parent) : nanogui::Widget(parent) {
 
@@ -818,8 +826,6 @@ CircularBuffer *UserWindow::getValues(const std::string name) {
 		const std::pair<std::string, CircularBuffer *> &node = *iter;
 		return node.second;
 	}
-	else
-		std::cout << "data series " << name << " not found\n";
 	return 0;
 }
 
@@ -1186,6 +1192,7 @@ void UserWindow::loadStructure( Structure *s) {
 		PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
 		if (prop) {
 			prop->update();
+			if (!EDITOR->isEditMode()) prop->getWindow()->setVisible(false);
 			EDITOR->gui()->needsUpdate();
 		}
 		s->setChanged(false);
@@ -2038,6 +2045,7 @@ void PropertyWindow::update() {
 
 		properties->clear();
 		properties->setWindow(pw); // reset the grid layout
+		pw->setVisible(gui->getViewManager().get("Properties").visible);
 		int n = pw->children().size();
 
 		if (uw->getSelected().size()) {
@@ -2154,8 +2162,9 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	search_box->setEnabled(true);
 	search_box->setEditable(true);
 	search_box->setAlignment(TextBox::Alignment::Left);
-	search_box->setCallback([&](const std::string &filter)->bool {
-		loadItems(search_box->value());
+	search_box->setCallback([&,this](const std::string &filter)->bool {
+		std::string group = tab_region->tabLabelAt(tab_region->activeTab());
+		loadItems(group, search_box->value());
 		return true;
 	});
 	tab_region = items->add<TabWidget>();
@@ -2170,10 +2179,10 @@ ObjectWindow::ObjectWindow(EditorGUI *screen, nanogui::Theme *theme, const char 
 	window->setVisible(false);
 }
 
-void ObjectWindow::loadTagFile(const std::string tags) {
+nanogui::Widget *ObjectWindow::createTab(const std::string tags) {
 	using namespace nanogui;
 	const int search_height = 36;
-	nanogui::Widget *container = nullptr;
+	Widget *container = nullptr;
 	std::string tab_name = shortName(tags);
 	if (tags.length()) {
 		auto found = layers.find(tab_name);
@@ -2182,18 +2191,26 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 		else {
 			container = tab_region->createTab(shortName(tab_name));
 			container->setLayout(new GroupLayout());
-			layers["Remote"] = container;
+			layers[tab_name] = container;
 		}
+		current_layer = container;
+		VScrollPanel *palette_scroller = new VScrollPanel(container);
+		palette_scroller->setPosition( Vector2i(1,search_height+5));
+		palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
+		palette_content = new Widget(palette_scroller);
+		palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
+		return palette_content;
 	}
 	else
-		return;
-	assert(container);
-	current_layer = container;
+		return nullptr;
+}
+
+void ObjectWindow::loadTagFile(const std::string tags) {
+	using namespace nanogui;
+	const int search_height = 36;
+	nanogui::Widget *palette_content = createTab(tags);
+	if (!palette_content) return;
 	tag_file_name = tags;
-	VScrollPanel *palette_scroller = new VScrollPanel(container);
-	palette_scroller->setPosition( Vector2i(1,search_height+5));
-	palette_content = new Widget(palette_scroller);
-	palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
 
 	createPanelPage(tag_file_name.c_str(), palette_content);
 	GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
@@ -2202,7 +2219,6 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 	palette_layout->setColAlignment(nanogui::Alignment::Fill);
 	palette_layout->setRowAlignment(nanogui::Alignment::Fill);
 	palette_content->setLayout(palette_layout);
-	palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
 
 	if (palette_content->childCount() == 0) {
 		Widget *cell = new Widget(palette_content);
@@ -2734,6 +2750,7 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 }
 
 LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
+	std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
 	std::map<std::string, LinkableProperty*>::iterator found = linkables.find(name);
 	if (found == linkables.end()) return 0;
 	return (*found).second;
@@ -2754,9 +2771,11 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 				name = v.asString();
 				lp = findLinkableProperty(name);
 				buf = w_user->getValues(name);
-				if (!buf && lp && lp->dataType() != CircularBuffer::STR) {
-					buf = w_user->addDataBuffer(name, lp->dataType(), sample_buffer_size);
-					if (!buf) std::cout << "no buffer for " << name << "\n";
+				if (collect_history) {
+					if (!buf && lp && lp->dataType() != CircularBuffer::STR) {
+						buf = w_user->addDataBuffer(name, lp->dataType(), collect_history);
+						if (!buf) std::cout << "no buffer for " << name << "\n";
+					}
 				}
 			}
 			else if (pos == 4) {
@@ -2790,7 +2809,7 @@ void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op,
 	//	std::cout << op << "\n";
 }
 
-void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
+void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {
 	int num_params = cJSON_GetArraySize(obj);
 	if (num_params)
 	{
@@ -2813,7 +2832,13 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 				}
 				//else
 				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
-				LinkableProperty *lp = gui->findLinkableProperty(name.asString());
+				LinkableProperty *lp = findLinkableProperty(name.asString());
+				if (!lp) {
+					std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
+					lp = new LinkableProperty(group_name, 0, name.asString(), "'01000'", "", len.iValue);
+					linkables[name.asString()] = lp;
+					std::cout << "added new linkable property: " << group_name << ":" << name << "\n";
+				}
 				if (lp) {
 					if (group.iValue != lp->address_group())
 						std::cout << name << " change of group from " << lp->address_group() << " to " << group << "\n";
@@ -2822,16 +2847,19 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 					lp->setAddressStr(group.iValue, addr.iValue);
 
 					lp->setValue(value);
-					CircularBuffer *buf = gui->getUserWindow()->getValues(name.asString());
-					if (buf) {
-						long v;
-						double fv;
-						buf->clear();
-						if (value.asInteger(v))
-							buf->addSample( buf->getZeroTime(), v);
-						else if (value.asFloat(fv))
-							buf->addSample( buf->getZeroTime(), fv);
+					if (collect_history) {
+						CircularBuffer *buf = getUserWindow()->getValues(name.asString());
+						if (buf) {
+							long v;
+							double fv;
+							buf->clear();
+							if (value.asInteger(v))
+								buf->addSample( buf->getZeroTime(), v);
+							else if (value.asFloat(fv))
+								buf->addSample( buf->getZeroTime(), fv);
+						}
 					}
+
 				}
 			}
 			else
@@ -2844,15 +2872,15 @@ void processModbusInitialisation(cJSON *obj, EditorGUI *gui) {
 	}
 }
 
-void EditorGUI::update() {
+void EditorGUI::update(Structure *connection) {
 	if (startup != sDONE) {
 		// if the tag file is loaded, get initial values
-		if (linkables.size() && startup == sINIT) {
+		if (/*linkables.size() && */ startup == sINIT && connection) {
 			std::cout << "Sending data initialisation request\n";
 			startup = sSENT;
 			queueMessage("MODBUS REFRESH",
-				[this](std::string s) {
-					//std::cout << "MODBUS REFRESH returned: " << s << "\n";
+				[this, connection](std::string s) {
+					std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
 						cJSON *obj = cJSON_Parse(s.c_str());
 						if (!obj) {
@@ -2860,7 +2888,8 @@ void EditorGUI::update() {
 							return;
 						}
 						if (obj->type == cJSON_Array) {
-							processModbusInitialisation(obj, this);
+							processModbusInitialisation(connection->getName(), obj);
+							w_objects->rebuildWindow();
 						}
 						startup = sDONE;
 					}
@@ -2919,7 +2948,6 @@ CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 }
 
 void UserWindow::refresh() { window->performLayout(gui->nvgContext()); }
-
 
 nanogui::Window *ObjectWindow::createPanelPage(
 		   const char *filename,
@@ -3655,10 +3683,20 @@ void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Even
 		t->setPropertyName(name);
 }
 
-void ObjectWindow::loadItems(const std::string match) {
+void ObjectWindow::loadItems(const std::string group, const std::string match) {
 	using namespace nanogui;
 	clearSelections();
-	assert(palette_content);
+	Widget *container = layers[group];
+	if (!container || container->childCount() == 0) {
+		std::cout << "object window has no tab '" << group << "', nothing to do";
+		return;
+	}
+	Widget *scroller = container->childAt(0);
+	if (!scroller || scroller->childCount() == 0) {
+		std::cout << "object tab has no content, nothing to do";
+		return;
+	}
+	Widget *palette_content = scroller->childAt(0);
 	if (!palette_content) return;
 	while (palette_content && palette_content->childCount() > 0) {
 		palette_content->removeChild(0);
@@ -3668,7 +3706,12 @@ void ObjectWindow::loadItems(const std::string match) {
 	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
 
 	int n = tokens.size();
+	bool within_group = group.length() > 0;
 	for (auto item : gui->getLinkableProperties() ) {
+		if (within_group && item.second->group() != group) {
+			std::cout << "skipping " << item.first << " (group " << item.second->group() << ")";
+			continue;
+		}
 		for (auto nam : tokens) {
 			if (n>1 && nam.length() == 0) continue; //skip empty elements in a list
 			if (item.first.find(nam) != std::string::npos) {
@@ -3690,7 +3733,7 @@ void ObjectWindow::loadItems(const std::string match) {
 	window->performLayout(gui->nvgContext());
 }
 
-bool ObjectWindow::importModbusInterface(const std::string group_name, std::istream &init,
+bool ObjectWindow::importModbusInterface(const std::string file_name, std::istream &init,
 										 nanogui::Widget *palette_content,
 										 nanogui::Widget *container) {
 
@@ -3701,6 +3744,8 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 	char buf[200];
 
 	std::istringstream iss;
+	std::string group_name = shortName(file_name);
+
 
 	iss.imbue(locale(iss.getloc(), new comma_is_space));
 
@@ -3746,7 +3791,7 @@ bool ObjectWindow::importModbusInterface(const std::string group_name, std::istr
 		<< "\n";
 */
 	}
-	loadItems(search_box->value());
+	loadItems(group_name, search_box->value());
 
 	return true;
 }

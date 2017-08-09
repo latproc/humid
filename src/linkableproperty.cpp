@@ -20,8 +20,10 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
                 const std::string &dtype, int dsize)
 : EditorObject(nullptr, name), group_name(group), kind(object_type), tag_name(name), address_str(addr_str), data_type_name(dtype),
     data_type(CircularBuffer::dataTypeFromString(dtype)), data_size(dsize) {
+      if (addr_str.length() > 3) {
         char *rest = 0;
         modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
+      }
     }
 const std::string &LinkableProperty::group() const { return group_name; }
 void LinkableProperty::setGroup(const std::string g) { group_name = g; }
