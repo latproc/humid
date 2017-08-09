@@ -43,6 +43,7 @@ public:
 	void link(LinkableObject *lo);
 	void unlink(EditorObject*w);
 	void save(std::ostream &out) const;
+	void apply();
 private:
 	std::string group_name;
 	int kind;

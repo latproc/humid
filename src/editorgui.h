@@ -42,7 +42,7 @@ class ViewsWindow;
 
 class EditorGUI : public ClockworkClient {
 public:
-	enum STARTUP_STATES { sINIT, sSENT, sDONE };
+	enum STARTUP_STATES { sINIT, sSENT, sDONE, sRELOAD };
 	enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };
 	EditorGUI();
 

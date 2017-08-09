@@ -768,10 +768,13 @@ void UserWindow::setStructure( Structure *s) {
 
 	clearSelections();
 	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
-	drag_handle->incRef();
-	window->removeChild(drag_handle);
-	PropertyMonitor *pm = drag_handle->propertyMonitor();
-	drag_handle->setPropertyMonitor(0);
+	PropertyMonitor *pm  = nullptr;
+	if (drag_handle) {
+		drag_handle->incRef();
+		window->removeChild(drag_handle);
+		pm = drag_handle->propertyMonitor();
+		drag_handle->setPropertyMonitor(0);
+	}
 	int n = window->childCount();
 	while (n--) {
 		window->removeChild(0);
@@ -781,8 +784,10 @@ void UserWindow::setStructure( Structure *s) {
 	current_structure = s;
 
   window->addChild(drag_handle);
-  drag_handle->setPropertyMonitor(pm);
-  drag_handle->decRef();
+	if (drag_handle) {
+	  drag_handle->setPropertyMonitor(pm);
+	  drag_handle->decRef();
+	}
   gui->performLayout();
 }
 
@@ -1150,15 +1155,20 @@ void UserWindow::loadStructure( Structure *s) {
 					lp->link(new LinkableIndicator(b));
 				if (kind == "BUTTON") {
 					b->setChangeCallback([b, this] (bool state) {
-						if (b->getRemote()) {
-							gui->queueMessage(
-										gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-							gui->queueMessage(
-										gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
-						}
-						else if (b->command().length()) {
-							gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
-						}
+							if (b->getRemote()) {
+								if (b->flags() & nanogui::Button::NormalButton) {
+									gui->queueMessage(
+											gui->getIODSyncCommand(0, b->address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
+								}
+								else if (b->flags() & nanogui::Button::ToggleButton) {
+									gui->queueMessage(
+											gui->getIODSyncCommand(0, b->address(),(state)?0:1), [](std::string s){std::cout << s << "\n"; });
+
+								}
+							}
+							else if (b->command().length()) {
+								gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+							}
 
 					});
 				}
@@ -1190,9 +1200,11 @@ void UserWindow::loadStructure( Structure *s) {
 			tw->loadTheme(w->theme());
 		}
 		PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
-		if (prop) {
-			prop->update();
-			if (!EDITOR->isEditMode()) prop->getWindow()->setVisible(false);
+		if (prop && prop->getWindow()->visible()) {
+			if (!EDITOR->isEditMode())
+				prop->getWindow()->setVisible(false);
+			else
+				prop->update();
 			EDITOR->gui()->needsUpdate();
 		}
 		s->setChanged(false);
@@ -1795,7 +1807,7 @@ void ScreensWindow::update() {
 			});
 	}
 	getWindow()->performLayout(gui->nvgContext());
-	selectFirst();
+	if (EDITOR->isEditMode()) selectFirst();
 	/*if (current) {
 		SelectableButton *btn = dynamic_cast<SelectableButton*>(current);
 		if (btn)
@@ -2352,14 +2364,15 @@ void EditorGUI::createWindows() {
 	w_patterns = new PatternsWindow(this, theme);
 	w_screens = new ScreensWindow(this, theme);
 	w_views = new ViewsWindow(this, theme);
-
-	ConfirmDialog *cd = new ConfirmDialog(this, "Humid V0.19");
+/*
+	ConfirmDialog *cd = new ConfirmDialog(this, "Humid V0.23");
 	cd->setCallback([cd,this]{
 		cd->setVisible(false);
 		this->setState(EditorGUI::GUISELECTPROJECT);
 	});
 	window = cd->getWindow();
 	window->setTheme(theme);
+	*/
 
 	EditorSettings::applySettings("MainWindow", this);
 	EditorSettings::applySettings("ThemeSettings", w_theme->getWindow());
@@ -2397,6 +2410,7 @@ void EditorGUI::createWindows() {
 	);
 	w_screens->update();
 	performLayout(mNVGContext);
+	setState(EditorGUI::GUISELECTPROJECT);
 }
 
 
@@ -2460,10 +2474,19 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				break;
 			case GUIEDITMODE:
 				editmode = true;
+				if (false){
+					Value remote_screen(system_settings->getProperties().find("remote_screen"));
+					if (remote_screen != SymbolTable::Null) {
+						LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+						if (lp)
+							lp->apply();
+							if (w_screens && !w_screens->hasSelections()) w_screens->selectFirst();
+					}
+				}
 				// fall through
 			case GUIWORKING:
 				getUserWindow()->setVisible(true);
-				getScreensWindow()->selectFirst();
+				//getScreensWindow()->selectFirst();
 				getToolbar()->setVisible(true);
 				if (getPropertyWindow()) {
 					nanogui::Window *w = getPropertyWindow()->getWindow();
@@ -2485,6 +2508,17 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					nanogui::Window *w = getScreensWindow()->getWindow();
 					w->setVisible(editmode && views.get("ScreensWindow").visible);
 				}
+				Value remote_screen(system_settings->getProperties().find("remote_screen"));
+				if (remote_screen != SymbolTable::Null) {
+					LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+					if (lp) {
+						lp->apply();
+						std::cout <<"\nWorking mode: setting screen to " << lp->value() << "\n\n";
+						if (lp->value() != SymbolTable::Null)
+							startup = sRELOAD;
+					}
+				}
+
 				done = true;
 				break;
 		}
@@ -2873,7 +2907,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 }
 
 void EditorGUI::update(Structure *connection) {
-	if (startup != sDONE) {
+	if (startup != sDONE && startup != sRELOAD) {
 		// if the tag file is loaded, get initial values
 		if (/*linkables.size() && */ startup == sINIT && connection) {
 			std::cout << "Sending data initialisation request\n";
@@ -2891,7 +2925,7 @@ void EditorGUI::update(Structure *connection) {
 							processModbusInitialisation(connection->getName(), obj);
 							w_objects->rebuildWindow();
 						}
-						startup = sDONE;
+						startup = sRELOAD;
 					}
 					else
 						startup = sINIT;
@@ -2900,22 +2934,28 @@ void EditorGUI::update(Structure *connection) {
 		}
 	}
 
-	if (w_user) {
-		bool changed = false;
-		const Value &active(system_settings->getProperties().find("active_screen"));
-		if (active != SymbolTable::Null) {
-			if (w_user->structure() && w_user->structure()->getName() != active.asString()) {
-				Structure *s = findScreen(active.asString());
-				if (s && w_user->structure() != s) {
-					w_user->getWindow()->requestFocus();
-					w_user->clearSelections();
-					w_user->setStructure(s);
-					changed = true;
+	if (startup == sDONE || startup == sRELOAD) {
+		if (w_user) {
+			//bool changed = false;
+			const Value &active(system_settings->getProperties().find("active_screen"));
+			if (active != SymbolTable::Null) {
+				if (startup == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
+					Structure *s = findScreen(active.asString());
+					if (startup == sRELOAD || (s && w_user->structure() != s) ) {
+						w_user->getWindow()->requestFocus();
+						w_user->clearSelections();
+						w_user->setStructure(s);
+						std::cout << "Loaded active screen " << active << "\n";
+						//changed = true;
+						if (startup == sRELOAD) startup = sDONE;
+					}
+					else if (startup != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
 				}
 			}
+			else std::cout << "No active screen has been selected\n";
+			//if (changed)
+			//	w_user->update();
 		}
-		if (changed)
-			w_user->update();
 	}
 
 	if (w_user)

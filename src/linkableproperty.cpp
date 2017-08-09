@@ -58,6 +58,14 @@ void LinkableProperty::setValue(const Value &v) {
 		link->update(v);
 }
 
+void LinkableProperty::apply() {
+	for (auto link : links) {
+    if (link)
+      std::cout << "updating link " << current << "\n";
+		link->update(current);
+  }
+}
+
 Value & LinkableProperty::value() { return current; }
 int LinkableProperty::dataSize() const { return data_size; }
 void LinkableProperty::setDataSize(int new_size) { data_size = new_size; }
