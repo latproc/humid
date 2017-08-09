@@ -38,7 +38,7 @@
 
 long collect_history = 0;
 
-class ConnectionInfo {
+struct ConnectionInfo {
 	std::string channel_name;
 	std::string host_name;
 	int port;
@@ -361,6 +361,9 @@ void ClockworkClient::idle() {
 				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
 				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
 				subscription_manager->setupConnections();
+				//ConnectionInfo *conn = new ConnectionInfo("PANEL_CHANNEL", host.c_str(), 5555);
+				Structure *s = new Structure(0, "Default", "CONNECTION");
+				connections.push_back(std::make_pair(s, subscription_manager));
 			}
 			program_state = s_running;
 		}
