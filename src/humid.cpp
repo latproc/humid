@@ -123,6 +123,9 @@ const char *filename = 0;
 class LinkableProperty;
 std::map<std::string, LinkableProperty *> remotes;
 
+long full_screen_mode = 0;
+int run_only = 0;
+
 extern long collect_history;
 
 int num_errors = 0;
@@ -715,6 +718,10 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
+	GLFWmonitor* primary = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(primary);
+	mDefaultSize.x() = mode->width;
+	mDefaultSize.y() = mode->height;
 	window->setFixedSize(mDefaultSize);
 	window->setSize(mDefaultSize);
 	window->setVisible(false);
@@ -2487,7 +2494,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					project = new EditorProject("UntitledProject");
 				getUserWindow()->setStructure(createScreenStructure());
 				getUserWindow()->setVisible(true);
-				getToolbar()->setVisible(true);
+				getToolbar()->setVisible(!run_only);
 				done = true;
 			}
 				break;
@@ -2506,7 +2513,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 			case GUIWORKING:
 				getUserWindow()->setVisible(true);
 				//getScreensWindow()->selectFirst();
-				getToolbar()->setVisible(true);
+				getToolbar()->setVisible(!run_only);
 				if (getPropertyWindow()) {
 					nanogui::Window *w = getPropertyWindow()->getWindow();
 					w->setVisible(editmode && views.get("Properties").visible);
@@ -2743,12 +2750,14 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 		return false;
 	}
 
+/*
 	int width = 1024, height = 768;
 	if (glfwWindow()) {
 		glfwGetFramebufferSize(glfwWindow(), &width, &height);
 		glViewport(0, 0, width, height);
 		//glViewport(0, 0, 2880, 1800);
 	}
+	*/
 
 	nanogui::Window * windows[] = {
 		this->getStructuresWindow()->getWindow(),
@@ -4067,6 +4076,8 @@ int main(int argc, const char ** argv ) {
 	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
 	("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
+	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
+	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
 	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
@@ -4098,6 +4109,7 @@ int main(int argc, const char ** argv ) {
 	if (vm.count("host")) host = vm["host"].as<std::string>();
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
+	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();
 	if (DEBUG_BASIC) std::cout << "Debugging\n";
 
 	std::string home(".");
@@ -4143,7 +4155,11 @@ int main(int argc, const char ** argv ) {
 				system_settings = system_class->instantiate(nullptr, "System");
 			}
 
-			const Value full_screen = system_settings->getProperties().find("full_screen");
+			Value full_screen_v = system_settings->getProperties().find("full_screen");
+			long full_screen = 1;
+			full_screen_v.asInteger(full_screen);
+			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
+
 			long width = mode->width;
 			long height = mode->height;
 			std::cout << "intial videomode: " << width << "x" << height << "\n";
@@ -4155,8 +4171,8 @@ int main(int argc, const char ** argv ) {
 			}
 			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
 
-			nanogui::ref<EditorGUI> app = (full_screen != SymbolTable::Null)
-					? new EditorGUI(width, height, full_screen.iValue != 0)
+			nanogui::ref<EditorGUI> app = (full_screen)
+					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);
 			nanogui::Theme *myTheme = new nanogui::Theme(app->nvgContext());
 			setupTheme(myTheme);
