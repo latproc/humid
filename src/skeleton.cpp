@@ -247,8 +247,8 @@ nanogui::Vector2i WindowStagger::pos() {
 		return pos;
 }
 
-ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption)
-: nanogui::Screen(size, caption, true, false),
+ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
+: nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
 	iosh_cmd(0), cmd_interface(0), command_state(WaitingCommand), next_device_num(0), next_state_num(0),
 	first_message_time(0), scale(1000),

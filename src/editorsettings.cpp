@@ -24,6 +24,10 @@ std::ostream &operator<<(std::ostream &out, const EditorSettings &m) {
     return m.operator<<(out);
 }
 
+EditorSettings::EditorSettings(const std::string sname, const std::string skind) : Structure(nullptr, sname, skind) {
+  getProperties().add("full_screen", false);
+}
+
 void EditorSettings::applySettings(const std::string object_name, nanogui::Widget *widget) {
     std::list<std::string> errors;
     {

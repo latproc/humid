@@ -99,7 +99,9 @@ public:
 	void setName( const std::string new_name) { name = new_name; }
 	const std::string &getKind() { return kind; }
 
-	//Structure *clone(const std::string new_name);
+	bool isA(const std::string &kind);
+
+//Structure *clone(const std::string new_name);
 
 	std::ostream &operator<<(std::ostream &out) const;
 	void setChanged( bool which) { changed_ = which; }

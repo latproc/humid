@@ -37,6 +37,7 @@ public:
 	std::map<std::string, CircularBuffer *> &getData() { return data; }
 	void update();
 	void refresh();
+	void fixLinks(LinkableProperty *lp); // relink gui objects to remote
 	nanogui::Widget *current() { return current_layer; }
 	void deleteSelections();
 	EditorGUI *app() { return gui; }

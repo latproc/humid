@@ -31,7 +31,8 @@ extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
 
 
-EditorGUI::EditorGUI() : ClockworkClient(Eigen::Vector2i(1024, 768), "Humid"), theme(0),
+EditorGUI::EditorGUI(int width, int height, bool full_screen)
+: ClockworkClient(Eigen::Vector2i(width, height), "Humid", !full_screen, full_screen), theme(0),
 	startup(sINIT), state(GUIWELCOME),
 	editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0), w_patterns(0),
 	w_structures(0), w_connections(0), w_startup(0), w_screens(0), w_views(0), needs_update(false),

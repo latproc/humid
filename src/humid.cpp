@@ -486,9 +486,12 @@ void ObjectWindow::rebuildWindow() {
 		groups.insert(item.second->group());
 	}
 	for (auto group : groups) {
+		std::cout << "createing object window tab: " << group << "\n";
 		createTab(group.c_str());
-		if (boost::filesystem::exists(group)) // load a tag file if given
+		if (boost::filesystem::exists(group)) {// load a tag file if given
+			std::cout << "tag file found, loading: " << group << " from file\n";
 			createPanelPage(group.c_str(), gui->getObjectWindow()->getPaletteContent());
+		}
 		loadItems(group, search_box->value());
 	}
 	//gui->refreshData();
@@ -738,6 +741,22 @@ void UserWindow::deselect(Selectable *w) {
 	Palette::deselect(w);
 	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
 	if (wnd) wnd->setCurrentItem(-1);
+}
+
+void UserWindow::fixLinks(LinkableProperty *lp) {
+	int n = window->childCount();
+	int idx = 0;
+	while (n--) {
+		EditorWidget *ew = dynamic_cast<EditorWidget *>(window->childAt(idx));
+		if (ew->getDefinition()) {
+			const Value &r = ew->getDefinition()->getProperties().find("Remote");
+			if (r != SymbolTable::Null && r.asString() == lp->tagName()) {
+				if (ew->getRemote()) ew->getRemote()->unlink(ew->getRemote());
+				ew->setRemote(lp);
+				ew->setProperty("Remote", lp->tagName());
+			}
+		}
+	}
 }
 
 void UserWindow::setStructure( Structure *s) {
@@ -2724,12 +2743,12 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 		return false;
 	}
 
+	int width = 1024, height = 768;
 	if (glfwWindow()) {
-		int width, height;
 		glfwGetFramebufferSize(glfwWindow(), &width, &height);
-		glViewport(0, 0, 2880, 1800);
+		glViewport(0, 0, width, height);
+		//glViewport(0, 0, 2880, 1800);
 	}
-
 
 	nanogui::Window * windows[] = {
 		this->getStructuresWindow()->getWindow(),
@@ -2852,18 +2871,31 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 			cJSON *item = cJSON_GetArrayItem(obj, i);
 			if (item->type == cJSON_Array)
 			{
-				Value group = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 0), 0);
-				Value addr = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 1), 0);
-				Value kind = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 2), 0);
-				Value name = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 3), 0);
-				Value len = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 4), 0);
-				Value value = MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 5), 0);
+				Value group(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 0), 0));
+				Value addr(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 1), 0));
+				Value kind(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 2), 0));
+				Value name(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 3), 0));
+				Value len(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 4), 0));
+				Value value(MessageEncoding::valueFromJSONObject(cJSON_GetArrayItem(item, 5), 0));
 				if (DEBUG_BASIC)
 					std::cout << name << ": " << group << " " << addr << " " << len << " " << value <<  "\n";
 				if (value.kind == Value::t_string) {
 					std::string valstr = value.asString();
 					//insert((int)group.iValue, (int)addr.iValue-1, valstr.c_str(), valstr.length()+1); // note copying null
 				}
+				if (name.kind == Value::t_string || name.kind == Value::t_symbol) {
+					size_t n = name.sValue.length();
+					const char *p = name.sValue.c_str();
+					if (n>2 && p[0] == '"' && p[n-1] == '"')
+					{
+						std::cout << "removing quotes from " << name << "\n";
+						char buf[n];
+						memcpy(buf, p+1, n-2);
+						buf[n-2] = 0;
+						name = Value(buf, Value::t_string);
+					}
+				}
+
 				//else
 				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
 				LinkableProperty *lp = findLinkableProperty(name.asString());
@@ -2879,8 +2911,10 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					if (addr.iValue != lp->address())
 						std::cout << name << " change of address from " << lp->address() << " to " << addr << "\n";
 					lp->setAddressStr(group.iValue, addr.iValue);
-
 					lp->setValue(value);
+
+					//w_user->fixLinks(lp);
+
 					if (collect_history) {
 						CircularBuffer *buf = getUserWindow()->getValues(name.asString());
 						if (buf) {
@@ -2904,6 +2938,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 			}
 		}
 	}
+	std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
 }
 
 void EditorGUI::update(Structure *connection) {
@@ -2924,6 +2959,15 @@ void EditorGUI::update(Structure *connection) {
 						if (obj->type == cJSON_Array) {
 							processModbusInitialisation(connection->getName(), obj);
 							w_objects->rebuildWindow();
+							w_user->setStructure(w_user->structure());
+							const Value remote_screen(system_settings->getProperties().find("remote_screen"));
+							if (remote_screen != SymbolTable::Null) {
+								LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+								if (lp) {
+									lp->link(getUserWindow());
+								}
+							}
+
 						}
 						startup = sRELOAD;
 					}
@@ -3726,12 +3770,15 @@ void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Even
 void ObjectWindow::loadItems(const std::string group, const std::string match) {
 	using namespace nanogui;
 	clearSelections();
+	std::cout << "loading object window items for group " << group << "\n";
 	Widget *container = layers[group];
 	if (!container || container->childCount() == 0) {
 		std::cout << "object window has no tab '" << group << "', nothing to do";
 		return;
 	}
 	Widget *scroller = container->childAt(0);
+	VScrollPanel *vs = dynamic_cast<VScrollPanel*>(scroller);
+	assert(vs);
 	if (!scroller || scroller->childCount() == 0) {
 		std::cout << "object tab has no content, nothing to do";
 		return;
@@ -3746,6 +3793,10 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
 	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
 
 	int n = tokens.size();
+	std::cout << "filtering " << gui->getLinkableProperties().size() << " on " << n << " tokens: ";
+	for (auto s : tokens) std::cout << s << " ";
+	std::cout << "\n";
+
 	bool within_group = group.length() > 0;
 	for (auto item : gui->getLinkableProperties() ) {
 		if (within_group && item.second->group() != group) {
@@ -3754,7 +3805,7 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
 		}
 		for (auto nam : tokens) {
 			if (n>1 && nam.length() == 0) continue; //skip empty elements in a list
-			if (item.first.find(nam) != std::string::npos) {
+			if (nam.length() == 0 || item.first.find(nam) != std::string::npos) {
 				Widget *cell = new Widget(palette_content);
 				LinkableProperty *lp = item.second;
 				cell->setFixedSize(Vector2i(window->width()-32,35));
@@ -3763,6 +3814,7 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
 				b->setFixedSize(Vector2i(window->width()-40, 30));
 				break; // only add once
 			}
+			else std::cout << "skipped: " << item.first << "\n";
 		}
 	}
 	if (palette_content->childCount() == 0) {
@@ -3770,6 +3822,13 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
 		cell->setFixedSize(Vector2i(window->width()-32,35));
 		new Label(cell, "No match");
 	}
+	GridLayout *palette_layout = new GridLayout(Orientation::Horizontal,1,Alignment::Fill);
+	palette_layout->setSpacing(1);
+	palette_layout->setMargin(4);
+	palette_layout->setColAlignment(nanogui::Alignment::Fill);
+	palette_layout->setRowAlignment(nanogui::Alignment::Fill);
+	palette_content->setLayout(palette_layout);
+
 	window->performLayout(gui->nvgContext());
 }
 
@@ -4053,18 +4112,22 @@ int main(int argc, const char ** argv ) {
 		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
 		structures[item->getName()] = item;
 	}
+	Structure *es = EditorSettings::find("EditorSettings");
+	if (!es)
+		es = EditorSettings::create();
 
 	gettimeofday(&start, 0);
 
 	try {
 		nanogui::init();
 
-		{
-			nanogui::ref<EditorGUI> app = new EditorGUI();
-			nanogui::Theme *myTheme = new nanogui::Theme(app->nvgContext());
-			setupTheme(myTheme);
-			app->setTheme(myTheme);
+		GLFWmonitor* primary = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(primary);
+		int widthMM, heightMM;
+		glfwGetMonitorPhysicalSize(primary, &widthMM, &heightMM);
+		const double dpi = mode->width / (widthMM / 25.4);
 
+		{
 			if (vm.count("source-file")) {
 				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
 				std::copy(files.begin(), files.end(), back_inserter(source_files));
@@ -4079,6 +4142,26 @@ int main(int argc, const char ** argv ) {
 			if (!system_settings) {
 				system_settings = system_class->instantiate(nullptr, "System");
 			}
+
+			const Value full_screen = system_settings->getProperties().find("full_screen");
+			long width = mode->width;
+			long height = mode->height;
+			std::cout << "intial videomode: " << width << "x" << height << "\n";
+			{
+				const Value width_v = system_settings->getProperties().find("w");
+				const Value height_v = system_settings->getProperties().find("h");
+				width_v.asInteger(width);
+				height_v.asInteger(height);
+			}
+			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
+
+			nanogui::ref<EditorGUI> app = (full_screen != SymbolTable::Null)
+					? new EditorGUI(width, height, full_screen.iValue != 0)
+					: new EditorGUI(width, height);
+			nanogui::Theme *myTheme = new nanogui::Theme(app->nvgContext());
+			setupTheme(myTheme);
+			app->setTheme(myTheme);
+
 			app->createWindows();
 
 			Value remote_screen(system_settings->getProperties().find("remote_screen"));

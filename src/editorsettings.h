@@ -19,7 +19,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget);
 
 class EditorSettings : public Structure {
 public:
-	EditorSettings(const std::string sname, const std::string skind) : Structure(nullptr, sname, skind) {}
+	EditorSettings(const std::string sname, const std::string skind);
 	static void applySettings(const std::string object_name, nanogui::Widget *widget);
 	static Structure *find(const std::string object_name);
 	static Structure *create();

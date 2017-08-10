@@ -74,6 +74,13 @@ Structure::Structure(Structure *parent, const Structure &other)
 }
 */
 
+
+bool Structure::isA(const std::string &seek) {
+	if (kind == seek) return true;
+	return class_definition && (class_definition->getName() == seek || class_definition->getBase() == seek);
+}
+
+
 int Structure::getIntProperty(const std::string name, int default_value) {
 	Value &val = properties.find(name.c_str());
 	long res;

@@ -76,6 +76,7 @@ int LinkableProperty::address_group() const {
 }
 
 void LinkableProperty::link(LinkableObject *lo) {
+    links.remove(lo);
     links.push_back(lo);
     lo->update(value());
 }

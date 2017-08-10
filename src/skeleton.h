@@ -90,7 +90,7 @@ class ClockworkClient : public nanogui::Screen {
 public:
 	enum CommandState { WaitingCommand, WaitingResponse };
 
-	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption);
+	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 
