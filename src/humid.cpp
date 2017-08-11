@@ -726,7 +726,7 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setSize(mDefaultSize);
 	window->setVisible(false);
 	window->setTitle("");
-	window->setPosition(nanogui::Vector2i(200,48));
+	window->setPosition(nanogui::Vector2i(0,0));
 	push(window);
 }
 
