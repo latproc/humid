@@ -524,12 +524,12 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 	return res;
 }
 
-void ClockworkClient::queueMessage(const std::string &conn, const std::string s, std::function< void(const std::string) >f) {
+void ClockworkClient::queueMessage(const std::string conn, const std::string s, std::function< void(const std::string) >f) {
 	std::cout << conn << "queued message " << s << "\n";
 	messages.push_back(std::make_pair(s, f) );
 }
 
-void ClockworkClient::queueMessage(const std::string &conn, const char *s, std::function< void(const std::string) >f) {
+void ClockworkClient::queueMessage(const std::string conn, const char *s, std::function< void(const std::string) >f) {
 	std::cout << conn << "queued message " << s << "\n";
 	messages.push_back(std::make_pair(s, f) );
 }

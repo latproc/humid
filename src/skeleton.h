@@ -109,9 +109,9 @@ public:
 
 	std::string escapeNonprintables(const char *buf);
 
-	void queueMessage(const std::string &, const std::string s, std::function< void(std::string) >f);
+	void queueMessage(const std::string, const std::string s, std::function< void(std::string) >f);
 
-	void queueMessage(const std::string &, const char *s, std::function< void(std::string) >f);
+	void queueMessage(const std::string, const char *s, std::function< void(std::string) >f);
 
 	char *sendIOD(int group, int addr, int new_value);
 	char *sendIODMessage(const std::string &s);

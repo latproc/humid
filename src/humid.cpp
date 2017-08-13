@@ -2850,7 +2850,11 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 				LinkableProperty *lp = findLinkableProperty(name.asString());
 				if (!lp) {
 					std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
-					lp = new LinkableProperty(group_name, 0, name.asString(), "'01000'", "", len.iValue);
+					char buf[10];
+					snprintf(buf, 10, "'%d%4d", (int)group.iValue, (int)addr.iValue);
+					std::string addr_str(buf);
+
+					lp = new LinkableProperty(group_name, group.iValue, name.asString(), addr_str, "", len.iValue);
 					linkables[name.asString()] = lp;
 					std::cout << "added new linkable property: " << group_name << ":" << name << "\n";
 				}
@@ -3551,8 +3555,8 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,btn,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-				if (remote) remote->unlink(this);
-				remote = lp;
+				if (this->remote) this->remote->unlink(this);
+				this->setRemote(lp);
 				if (lp &&getDefinition()->getKind() == "INDICATOR")
 					lp->link(new LinkableIndicator(this));
 				//properties->refresh();

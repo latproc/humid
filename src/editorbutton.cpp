@@ -29,12 +29,19 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
       if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
         getRemote()->link(new LinkableIndicator(this));
     }
-    setCallback([&,this, gui, conn] {
+    std::string cmd = command();
+    setCallback([&,this, gui, conn, cmd] {
       if (flags() & nanogui::Button::NormalButton) {
-        std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-        gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
-        std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-        gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+        if (cmd.length()) {
+        gui->queueMessage(conn, cmd,
+          [](std::string s){std::cout << " Response: " << s << "\n"; });
+        }
+        if (getRemote()) {
+          std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
+          gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+          std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
+          gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+        }
       }
     });
     setChangeCallback([&,this,gui, conn] (bool state) {
@@ -49,10 +56,6 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
             gui->queueMessage(conn,
               gui->getIODSyncCommand(conn, 0, address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
         }
-      }
-      else if (!state && command().length()) {
-        gui->queueMessage(conn, command(),
-          [this](std::string s){std::cout << command() << " Response: " << s << "\n"; });
       }
     });
   }
