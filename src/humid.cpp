@@ -725,13 +725,14 @@ void UserWindow::update(const Value &value) {
 }
 
 void UserWindow::select(Selectable * w) {
+	if (!dynamic_cast<nanogui::Widget*>(w)) return;
 	Palette::select(w);
 	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
 	nanogui::Widget *widget = dynamic_cast<nanogui::Widget *>(w);
 	if (widget && wnd) wnd->setCurrentItem(window->childIndex(widget));
 }
 void UserWindow::deselect(Selectable *w) {
-	assert(dynamic_cast<nanogui::Widget*>(w));
+	if (!dynamic_cast<nanogui::Widget*>(w)) return;
 	Palette::deselect(w);
 	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
 	if (wnd) wnd->setCurrentItem(-1);
