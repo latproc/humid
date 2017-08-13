@@ -248,7 +248,7 @@ nanogui::Vector2i WindowStagger::pos() {
 }
 
 ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
-: nanogui::Screen(size, caption, resizeable, fullscreen),
+: startup(sINIT), nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
 	iosh_cmd(0), cmd_interface(0), command_state(WaitingCommand), next_device_num(0), next_state_num(0),
 	first_message_time(0), scale(1000),
@@ -524,11 +524,13 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 	return res;
 }
 
-void ClockworkClient::queueMessage(const std::string s, std::function< void(const std::string) >f) {
+void ClockworkClient::queueMessage(const std::string &conn, const std::string s, std::function< void(const std::string) >f) {
+	std::cout << conn << "queued message " << s << "\n";
 	messages.push_back(std::make_pair(s, f) );
 }
 
-void ClockworkClient::queueMessage(const char *s, std::function< void(const std::string) >f) {
+void ClockworkClient::queueMessage(const std::string &conn, const char *s, std::function< void(const std::string) >f) {
+	std::cout << conn << "queued message " << s << "\n";
 	messages.push_back(std::make_pair(s, f) );
 }
 
@@ -593,10 +595,10 @@ bool setup_signals() {
 	return true;
 }
 
-std::string ClockworkClient::getIODSyncCommand(int group, int addr, bool which) {
+std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, bool which) {
 	int new_value = (which) ? 1 : 0;
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	sendIODMessage(msg);
+	//sendIODMessage(msg);
 
 	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
 
@@ -607,9 +609,9 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, bool which) 
 	return s;
 }
 
-std::string ClockworkClient::getIODSyncCommand(int group, int addr, int new_value) {
+std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, int new_value) {
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	sendIODMessage(msg);
+	//sendIODMessage(msg);
 
 	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
 
@@ -620,9 +622,9 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, int new_valu
 	return s;
 }
 
-std::string ClockworkClient::getIODSyncCommand(int group, int addr, unsigned int new_value) {
+std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, unsigned int new_value) {
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	sendIODMessage(msg);
+	//sendIODMessage(msg);
 
 	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
 
@@ -633,9 +635,9 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, unsigned int
 	return s;
 }
 
-std::string ClockworkClient::getIODSyncCommand(int group, int addr, float new_value) {
+std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, float new_value) {
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	sendIODMessage(msg);
+	//sendIODMessage(msg);
 
 	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
 
@@ -645,9 +647,9 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, float new_va
 
 	return s;
 }
-std::string ClockworkClient::getIODSyncCommand(int group, int addr, const char *new_value) {
+std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, const char *new_value) {
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	sendIODMessage(msg);
+	//sendIODMessage(msg);
 
 	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
 
@@ -658,7 +660,8 @@ std::string ClockworkClient::getIODSyncCommand(int group, int addr, const char *
 	return s;
 }
 char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
-	std::string s(getIODSyncCommand(group, addr, new_value));
+	std::string conn;
+	std::string s(getIODSyncCommand(conn, group, addr, new_value));
 	std::cout << "sendIOD sending " << s << "\n";
 
 	if (g_iodcmd)

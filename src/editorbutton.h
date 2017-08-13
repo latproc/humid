@@ -18,6 +18,7 @@
 #include "editorwidget.h"
 
 using nanogui::Widget;
+class EditorGUI;
 
 class EditorButton : public nanogui::Button, public EditorWidget {
 
@@ -40,10 +41,23 @@ public:
 	void setCommand(std::string cmd);
 	const std::string &command() const;
 
+	void setupButtonCallbacks(LinkableProperty *lp, EditorGUI *gui);
+
+	void setOnColor(nanogui::Color c) { bg_on_color = c; }
+	nanogui::Color &onColor() { return bg_on_color; }
+	void setOnTextColor(nanogui::Color c) { on_text_colour = c; }
+	nanogui::Color &onTextColor() { return on_text_colour; }
+
+	void setOnCaption(const std::string c) { on_caption = c; }
+	const std::string &onCaption() { return on_caption; }
+
 	virtual void draw(NVGcontext *ctx) override;
 protected:
 	bool is_toggle;
 	std::string command_str;
+	nanogui::Color bg_on_color;
+	nanogui::Color on_text_colour;
+	std::string on_caption;
 };
 
 #endif

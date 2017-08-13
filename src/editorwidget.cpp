@@ -213,7 +213,9 @@ void EditorWidget::justSelected() {
 
 void EditorWidget::justDeselected() {
   EDITOR->gui()->getUserWindow()->deselect(this);
-  updateStructure(); // save any changes to its structure
+  if (dynamic_cast<nanogui::Widget*>(this)) {
+    updateStructure(); // save any changes to its structure
+  }
   ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
   nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(EDITOR->gui()->getUserWindow()->getWindow());
   if (w && tw && tw->getWindow()->visible() ) {
@@ -232,7 +234,7 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Width");
   names.push_back("Height");
   names.push_back("Name"); // not common
-  names.push_back("FontSize");
+  names.push_back("Font Size");
   names.push_back("Value Scale");
   names.push_back("Tab Position");
   names.push_back("Remote");
@@ -264,7 +266,7 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (w) w->setHeight(std::stoi(value,&sz));
     return;
   }
-  if (prop == "FontSize") {
+  if (prop == "Font Size") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     if (w) w->setFontSize(std::stoi(value,&sz));
     return;
@@ -288,6 +290,11 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
 }
 
 Value EditorWidget::getPropertyValue(const std::string &prop) {
+  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+  if (!w) {
+    std::cout << "Error: " << name << " does not seem to be a widget\n";
+    return SymbolTable::Null;
+  }
   if (prop == "Structure") return base;
   if (prop == "Horizontal Pos") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -304,6 +311,10 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
   if (prop == "Height") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return (w) ? w->height() : 0;
+  }
+  if (prop == "Font Size") {
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+    return (w) ? w->fontSize() : 0;
   }
   if (prop == "Value Scale") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
@@ -350,7 +361,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Vertical Pos"] = "pos_y";
   property_map["Width"] = "width";
   property_map["Height"] = "height";
-  property_map["FontSize"] = "font_size";
+  property_map["Font Size"] = "font_size";
   property_map["Value Scale"] = "value_scale";
   property_map["Tab Position"] = "tab_position";
   property_map["Remote"] = "remote";
@@ -358,6 +369,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
 
 // generate or update structure properties from the widget
 void EditorWidget::updateStructure() {
+  assert(dynamic_cast<nanogui::Widget*>(this));
 
   StructureClass *sc = findClass(base);
   Structure *s = definition;
@@ -368,7 +380,7 @@ void EditorWidget::updateStructure() {
       s = createScreenStructure();
     else
       s = sc->instantiate(nullptr);
-    definition = s;
+    if (s) definition = s;
   }
   if (!s) return;
   s->setStructureDefinition(sc);

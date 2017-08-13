@@ -42,7 +42,6 @@ class ViewsWindow;
 
 class EditorGUI : public ClockworkClient {
 public:
-	enum STARTUP_STATES { sINIT, sSENT, sDONE, sRELOAD };
 	enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };
 	EditorGUI(int width = 1024, int height = 768, bool full_screen = false);
 
@@ -102,7 +101,6 @@ public:
 		return linkables;
 	}
 	void processModbusInitialisation(const std::string group_name, cJSON *obj);
-	void refreshData() { startup = sINIT; }
 
 private:
 	std::recursive_mutex linkables_mutex;
@@ -111,7 +109,6 @@ private:
 	std::list<PanelScreen*>user_screens;
 	nanogui::Vector2i old_size;
 	nanogui::Theme *theme;
-	STARTUP_STATES startup;
 	GuiState state;
 	Editor *editor;
 	Toolbar *w_toolbar;

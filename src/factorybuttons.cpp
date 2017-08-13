@@ -48,12 +48,12 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
 		b->setChangeCallback([b, this] (bool state) {
 			if (b->getDefinition()->getKind() == "BUTTON") {
-				if (b->getRemote()) {
-					gui->queueMessage(
-								gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+				if (b->flags() & nanogui::Button::NormalButton && b->getRemote()) {
+					gui->queueMessage(b->getRemote()->group(), 
+								gui->getIODSyncCommand(b->getRemote()->group(), 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
 					}
-				else if (b->command().length()) {
-					gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+				else if (!state && b->command().length()) {
+					gui->queueMessage(b->getRemote()->group(), b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
 				}
 			}
 		});
@@ -66,15 +66,18 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		s->setName(b->getName());
 		b->setBackgroundColor(Color(200, 200, 30, 200)); // TBD use structure value
 		b->setChangeCallback([b, this] (bool state) {
+#if 0
 			if (b->getDefinition()->getKind() == "BUTTON") {
+				const std::string &conn(b->getRemote()->group());
 				if (b->getRemote()) {
-					gui->queueMessage(
-								gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn, 
+								gui->getIODSyncCommand(conn, 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
 					}
 				else if (b->command().length()) {
-					gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
+					gui->queueMessage(conn, b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
 				}
 			}
+#endif
 		});
 
 		result = b;
@@ -93,19 +96,20 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		s->setName(eb->getName());
 		eb->setEditable(true);
 		eb->setCallback( [eb, gui](const std::string &value)->bool{
+			const std::string &conn(eb->getRemote()->group());
 			if (!eb->getRemote()) return true;
 			char *rest = 0;
 			{
 				long val = strtol(value.c_str(),&rest,10);
 				if (*rest == 0) {
-					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, eb->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
 					return true;
 				}
 			}
 			{
 				double val = strtod(value.c_str(),&rest);
 				if (*rest == 0)  {
-					gui->queueMessage( gui->getIODSyncCommand(4, eb->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, eb->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
 					return true;
 				}
 			}
@@ -188,12 +192,21 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				b->setDefinition(s);
 				//if (lp) lp->link(new LinkableIndicator(b));
 				b->setChangeCallback([b, this] (bool state) {
-					if (b->getDefinition()->getKind() == "BUTTON") {
-						if (state) {
-							gui->queueMessage(
-											gui->getIODSyncCommand(0, b->address(), 1), [](std::string s){std::cout << s << "\n"; });
-							gui->queueMessage(
-											gui->getIODSyncCommand(0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+					if (b->getRemote()) {
+						const std::string &conn(b->getRemote()->group());
+						if (b->flags() & nanogui::Button::NormalButton && b->getDefinition()->getKind() == "BUTTON") {
+							if (state) {
+								gui->queueMessage(conn,
+												gui->getIODSyncCommand(conn, 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+								//gui->queueMessage(conn,
+								//				gui->getIODSyncCommand(conn, 0, b->address(), 0), [](std::string s){std::cout << s << "\n"; });
+							}
+						}
+						else if (b->flags() & nanogui::Button::ToggleButton && b->getDefinition()->getKind() == "BUTTON") {
+							if (state) {
+							gui->queueMessage(conn,
+											gui->getIODSyncCommand(conn, 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+							}
 						}
 					}
 
@@ -211,13 +224,14 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 				if (lp) lp->link(new LinkableIndicator(b));
 				b->setChangeCallback([this,b](bool state) {
-					if (b->getDefinition()->getKind() == "BUTTON") {
-						gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+					const std::string &conn(b->getRemote()->group());
+					//if (b->getDefinition()->getKind() == "BUTTON") {
+						//gui->queueMessage(conn, gui->getIODSyncCommand(conn, 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
 						if (state)
 							b->setBackgroundColor(Color(255, 80, 0, 255));
 						else
 							b->setBackgroundColor(b->theme()->mButtonGradientBotUnfocused   );
-					}
+					//}
 				});
 				result = b;
 			}
@@ -239,13 +253,16 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 			if (lp) lp->link(new LinkableIndicator(b));
 			b->setChangeCallback([this,b](bool state) {
-				if (b->getDefinition()->getKind() == "BUTTON") {
-					gui->queueMessage(gui->getIODSyncCommand(0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+				//if (b->getDefinition()->getKind() == "BUTTON") {
+					//if (b->getRemote()) {
+					//	const std::string &conn(b->getRemote()->group());
+					//	gui->queueMessage(conn, gui->getIODSyncCommand(conn, 0, b->address(), (state)?1:0), [](std::string s){std::cout << s << "\n"; });
+					//}
 					if (state)
 						b->setBackgroundColor(Color(255, 80, 0, 255));
 					else
 						b->setBackgroundColor(b->theme()->mButtonGradientBotUnfocused   );
-				}
+				//}
 			});
 			result = b;
 		}
@@ -294,22 +311,23 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			EditorGUI *gui = EDITOR->gui();
 			textBox->setCallback( [textBox, gui, lp](const std::string &value)->bool{
 				char *rest = 0;
+				const std::string &conn(textBox->getRemote()->group());
 				{
 					long val = strtol(value.c_str(),&rest,10);
 					if (*rest == 0) {
-						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+						gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
 						return true;
 					}
 				}
 				{
 					double val = strtod(value.c_str(),&rest);
 					if (*rest == 0)  {
-						gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+						gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
 						return true;
 					}
 				}
 				if (lp->dataType() == CircularBuffer::STR)
-					gui->queueMessage( gui->getIODSyncCommand(4, textBox->getRemote()->address(), value.c_str()), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn,  gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), value.c_str()), [](std::string s){std::cout << s << "\n"; });
 				return false;
 			});
 			result = textBox;

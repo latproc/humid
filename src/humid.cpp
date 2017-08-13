@@ -230,20 +230,6 @@ public:
 
 	virtual bool focusEvent(bool focused) override {
 		using namespace nanogui;
-		/*
-		if (mContent && !focused) {
-			for (auto widget : mContent->children()) {
-				ColorPicker *b = dynamic_cast<ColorPicker *>(widget);
-				if (b)
-					int x = 1;
-				if (b && (b->flags() & Button::PopupButton) && b->pushed()) {
-					b->setPushed(false);
-					if (b->changeCallback())
-						b->changeCallback()(false);
-				}
-			}
-		}
-		*/
 		return nanogui::Window::focusEvent(focused);
 	}
 private:
@@ -745,6 +731,7 @@ void UserWindow::select(Selectable * w) {
 	if (widget && wnd) wnd->setCurrentItem(window->childIndex(widget));
 }
 void UserWindow::deselect(Selectable *w) {
+	assert(dynamic_cast<nanogui::Widget*>(w));
 	Palette::deselect(w);
 	UserWindowWin *wnd = dynamic_cast<UserWindowWin*>(window);
 	if (wnd) wnd->setCurrentItem(-1);
@@ -1000,7 +987,6 @@ void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
 	}
 }
 
-
 void UserWindow::loadStructure( Structure *s) {
 	StructureClass *sc = findClass(s->getKind());
 	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
@@ -1102,11 +1088,15 @@ void UserWindow::loadStructure( Structure *s) {
 				textBox->setChanged(false);
 				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
 					if (!textBox->getRemote()) return true;
+					const std::string &conn = textBox->getRemote()->group();
 					char *rest = 0;
 					{
 						long val = strtol(value.c_str(),&rest,10);
 						if (*rest == 0) {
-							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (int)val),
+							gui->queueMessage(conn,
+									gui->getIODSyncCommand(conn,
+									textBox->getRemote()->address_group(),
+									textBox->getRemote()->address(), (int)val),
 								[](std::string s){std::cout << s << "\n"; });
 							return true;
 						}
@@ -1114,7 +1104,9 @@ void UserWindow::loadStructure( Structure *s) {
 					{
 						double val = strtod(value.c_str(),&rest);
 						if (*rest == 0)  {
-							gui->queueMessage( gui->getIODSyncCommand(textBox->getRemote()->address_group(), textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+							gui->queueMessage(conn,
+								gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
+									textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
 							return true;
 						}
 					}
@@ -1142,65 +1134,29 @@ void UserWindow::loadStructure( Structure *s) {
 				EditorButton *b = new EditorButton(s, window, element->getName(), lp,
 												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
 				b->setDefinition(element);
-				{
-				const Value &bg_colour(element->getProperties().find("bg_color"));
-				if (bg_colour != SymbolTable::Null) {
-					std::vector<std::string> tokens;
-					std::string colour_str = bg_colour.asString();
-					boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
-					if (tokens.size() == 4) {
-						std::vector<float>fields(4);
-						for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
-						b->setBackgroundColor(nanogui::Color(fields[0], fields[1], fields[2], fields[3]));
-					}
-				}
-				}
-				{
-					const Value &bg_colour(element->getProperties().find("text_color"));
-					if (bg_colour != SymbolTable::Null) {
-						std::vector<std::string> tokens;
-						std::string colour_str = bg_colour.asString();
-						boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
-						if (tokens.size() == 4) {
-							std::vector<float>fields(4);
-							for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
-							b->setTextColor(nanogui::Color(fields[0], fields[1], fields[2], fields[3]));
-						}
-					}
-				}
+				b->setBackgroundColor(colourFromProperty(element, "bg_color"));
+				b->setTextColor(colourFromProperty(element, "text_colour"));
+				b->setOnColor(colourFromProperty(element, "bg_on_color"));
+				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
 				fixElementPosition( b, element->getProperties());
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
 				if (tab_pos) b->setTabPosition(tab_pos);
-				b->setCaption(element->getProperties().find("caption").asString());
+				EditorGUI *gui = this->gui;
+
+				{
+					const Value &caption_v = element->getProperties().find("caption");
+					if (caption_v != SymbolTable::Null) b->setCaption(caption_v.asString());
+				}
+				{
+					const Value &caption_v = element->getProperties().find("on_caption");
+					if (caption_v != SymbolTable::Null) b->setOnCaption(caption_v.asString());
+				}
 				{
 					const Value &cmd(element->getProperties().find("command"));
 					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
 				}
-				if (lp)
-					lp->link(new LinkableIndicator(b));
-				if (kind == "BUTTON") {
-					b->setChangeCallback([b, this] (bool state) {
-							if (b->getRemote()) {
-								if (b->flags() & nanogui::Button::NormalButton) {
-									gui->queueMessage(
-											gui->getIODSyncCommand(0, b->address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
-								}
-								else if (b->flags() & nanogui::Button::ToggleButton) {
-									gui->queueMessage(
-											gui->getIODSyncCommand(0, b->address(),(state)?0:1), [](std::string s){std::cout << s << "\n"; });
-
-								}
-							}
-							else if (b->command().length()) {
-								gui->queueMessage(b->command(), [](std::string s){std::cout << "Response: " << s << "\n"; });
-							}
-
-					});
-				}
-				else {
-					b->setChangeCallback([b, this] (bool state) {	});
-				}
+				b->setupButtonCallbacks(lp, gui);
 				b->setChanged(false);
 			}
 		}
@@ -1241,24 +1197,6 @@ void UserWindow::load(const std::string &path) {
 	std::list<std::string> files;
 	files.push_back(path);
 	loadProjectFiles(files);
-/*
-	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
-
-	drag_handle->incRef();
-	window->removeChild(drag_handle);
-	PropertyMonitor *pm = drag_handle->propertyMonitor();
-	drag_handle->setPropertyMonitor(0);
-
-	for (auto *s : hm_structures) {
-		loadStructure(s);
-	}
-	window->addChild(drag_handle);
-
-	drag_handle->setPropertyMonitor(pm);
-	drag_handle->decRef();
-
-	window->performLayout( gui->nvgContext() );
-*/
 }
 
 void UserWindow::save(const std::string &path) {
@@ -2956,7 +2894,7 @@ void EditorGUI::update(Structure *connection) {
 		if (/*linkables.size() && */ startup == sINIT && connection) {
 			std::cout << "Sending data initialisation request\n";
 			startup = sSENT;
-			queueMessage("MODBUS REFRESH",
+			queueMessage( connection->getName(), "MODBUS REFRESH",
 				[this, connection](std::string s) {
 					std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
@@ -3102,7 +3040,7 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 													}
 												},
 											  [&]()->std::string{ return getName(); });
-		properties->addVariable<int> ("FontSize",
+		properties->addVariable<int> ("Font Size",
 									  [&,w](int value) mutable{ w->setFontSize(value); },
 									  [&,w]()->int{ return w->fontSize(); });
 		properties->addVariable<int> ("Tab Position",
@@ -3543,17 +3481,29 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 	if (btn) {
 		EditorGUI *gui = EDITOR->gui();
 		properties->addVariable<nanogui::Color> (
-			"Background colour",
-			 [&,btn](const nanogui::Color &value) mutable{ btn->setBackgroundColor(value); },
-			 [&,btn]()->const nanogui::Color &{ return btn->backgroundColor(); });
+			"Off colour",
+			 [&,btn](const nanogui::Color &value) mutable{ setBackgroundColor(value); },
+			 [&,btn]()->const nanogui::Color &{ return backgroundColor(); });
 		properties->addVariable<nanogui::Color> (
-			"Text colour",
-			[&,btn](const nanogui::Color &value) mutable{ btn->setTextColor(value); },
-			[&,btn]()->const nanogui::Color &{ return btn->textColor(); } );
+	 		"On colour",
+	 			 [&,btn](const nanogui::Color &value) mutable{ setOnColor(value); },
+	 			 [&,btn]()->const nanogui::Color &{ return onColor(); });
+	 	properties->addVariable<nanogui::Color> (
+	 		"Off text colour",
+	 			[&,btn](const nanogui::Color &value) mutable{ setTextColor(value); },
+	 			[&,btn]()->const nanogui::Color &{ return textColor(); } );
+		properties->addVariable<nanogui::Color> (
+			"On text colour",
+			[&,btn](const nanogui::Color &value) mutable{ setOnTextColor(value); },
+			[&,btn]()->const nanogui::Color &{ return onTextColor(); } );
 		properties->addVariable<std::string> (
-			"Caption",
+			"Off caption",
 			[&](std::string value) mutable{ setCaption(value); },
 			[&]()->std::string{ return caption(); });
+			properties->addVariable<std::string> (
+			"On caption",
+				[&](std::string value) mutable{ setOnCaption(value); },
+				[&]()->std::string{ return onCaption(); });
 		properties->addVariable<int> (
 			"Icon",
 			[&](int value) mutable{ setIcon(value); },

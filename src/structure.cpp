@@ -81,13 +81,21 @@ bool Structure::isA(const std::string &seek) {
 }
 
 
-int Structure::getIntProperty(const std::string name, int default_value) {
-	Value &val = properties.find(name.c_str());
+long Structure::getIntProperty(const std::string name, int default_value) {
+	const Value &val = properties.find(name.c_str());
 	long res;
 	if (val == SymbolTable::Null || !val.asInteger(res))
 		return default_value;
 	else
 		return res;
+}
+
+std::string Structure::getStringProperty(const std::string name, const char *default_value) {
+	const Value &val = properties.find(name.c_str());
+	if (val == SymbolTable::Null)
+		return default_value;
+	else
+		return val.asString();
 }
 
 bool writePropertyList(std::ostream &out, const SymbolTable &properties) {

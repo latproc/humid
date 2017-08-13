@@ -93,7 +93,9 @@ public:
 	SymbolTable &getInternalProperties() { return internal_properties; }
 	void setProperties(const SymbolTable &props) { properties.add(props); }
 	SymbolTable &getProperties() { return properties; }
-	int getIntProperty(const std::string name, int default_value = 0);
+
+	long getIntProperty(const std::string name, int default_value = 0);
+	std::string getStringProperty(const std::string name, const char *default_value = "");
 
 	const std::string &getName() { return name; }
 	void setName( const std::string new_name) { name = new_name; }

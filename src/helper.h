@@ -11,6 +11,7 @@
 #include <ostream>
 #include <string>
 #include <boost/filesystem.hpp>
+#include <nanogui/common.h>
 
 class StructureClass;
 class Structure;
@@ -35,5 +36,7 @@ int createScreens();
 
 void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files);
 void backup_humid_files(boost::filesystem::path base);
+nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
+nanogui::Color colourFromProperty(Structure *element, const char *prop);
 
 #endif

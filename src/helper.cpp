@@ -6,6 +6,8 @@
 //	3-clause BSD License in LICENSE.txt.
 
 #include <iostream>
+#include <boost/algorithm/string.hpp>
+
 #include "helper.h"
 #include "namedobject.h"
 #include "structure.h"
@@ -246,4 +248,23 @@ void backup_humid_files(boost::filesystem::path base) {
 			std::cout << " to " << backup << "\n";
 			boost::filesystem::rename(item,backup);
 		}
+}
+
+nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
+	return colourFromProperty(element, prop.c_str());
+}
+
+nanogui::Color colourFromProperty(Structure *element, const char *prop) {
+	const Value &bg_colour(element->getProperties().find(prop));
+	if (bg_colour != SymbolTable::Null) {
+		std::vector<std::string> tokens;
+		std::string colour_str = bg_colour.asString();
+		boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
+		if (tokens.size() == 4) {
+			std::vector<float>fields(4);
+			for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
+			return nanogui::Color(fields[0], fields[1], fields[2], fields[3]);
+		}
+	}
+	return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
 }

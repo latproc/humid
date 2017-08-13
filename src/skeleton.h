@@ -89,8 +89,12 @@ class ClockworkClient : public nanogui::Screen {
 
 public:
 	enum CommandState { WaitingCommand, WaitingResponse };
+	enum STARTUP_STATES { sSTARTUP, sINIT, sSENT, sDONE, sRELOAD };
 
 	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
+
+	void refreshData() { startup = sINIT; }
+	STARTUP_STATES getStartupState() { return startup; }
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 
@@ -105,23 +109,24 @@ public:
 
 	std::string escapeNonprintables(const char *buf);
 
-	void queueMessage(const std::string s, std::function< void(std::string) >f);
+	void queueMessage(const std::string &, const std::string s, std::function< void(std::string) >f);
 
-	void queueMessage(const char *s, std::function< void(std::string) >f);
+	void queueMessage(const std::string &, const char *s, std::function< void(std::string) >f);
 
 	char *sendIOD(int group, int addr, int new_value);
 	char *sendIODMessage(const std::string &s);
-	std::string getIODSyncCommand(int group, int addr, bool which);
-	std::string getIODSyncCommand(int group, int addr, int new_value);
-	std::string getIODSyncCommand(int group, int addr, unsigned int new_value);
-	std::string getIODSyncCommand(int group, int addr, float new_value);
-	std::string getIODSyncCommand(int group, int addr, const char *new_value);
+	std::string getIODSyncCommand(const std::string &, int group, int addr, bool which);
+	std::string getIODSyncCommand(const std::string &, int group, int addr, int new_value);
+	std::string getIODSyncCommand(const std::string &, int group, int addr, unsigned int new_value);
+	std::string getIODSyncCommand(const std::string &, int group, int addr, float new_value);
+	std::string getIODSyncCommand(const std::string &, int group, int addr, const char *new_value);
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) {};
 	virtual void update(Structure *connection);
 
 protected:
+	STARTUP_STATES startup;
 	nanogui::Window *window;
 	SubscriptionManager *subscription_manager;
 	SetupDisconnectMonitor *disconnect_responder;
