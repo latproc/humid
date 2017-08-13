@@ -71,11 +71,21 @@ LinkableIndicator::LinkableIndicator(EditorObject *w) : LinkableObject(w) { }
 void LinkableIndicator::update(const Value &value) {
     EditorButton *tb = dynamic_cast<EditorButton*>(widget);
     if (tb) {
-        if ( value.kind == Value::t_bool ) {
-            tb->setPushed(value.bValue);
+        if (tb->flags() & nanogui::Button::SetOffButton) {
+            if ( value.kind == Value::t_bool ) {
+                tb->setPushed(!value.bValue);
+            }
+            else if (value.kind == Value::t_integer) {
+                tb->setPushed(value.iValue == 0);
+            }
         }
-        else if (value.kind == Value::t_integer) {
-            tb->setPushed(value.iValue == 0);
+        else {  
+            if ( value.kind == Value::t_bool ) {
+                tb->setPushed(value.bValue);
+            }
+            else if (value.kind == Value::t_integer) {
+                tb->setPushed(value.iValue != 0);
+            }
         }
     }
 }

@@ -20,22 +20,34 @@ std::string stripEscapes(const std::string &s);
 
 void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
   if (!getDefinition()) return;
-  const std::string conn;
+  std::string conn("");
   if (getDefinition()->getKind() == "BUTTON") {
     EditorGUI *gui = egui;
     if (lp) lp->unlink(this);
-    setCallback([&,this, gui] {
-      std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-      gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
-      std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-      gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+    if (getRemote()) {
+      conn = getRemote()->group();
+      if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
+        getRemote()->link(new LinkableIndicator(this));
+    }
+    setCallback([&,this, gui, conn] {
+      if (flags() & nanogui::Button::NormalButton) {
+        std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
+        gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+        std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
+        gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+      }
     });
-    setChangeCallback([&,this,gui] (bool state) {
+    setChangeCallback([&,this,gui, conn] (bool state) {
       const std::string &conn = getRemote()->group();
       if (getRemote()) {
         if ( !(flags() & nanogui::Button::NormalButton) )  {
-          gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, 0, address(),(state)?0:1), [](std::string s){std::cout << s << "\n"; });
+          if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
+            gui->queueMessage(conn,
+              gui->getIODSyncCommand(conn, 0, address(), state), [](std::string s){std::cout << s << "\n"; });
+          }
+          else
+            gui->queueMessage(conn,
+              gui->getIODSyncCommand(conn, 0, address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
         }
       }
       else if (!state && command().length()) {
@@ -200,17 +212,17 @@ void EditorButton::draw(NVGcontext *ctx) {
         gradTop.a = gradBot.a = 0.0f;
       }  
       else {
-        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.6f));
+        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
         nvgFill(ctx);
         double v = 1 - mBackgroundColor.w();
-        gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
+        gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
       }  
     }
     else if (mBackgroundColor.w() != 0) {
       nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
       nvgFill(ctx);
       double v = 1 - mBackgroundColor.w();
-      gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
+      gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
     }
 
     NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
@@ -249,8 +261,8 @@ void EditorButton::draw(NVGcontext *ctx) {
     Vector2f center = mPos.cast<float>() + mSize.cast<float>() * 0.5f;
     Vector2f textPos(center.x() - tw * 0.5f, center.y() - 1);
 
-    if (!mEnabled)
-        textColor = mTheme->mDisabledTextColor;
+    //if (!mEnabled)
+    //    textColor = mTheme->mDisabledTextColor;
 
     if (false && mIcon) {
         auto icon = utf8(mIcon);

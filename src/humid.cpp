@@ -1133,11 +1133,13 @@ void UserWindow::loadStructure( Structure *s) {
 				const Value &caption_v(element->getProperties().find("caption"));
 				EditorButton *b = new EditorButton(s, window, element->getName(), lp,
 												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
+				if (kind == "INDICATOR") b->setEnabled(false); else b->setEnabled(true);
 				b->setDefinition(element);
 				b->setBackgroundColor(colourFromProperty(element, "bg_color"));
 				b->setTextColor(colourFromProperty(element, "text_colour"));
 				b->setOnColor(colourFromProperty(element, "bg_on_color"));
 				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
+				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 				fixElementPosition( b, element->getProperties());
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
@@ -3534,7 +3536,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			});
 		properties->addVariable<unsigned int> (
 			"Behaviour",
-			[&](unsigned int value) mutable{ setFlags(value & 0x0f); },
+			[&](unsigned int value) mutable{ setFlags(value & 0xff); },
 			[&]()->unsigned int{ return flags(); });
 		properties->addVariable<std::string> (
 			"Command",
