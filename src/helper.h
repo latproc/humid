@@ -38,5 +38,6 @@ void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem
 void backup_humid_files(boost::filesystem::path base);
 nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
 nanogui::Color colourFromProperty(Structure *element, const char *prop);
+int dataTypeFromModbus(int val);
 
 #endif

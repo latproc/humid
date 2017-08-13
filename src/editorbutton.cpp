@@ -23,11 +23,14 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
   std::string conn("");
   if (getDefinition()->getKind() == "BUTTON") {
     EditorGUI *gui = egui;
-    if (lp) lp->unlink(this);
+    if (lp) {
+      lp->link(new LinkableIndicator(this));
+      setRemote(lp);
+    }
     if (getRemote()) {
       conn = getRemote()->group();
-      if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
-        getRemote()->link(new LinkableIndicator(this));
+      //if (!flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
+      //  getRemote()->link(new LinkableIndicator(this));
     }
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
@@ -50,11 +53,11 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
         if ( !(flags() & nanogui::Button::NormalButton) )  {
           if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, 0, address(), state), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){std::cout << s << "\n"; });
           }
           else
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, 0, address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
         }
       }
     });
@@ -179,7 +182,7 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
     snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", on_text_colour.r(), on_text_colour.g(), on_text_colour.b(), on_text_colour.w());
     return Value(buf, Value::t_string);
   }
-  if (prop == "Command" && command().length()) {
+  if (prop == "Command") {
     return Value(command(), Value::t_string);
   }
   if (prop == "Behaviour") {

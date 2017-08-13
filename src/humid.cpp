@@ -1157,7 +1157,7 @@ void UserWindow::loadStructure( Structure *s) {
 				}
 				{
 					const Value &cmd(element->getProperties().find("command"));
-					if (cmd != SymbolTable::Null) b->setCommand(cmd.asString());
+					if (cmd != SymbolTable::Null && cmd.asString().length()) b->setCommand(cmd.asString());
 				}
 				b->setupButtonCallbacks(lp, gui);
 				b->setChanged(false);
@@ -2833,7 +2833,9 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					std::string valstr = value.asString();
 					//insert((int)group.iValue, (int)addr.iValue-1, valstr.c_str(), valstr.length()+1); // note copying null
 				}
+
 				if (name.kind == Value::t_string || name.kind == Value::t_symbol) {
+
 					size_t n = name.sValue.length();
 					const char *p = name.sValue.c_str();
 					if (n>2 && p[0] == '"' && p[n-1] == '"')
@@ -2846,31 +2848,40 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					}
 				}
 
+				std::string prop_name(name.asString());
+				{
+					size_t p = prop_name.find(".cmd_");
+
+					if (p != std::string::npos)
+						prop_name = prop_name.erase(p+1,4);
+				}
+
+
 				//else
 				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
-				LinkableProperty *lp = findLinkableProperty(name.asString());
+				LinkableProperty *lp = findLinkableProperty(prop_name);
 				if (!lp) {
 					std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
 					char buf[10];
 					snprintf(buf, 10, "'%d%4d", (int)group.iValue, (int)addr.iValue);
 					std::string addr_str(buf);
 
-					lp = new LinkableProperty(group_name, group.iValue, name.asString(), addr_str, "", len.iValue);
-					linkables[name.asString()] = lp;
-					std::cout << "added new linkable property: " << group_name << ":" << name << "\n";
+					lp = new LinkableProperty(group_name, group.iValue, prop_name, addr_str, "", len.iValue);
+					linkables[prop_name] = lp;
+					std::cout << "added new linkable property: " << group_name << ":" << prop_name << " " << addr_str << "\n";
 				}
 				if (lp) {
 					if (group.iValue != lp->address_group())
-						std::cout << name << " change of group from " << lp->address_group() << " to " << group << "\n";
+						std::cout << prop_name << " change of group from " << lp->address_group() << " to " << group << "\n";
 					if (addr.iValue != lp->address())
-						std::cout << name << " change of address from " << lp->address() << " to " << addr << "\n";
+						std::cout << prop_name << " change of address from " << lp->address() << " to " << addr << "\n";
 					lp->setAddressStr(group.iValue, addr.iValue);
 					lp->setValue(value);
 
 					//w_user->fixLinks(lp);
 
 					if (collect_history) {
-						CircularBuffer *buf = getUserWindow()->getValues(name.asString());
+						CircularBuffer *buf = getUserWindow()->getValues(prop_name);
 						if (buf) {
 							long v;
 							double fv;

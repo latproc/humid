@@ -13,6 +13,7 @@
 #include "structure.h"
 #include "editor.h"
 #include "screenswindow.h"
+#include "circularbuffer.h"
 
 extern std::list<Structure *>hm_structures;
 extern std::list<StructureClass *> hm_classes;
@@ -268,3 +269,21 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 	}
 	return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
 }
+
+int dataTypeFromModbus(int val, int len) {
+	return 0;
+#if 0
+	enum DataType { INT16, UINT16, INT32, UINT32, DOUBLE, STR };
+		if (val == 3) return INT16; // readonly
+		else if (val == 4) return INT16; // readwrite
+		else if (val == 5) return INT32;
+		else if (val == 4 && len == 2) return INT32;
+		else if (val == 6 && len == 2) return INT32;
+		else if (val == 8) return DOUBLE;
+		else if (s == "Ascii_string") return STR;
+		else if (s == "Floating_PT_32") return DOUBLE;
+		else if (s == "Discrete") return INT16;
+		return DOUBLE;
+#endif
+}
+
