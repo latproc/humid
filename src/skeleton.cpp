@@ -38,20 +38,12 @@
 
 long collect_history = 0;
 
-struct ConnectionInfo {
-	std::string channel_name;
-	std::string host_name;
-	int port;
-	ConnectionInfo(std::string ch, std::string h, int p) : channel_name(ch), host_name(h), port(p) {}
-};
-
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
 using namespace nanogui;
 	window = new SkeletonWindow(screen, "");
 	window->setPosition(Vector2i(40, 40));
 	window->setFixedSize(Vector2i(400, 120));
 	window->setCursor(nanogui::Cursor::Hand);
-
 
 	//GridLayout *layout = new GridLayout(Orientation::Horizontal,1);
 	//window->setLayout(layout);
@@ -178,7 +170,6 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg) : Skeleto
 
 const int DEBUG_ALL = 255;
 #define DEBUG_BASIC ( 1 & debug)
-static nanogui::DragHandle *drag_handle = 0;
 int debug = DEBUG_ALL;
 int saved_debug = 0;
 
@@ -187,7 +178,6 @@ ProgramState program_state = s_initialising;
 boost::mutex update_mutex;
 int cw_out = 5555;
 std::string host("127.0.0.1");
-const char *local_commands = "inproc://local_cmds";
 
 static bool need_refresh = false; // not fully implemented yet
 
@@ -249,9 +239,7 @@ nanogui::Vector2i WindowStagger::pos() {
 
 ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
 : startup(sINIT), nanogui::Screen(size, caption, resizeable, fullscreen),
-	window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
-	iosh_cmd(0), cmd_interface(0), command_state(WaitingCommand), next_device_num(0), next_state_num(0),
-	first_message_time(0), scale(1000),
+	window(0),
 	window_stagger(this) {
 		screen = this;
 		gettimeofday(&start, 0);
@@ -291,217 +279,239 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 		}
 		else {
 			std::cout << " " << p.x() << "," << p.y() << " " << button << " " << down << "\n";
-			//	return window->mouseButtonEvent(wp, button, down, modifiers);
-
 			return Screen::mouseButtonEvent(p, button, down, modifiers);
 		}
 	}
 
-void ClockworkClient::idle() {
-	{
-		using namespace nanogui;
-		static uint64_t last_update = 0;
-
-		boost::mutex::scoped_lock lock(update_mutex);
-		Structure *connection = 0;
-
-		if (program_state == s_initialising) {
-
-			std::cout << "-------- Skeleton Starting Command Interface ---------\n" << std::flush;
-			std::cout << "connecting to clockwork on " << host << ":" << cw_out << "\n";
-			g_iodcmd = MessagingInterface::create(host, cw_out);
-			g_iodcmd->start();
-
-			iosh_cmd = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REP);
-			iosh_cmd->bind(local_commands);
-			usleep(1000);
-
-			subscription_manager = 0;
-			Structure *project_settings = findStructure("ProjectSettings");
-			if (project_settings ) {
-				Structure *project_settings = findStructure("ProjectSettings");
-				if (project_settings) {
-					const Value &collect_history_v(project_settings->getProperties().find("project_history"));
-					if (collect_history_v != SymbolTable::Null) {
-						collect_history_v.asInteger(collect_history);
-					}
-				}
-				StructureClass *sc = project_settings->getStructureDefinition();
-				if (sc) {
-					for (auto p : sc->getLocals()) {
-						Structure *conn = p.machine;
-						assert(conn);
-						if (conn) {
-								const Value &chn = conn->getProperties().find("channel");
-								const Value &host = conn->getProperties().find("host");
-								const Value &port = conn->getProperties().find("port");
-								std::cout << "Loaded connection details " << chn << " " << host << " " << port << "\n";
-								if (chn != SymbolTable::Null && host != SymbolTable::Null && port != SymbolTable::Null) {
-									subscription_manager = new SubscriptionManager(chn.asString().c_str(),
-										eCLOCKWORK, host.asString().c_str(), std::atoi(port.asString().c_str()));
-										subscription_manager->configureSetupConnection(host.asString().c_str(), cw_out);
-										disconnect_responder = new SetupDisconnectMonitor;
-										connect_responder = new SetupConnectMonitor;
-										subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
-										subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
-										subscription_manager->setupConnections();
-								}
-							assert(conn);
-							connections.push_back(std::make_pair(conn, subscription_manager));
-						}
-					}
-				}
-			}
-			if (!subscription_manager) {
-				std::cout << "Warning: using default clockwork connection to localhost\n";
-				subscription_manager = new SubscriptionManager("PANEL_CHANNEL", eCLOCKWORK, host.c_str(), 5555);
-				subscription_manager->configureSetupConnection(host.c_str(), cw_out);
-				disconnect_responder = new SetupDisconnectMonitor;
-				connect_responder = new SetupConnectMonitor;
-				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
-				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
-				subscription_manager->setupConnections();
-				//ConnectionInfo *conn = new ConnectionInfo("PANEL_CHANNEL", host.c_str(), 5555);
-				Structure *s = new Structure(0, "Default", "CONNECTION");
-				connections.push_back(std::make_pair(s, subscription_manager));
-			}
-			program_state = s_running;
-		}
-		else if (program_state == s_running) {
-			if (connections.size()) {
-				connection = connections.front().first;
-				subscription_manager = connections.front().second;
-				assert(connection);
-			}
-			uint64_t update_time = microsecs();
-			if (update_time - last_update > 10000) {
-				if (update_time - last_update > 15000) last_update = update_time; else last_update += 10000;
-				update(connection);
-			}
-			if (!cmd_interface) {
-				cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
-				cmd_interface->connect(local_commands);
-			}
-
-			static bool reported_error = false;
-
-			zmq::pollitem_t items[] = {
-				{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
-				{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
-				{ *iosh_cmd, 0, ZMQ_POLLIN, 0 }
-			};
-
-			try {
-				{
-					int item = 1;
-
-					try {
-						int sock_type = 0;
-						size_t param_size = sizeof(sock_type);
-						subscription_manager->setup().getsockopt(ZMQ_TYPE, &sock_type, &param_size);
-						++item;
-						subscription_manager->subscriber().getsockopt(ZMQ_TYPE, &sock_type, &param_size);
-						++item;
-						iosh_cmd->getsockopt(ZMQ_TYPE, &sock_type, &param_size);
-
-					}
-					catch (zmq::error_t zex) {
-						std::cerr << "zmq exception " << zmq_errno()  << " " << zmq_strerror(zmq_errno())
-						<< " for item " << item << " in SubscriptionManager::checkConnections\n";
-
-					}
-				}
-
-				int loop_counter = 80;
-
-				if (!subscription_manager->checkConnections(items, 3, *iosh_cmd)) {
-					if (debug) {
-						std::cout << "no connection to iod\n";
-						reported_error = true;
-					}
-				}
-				else while (loop_counter--) {
-					if (command_state == WaitingCommand && !messages.empty()) {
-						std::string msg = messages.front().first;
-						safeSend(*cmd_interface, msg.c_str(), msg.length());
-						command_state = WaitingResponse;
-					}
-					else if (command_state == WaitingResponse) {
-						char *buf = 0;
-						size_t len = 0;
-						if (safeRecv(*cmd_interface, &buf, &len, false, 0)) {
-							std::string s = messages.front().first;
-							if (buf) {
-								buf[len] = 0;
-								messages.front().second(buf);
-							}
-							messages.pop_front();
-							delete[] buf;
-							command_state = WaitingCommand;
-						}
-					}
-
-					MessageHeader mh;
-					char *data = 0;
-					size_t len = 0;
-					static int msg_count = 0;
-					if (!safeRecv(subscription_manager->subscriber(), &data, &len, false, 0, mh) ) {
-						return;
-					}
-					if (msg_count++ < 10)
-						std::cout << "Message header start time: " << mh.start_time << "\n";
-					if (first_message_time == 0) first_message_time = mh.start_time;
-
-					{
-						std::ostream &output(std::cout);
-
-						if (DEBUG_BASIC)
-							std::cout << "received: "<<data<<" from clockwork\n";
-
-						std::list<Value> *message = 0;
-
-						std::string machine, property, op, state;
-
-						Value val(SymbolTable::Null);
-						uint64_t now = microsecs();
-
-						if (MessageEncoding::getCommand(data, op, &message)) {
-							//assert(mh.start_time != 0);
-							//assert(first_message_time != 0);
-							if (first_message_time == 0) first_message_time = microsecs();
-							if (mh.start_time == 0) mh.start_time = microsecs();
-							const unsigned long t = ( mh.start_time - first_message_time)/scale;
-							handleClockworkMessage(t, op, message);
-						}
-						free(data);
-					}
-				}
-			}
-			catch (zmq::error_t zex) {
-				if (zmq_errno() != EINTR) {
-					std::cerr << "zmq exception " << zmq_errno()  << " "
-					<< zmq_strerror(zmq_errno()) << " polling connections\n";
-				}
-			}
-			catch (std::exception ex) {
-				std::cerr << "polling connections: " << ex.what() << "\n";
-			}
-		}
-	}
+ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
+	: owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
+		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
+		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds") {
+	local_commands += "_" + connection_name;
 }
 
-int ClockworkClient::lookupState(std::string &state) {
-	int state_num = 0;
-	std::map<std::string, int>::iterator idx = state_map.find(state);
+void ClockworkClient::Connection::SetupInterface() {
+	std::cout << "-------- Skeleton Starting " << name << " Interface ---------\n";
+	std::cout << "connecting to clockwork on " << host << ":" << cw_out << "\n";
+	g_iodcmd = MessagingInterface::create(host, cw_out);
+	g_iodcmd->start();
+	iosh_cmd = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REP);
+	std::cout << name << " binding internally to " << local_commands << " for cmd interface\n";
+	iosh_cmd->bind(local_commands.c_str());
+}
 
-	if (idx == state_map.end()) { // new state
-		state_num = next_state_num;
-		state_map[state] = next_state_num++;
+zmq::socket_t *ClockworkClient::Connection::commandInterface() {
+	return cmd_interface;
+}
+
+void ClockworkClient::Connection::setupCommandInterface() {
+	std::cout << name << " connecting to" << local_commands << " cmd interface\n";
+	cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
+	cmd_interface->connect(local_commands.c_str());
+}
+
+ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn) {
+	const Value &chn = s_conn->getProperties().find("channel");
+	const Value &host = s_conn->getProperties().find("host");
+	long port = s_conn->getIntProperty("port", 5555);
+	std::cout << "Loaded connection details " << chn << " " << host << " " << port << "\n";
+	if (chn != SymbolTable::Null && host != SymbolTable::Null) {
+		Connection *conn = new Connection(this, s_conn->getName(), chn.asString(), host.asString(), port);
+		conn->setDefinition(s_conn);
+		conn->SetupInterface();
+		usleep(1000); //TBD is this necessary? do it properly...
+
+		SubscriptionManager *sm = new SubscriptionManager(chn.asString().c_str(),
+			eCLOCKWORK, host.asString().c_str(), port);
+			sm->configureSetupConnection(host.asString().c_str(), cw_out);
+		 SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor;
+		SetupConnectMonitor *connect_responder = new SetupConnectMonitor;
+		sm->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+		sm->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+		sm->setupConnections();
+		conn->setResponder(connect_responder);
+		conn->setSubscription(sm);
+		usleep(1000);
+		{
+		int item = 1;
+
+		try {
+			int sock_type = 0;
+			size_t param_size = sizeof(sock_type);
+			sm->setup().getsockopt(ZMQ_TYPE, &sock_type, &param_size);
+			++item;
+			sm->subscriber().getsockopt(ZMQ_TYPE, &sock_type, &param_size);
+			++item;
+			conn->iosh_cmd->getsockopt(ZMQ_TYPE, &sock_type, &param_size);
+
+		}
+		catch (zmq::error_t zex) {
+			std::cerr << "zmq exception " << zmq_errno()  << " " << zmq_strerror(zmq_errno())
+			<< " for item " << item << " in SubscriptionManager::checkConnections\n";
+
+		}
+		}
+		return conn;
+	}
+	return 0;
+}
+
+bool ClockworkClient::setupConnections(Structure *project_settings) {
+	int added = 0;
+	if (project_settings) {
+		collect_history = project_settings->getIntProperty("project_history", 100);
+		StructureClass *sc = project_settings->getStructureDefinition();
+		if (sc) {
+			for (auto p : sc->getLocals()) {
+				Structure *s_conn = p.machine;
+				assert(s_conn);
+				if (s_conn) {
+					Connection *conn = setupConnection(s_conn);
+					if (conn) {
+						connections.insert(std::make_pair(s_conn->getName(), conn));
+						++added;
+					}
+				}
+			}
+		}
 	}
 	else
-		state_num = (*idx).second;
+		return false;
+	return added > 0;
+}
 
-	return state_num;
+bool ClockworkClient::Connection::update() {
+	uint64_t update_time = microsecs();
+	if (update_time - last_update > 10000) {
+		if (update_time - last_update > 15000) last_update = update_time; else last_update += 10000;
+		return true;
+	}
+	return false;
+}
+
+zmq::socket_t* ClockworkClient::Connection::getCommandSocket() const {
+	return iosh_cmd;
+}
+
+bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
+	if (command_state == WaitingCommand && !messages.empty()) {
+		std::string msg = messages.front().first;
+		std::cout << name << " sending " << msg << "\n";
+		safeSend(*cmd_interface, msg.c_str(), msg.length());
+		command_state = WaitingResponse;
+	}
+	else if (command_state == WaitingResponse) {
+		char *buf = 0;
+		size_t len = 0;
+		if (safeRecv(*cmd_interface, &buf, &len, false, 0)) {
+			std::string s = messages.front().first;
+			if (buf) {
+				buf[len] = 0;
+				messages.front().second(buf);
+			}
+			messages.pop_front();
+			delete[] buf;
+			command_state = WaitingCommand;
+		}
+	}
+	return command_state == WaitingCommand && !messages.empty();
+}
+
+bool ClockworkClient::Connection::handleSubscriber() {
+	MessageHeader mh;
+	char *data = 0;
+	size_t len = 0;
+	if (!safeRecv(sm->subscriber(), &data, &len, false, 0, mh) ) {
+		return false;
+	}
+	if (first_message_time == 0) first_message_time = mh.start_time;
+
+	std::ostream &output(std::cout);
+
+	if (DEBUG_BASIC)
+		std::cout << "received: "<<data<<" from connection: " << name << "\n";
+
+	std::list<Value> *message = 0;
+
+	uint64_t now = microsecs();
+	std::string cmd;
+	bool res = false;
+
+	if (MessageEncoding::getCommand(data, cmd, &message)) {
+		if (first_message_time == 0) first_message_time = microsecs();
+		if (mh.start_time == 0) mh.start_time = microsecs();
+		const unsigned long t = ( mh.start_time - first_message_time ) / message_time_scale;
+		owner->handleClockworkMessage(this, t, cmd, message);
+		res = true;
+	}
+	free(data);
+	return res;
+}
+
+void ClockworkClient::idle() {
+	using namespace nanogui;
+
+	boost::mutex::scoped_lock lock(update_mutex);
+	Structure *connection = 0;
+
+	if (program_state == s_initialising) {
+			
+		Structure *project_settings = findStructure("ProjectSettings");
+		if (setupConnections(project_settings)) program_state = s_running;
+	}
+	else if (program_state == s_running) {
+
+		std::map<std::string, Connection *>::iterator iter = connections.begin();
+		while (iter != connections.end()) {
+			const std::pair<std::string, Connection *>item = *iter++;
+			{
+				Connection *conn = item.second;
+				if (!conn->commandInterface())
+					conn->setupCommandInterface();
+				if (conn->update()) 
+					update(conn->getDefinition());
+
+				static bool reported_error = false;
+
+				SubscriptionManager *subscription_manager = conn->subscriptionManager();
+
+
+				zmq::pollitem_t items[] = {
+					{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
+					{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
+					{ *conn->iosh_cmd, 0, ZMQ_POLLIN, 0 }
+				};
+
+				try {
+
+
+					if (!subscription_manager->checkConnections(items, 3, *conn->iosh_cmd)) {
+						if (debug) {
+							std::cout << conn->getName() << ": no connection to iod\n";
+							reported_error = true;
+						}
+					}
+					else {
+						int loop_counter = 10;
+						if (getStartupState() == sSTARTUP) refreshData();
+						conn->handleCommand(this);
+						while (loop_counter--) {
+							if (!conn->handleSubscriber()) break; 
+						}
+					}
+				}
+				catch (zmq::error_t zex) {
+					if (zmq_errno() != EINTR) {
+						std::cerr << "zmq exception " << zmq_errno()  << " "
+						<< zmq_strerror(zmq_errno()) << " polling connection " << conn->getName() << "\n";
+					}
+				}
+				catch (std::exception ex) {
+					std::cerr << "polling connection: " << conn->getName() << " " << ex.what() << "\n";
+				}
+			}
+		}
+	}
 }
 
 std::string ClockworkClient::escapeNonprintables(const char *buf) {
@@ -524,14 +534,27 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 	return res;
 }
 
-void ClockworkClient::queueMessage(const std::string conn, const std::string s, std::function< void(const std::string) >f) {
-	std::cout << conn << "queued message " << s << "\n";
+void ClockworkClient::Connection::queueMessage(const std::string s, std::function< void(std::string) >f) {
+	messages.push_back(std::make_pair(s, f) );
+}
+void ClockworkClient::Connection::queueMessage(const char *s, std::function< void(std::string) >f) {
 	messages.push_back(std::make_pair(s, f) );
 }
 
-void ClockworkClient::queueMessage(const std::string conn, const char *s, std::function< void(const std::string) >f) {
-	std::cout << conn << "queued message " << s << "\n";
-	messages.push_back(std::make_pair(s, f) );
+ClockworkClient::Connection *findConnection(const std::string &connection_name, std::map<std::string, ClockworkClient::Connection*> &connections) {
+	auto found = connections.find(connection_name);
+	if (found != connections.end()) return (*found).second;
+	return 0;
+}
+
+void ClockworkClient::queueMessage(const std::string & connection_name, const std::string s, std::function< void(const std::string) >f) {
+	Connection *conn = findConnection(connection_name, connections); 
+	if (conn) conn->queueMessage(s, f);
+}
+
+void ClockworkClient::queueMessage(const std::string & connection_name, const char *s, std::function< void(const std::string) >f) {
+	Connection *conn = findConnection(connection_name, connections);
+	if (conn) conn->queueMessage(s, f);
 }
 
 static void finish(int sig) {
@@ -595,73 +618,83 @@ bool setup_signals() {
 	return true;
 }
 
-std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, bool which) {
-	int new_value = (which) ? 1 : 0;
-	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//sendIODMessage(msg);
+std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, bool which) {
+	//Connection *conn = findConnection(connection_name, connections);
+	//if (conn) {
+		int new_value = (which) ? 1 : 0;
+		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+		//conn->sendIODMessage(msg);
 
-	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-
-	std::string s(msg);
-
-	free(msg);
-
-	return s;
+		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		std::string s(msg);
+		free(msg);
+		return s;
+	//}
+	//else return "";
 }
 
-std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, int new_value) {
-	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//sendIODMessage(msg);
-
-	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-
-	std::string s(msg);
-
-	free(msg);
-
-	return s;
+std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, int new_value) {
+	//Connection *conn = findConnection(connection_name, connections);
+	//if (conn) {
+		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+		//conn->sendIODMessage(msg);
+		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		std::string s(msg);
+		free(msg);
+		return s;
+	//}
+	//else
+	//	return "";
 }
 
-std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, unsigned int new_value) {
-	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//sendIODMessage(msg);
+std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, unsigned int new_value) {
+	//Connection *conn = findConnection(connection_name, connections);
+	//if (conn) {
+		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+		//conn->sendIODMessage(msg);
+		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		std::string s(msg);
+		free(msg);
 
-	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-
-	std::string s(msg);
-
-	free(msg);
-
-	return s;
+		return s;
+	//}
+	//return "";
 }
 
-std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, float new_value) {
-	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//sendIODMessage(msg);
+std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, float new_value) {
+	//Connection *conn = findConnection(connection_name, connections);
+	//if (conn) {
+		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+		//conn->sendIODMessage(msg);
 
-	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-
-	std::string s(msg);
-
-	free(msg);
-
-	return s;
+		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		std::string s(msg);
+		free(msg);
+		return s;
+	//}
+	//else
+	//	return "";
 }
-std::string ClockworkClient::getIODSyncCommand(const std::string &, int group, int addr, const char *new_value) {
+std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, const char *new_value) {
+	//Connection *conn = findConnection(connection_name, connections);
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//sendIODMessage(msg);
+	//if (conn) {
+		//conn->sendIODMessage(msg);
 
-	if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-
-	std::string s(msg);
-
-	free(msg);
-
-	return s;
+		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		std::string s(msg);
+		free(msg);
+		return s;
+	//}
+	//else return "";
 }
-char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
-	std::string conn;
-	std::string s(getIODSyncCommand(conn, group, addr, new_value));
+
+char *ClockworkClient::Connection::sendIOD(const char *msg) {
+	std::string s(msg);
+	return sendIODMessage(s);
+}
+
+char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 	std::cout << "sendIOD sending " << s << "\n";
 
 	if (g_iodcmd)
@@ -673,16 +706,20 @@ char *ClockworkClient::sendIOD(int group, int addr, int new_value) {
 	}
 }
 
-char *ClockworkClient::sendIODMessage(const std::string &s) {
-	std::cout << "sendIODMessage sending " << s << "\n";
+char *ClockworkClient::sendIOD(const std::string & connection_name, int group, int addr, int new_value) {
+	Connection *conn = findConnection(connection_name, connections);
+	std::string s(getIODSyncCommand(connection_name, group, addr, new_value));
+	std::cout << "sendIOD sending " << s << "\n";
+	if (conn)
+		return conn->sendIODMessage(s);
+	return 0;
+}
 
-	if (g_iodcmd)
-		return g_iodcmd->send(s.c_str());
-	else {
-		if (DEBUG_BASIC) std::cout << "IOD interface not ready\n";
-
-		return strdup("IOD interface not ready\n");
-	}
+char *ClockworkClient::sendIODMessage(const std::string & connection_name, const std::string &s) {
+	Connection *conn = findConnection(connection_name, connections);
+	if (conn)
+		return conn->sendIODMessage(s);
+	return 0;
 }
 
 void ClockworkClient::update(Structure *) { }

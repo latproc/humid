@@ -90,9 +90,13 @@ public:
 	void removeLink(Anchor *src, Anchor *dest);
 	void updateLinks();
 
+	void setConnection(const std::string c) { connection_name = c; }
+	std::string getConnection() { return connection_name; }
+
 protected:
 	std::list<Link>links;
 	std::string base;
+	std::string connection_name; // only used if there is no remote
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;

@@ -27,15 +27,18 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
       lp->link(new LinkableIndicator(this));
       setRemote(lp);
     }
-    if (getRemote()) {
+    if (getRemote()) 
       conn = getRemote()->group();
+    else
+      conn = getConnection();
       //if (!flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
       //  getRemote()->link(new LinkableIndicator(this));
-    }
+    
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
       if (flags() & nanogui::Button::NormalButton) {
         if (cmd.length()) {
+        std::cout << conn << " sending " << cmd << "\n";
         gui->queueMessage(conn, cmd,
           [](std::string s){std::cout << " Response: " << s << "\n"; });
         }

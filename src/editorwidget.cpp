@@ -238,6 +238,7 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Value Scale");
   names.push_back("Tab Position");
   names.push_back("Remote");
+  names.push_back("Connection");
 }
 
 void EditorWidget::setPropertyValue(const std::string &prop, const Value &v) {
@@ -286,6 +287,9 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     remote = EDITOR->gui()->findLinkableProperty(value);
     // note: remote->link() not yet called. see subclass method.
   }
+  if (prop == "Connection") {
+    connection_name = value;
+  }
 
 }
 
@@ -322,6 +326,9 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
   }
   if (prop == "Remote") {
     return remote ? Value(remote->tagName(), Value::t_string) : "";
+  }
+  if (prop == "Connection") {
+    return Value(remote ? remote->group() : connection_name, Value::t_string);
   }
   return SymbolTable::Null;
 }
@@ -365,6 +372,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Value Scale"] = "value_scale";
   property_map["Tab Position"] = "tab_position";
   property_map["Remote"] = "remote";
+  property_map["Connection"] = "connection";
 }
 
 // generate or update structure properties from the widget

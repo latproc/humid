@@ -1004,6 +1004,7 @@ void UserWindow::loadStructure( Structure *s) {
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
 			const Value &remote(element->getProperties().find("remote"));
+			const Value &connection(element->getProperties().find("connection"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
 			long font_size = 0;
 			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
@@ -1024,6 +1025,9 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setDefinition(element);
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
+				if (connection != SymbolTable::Null) {
+					el->setConnection(connection.asString());
+				}
 				if (font_size) el->setFontSize(font_size);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
@@ -1036,6 +1040,9 @@ void UserWindow::loadStructure( Structure *s) {
 				EditorImageView *el = new EditorImageView(s, window, element->getName(), lp, 0);
 				el->setName(element->getName());
 				el->setDefinition(element);
+				if (connection != SymbolTable::Null) {
+					el->setConnection(connection.asString());
+				}
 				const Value &img_scale_val(element->getProperties().find("scale"));
 				double img_scale = 1.0f;
 				if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
@@ -1060,6 +1067,9 @@ void UserWindow::loadStructure( Structure *s) {
 				ep->setDefinition(element);
 				fixElementPosition( ep, element->getProperties());
 				fixElementSize( ep, element->getProperties());
+				if (connection != SymbolTable::Null) {
+					ep->setConnection(connection.asString());
+				}
 				if (value_scale != 1.0) ep->setValueScale( value_scale );
 				if (tab_pos) ep->setTabPosition(tab_pos);
 				ep->setChanged(false);
@@ -1073,6 +1083,9 @@ void UserWindow::loadStructure( Structure *s) {
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
+				if (connection != SymbolTable::Null) {
+					textBox->setConnection(connection.asString());
+				}
 				if (value_scale != 1.0) textBox->setValueScale( value_scale );
 				fixElementPosition( textBox, element->getProperties());
 				fixElementSize( textBox, element->getProperties());
@@ -1120,6 +1133,9 @@ void UserWindow::loadStructure( Structure *s) {
 				lp->setBufferSize(gui->sampleBufferSize());
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
+				if (connection != SymbolTable::Null) {
+					lp->setConnection(connection.asString());
+				}
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
@@ -1141,6 +1157,9 @@ void UserWindow::loadStructure( Structure *s) {
 				b->setOnColor(colourFromProperty(element, "bg_on_color"));
 				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
 				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
+				if (connection != SymbolTable::Null) {
+					b->setConnection(connection.asString());
+				}
 				fixElementPosition( b, element->getProperties());
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
@@ -2759,7 +2778,7 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 	return (*found).second;
 }
 
-void EditorGUI::handleClockworkMessage(unsigned long now, const std::string &op, std::list<Value> *message) {
+void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long now, const std::string &op, std::list<Value> *message) {
 	if (op == "UPDATE") {
 		if (!this->getUserWindow()) return;
 
@@ -3338,27 +3357,12 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				if (lp) { lp->link(new LinkableNumber(this)); }
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ return remote ? remote->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataSize();
-				return 0;
-			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 }
 
@@ -3383,27 +3387,12 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 				if (lp) { lp->link(new LinkableText(this)); }
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ return remote ? remote->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataSize();
-				return 0;
-			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 }
 
@@ -3426,27 +3415,12 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ return remote ? remote->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataSize();
-				return 0;
-			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 }
 
@@ -3469,27 +3443,12 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ return remote ? remote->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataSize();
-				return 0;
-			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 }
 
@@ -3574,27 +3533,12 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 				//properties->refresh();
 			 },
 			[&]()->std::string{ return remote ? remote->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ return remote ? remote->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				if (remote) return remote->dataSize();
-				return 0;
-			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 }
 void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val) {
@@ -3675,32 +3619,12 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&](std::string value) { /*setName(value);*/ },
 			[&]()->std::string{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->tagName() : ""; });
-		properties->addVariable<unsigned int> (
-			"Modbus address",
-			[&](unsigned int value) {
-				/*LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(name);
-				lp->addr = value;*/
-			},
-			[&]()->unsigned int{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->address() : 0; });
-		properties->addVariable<unsigned int> (
-			"Data Type",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
-				if (lp)
-					return lp->dataType();
-				return 0;
-			});
-		properties->addVariable<unsigned int> (
-			"Data Size",
-			[&](unsigned int value) {  },
-			[&]()->unsigned int{
-				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName());
-				if (lp)
-					return lp->dataSize();
-				return 0;
-			});
-
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
 	properties->addGroup("Triggers");
 	properties->addVariable<std::string> (

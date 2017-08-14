@@ -12,6 +12,7 @@
 #include <MessageEncoding.h>
 #include <MessagingInterface.h>
 #include <signal.h>
+#include <zmq.hpp>
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
 #include "panelscreen.h"
@@ -88,10 +89,69 @@ class SetupConnectMonitor;
 class ClockworkClient : public nanogui::Screen {
 
 public:
+
+
 	enum CommandState { WaitingCommand, WaitingResponse };
 	enum STARTUP_STATES { sSTARTUP, sINIT, sSENT, sDONE, sRELOAD };
 
+	class Connection {
+	public:
+		Connection(ClockworkClient *, const std::string connection_name, 
+			const std::string ch, std::string h, int p);
+
+		void SetupInterface();
+		void setSubscription(SubscriptionManager *subs) { sm = subs; }
+		void setResponder(SetupConnectMonitor *r) { connect_responder = r; }
+		void setDisconnectResponder(SetupDisconnectMonitor *r) { disconnect_responder = r; }
+		zmq::socket_t *commandInterface();
+		void setupCommandInterface();
+		void setDefinition(Structure *s) { definition = s; }
+		Structure *getDefinition() { return definition; }
+
+		bool update();
+		bool handleCommand(ClockworkClient*);
+		bool handleSubscriber();
+
+		SubscriptionManager *subscriptionManager() { return sm; }
+		const std::string &getName() { return name; }
+		uint64_t getFirstMessageTime() { return first_message_time; }
+		zmq::socket_t* getCommandSocket() const;
+
+		std::list< std::pair< std::string, std::function<void(std::string)> > > &getMessages();
+		void queueMessage(const std::string s, std::function< void(std::string) >f);
+		void queueMessage(const char *s, std::function< void(std::string) >f);
+
+		char *sendIOD(const char *msg);
+		char *sendIODMessage(const std::string &s);
+
+	protected:
+		ClockworkClient *owner;
+		std::string name;
+		std::string channel_name;
+		std::string host_name;
+		int port;
+		Structure *definition;
+		SubscriptionManager *sm;
+		SetupDisconnectMonitor *disconnect_responder;
+		SetupConnectMonitor *connect_responder;
+	public:
+		zmq::socket_t *iosh_cmd;
+		zmq::socket_t *cmd_interface;
+	protected:
+		std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
+		MessagingInterface *g_iodcmd;
+		CommandState command_state;
+		uint64_t last_update;
+		uint64_t first_message_time;
+		long message_time_scale;
+		std::string local_commands;
+
+	};
+
 	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
+
+	Connection *setupConnection(Structure *s_conn);
+	bool setupConnections(Structure *project_settings);
 
 	void refreshData() { startup = sINIT; }
 	STARTUP_STATES getStartupState() { return startup; }
@@ -109,46 +169,32 @@ public:
 
 	std::string escapeNonprintables(const char *buf);
 
-	void queueMessage(const std::string, const std::string s, std::function< void(std::string) >f);
+	void queueMessage(const std::string & connection_name, const std::string s, std::function< void(std::string) >f);
 
-	void queueMessage(const std::string, const char *s, std::function< void(std::string) >f);
+	void queueMessage(const std::string & connection_name, const char *s, std::function< void(std::string) >f);
 
-	char *sendIOD(int group, int addr, int new_value);
-	char *sendIODMessage(const std::string &s);
-	std::string getIODSyncCommand(const std::string &, int group, int addr, bool which);
-	std::string getIODSyncCommand(const std::string &, int group, int addr, int new_value);
-	std::string getIODSyncCommand(const std::string &, int group, int addr, unsigned int new_value);
-	std::string getIODSyncCommand(const std::string &, int group, int addr, float new_value);
-	std::string getIODSyncCommand(const std::string &, int group, int addr, const char *new_value);
+	std::string getIODSyncCommand(const std::string & connection_name, int group, int addr, bool which);
+	std::string getIODSyncCommand(const std::string & connection_name, int group, int addr, int new_value);
+	std::string getIODSyncCommand(const std::string & connection_name, int group, int addr, unsigned int new_value);
+	std::string getIODSyncCommand(const std::string & connection_name, int group, int addr, float new_value);
+	std::string getIODSyncCommand(const std::string & connection_name, int group, int addr, const char *new_value);
+
+	char *sendIOD(const std::string & connection_name, int group, int addr, int new_value);
+	char *sendIODMessage(const std::string & connection_name, const std::string &s);
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
-	virtual void handleClockworkMessage(unsigned long time, const std::string &op, std::list<Value> *message) {};
+	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time, const std::string &op, std::list<Value> *message) {};
 	virtual void update(Structure *connection);
+
+	std::map<std::string, Connection *>getConnections() { return connections; }
 
 protected:
 	STARTUP_STATES startup;
 	nanogui::Window *window;
-	SubscriptionManager *subscription_manager;
-	SetupDisconnectMonitor *disconnect_responder;
-	SetupConnectMonitor *connect_responder;
-	zmq::socket_t *iosh_cmd;
-	zmq::socket_t *cmd_interface;
-	std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
-	CommandState command_state;
-	nanogui::ref<nanogui::Window> property_window;
-
-	MessagingInterface *g_iodcmd;
-	std::list<std::pair<Structure *,SubscriptionManager*> >connections;
-
-	std::map<std::string, int> state_map;
-	std::map<std::string, int> device_map;
-
-	int next_device_num;
-	int next_state_num;
+	std::map<std::string, Connection *>connections;
 
 	struct timeval start;
-	uint64_t first_message_time;
-	long scale;
+	nanogui::ref<nanogui::Window> property_window;
 	WindowStagger window_stagger;
 };
 
