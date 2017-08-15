@@ -124,7 +124,12 @@ public:
 		char *sendIOD(const char *msg);
 		char *sendIODMessage(const std::string &s);
 
+		void refreshData() { startup = sINIT; }
+		STARTUP_STATES getStartupState() { return startup; }
+		void setState(STARTUP_STATES new_state) { startup = new_state; }
+
 	protected:
+		STARTUP_STATES startup;
 		ClockworkClient *owner;
 		std::string name;
 		std::string channel_name;
@@ -152,9 +157,6 @@ public:
 
 	Connection *setupConnection(Structure *s_conn);
 	bool setupConnections(Structure *project_settings);
-
-	void refreshData() { startup = sINIT; }
-	STARTUP_STATES getStartupState() { return startup; }
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 
@@ -184,12 +186,11 @@ public:
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time, const std::string &op, std::list<Value> *message) {};
-	virtual void update(Structure *connection);
+	virtual void update(ClockworkClient::Connection *connection);
 
 	std::map<std::string, Connection *>getConnections() { return connections; }
 
 protected:
-	STARTUP_STATES startup;
 	nanogui::Window *window;
 	std::map<std::string, Connection *>connections;
 

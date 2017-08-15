@@ -1081,6 +1081,8 @@ void UserWindow::loadStructure( Structure *s) {
 				textBox->setDefinition(element);
 				const Value &text_v(element->getProperties().find("text"));
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
+				const Value &alignment_v(element->getProperties().find("alignment"));
+				if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (connection != SymbolTable::Null) {
@@ -2412,22 +2414,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				if (hm_structures.size()>1) { // files were specified on the commandline
 					getStartupWindow()->setVisible(false);
 					getScreensWindow()->update();
-					/*
-					Structure *project = EditorSettings::find("ProjectSettings");
-					if (!project) {
-						std::cout << "No project settings found. Adding a settings entry\n";
-						project = findStructureFromClass("PROJECTSETTINGS");
-						if (!project)
-							project = new Structure(nullptr, "ProjectSettings", "PROJECTSETTINGS");
-						project->setStructureDefinition(findClass("PROJECTSETTINGS"));
-						hm_structures.push_back(project);
-						boost::filesystem::path base(source_files.front());
-						if (boost::filesystem::is_regular_file(base))
-							base = base.parent_path();
-						assert(boost::filesystem::is_directory(base));
-						getSettings()->getProperties().add("project_base", Value(base.string(), Value::t_string));
-					}
-					*/
+					
 					Structure *settings = EditorSettings::find("EditorSettings");
 					assert(settings);
 					const Value &project_base_v(settings->getProperties().find("project_base"));
@@ -2500,8 +2487,8 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					if (lp) {
 						lp->apply();
 						std::cout <<"\nWorking mode: setting screen to " << lp->value() << "\n\n";
-						if (lp->value() != SymbolTable::Null)
-							startup = sRELOAD;
+						//if (lp->value() != SymbolTable::Null)
+						//	startup = sRELOAD;
 					}
 				}
 
@@ -2925,19 +2912,19 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 	std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
 }
 
-void EditorGUI::update(Structure *connection) {
-	if (startup != sDONE && startup != sRELOAD) {
+void EditorGUI::update(ClockworkClient::Connection *connection) {
+	if (connection->getStartupState() != sDONE && connection->getStartupState() != sRELOAD) {
 		// if the tag file is loaded, get initial values
-		if (/*linkables.size() && */ startup == sINIT && connection) {
+		if (/*linkables.size() && */ connection->getStartupState() == sINIT && connection) {
 			std::cout << "Sending data initialisation request\n";
-			startup = sSENT;
+			connection->setState(sSENT);
 			queueMessage( connection->getName(), "MODBUS REFRESH",
 				[this, connection](std::string s) {
 					std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
 						cJSON *obj = cJSON_Parse(s.c_str());
 						if (!obj) {
-							startup = sINIT;
+							connection->setState(sINIT);
 							return;
 						}
 						if (obj->type == cJSON_Array) {
@@ -2953,31 +2940,31 @@ void EditorGUI::update(Structure *connection) {
 							}
 
 						}
-						startup = sRELOAD;
+						connection->setState(sRELOAD);
 					}
 					else
-						startup = sINIT;
+						connection->setState(sINIT);
 				}
 			);
 		}
 	}
 
-	if (startup == sDONE || startup == sRELOAD) {
+	if (connection->getStartupState() == sDONE || connection->getStartupState() == sRELOAD) {
 		if (w_user) {
 			//bool changed = false;
 			const Value &active(system_settings->getProperties().find("active_screen"));
 			if (active != SymbolTable::Null) {
-				if (startup == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
+				if (connection->getStartupState() == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
 					Structure *s = findScreen(active.asString());
-					if (startup == sRELOAD || (s && w_user->structure() != s) ) {
+					if (connection->getStartupState() == sRELOAD || (s && w_user->structure() != s) ) {
 						w_user->getWindow()->requestFocus();
 						w_user->clearSelections();
 						w_user->setStructure(s);
 						std::cout << "Loaded active screen " << active << "\n";
 						//changed = true;
-						if (startup == sRELOAD) startup = sDONE;
+						if (connection->getStartupState() == sRELOAD) connection->setState(sDONE);
 					}
-					else if (startup != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
+					else if (connection->getStartupState() != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
 				}
 			}
 			else std::cout << "No active screen has been selected\n";
@@ -2996,11 +2983,65 @@ void EditorGUI::update(Structure *connection) {
 }
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
-	if (action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
-		if (w_user->hasSelections()) {
-			if (w_user->getWindow()->focused()) {
-				w_user->deleteSelections();
-				return false;
+	if (EDITOR->isEditMode()) {
+		if (action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
+			if (w_user->hasSelections()) {
+				if (w_user->getWindow()->focused()) {
+					w_user->deleteSelections();
+					return false;
+				}
+			}
+		}
+	}
+	else {
+		if (nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
+
+		std::string key_name = "";
+		if ((key >= GLFW_KEY_0 && key <= GLFW_KEY_9)) {
+			char buf[10];
+			snprintf(buf, 10, "KEY_%d", key - GLFW_KEY_0);
+			key_name = buf;
+		}
+		else if ((key >= GLFW_KEY_F1 && key <= GLFW_KEY_F25)) {
+			char buf[10];
+			snprintf(buf, 10, "KEY_F%d", key - GLFW_KEY_F1+1);
+			key_name = buf;
+		}
+		else if ((key >= GLFW_KEY_A && key <= GLFW_KEY_Z)) {
+			char buf[10];
+			snprintf(buf, 10, "KEY_%c", key - GLFW_KEY_A + 'A');
+			key_name = buf;
+		}
+		if (action == GLFW_PRESS ) {
+
+			if (key_name.length() && system_settings) {
+				std::cout << "detected key: " << key_name << "\n";
+				StructureClass *sc = system_settings->getStructureDefinition();
+				if (!sc) {
+					std::cout << "no class\n";
+					return false;
+				}
+				std::map<std::string, Value>::iterator found = sc->getOptions().find(key_name);
+				if (found != sc->getOptions().end()) {
+					std::cout << "found key mapping: " << (*found).second << "\n";
+					std::string conn = (*found).second.asString();
+					size_t dpos = conn.find(':');
+					if (dpos != std::string::npos) {
+						std::string remote = conn.substr(dpos+1);
+						conn = conn.erase(dpos);
+
+						LinkableProperty *lp = findLinkableProperty(remote);
+						if (lp) {
+							std::string msgon = getIODSyncCommand(conn, 0, lp->address(), 1);
+							queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+							std::string msgoff = getIODSyncCommand(conn, 0, lp->address(), 0);
+							queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+						}
+					}
+					else {
+						//search the current screen for a button with this name and click it
+					}
+				}
 			}
 		}
 	}
@@ -3336,6 +3377,10 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 					"Text",
 					[&,tb](std::string value) { tb->setValue(value); },
 					[&,tb]()->std::string{ return tb->value(); });
+				properties->addVariable<int> (
+					"Alignment",
+					[&,tb](int value) { tb->setAlignment((Alignment)value); },
+					[&,tb]()->int{ return (int)tb->alignment(); });
 			}
 		}
 		{
@@ -4034,7 +4079,11 @@ int main(int argc, const char ** argv ) {
 		{
 			if (vm.count("source-file")) {
 				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
-				std::copy(files.begin(), files.end(), back_inserter(source_files));
+				for (auto s : files) {
+					int found = s.rfind("/");
+					if (found != std::string::npos) s.erase(found);
+					source_files.push_back(s);
+				}
 				loadProjectFiles(source_files);
 			}
 			StructureClass *system_class = findClass("SYSTEM");
@@ -4073,6 +4122,9 @@ int main(int argc, const char ** argv ) {
 			app->createWindows();
 
 			Value remote_screen(system_settings->getProperties().find("remote_screen"));
+			if (!system_settings->getStructureDefinition()) {
+				system_settings->setStructureDefinition(findClass("SYSTEM"));
+			}
 
 			if (remote_screen == SymbolTable::Null) {
 				system_settings->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));

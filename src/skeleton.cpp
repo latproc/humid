@@ -37,6 +37,7 @@
 #include "structure.h"
 
 long collect_history = 0;
+extern Structure *system_settings;
 
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
 using namespace nanogui;
@@ -238,7 +239,7 @@ nanogui::Vector2i WindowStagger::pos() {
 }
 
 ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
-: startup(sINIT), nanogui::Screen(size, caption, resizeable, fullscreen),
+: nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0),
 	window_stagger(this) {
 		screen = this;
@@ -284,7 +285,7 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 	}
 
 ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
-	: owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
+	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
 		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
 		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds") {
 	local_commands += "_" + connection_name;
@@ -305,7 +306,7 @@ zmq::socket_t *ClockworkClient::Connection::commandInterface() {
 }
 
 void ClockworkClient::Connection::setupCommandInterface() {
-	std::cout << name << " connecting to" << local_commands << " cmd interface\n";
+	std::cout << name << " connecting to " << local_commands << " cmd interface\n";
 	cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
 	cmd_interface->connect(local_commands.c_str());
 }
@@ -364,13 +365,13 @@ bool ClockworkClient::setupConnections(Structure *project_settings) {
 		if (sc) {
 			for (auto p : sc->getLocals()) {
 				Structure *s_conn = p.machine;
-				assert(s_conn);
-				if (s_conn) {
+				if (s_conn && connections.find(s_conn->getName()) == connections.end()) {
 					Connection *conn = setupConnection(s_conn);
 					if (conn) {
 						connections.insert(std::make_pair(s_conn->getName(), conn));
 						++added;
 					}
+					break;
 				}
 			}
 		}
@@ -453,13 +454,22 @@ void ClockworkClient::idle() {
 
 	boost::mutex::scoped_lock lock(update_mutex);
 	Structure *connection = 0;
+	static uint64_t last_check_new_connections = 0;
 
+	Structure *project_settings = findStructure("ProjectSettings");
 	if (program_state == s_initialising) {
 			
-		Structure *project_settings = findStructure("ProjectSettings");
-		if (setupConnections(project_settings)) program_state = s_running;
+		//if (setupConnections(project_settings)) 
+			program_state = s_running;
 	}
 	else if (program_state == s_running) {
+
+		uint64_t now = microsecs();
+		if (now - last_check_new_connections > 5000000) {// attempt any new connections every second
+			if (setupConnections(project_settings))
+				std::cout << "--- added connection\n";
+			last_check_new_connections = now;
+		}
 
 		std::map<std::string, Connection *>::iterator iter = connections.begin();
 		while (iter != connections.end()) {
@@ -469,11 +479,13 @@ void ClockworkClient::idle() {
 				if (!conn->commandInterface())
 					conn->setupCommandInterface();
 				if (conn->update()) 
-					update(conn->getDefinition());
+					update(conn);
 
 				static bool reported_error = false;
 
 				SubscriptionManager *subscription_manager = conn->subscriptionManager();
+				if (!subscription_manager) continue;
+				//std::cout << conn->getName() << " state: " << subscription_manager->setupStatus() << "\n";
 
 
 				zmq::pollitem_t items[] = {
@@ -493,7 +505,7 @@ void ClockworkClient::idle() {
 					}
 					else {
 						int loop_counter = 10;
-						if (getStartupState() == sSTARTUP) refreshData();
+						if (conn->getStartupState() == sSTARTUP) conn->refreshData();
 						conn->handleCommand(this);
 						while (loop_counter--) {
 							if (!conn->handleSubscriber()) break; 
@@ -509,6 +521,7 @@ void ClockworkClient::idle() {
 				catch (std::exception ex) {
 					std::cerr << "polling connection: " << conn->getName() << " " << ex.what() << "\n";
 				}
+				usleep(100);
 			}
 		}
 	}
@@ -722,7 +735,7 @@ char *ClockworkClient::sendIODMessage(const std::string & connection_name, const
 	return 0;
 }
 
-void ClockworkClient::update(Structure *) { }
+void ClockworkClient::update(ClockworkClient::Connection *) { }
 
 void ClockworkClient::drawAll() {
 	idle();

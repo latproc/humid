@@ -118,15 +118,15 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 	return true;
 }
 
-bool writePropertyDefaults(std::ostream &out, const SymbolTable &properties) {
+bool writeOptions(std::ostream &out,const std::map<std::string, Value> &options) {
 	const char *begin_properties = "";
 	const char *property_delim = ";\n";
 	const char *delim = begin_properties;
 	int count = 0;
-	SymbolTableConstIterator i = properties.begin();
-	while (i != properties.end()) {
+	std::map<std::string, Value>::const_iterator i = options.begin();
+	while (i != options.end()) {
 		auto item = *i++;
-		out << delim << "OPTION " << item.first << " " << item.second; // quotes are automatically added to string values
+		out << delim << "\tOPTION " << item.first << " " << item.second; // quotes are automatically added to string values
 		delim = property_delim;
 	}
 	if (delim == property_delim) out << delim;
@@ -150,9 +150,10 @@ bool StructureClass::save(std::ostream &out) {
 	using namespace nanogui;
 	//if (locals.empty() && properties.begin() == properties.end()) return true;
 	out << getName() << " STRUCTURE";
+	writePropertyList(out, properties);
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
 	out << " {\n";
-	writePropertyDefaults(out, properties);
+	writeOptions(out, options);
 	for (auto local : locals) {
 		out << "  ";
 		Structure *s = local.machine;
