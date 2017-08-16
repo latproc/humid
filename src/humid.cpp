@@ -155,8 +155,8 @@ std::string tag_file_name;
 
 const char *program_name;
 
-extern int cw_out;
-extern std::string host;
+//extern int cw_out;
+//extern std::string host;
 extern const char *local_commands;
 extern ProgramState program_state;
 extern struct timeval start;
@@ -647,7 +647,7 @@ bool UserWindowWin::keyboardEvent(int key, int scancode , int action, int modifi
 					ew = dynamic_cast<EditorWidget*>(childAt(new_sel));
 					if (ew) ew->select();
 				}
-		}
+			}
 			else if ( uw->hasSelections() &&
 						( key == GLFW_KEY_LEFT || key == GLFW_KEY_UP || key == GLFW_KEY_RIGHT || key == GLFW_KEY_DOWN ) ) {
 				if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
@@ -2984,14 +2984,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
 	if (EDITOR->isEditMode()) {
-		if (action == GLFW_PRESS && (key == GLFW_KEY_BACKSPACE || key == GLFW_KEY_DELETE) ) {
-			if (w_user->hasSelections()) {
-				if (w_user->getWindow()->focused()) {
-					w_user->deleteSelections();
-					return false;
-				}
-			}
-		}
+		return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 	}
 	else {
 		if (key == GLFW_KEY_ESCAPE) {
@@ -3051,6 +3044,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 							queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
 							std::string msgoff = getIODSyncCommand(conn, 0, lp->address(), 0);
 							queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+							return true;
 						}
 					}
 					else {
@@ -3062,10 +3056,14 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 							if (et && et->getName() == conn) {
 								w->requestFocus();
 								et->selectAll();
+								return true;
 							}
 							else if (eb && eb->getName() == conn) {
 								if (eb->callback()) eb->callback()();
-								else if (eb->changeCallback()) eb->changeCallback()(!eb->pushed());
+								else if (eb->changeCallback()) {
+									eb->changeCallback()(!eb->pushed());
+									return true;
+								}
 							}
 						}
 					}
@@ -3073,7 +3071,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 			}
 		}
 	}
-	return false;
+	return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 }
 
 
@@ -4028,8 +4026,8 @@ int main(int argc, const char ** argv ) {
 	zmq::context_t context;
 	MessagingInterface::setContext(&context);
 
-	int cw_port;
-	std::string hostname;
+	//int cw_port;
+	//std::string hostname;
 	//std::string tag_file_name;
 
 	setup_signals();
@@ -4038,8 +4036,8 @@ int main(int argc, const char ** argv ) {
 	generic.add_options()
 	("help", "produce help message")
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
-	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
-	("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
+	//("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
+	//("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
@@ -4070,8 +4068,8 @@ int main(int argc, const char ** argv ) {
 		return 1;
 	}
 
-	if (vm.count("cwout")) cw_out = vm["cwout"].as<int>();
-	if (vm.count("host")) host = vm["host"].as<std::string>();
+	//if (vm.count("cwout")) cw_out = vm["cwout"].as<int>();
+	//if (vm.count("host")) host = vm["host"].as<std::string>();
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();

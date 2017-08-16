@@ -177,8 +177,6 @@ int saved_debug = 0;
 /* Clockwork Interface */
 ProgramState program_state = s_initialising;
 boost::mutex update_mutex;
-int cw_out = 5555;
-std::string host("127.0.0.1");
 
 static bool need_refresh = false; // not fully implemented yet
 
@@ -250,7 +248,7 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 
 	if (Screen::keyboardEvent(key, scancode, action, modifiers))
 		return true;
-
+/*
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
 		setVisible(false);
 		return true;
@@ -259,7 +257,7 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 		setVisible(false);
 		return true;
 	}
-
+*/
 	return false;
 }
 
@@ -293,8 +291,8 @@ ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string c
 
 void ClockworkClient::Connection::SetupInterface() {
 	std::cout << "-------- Skeleton Starting " << name << " Interface ---------\n";
-	std::cout << "connecting to clockwork on " << host << ":" << cw_out << "\n";
-	g_iodcmd = MessagingInterface::create(host, cw_out);
+	std::cout << "connecting to clockwork on " << host_name << ":" << port << "\n";
+	g_iodcmd = MessagingInterface::create(host_name, port);
 	g_iodcmd->start();
 	iosh_cmd = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REP);
 	std::cout << name << " binding internally to " << local_commands << " for cmd interface\n";
@@ -324,7 +322,7 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 
 		SubscriptionManager *sm = new SubscriptionManager(chn.asString().c_str(),
 			eCLOCKWORK, host.asString().c_str(), port);
-			sm->configureSetupConnection(host.asString().c_str(), cw_out);
+			sm->configureSetupConnection(host.asString().c_str(), port);
 		 SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor;
 		SetupConnectMonitor *connect_responder = new SetupConnectMonitor;
 		sm->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
