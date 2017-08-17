@@ -64,6 +64,8 @@
 #include <ConnectionManager.h>
 #include <circularbuffer.h>
 #include <symboltable.h>
+#include <Logger.h>
+#include <DebugExtra.h>
 
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
@@ -762,7 +764,6 @@ void UserWindow::setStructure( Structure *s) {
 
 	// save current settings
 	if (structure()) {
-		std::cout << "updating structure " << structure()->getName() << " : " << structure()->getKind() << "\n";
 		std::list<std::string>props;
 		std::map<std::string, std::string> property_map;
 		loadPropertyToStructureMap(property_map);
@@ -775,7 +776,6 @@ void UserWindow::setStructure( Structure *s) {
 					structure()->getProperties().add((*item).second, v);
 				else
 					structure()->getProperties().add(prop, v);
-				std::cout << " saving property " << prop << " (" << v  <<")\n";
 			}
 		}
 	}
@@ -2874,7 +2874,6 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 
 					lp = new LinkableProperty(group_name, group.iValue, prop_name, addr_str, "", len.iValue);
 					linkables[prop_name] = lp;
-					std::cout << "added new linkable property: " << group_name << ":" << prop_name << " " << addr_str << "\n";
 				}
 				if (lp) {
 					if (group.iValue != lp->address_group())
@@ -2920,7 +2919,6 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 			connection->setState(sSENT);
 			queueMessage( connection->getName(), "MODBUS REFRESH",
 				[this, connection](std::string s) {
-					std::cout << "MODBUS REFRESH returned: " << s << "\n";
 					if (s != "failed") {
 						cJSON *obj = cJSON_Parse(s.c_str());
 						if (!obj) {
@@ -4016,18 +4014,25 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	}
 }
 
+
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
 	free(pn);
 
-	std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n";
+	//std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n";
+	//std::string home_path(getenv("HOME"));
+	//assert(boost::filesystem::current_path().string().find(home_path) == 0);
 
 	zmq::context_t context;
 	MessagingInterface::setContext(&context);
 
-	//int cw_port;
-	//std::string hostname;
+	Logger::instance();
+	Logger::instance()->setLevel(Logger::Debug);
+	//LogState::instance()->insert(DebugExtra::instance()->DEBUG_CHANNELS);
+
+	int cw_port = 5555;
+	std::string hostname;
 	//std::string tag_file_name;
 
 	setup_signals();
@@ -4036,8 +4041,8 @@ int main(int argc, const char ** argv ) {
 	generic.add_options()
 	("help", "produce help message")
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
-	//("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
-	//("cwout",po::value<int>(&cw_port)->default_value(5555), "clockwork outgoing port (5555)")
+	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
+	("cwport",po::value<int>(&cw_port)->default_value(5555), "clockwork port (5555)")
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
@@ -4054,9 +4059,9 @@ int main(int argc, const char ** argv ) {
 
 	po::variables_map vm;
 	try {
-	po::store(po::command_line_parser(argc, argv).
+		po::store(po::command_line_parser(argc, argv).
 		options(cmdline_options).positional(p).run(), vm);
-	po::notify(vm);
+		po::notify(vm);
 	}
 	catch (std::exception e) {
 		std::cerr << e.what() << "\n";
@@ -4068,8 +4073,8 @@ int main(int argc, const char ** argv ) {
 		return 1;
 	}
 
-	//if (vm.count("cwout")) cw_out = vm["cwout"].as<int>();
-	//if (vm.count("host")) host = vm["host"].as<std::string>();
+	if (vm.count("cwout")) cw_port = vm["cwout"].as<int>();
+	if (vm.count("host")) hostname = vm["host"].as<std::string>();
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();
@@ -4121,6 +4126,24 @@ int main(int argc, const char ** argv ) {
 			if (!system_settings) {
 				system_settings = system_class->instantiate(nullptr, "System");
 			}
+
+			// if necessary create a project settings structure to store the 
+			// nominated connection details
+			Structure *project_settings = findStructure("ProjectSettings");
+			if (!project_settings) {
+				StructureClass *psc = new StructureClass("PROJECTSETTINGS", "");
+				hm_classes.push_back(psc);
+				project_settings = psc->instantiate(nullptr, "ProjectSettings");
+				if (cw_port && hostname.length()) { // user supplied a host, setup the required connection object
+					Structure *conn = new Structure(nullptr, "Remote", "CONNECTION");
+					conn->getProperties().add("host", hostname.c_str());
+					conn->getProperties().add("port", cw_port);
+					Parameter p(conn->getName());
+					p.machine = conn;
+					psc->addLocal(p);
+				}
+			}
+
 
 			Value full_screen_v = system_settings->getProperties().find("full_screen");
 			long full_screen = 1;

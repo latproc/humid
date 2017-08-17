@@ -128,6 +128,8 @@ public:
 		STARTUP_STATES getStartupState() { return startup; }
 		void setState(STARTUP_STATES new_state) { startup = new_state; }
 
+		bool Ready();
+
 	protected:
 		STARTUP_STATES startup;
 		ClockworkClient *owner;
