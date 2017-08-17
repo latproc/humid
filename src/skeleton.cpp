@@ -480,8 +480,6 @@ void ClockworkClient::idle() {
 				Connection *conn = item.second;
 				if (!conn->commandInterface())
 					conn->setupCommandInterface();
-				if (conn->Ready() && conn->update()) 
-					update(conn);
 
 				static bool reported_error = false;
 
@@ -489,7 +487,10 @@ void ClockworkClient::idle() {
 				if (!subscription_manager) continue;
 				//std::cout << conn->getName() << " state: " << subscription_manager->setupStatus() << "\n";
 
-				{
+				int loop_counter = 10;
+				while (loop_counter--) {
+					if (conn->Ready() && conn->update()) 
+						update(conn);
 					zmq::pollitem_t items[] = {
 						{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
 						{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
@@ -504,12 +505,9 @@ void ClockworkClient::idle() {
 							}
 						}
 						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
-							int loop_counter = 10;
 							if (conn->getStartupState() == sSTARTUP) conn->refreshData();
 							conn->handleCommand(this);
-							while (loop_counter--) {
-								if (!conn->handleSubscriber()) break; 
-							}
+							if (!conn->handleSubscriber()) break; 
 						}
 					}
 					catch (zmq::error_t zex) {
