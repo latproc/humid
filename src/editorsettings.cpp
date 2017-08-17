@@ -74,11 +74,6 @@ void EditorSettings::flush() {
     Structure *s = EditorSettings::find("EditorSettings");
     assert(s);
     s->save(settings_file);
-    /*s = find("ProjectSettings");
-    if (s) {
-        s->save(settings_file);
-    }
-    */
     for (auto w : widgets) {
         s = find(w.first);
         if (s) s->save(settings_file);

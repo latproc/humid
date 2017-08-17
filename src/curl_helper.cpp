@@ -21,7 +21,6 @@ struct buffer_info {
 size_t receive_data(void *buffer, size_t size, size_t nmemb, void *userp)
 {
     int n = size * nmemb;
-    std::cout << "curl collected " << n << " bytes\n";
     struct buffer_info *bufp = (struct buffer_info *) userp;
     if (!bufp)
  	return 0;
