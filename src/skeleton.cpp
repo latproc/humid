@@ -427,7 +427,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
 
 	std::ostream &output(std::cout);
 
-	if (DEBUG_BASIC)
+	//if (DEBUG_BASIC)
 		std::cout << "received: "<<data<<" from connection: " << name << "\n";
 
 	std::list<Value> *message = 0;
@@ -487,8 +487,7 @@ void ClockworkClient::idle() {
 				if (!subscription_manager) continue;
 				//std::cout << conn->getName() << " state: " << subscription_manager->setupStatus() << "\n";
 
-				int loop_counter = 10;
-				while (loop_counter--) {
+				{
 					if (conn->Ready() && conn->update()) 
 						update(conn);
 					zmq::pollitem_t items[] = {
@@ -505,9 +504,12 @@ void ClockworkClient::idle() {
 							}
 						}
 						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
+							int loop_counter = 40;
 							if (conn->getStartupState() == sSTARTUP) conn->refreshData();
-							conn->handleCommand(this);
-							if (!conn->handleSubscriber()) break; 
+							while (loop_counter--) {
+								conn->handleCommand(this);
+								conn->handleSubscriber();
+							}
 						}
 					}
 					catch (zmq::error_t zex) {
@@ -520,7 +522,7 @@ void ClockworkClient::idle() {
 						std::cerr << "polling connection: " << conn->getName() << " " << ex.what() << "\n";
 					}
 				}
-				usleep(100);
+				usleep(10);
 			}
 		}
 	}
