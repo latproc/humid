@@ -4112,7 +4112,7 @@ int main(int argc, const char ** argv ) {
 				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
 				for (auto s : files) {
 					int found = s.rfind("/");
-					if (found != std::string::npos) s.erase(found);
+					if (found == s.length()-1) s.erase(found);
 					source_files.push_back(s);
 				}
 				loadProjectFiles(source_files);
