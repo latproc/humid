@@ -43,6 +43,8 @@ public:
 
 	static EditorWidget *create(const std::string kind);
 
+	virtual nanogui::Widget *asWidget() { return nullptr; }
+
 	//nanogui::Widget *getWidget() { return widget; }
 
 	virtual void getPropertyNames(std::list<std::string> &names);
@@ -90,6 +92,8 @@ public:
 	void removeLink(Anchor *src, Anchor *dest);
 	void updateLinks();
 
+	void setVisibilityLink(LinkableProperty *lp);
+
 	void setConnection(const std::string c) { connection_name = c; }
 	std::string getConnection() { return connection_name; }
 
@@ -104,6 +108,7 @@ protected:
 	Structure *definition;
 	float value_scale;
 	int tab_position;
+	LinkableProperty *visibility;
 };
 
 #endif

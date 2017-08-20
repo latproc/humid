@@ -96,6 +96,7 @@ public:
 
 	long getIntProperty(const std::string name, int default_value = 0);
 	std::string getStringProperty(const std::string name, const char *default_value = "");
+	bool getBoolProperty(const std::string name, bool default_value = false);
 
 	const std::string &getName() { return name; }
 	void setName( const std::string new_name) { name = new_name; }

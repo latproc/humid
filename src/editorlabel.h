@@ -21,6 +21,7 @@ public:
 				LinkableProperty *lp, const std::string caption,
 				const std::string &font = "sans", int fontSize = -1, int icon = 0);
 
+	virtual nanogui::Widget *asWidget() override { return this; }
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 
 	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
@@ -37,6 +38,10 @@ public:
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
+protected:
+	int alignment;
+	int valign;
+	bool wrap_text;
 };
 
 #endif

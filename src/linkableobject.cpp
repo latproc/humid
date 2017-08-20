@@ -16,6 +16,7 @@
 #include "editorimageview.h"
 #include "nanogui/textbox.h"
 #include "nanogui/label.h"
+#include "editor.h"
 
 extern std::string shortName(const std::string s);
 
@@ -89,3 +90,17 @@ void LinkableIndicator::update(const Value &value) {
         }
     }
 }
+
+LinkableVisibility::LinkableVisibility(EditorObject *w) : LinkableObject(w) { }
+void LinkableVisibility::update(const Value &value) {
+    EditorWidget *ew = dynamic_cast<EditorWidget*>(widget);
+    if (ew && ew->asWidget()) {
+        if (Editor::instance()->isEditMode()) ew->asWidget()->setVisible(true);
+        else {
+            bool vis;
+            if (value.asBoolean(vis)) ew->asWidget()->setVisible(vis);
+            else ew->asWidget()->setVisible(true);
+        }
+    }
+}
+

@@ -12,7 +12,8 @@
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
-: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
+  alignment(1), valign(1), wrap_text(true) {
 }
 
 bool EditorLabel::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -50,12 +51,18 @@ void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> 
   EditorWidget::loadPropertyToStructureMap(property_map);
   property_map["Caption"] = "caption";
   property_map["Font Size"] = "font_size";
+  property_map["Alignment"] = "alignment";
+  property_map["Vertical Alignment"] = "valign";
+  property_map["Wrap Text"] = "wrap";
 }
 
 void EditorLabel::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
     names.push_back("Caption");
     names.push_back("Font Size");
+    names.push_back("Vertical Alignment");
+    names.push_back("Alignment");
+    names.push_back("Wrap Text");
 }
 
 Value EditorLabel::getPropertyValue(const std::string &prop) {
@@ -64,6 +71,9 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
     return res;
   if (prop == "Caption") return Value(caption(), Value::t_string);
   if (prop == "Font Size") return fontSize();
+  if (prop == "Alignment") return alignment;
+  if (prop == "Vertical Alignment") return valign;
+  if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   return SymbolTable::Null;
 }
 
@@ -77,4 +87,10 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
       int fs = std::atoi(value.c_str());
       setFontSize(fs);
     }
+    if (prop == "Alignment") alignment = std::atoi(value.c_str());
+    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+    if (prop == "Wrap Text") {
+      wrap_text = (value == "1" || value == "true" || value == "TRUE");
+    }
+
 }

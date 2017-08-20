@@ -21,6 +21,8 @@ public:
 	EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon = 0);
 	virtual ~EditorTextBox() { }
 
+	virtual nanogui::Widget *asWidget() override { return this; }
+
 	virtual void getPropertyNames(std::list<std::string> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
@@ -37,6 +39,8 @@ public:
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
+	int valign;
+	bool wrap_text;
 };
 
 #endif

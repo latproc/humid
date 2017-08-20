@@ -27,6 +27,7 @@ public:
 	EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp,
             const std::string &caption = "Untitled", bool toggle = false, int icon = 0);
 
+	virtual nanogui::Widget *asWidget() override { return this; }
 	virtual void getPropertyNames(std::list<std::string> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
@@ -58,6 +59,9 @@ protected:
 	nanogui::Color bg_on_color;
 	nanogui::Color on_text_colour;
 	std::string on_caption;
+	int alignment;
+	int valign;
+	bool wrap_text;
 };
 
 #endif

@@ -61,6 +61,9 @@ public:
 	virtual void select(Selectable * w) override;
 	virtual void deselect(Selectable *w) override;
 
+	void startEditMode();
+	void endEditMode();
+
 	virtual void getPropertyNames(std::list<std::string> &names);
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
 	virtual void loadProperties(PropertyFormHelper *pfh);

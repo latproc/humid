@@ -726,6 +726,15 @@ void UserWindow::update(const Value &value) {
 	}
 }
 
+void UserWindow::startEditMode() {
+	for (auto child : window->children()) {
+		EditorWidget *ew = dynamic_cast<EditorWidget*>(child);
+		if (ew && ew->asWidget()) ew->asWidget()->setVisible(true);
+	}
+}
+
+void UserWindow::endEditMode() { }
+
 void UserWindow::select(Selectable * w) {
 	if (!dynamic_cast<nanogui::Widget*>(w)) return;
 	Palette::select(w);
@@ -1004,6 +1013,7 @@ void UserWindow::loadStructure( Structure *s) {
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
 			const Value &remote(element->getProperties().find("remote"));
+			const Value &vis(element->getProperties().find("visibility"));
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
 			long font_size = 0;
@@ -1017,6 +1027,10 @@ void UserWindow::loadStructure( Structure *s) {
 			LinkableProperty *lp = nullptr;
 			if (remote != SymbolTable::Null)
 				lp = gui->findLinkableProperty(remote.asString());
+			LinkableProperty *visibility = nullptr;
+			if (vis != SymbolTable::Null) {
+				visibility = gui->findLinkableProperty(vis.asString());
+			}
 			if (kind == "LABEL") {
 				const Value &caption_v(element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
@@ -1033,6 +1047,7 @@ void UserWindow::loadStructure( Structure *s) {
 				if (tab_pos) el->setTabPosition(tab_pos);
 				if (lp)
 					lp->link(new LinkableText(el));
+				if (visibility) el->setVisibilityLink(visibility);
 				el->setChanged(false);
 			}
 			if (kind == "IMAGE") {
@@ -1059,6 +1074,7 @@ void UserWindow::loadStructure( Structure *s) {
 				}
 				if (lp) {
 					lp->link(new LinkableText(el));
+				if (visibility) el->setVisibilityLink(visibility);
 				}
 				el->setChanged(false);
 			}
@@ -1075,6 +1091,7 @@ void UserWindow::loadStructure( Structure *s) {
 				ep->setChanged(false);
 				if (lp)
 					lp->link(new LinkableNumber(ep));
+				if (visibility) ep->setVisibilityLink(visibility);
 			}
 			if (kind == "TEXT") {
 				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
@@ -1101,6 +1118,7 @@ void UserWindow::loadStructure( Structure *s) {
 				EditorGUI *gui = this->gui;
 				if (lp)
 					lp->link(new LinkableText(textBox));
+				if (visibility) textBox->setVisibilityLink(visibility);
 				textBox->setChanged(false);
 				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
 					if (!textBox->getRemote()) return true;
@@ -1147,6 +1165,7 @@ void UserWindow::loadStructure( Structure *s) {
 					lp->setMonitors(this, monitors.asString());
 				}
 				lp->setChanged(false);
+				if (visibility) lp->setVisibilityLink(visibility);
 			}
 			else if (kind == "BUTTON" || kind == "INDICATOR") {
 				const Value &caption_v(element->getProperties().find("caption"));
@@ -1181,6 +1200,7 @@ void UserWindow::loadStructure( Structure *s) {
 					if (cmd != SymbolTable::Null && cmd.asString().length()) b->setCommand(cmd.asString());
 				}
 				b->setupButtonCallbacks(lp, gui);
+				if (visibility) b->setVisibilityLink(visibility);
 				b->setChanged(false);
 			}
 		}
@@ -2447,6 +2467,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				break;
 			case GUIEDITMODE:
 				editmode = true;
+				getUserWindow()->startEditMode();
 				if (false){
 					Value remote_screen(system_settings->getProperties().find("remote_screen"));
 					if (remote_screen != SymbolTable::Null) {
@@ -2459,6 +2480,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				// fall through
 			case GUIWORKING:
 				getUserWindow()->setVisible(true);
+				getUserWindow()->endEditMode();
 				//getScreensWindow()->selectFirst();
 				getToolbar()->setVisible(!run_only);
 				if (getPropertyWindow()) {
@@ -3175,6 +3197,26 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 											//gui->getUserWindow()->select(this);
 										}
 									});
+		properties->addButton("Link Visibility", [&,gui,this,properties]() mutable{
+			if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
+				gui->getUserWindow()->getWindow()->requestFocus();
+				std::string items;
+				for (auto sel : gui->getObjectWindow()->getSelected()) {
+					ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+					if (btn) {
+						LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+						if (visibility) visibility->unlink(this);
+						visibility = lp;
+						setProperty("Visibility", btn->tagName());
+						visibility->link(new LinkableVisibility(this));
+					}
+					break;
+				}
+				gui->getObjectWindow()->clearSelections();
+				gui->getUserWindow()->clearSelections();
+				gui->getPropertyWindow()->update();
+			}
+		});
 
 	}
 }
@@ -3416,6 +3458,14 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				[&,tb]()->std::string{ return tb->numberFormat(); });
 		}
 		}
+		properties->addVariable<int> (
+			"Vertical Alignment",
+			[&](int value) mutable{ valign = value; },
+			[&]()->int{ return valign; });
+		properties->addVariable<bool> (
+			"Wrap Text",
+			[&](bool value) mutable{ wrap_text = value; },
+			[&]()->bool{ return wrap_text; });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
@@ -3433,6 +3483,15 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 	}
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 }
 
 void EditorImageView::loadProperties(PropertyFormHelper* properties) {
@@ -3462,6 +3521,15 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
 
@@ -3473,6 +3541,18 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			"Caption",
 			[&](std::string value) mutable{ setCaption(value); },
 			[&]()->std::string{ return caption(); });
+		properties->addVariable<int> (
+			"Alignment",
+			[&](int value) mutable{ alignment = value; },
+			[&]()->int{ return alignment; });
+		properties->addVariable<int> (
+			"Vertical Alignment",
+			[&](int value) mutable{ valign = value; },
+			[&]()->int{ return valign; });
+		properties->addVariable<bool> (
+			"Wrap Text",
+			[&](bool value) mutable{ wrap_text = value; },
+			[&]()->bool{ return wrap_text; });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
@@ -3490,6 +3570,15 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
 
@@ -3518,6 +3607,15 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
 
@@ -3554,6 +3652,18 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Icon",
 			[&](int value) mutable{ setIcon(value); },
 			[&]()->int{ return icon(); });
+		properties->addVariable<int> (
+			"Alignment",
+			[&](int value) mutable{ alignment = value; },
+			[&]()->int{ return alignment; });
+		properties->addVariable<int> (
+			"Vertical Alignment",
+			[&](int value) mutable{ valign = value; },
+			[&]()->int{ return valign; });
+		properties->addVariable<bool> (
+			"Wrap Text",
+			[&](bool value) mutable{ wrap_text = value; },
+			[&]()->bool{ return wrap_text; });
 		properties->addVariable<int> (
 			"IconPosition",
 			[&](int value) mutable{
@@ -3608,6 +3718,15 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
 void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val) {
@@ -3694,6 +3813,15 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 	properties->addGroup("Triggers");
 	properties->addVariable<std::string> (

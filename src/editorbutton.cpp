@@ -76,7 +76,7 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
 
 EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption,
             bool toggle, int icon)
-	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle){
+	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), alignment(1), valign(1), wrap_text(false){
     setPushed(false);
     bg_on_color = nanogui::Color(0.3f, 0.3f, 0.3f, 0.0f);
     on_text_colour = mTextColor;
@@ -124,17 +124,10 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
     names.push_back("Text on colour");
     names.push_back("Behaviour");
     names.push_back("Command");
+    names.push_back("Vertical Alignment");
+    names.push_back("Alignment");
+    names.push_back("Wrap Text");
 }
-
-void EditorButton::setProperty(const std::string &prop, const std::string value) {
-  EditorWidget::setProperty(prop, value);
-  if (prop == "Remote") {
-    if (remote) {
-      if (getDefinition()->getKind() == "INDICATOR")
-        remote->link(new LinkableIndicator(this));  }
-    }
-}
-
 
 void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
   EditorWidget::loadPropertyToStructureMap(property_map);
@@ -146,6 +139,9 @@ void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Text on colour"] = "on_text_colour";
   property_map["Behaviour"] = "behaviour";
   property_map["Command"] = "command";
+  property_map["Alignment"] = "alignment";
+  property_map["Vertical Alignment"] = "valign";
+  property_map["Wrap Text"] = "wrap";
 }
 
 Value EditorButton::getPropertyValue(const std::string &prop) {
@@ -191,8 +187,26 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "Behaviour") {
     return flags();
   }
+  if (prop == "Alignment") return alignment;
+  if (prop == "Vertical Alignment") return valign;
+  if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   return SymbolTable::Null;
 }
+
+void EditorButton::setProperty(const std::string &prop, const std::string value) {
+  EditorWidget::setProperty(prop, value);
+  if (prop == "Remote") {
+    if (remote) {
+      if (getDefinition()->getKind() == "INDICATOR")
+        remote->link(new LinkableIndicator(this));  }
+    }
+    if (prop == "Alignment") alignment = std::atoi(value.c_str());
+    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+    if (prop == "Wrap Text") {
+      wrap_text = (value == "1" || value == "true" || value == "TRUE");
+    }
+}
+
 
 void EditorButton::draw(NVGcontext *ctx) {
     using namespace nanogui;

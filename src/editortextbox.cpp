@@ -9,7 +9,8 @@
 #include "editortextbox.h"
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
+      valign(0), wrap_text(false) {
 }
 
 bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -44,6 +45,8 @@ void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Text");
   names.push_back("Font Size");
   names.push_back("Alignment");
+  names.push_back("Vertical Alignment");
+  names.push_back("Wrap Text");
 }
 
 void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
@@ -51,6 +54,8 @@ void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string
   property_map["Text"] = "text";
   property_map["Font Size"] = "font_size";
   property_map["Alignment"] = "alignment";
+  property_map["Vertical Alignment"] = "valign";
+  property_map["Wrap Text"] = "wrap";
 }
 
 Value EditorTextBox::getPropertyValue(const std::string &prop) {
@@ -62,6 +67,8 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
   }
   if (prop == "Font Size") return fontSize();
   if (prop == "Alignment") return (int)alignment();
+  if (prop == "Vertical Alignment") return valign;
+  if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   return SymbolTable::Null;
 }
 
@@ -81,5 +88,9 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
     }
     if (prop == "Alignment") {
       setAlignment((Alignment)std::atoi(value.c_str()));
+    }
+    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+    if (prop == "Wrap Text") {
+      wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
 }

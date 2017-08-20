@@ -98,6 +98,25 @@ std::string Structure::getStringProperty(const std::string name, const char *def
 		return val.asString();
 }
 
+bool Structure::getBoolProperty(const std::string name, bool default_value) {
+	const Value &val = properties.find(name.c_str());
+	if (val != SymbolTable::Null) {
+		switch(val.kind) {
+			case Value::t_bool: return val.bValue;
+			case Value::t_integer: return val.iValue;
+			case Value::t_float: return default_value;
+			case Value::t_string:
+			case Value::t_symbol: 
+				if (val.sValue == "true" || val.sValue == "TRUE") return true;
+				else if (val.sValue == "false" || val.sValue == "FALSE") return false;
+				else return default_value;
+			default:
+				return default_value;
+		}
+	}
+	return default_value;
+}
+
 bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 	const char *begin_properties = "(";
 	const char *property_delim = ",";

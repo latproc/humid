@@ -54,5 +54,11 @@ class LinkableIndicator : public LinkableObject {
 		void update(const Value &value) override;
 };
 
+class LinkableVisibility : public LinkableObject {
+	public:
+		LinkableVisibility(EditorObject *w);
+		void update(const Value &value) override;
+};
+
 
 #endif

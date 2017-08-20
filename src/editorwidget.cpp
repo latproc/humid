@@ -29,7 +29,7 @@ extern Handle::Mode all_handles[];
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-    definition(0), value_scale(1.0f), tab_position(0) {
+    definition(0), value_scale(1.0f), tab_position(0), visibility(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -41,7 +41,7 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-  definition(0), value_scale(1.0f), tab_position(0) {
+  definition(0), value_scale(1.0f), tab_position(0), visibility(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -51,6 +51,12 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 }
 
 EditorWidget::~EditorWidget() { }
+
+void EditorWidget::setVisibilityLink(LinkableProperty *lp) {
+  if(visibility) visibility->unlink(this);
+  visibility = lp;
+  if (visibility) visibility->link(new LinkableVisibility(this));
+}
 
 EditorWidget *EditorWidget::create(const std::string kind) {
     return nullptr; // TBD
@@ -239,6 +245,8 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Tab Position");
   names.push_back("Remote");
   names.push_back("Connection");
+  names.push_back("Border");
+  names.push_back("Visibility");
 }
 
 void EditorWidget::setPropertyValue(const std::string &prop, const Value &v) {
@@ -290,6 +298,11 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
   if (prop == "Connection") {
     connection_name = value;
   }
+  if (prop == "Visibility" && !value.empty()) {
+    if (visibility) visibility->unlink(this);
+    visibility = EDITOR->gui()->findLinkableProperty(value);
+    if (visibility) visibility->link(new LinkableVisibility(this));
+  }
 
 }
 
@@ -329,6 +342,9 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
   }
   if (prop == "Connection") {
     return Value(remote ? remote->group() : connection_name, Value::t_string);
+  }
+  if (prop == "Visibility") {
+    return Value(visibility ? visibility->tagName() : "", Value::t_string);
   }
   return SymbolTable::Null;
 }
@@ -373,6 +389,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Tab Position"] = "tab_position";
   property_map["Remote"] = "remote";
   property_map["Connection"] = "connection";
+  property_map["Visibility"] = "visibility";
 }
 
 // generate or update structure properties from the widget
