@@ -106,7 +106,7 @@ void LinkableVisibility::update(const Value &value) {
                 if (!ew->invertedVisibility())
                     ew->asWidget()->setVisible(vis);
                 else 
-                    ew->asWidget()->setVisible(vis);
+                    ew->asWidget()->setVisible(!vis);
             }
             else ew->asWidget()->setVisible(true);
         }
