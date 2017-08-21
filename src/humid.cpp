@@ -470,14 +470,13 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 }
 
 void ObjectWindow::rebuildWindow() {
-	std::cout << "rebuilding object window\n";
 	const std::map<std::string, LinkableProperty*> &properties(gui->getLinkableProperties());
 	std::set<std::string>groups;
 	for (auto item : properties) {
 		groups.insert(item.second->group());
 	}
 	for (auto group : groups) {
-		std::cout << "createing object window tab: " << group << "\n";
+		std::cout << "creating object window tab: " << group << "\n";
 		createTab(group.c_str());
 		if (boost::filesystem::exists(group)) {// load a tag file if given
 			std::cout << "tag file found, loading: " << group << " from file\n";
@@ -537,7 +536,6 @@ StartupWindow::StartupWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 	newProjectButton->setFixedSize(Vector2i(120, 40));
 	newProjectButton->setSize(Vector2i(120, 40));
 	newProjectButton->setCallback([this, newProjectButton] {
-		std::cout << "New project\n";
 		newProjectButton->parent()->setVisible(false);
 		this->gui->setState(EditorGUI::GUICREATEPROJECT);
 	});

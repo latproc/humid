@@ -427,7 +427,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
 
 	std::ostream &output(std::cout);
 
-	//if (DEBUG_BASIC)
+	if (DEBUG_BASIC)
 		std::cout << "received: "<<data<<" from connection: " << name << "\n";
 
 	std::list<Value> *message = 0;
