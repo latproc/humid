@@ -1013,7 +1013,13 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &remote(element->getProperties().find("remote"));
 			const Value &vis(element->getProperties().find("visibility"));
 			const Value &connection(element->getProperties().find("connection"));
+			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
+			bool ivis = false;
+			{ 
+				const Value &ivis_v(element->getProperties().find("inverted_visibility"));
+				if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
+			}
 			long font_size = 0;
 			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
 			const Value &scale_val(element->getProperties().find("value_scale"));
@@ -1046,6 +1052,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (lp)
 					lp->link(new LinkableText(el));
 				if (visibility) el->setVisibilityLink(visibility);
+				if (border != SymbolTable::Null) el->setBorder(border.iValue);
+				el->setInvertedVisibility(ivis);
 				el->setChanged(false);
 			}
 			if (kind == "IMAGE") {
@@ -1065,11 +1073,13 @@ void UserWindow::loadStructure( Structure *s) {
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
+				el->setInvertedVisibility(ivis);
 				if (image_file_v != SymbolTable::Null) {
 					std::string ifn = image_file_v.asString();
 					el->setImageName(ifn);
 					el->fit();
 				}
+				if (border != SymbolTable::Null) el->setBorder(border.iValue);
 				if (lp) {
 					lp->link(new LinkableText(el));
 				if (visibility) el->setVisibilityLink(visibility);
@@ -1086,6 +1096,8 @@ void UserWindow::loadStructure( Structure *s) {
 				}
 				if (value_scale != 1.0) ep->setValueScale( value_scale );
 				if (tab_pos) ep->setTabPosition(tab_pos);
+				if (border != SymbolTable::Null) ep->setBorder(border.iValue);
+				ep->setInvertedVisibility(ivis);
 				ep->setChanged(false);
 				if (lp)
 					lp->link(new LinkableNumber(ep));
@@ -1108,6 +1120,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementSize( textBox, element->getProperties());
 				if (font_size) textBox->setFontSize(font_size);
 				if (tab_pos) textBox->setTabPosition(tab_pos);
+				if (border != SymbolTable::Null) textBox->setBorder(border.iValue);
 				textBox->setName(element->getName());
 				if (lp)
 					textBox->setTooltip(remote.asString());
@@ -1117,6 +1130,7 @@ void UserWindow::loadStructure( Structure *s) {
 				if (lp)
 					lp->link(new LinkableText(textBox));
 				if (visibility) textBox->setVisibilityLink(visibility);
+				textBox->setInvertedVisibility(ivis);
 				textBox->setChanged(false);
 				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
 					if (!textBox->getRemote()) return true;
@@ -1159,6 +1173,7 @@ void UserWindow::loadStructure( Structure *s) {
 				if (tab_pos) lp->setTabPosition(tab_pos);
 				if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
 				const Value &monitors(element->getProperties().find("monitors"));
+				lp->setInvertedVisibility(ivis);
 				if (monitors != SymbolTable::Null) {
 					lp->setMonitors(this, monitors.asString());
 				}
@@ -1183,6 +1198,8 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementSize( b, element->getProperties());
 				if (font_size) b->setFontSize(font_size);
 				if (tab_pos) b->setTabPosition(tab_pos);
+				if (border != SymbolTable::Null) b->setBorder(border.iValue);
+				b->setInvertedVisibility(ivis);
 				EditorGUI *gui = this->gui;
 
 				{
@@ -3133,69 +3150,84 @@ struct comma_is_space : std::ctype<char> {
 void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
-		properties->addVariable<std::string> ("Structure",
-									  [&,w](const std::string value) { },
-									  [&,w]()->std::string{ return getDefinition()->getKind(); });
-		properties->addVariable<int> ("Horizontal Pos",
-									  [&,w](int value) mutable{
-										  Eigen::Vector2i pos(value, w->position().y());
-										  w->setPosition(pos);
-									  },
-									  [&,w]()->int{ return w->position().x(); });
-		properties->addVariable<int> ("Vertical Pos",
-									  [&,w](int value) mutable{
-										  Eigen::Vector2i pos(w->position().x(), value);
-										  w->setPosition(pos);
-									  },
-									  [&,w]()->int{ return w->position().y(); });
-		properties->addVariable<int> ("Width",
-									  [&,w](int value) mutable{ w->setWidth(value); },
-									  [&,w]()->int{ return w->width(); });
-		properties->addVariable<int> ("Height",
-								  [&,w](int value) mutable{ w->setHeight(value); },
-								  [&,w]()->int{ return w->height(); });
-		properties->addVariable<std::string> ("Name",
-											  [&](std::string value) mutable{
-													setName(value);
-													if (getDefinition()) {
-														getDefinition()->setName(value);
-													}
-												},
-											  [&]()->std::string{ return getName(); });
-		properties->addVariable<int> ("Font Size",
-									  [&,w](int value) mutable{ w->setFontSize(value); },
-									  [&,w]()->int{ return w->fontSize(); });
-		properties->addVariable<int> ("Tab Position",
-									  [&,w](int value) mutable{ setTabPosition(value); },
-									  [&,w]()->int{ return tabPosition(); });
-		properties->addVariable<int> ("Value Scale",
-									  [&,w](int value) mutable{ setValueScale(value); },
-									  [&,w]()->int{ return valueScale(); });
-		properties->addVariable<std::string> ("Patterns",
-											  [&,w](std::string value) mutable{ setPatterns(value); },
-											  [&,w]()->std::string{ return patterns(); }
-											  );
+		properties->addVariable<std::string> (
+			"Structure",
+			[&,w](const std::string value) { },
+			[&,w]()->std::string{ return getDefinition()->getKind(); });
+		properties->addVariable<int> (
+			"Horizontal Pos",
+			[&,w](int value) mutable{
+			  Eigen::Vector2i pos(value, w->position().y());
+			  w->setPosition(pos);
+			},
+			[&,w]()->int{ return w->position().x(); });
+		properties->addVariable<int> (
+			"Vertical Pos",
+			[&,w](int value) mutable{
+			  Eigen::Vector2i pos(w->position().x(), value);
+			  w->setPosition(pos);
+			},
+			[&,w]()->int{ return w->position().y(); });
+		properties->addVariable<int> (
+			"Width",
+			[&,w](int value) mutable{ w->setWidth(value); },
+			[&,w]()->int{ return w->width(); });
+		properties->addVariable<int> (
+			"Height",
+			[&,w](int value) mutable{ w->setHeight(value); },
+			[&,w]()->int{ return w->height(); });
+		properties->addVariable<std::string> (
+			"Name",
+			[&](std::string value) mutable{
+				setName(value);
+				if (getDefinition()) {
+					getDefinition()->setName(value);
+				}
+			},
+			[&]()->std::string{ return getName(); });
+		properties->addVariable<int> (
+			"Font Size",
+			[&,w](int value) mutable{ w->setFontSize(value); },
+			[&,w]()->int{ return w->fontSize(); });
+		properties->addVariable<int> (
+			"Tab Position",
+			[&,w](int value) mutable{ setTabPosition(value); },
+			[&,w]()->int{ return tabPosition(); });
+		properties->addVariable<int> (
+			"Value Scale",
+			[&,w](int value) mutable{ setValueScale(value); },
+			[&,w]()->int{ return valueScale(); });
+		properties->addVariable<int> (
+			"Border",
+			[&,w](int value) mutable{ setBorder(value); },
+			[&,w]()->int{ return border; });
+		properties->addVariable<std::string> (
+			"Patterns",
+			[&,w](std::string value) mutable{ setPatterns(value); },
+			[&,w]()->std::string{ return patterns(); });
 		EditorGUI *gui = EDITOR->gui();
-		properties->addButton("Link to Remote", [&,gui,this,properties]() mutable{
-										if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
-											gui->getUserWindow()->getWindow()->requestFocus();
-											std::string items;
-											for (auto sel : gui->getObjectWindow()->getSelected()) {
-												ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
-												LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
-												if (remote) remote->unlink(this);
-												remote = lp;
-												setProperty("Remote", btn->tagName());
-												break;
-											}
-											gui->getObjectWindow()->clearSelections();
-											//properties->refresh();
-											gui->getUserWindow()->clearSelections();
-											gui->getPropertyWindow()->update();
-											//gui->getUserWindow()->select(this);
-										}
-									});
-		properties->addButton("Link Visibility", [&,gui,this,properties]() mutable{
+		properties->addButton(
+			"Link to Remote", [&,gui,this,properties]() mutable{
+			if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
+				gui->getUserWindow()->getWindow()->requestFocus();
+				std::string items;
+				for (auto sel : gui->getObjectWindow()->getSelected()) {
+					ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+					LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+					if (remote) remote->unlink(this);
+					remote = lp;
+					setProperty("Remote", btn->tagName());
+					break;
+				}
+				gui->getObjectWindow()->clearSelections();
+				//properties->refresh();
+				gui->getUserWindow()->clearSelections();
+				gui->getPropertyWindow()->update();
+				//gui->getUserWindow()->select(this);
+			}
+		});
+		properties->addButton(
+			"Link Visibility", [&,gui,this,properties]() mutable{
 			if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
 				gui->getUserWindow()->getWindow()->requestFocus();
 				std::string items;
@@ -3215,7 +3247,10 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 				gui->getPropertyWindow()->update();
 			}
 		});
-
+		properties->addVariable<bool> (
+			"Inverted Visibility",
+			[&,w](bool value) mutable{ inverted_visibility = value; },
+			[&,w]()->bool{ return inverted_visibility; });
 	}
 }
 

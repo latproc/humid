@@ -29,7 +29,7 @@ extern Handle::Mode all_handles[];
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-    definition(0), value_scale(1.0f), tab_position(0), visibility(0) {
+    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -41,7 +41,7 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-  definition(0), value_scale(1.0f), tab_position(0), visibility(0) {
+  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -234,19 +234,20 @@ void EditorWidget::justDeselected() {
   }
 }
 void EditorWidget::getPropertyNames(std::list<std::string> &names) {
-  names.push_back("Structure");
-  names.push_back("Horizontal Pos");
-  names.push_back("Vertical Pos");
-  names.push_back("Width");
-  names.push_back("Height");
-  names.push_back("Name"); // not common
-  names.push_back("Font Size");
-  names.push_back("Value Scale");
-  names.push_back("Tab Position");
-  names.push_back("Remote");
-  names.push_back("Connection");
   names.push_back("Border");
+  names.push_back("Connection");
+  names.push_back("Font Size");
+  names.push_back("Height");
+  names.push_back("Horizontal Pos");
+  names.push_back("Inverted Visibility");
+  names.push_back("Name"); // not common
+  names.push_back("Remote");
+  names.push_back("Structure");
+  names.push_back("Tab Position");
+  names.push_back("Value Scale");
+  names.push_back("Vertical Pos");
   names.push_back("Visibility");
+  names.push_back("Width");
 }
 
 void EditorWidget::setPropertyValue(const std::string &prop, const Value &v) {
@@ -290,7 +291,11 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (pos != 0) setTabPosition(pos);
     return;
   }
-  if (prop == "Remote") {
+  if (prop == "Border") {
+    border = std::atoi(value.c_str());
+    return;
+  }
+ if (prop == "Remote") {
     if (remote) remote->unlink(this);
     remote = EDITOR->gui()->findLinkableProperty(value);
     // note: remote->link() not yet called. see subclass method.
@@ -302,6 +307,9 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (visibility) visibility->unlink(this);
     visibility = EDITOR->gui()->findLinkableProperty(value);
     if (visibility) visibility->link(new LinkableVisibility(this));
+  }
+  if (prop == "Inverted Visibility" && !value.empty()) {
+    inverted_visibility = (value == "1" || value == "true" || value == "TRUE");    
   }
 
 }
@@ -337,6 +345,9 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return valueScale();
   }
+  if (prop == "Border") {
+    return border;
+  }
   if (prop == "Remote") {
     return remote ? Value(remote->tagName(), Value::t_string) : "";
   }
@@ -345,6 +356,9 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
   }
   if (prop == "Visibility") {
     return Value(visibility ? visibility->tagName() : "", Value::t_string);
+  }
+  if (prop == "Inverted Visibility") { 
+    return inverted_visibility;
   }
   return SymbolTable::Null;
 }
@@ -379,17 +393,19 @@ std::string EditorWidget::getProperty(const std::string &prop) {
 }
 
 void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  property_map["Structure"] = ""; // not to be copied
-  property_map["Horizontal Pos"] = "pos_x";
-  property_map["Vertical Pos"] = "pos_y";
-  property_map["Width"] = "width";
-  property_map["Height"] = "height";
-  property_map["Font Size"] = "font_size";
-  property_map["Value Scale"] = "value_scale";
-  property_map["Tab Position"] = "tab_position";
-  property_map["Remote"] = "remote";
+  property_map["Border"] = "border";
   property_map["Connection"] = "connection";
+  property_map["Font Size"] = "font_size";
+  property_map["Height"] = "height";
+  property_map["Horizontal Pos"] = "pos_x";
+  property_map["Inverted Visibility"] = "inverted_visibility";
+  property_map["Remote"] = "remote";
+  property_map["Structure"] = ""; // not to be copied
+  property_map["Tab Position"] = "tab_position";
+  property_map["Value Scale"] = "value_scale";
+  property_map["Vertical Pos"] = "pos_y";
   property_map["Visibility"] = "visibility";
+  property_map["Width"] = "width";
 }
 
 // generate or update structure properties from the widget
@@ -423,7 +439,6 @@ void EditorWidget::updateStructure() {
           continue;
         }
         std::string mapped((*found).second.c_str());
-        std::cout << s->getName() << " setting " << mapped << " to " << v << "\n";
         if (mapped == "width" && v.kind == Value::t_integer && v.iValue < 40)
           v = 40;
         if (mapped == "height" && v.kind == Value::t_integer && v.iValue < 20)

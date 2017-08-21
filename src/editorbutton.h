@@ -62,6 +62,7 @@ protected:
 	int alignment;
 	int valign;
 	bool wrap_text;
+	int shadow;
 };
 
 #endif

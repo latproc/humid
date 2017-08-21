@@ -96,7 +96,6 @@ void Editor::save() {
 	assert(base_v != SymbolTable::Null);
 	std::string base_path_str = base_v.asString();
 	path project_base_path(base_path_str);
-	std::cout << "backing up project files in " << base_path_str << "\n";
 	{
 		std::string x = settings->getProperties().find("project_base").asString();
 		assert(boost::filesystem::is_directory(x));
@@ -122,11 +121,10 @@ void Editor::save() {
 
 		std::string file_path = base_path_str + "/" + fname;
 		structure_files[s] = file_path;
-		std::cout << "writing class " << s->getName() << " into " << file_path << "\n";
 	}
 	for (auto s : hm_structures) {
 		if (s->getOwner()) {
-			std::cout << s->getName() << " is owened by " << s->getOwner()->getName() << "\n";
+			std::cout << s->getName() << " is owned by " << s->getOwner()->getName() << "\n";
 			continue;
 		}
 		Value filename = s->getProperties().find("file_name");
@@ -151,7 +149,6 @@ void Editor::save() {
 		StructureClass *sc = dynamic_cast<StructureClass *>(item.first);
 		std::string fn = item.second;
 		if (!s && sc && sc->isBuiltIn()) {
-			std::cout << "skipping save of builtin: " << sc->getName() << "\n";
 			continue; // skip saving builtin objects
 		}
 		if (s && s->getOwner()) {

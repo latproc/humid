@@ -87,6 +87,9 @@ void LinkableIndicator::update(const Value &value) {
             else if (value.kind == Value::t_integer) {
                 tb->setPushed(value.iValue != 0);
             }
+            else {
+                std::cout << "Linkable Indicator ignoring state " << value << "\n";
+            }
         }
     }
 }
@@ -95,10 +98,16 @@ LinkableVisibility::LinkableVisibility(EditorObject *w) : LinkableObject(w) { }
 void LinkableVisibility::update(const Value &value) {
     EditorWidget *ew = dynamic_cast<EditorWidget*>(widget);
     if (ew && ew->asWidget()) {
-        if (Editor::instance()->isEditMode()) ew->asWidget()->setVisible(true);
+        if (Editor::instance()->isEditMode())
+            ew->asWidget()->setVisible(true);
         else {
             bool vis;
-            if (value.asBoolean(vis)) ew->asWidget()->setVisible(vis);
+            if (value.asBoolean(vis)) {
+                if (!ew->invertedVisibility())
+                    ew->asWidget()->setVisible(vis);
+                else 
+                    ew->asWidget()->setVisible(vis);
+            }
             else ew->asWidget()->setVisible(true);
         }
     }

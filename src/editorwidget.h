@@ -93,9 +93,14 @@ public:
 	void updateLinks();
 
 	void setVisibilityLink(LinkableProperty *lp);
+	void setInvertedVisibility(bool which) { inverted_visibility = which; }
+	bool invertedVisibility() { return inverted_visibility; }
 
 	void setConnection(const std::string c) { connection_name = c; }
 	std::string getConnection() { return connection_name; }
+
+	void setBorder(int val) { border = val; }
+	int getBorder() { return border; }
 
 protected:
 	std::list<Link>links;
@@ -109,6 +114,8 @@ protected:
 	float value_scale;
 	int tab_position;
 	LinkableProperty *visibility;
+	bool inverted_visibility;
+	int border;
 };
 
 #endif

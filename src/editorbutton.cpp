@@ -36,24 +36,29 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
     
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
-      if (flags() & nanogui::Button::NormalButton) {
-        if (cmd.length()) {
-        std::cout << conn << " sending " << cmd << "\n";
-        gui->queueMessage(conn, cmd,
-          [](std::string s){std::cout << " Response: " << s << "\n"; });
-        }
-        if (getRemote()) {
-          std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-          gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
-          std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-          gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
-        }
+      if (cmd.length()) {
+          std::cout << name << " sending " << cmd << " to " << conn << "\n";
+          gui->queueMessage(conn, cmd,
+            [](std::string s){std::cout << " Response: " << s << "\n"; });
       }
+      else if (flags() & nanogui::Button::RemoteButton) {
+        std::string msgon = gui->getIODSyncCommand(conn, 0, address(), pushed() ? 1 : 0);
+            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+      }
+      if (flags() & nanogui::Button::NormalButton && !(flags() & nanogui::Button::RemoteButton)) {
+        if (getRemote()) {
+            std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
+            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+            std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
+            gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+          }
+      }
+
     });
     setChangeCallback([&,this,gui, conn] (bool state) {
       const std::string &conn = getRemote()->group();
       if (getRemote()) {
-        if ( !(flags() & nanogui::Button::NormalButton) )  {
+        if ( !(flags() & nanogui::Button::NormalButton ) )  {
           if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
             gui->queueMessage(conn,
               gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){std::cout << s << "\n"; });
@@ -76,10 +81,12 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
 
 EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption,
             bool toggle, int icon)
-	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), alignment(1), valign(1), wrap_text(false){
+	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), 
+    alignment(1), valign(1), wrap_text(false), shadow(1) {
     setPushed(false);
     bg_on_color = nanogui::Color(0.3f, 0.3f, 0.3f, 0.0f);
     on_text_colour = mTextColor;
+    alignment = NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE;
 }
 
 bool EditorButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -225,7 +232,8 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     nvgBeginPath(ctx);
 
-    nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
+    if (border)
+      nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
                    mSize.y() - 2, mTheme->mButtonCornerRadius - 1);
 
     if (mPushed) {
@@ -255,7 +263,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     nvgFill(ctx);
 
     nvgBeginPath(ctx);
-    nvgStrokeWidth(ctx, 1.0f);
+    nvgStrokeWidth(ctx, border);
     nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + (mPushed ? 0.5f : 1.5f), mSize.x() - 1,
                    mSize.y() - 1 - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
     nvgStrokeColor(ctx, mTheme->mBorderLight);
@@ -266,7 +274,7 @@ void EditorButton::draw(NVGcontext *ctx) {
                    mSize.y() - 2, mTheme->mButtonCornerRadius);
     nvgStrokeColor(ctx, mTheme->mBorderDark);
     nvgStroke(ctx);
-
+ 
     int fontSize = mFontSize == -1 ? mTheme->mButtonFontSize : mFontSize;
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
@@ -339,11 +347,19 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
-    nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-    nvgFillColor(ctx, mTheme->mTextColorShadow);
-    nvgText(ctx, textPos.x(), textPos.y(), text.c_str(), nullptr);
+    nvgTextAlign(ctx, alignment);
+    if (shadow) {
+      nvgFillColor(ctx, mTheme->mTextColorShadow);
+      if (!wrap_text)
+        nvgText(ctx, textPos.x(), textPos.y(), text.c_str(), nullptr);
+      else
+        nvgTextBox(ctx, mPos.x(), mPos.y(), mSize.x(), mCaption.c_str(), nullptr);
+     }
     nvgFillColor(ctx, textColor);
-    nvgText(ctx, textPos.x(), textPos.y() + 1, text.c_str(), nullptr);
+    if (!wrap_text)
+      nvgText(ctx, textPos.x(), textPos.y() + 1, text.c_str(), nullptr);
+    else
+      nvgTextBox(ctx, mPos.x(), mPos.y(), mSize.x(), mCaption.c_str(), nullptr);
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 
 }
