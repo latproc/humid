@@ -135,7 +135,6 @@ std::list<std::string>error_messages;
 std::list<std::string>settings_files;
 std::list<std::string> source_files;
 
-Structure *system_settings = 0;
 
 using std::cout;
 using std::cerr;
@@ -720,7 +719,7 @@ void UserWindow::update(const Value &value) {
 	if (!EDITOR->isEditMode()) {
 		Structure *s = findScreen(value.asString());
 		if (s)
-			system_settings->getProperties().add("active_screen", Value(s->getName(), Value::t_string));
+			EditorGUI::systemSettings()->getProperties().add("active_screen", Value(s->getName(), Value::t_string));
 	}
 }
 
@@ -1676,7 +1675,7 @@ class ScreenSelectButton : public SelectableButton {
 		if (uw && getScreen()) {
 			// in edit mode the active screen is set by user actions.
 			// otherwise it is only changed by a property change from the remote end
-			system_settings->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
+			EditorGUI::systemSettings()->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
 			uw->setStructure(getScreen());
 			uw->refresh();
 		}
@@ -2484,7 +2483,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				editmode = true;
 				getUserWindow()->startEditMode();
 				if (false){
-					Value remote_screen(system_settings->getProperties().find("remote_screen"));
+					Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 					if (remote_screen != SymbolTable::Null) {
 						LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
 						if (lp)
@@ -2518,7 +2517,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					nanogui::Window *w = getScreensWindow()->getWindow();
 					w->setVisible(editmode && views.get("ScreensWindow").visible);
 				}
-				Value remote_screen(system_settings->getProperties().find("remote_screen"));
+				Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 				if (remote_screen != SymbolTable::Null) {
 					LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
 					if (lp) {
@@ -2966,7 +2965,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 							processModbusInitialisation(connection->getName(), obj);
 							w_objects->rebuildWindow();
 							w_user->setStructure(w_user->structure());
-							const Value remote_screen(system_settings->getProperties().find("remote_screen"));
+							const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 							if (remote_screen != SymbolTable::Null) {
 								LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
 								if (lp) {
@@ -2987,7 +2986,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 	if (connection->getStartupState() == sDONE || connection->getStartupState() == sRELOAD) {
 		if (w_user) {
 			//bool changed = false;
-			const Value &active(system_settings->getProperties().find("active_screen"));
+			const Value &active(EditorGUI::systemSettings()->getProperties().find("active_screen"));
 			if (active != SymbolTable::Null) {
 				if (connection->getStartupState() == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
 					Structure *s = findScreen(active.asString());
@@ -3015,98 +3014,6 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 		needs_update = false;
 	}
 	EditorSettings::flush();
-}
-
-bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
-	if (EDITOR->isEditMode()) {
-		return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
-	}
-	else {
-		if (key == GLFW_KEY_ESCAPE) {
-			w_user->getWindow()->requestFocus();
-			return true;
-		}
-		if (action == GLFW_PRESS ) {
-			bool function_key = false;
-			std::string key_name = "";
-			if ((key >= GLFW_KEY_0 && key <= GLFW_KEY_9)) {
-				char buf[10];
-				snprintf(buf, 10, "KEY_%d", key - GLFW_KEY_0);
-				key_name = buf;
-			}
-			else if ((key >= GLFW_KEY_F1 && key <= GLFW_KEY_F25)) {
-				char buf[10];
-				snprintf(buf, 10, "KEY_F%d", key - GLFW_KEY_F1+1);
-				key_name = buf;
-				function_key = true;
-			}
-			else if ((key >= GLFW_KEY_A && key <= GLFW_KEY_Z)) {
-				char buf[10];
-				snprintf(buf, 10, "KEY_%c", key - GLFW_KEY_A + 'A');
-				key_name = buf;
-			}
-			if (!function_key && nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
-
-			if (key_name.length()) {
-				std::cout << "detected key: " << key_name << "\n";
-				std::string conn;
-				StructureClass *sc = w_user->structure()->getStructureDefinition();
-				if (sc) {
-					std::map<std::string, Value>::iterator found = sc->getOptions().find(key_name);
-					if (found != sc->getOptions().end())
-						conn = (*found).second.asString();
-				}
-				if (conn.empty() && system_settings) {
-					sc = system_settings->getStructureDefinition();
-					if (!sc) {
-						std::cout << "no class\n";
-						return false;
-					}
-					std::map<std::string, Value>::iterator found = sc->getOptions().find(key_name);
-					if (found != sc->getOptions().end())
-						conn = (*found).second.asString();
-				}
-				if (conn.length()) {				
-					std::cout << "found key mapping: " << conn << "\n";
-					size_t dpos = conn.find(':');
-					if (dpos != std::string::npos) {
-						std::string remote = conn.substr(dpos+1);
-						conn = conn.erase(dpos);
-
-						LinkableProperty *lp = findLinkableProperty(remote);
-						if (lp) {
-							std::string msgon = getIODSyncCommand(conn, 0, lp->address(), 1);
-							queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
-							std::string msgoff = getIODSyncCommand(conn, 0, lp->address(), 0);
-							queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
-							return true;
-						}
-					}
-					else {
-						//search the current screen for a button with this name and click it
-						for (auto w : w_user->getWindow()->children()) {
-							EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
-							EditorTextBox *et = dynamic_cast<EditorTextBox*>(w);
-							EditorButton *eb = dynamic_cast<EditorButton*>(w);
-							if (et && et->getName() == conn) {
-								w->requestFocus();
-								et->selectAll();
-								return true;
-							}
-							else if (eb && eb->getName() == conn) {
-								if (eb->callback()) eb->callback()();
-								else if (eb->changeCallback()) {
-									eb->changeCallback()(!eb->pushed());
-									return true;
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-	return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 }
 
 
@@ -4283,9 +4190,9 @@ int main(int argc, const char ** argv ) {
 				system_class = new StructureClass("SYSTEM", "");
 				hm_classes.push_back(system_class);
 			}
-			system_settings = findStructure("System");
-			if (!system_settings) {
-				system_settings = system_class->instantiate(nullptr, "System");
+			EditorGUI::systemSettings(findStructure("System"));
+			if (!EditorGUI::systemSettings()) {
+				EditorGUI::systemSettings(system_class->instantiate(nullptr, "System"));
 			}
 
 			// if necessary create a project settings structure to store the 
@@ -4306,7 +4213,7 @@ int main(int argc, const char ** argv ) {
 			}
 
 
-			Value full_screen_v = system_settings->getProperties().find("full_screen");
+			Value full_screen_v = EditorGUI::systemSettings()->getProperties().find("full_screen");
 			long full_screen = 1;
 			full_screen_v.asInteger(full_screen);
 			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
@@ -4315,8 +4222,8 @@ int main(int argc, const char ** argv ) {
 			long height = mode->height;
 			std::cout << "intial videomode: " << width << "x" << height << "\n";
 			{
-				const Value width_v = system_settings->getProperties().find("w");
-				const Value height_v = system_settings->getProperties().find("h");
+				const Value width_v = EditorGUI::systemSettings()->getProperties().find("w");
+				const Value height_v = EditorGUI::systemSettings()->getProperties().find("h");
 				width_v.asInteger(width);
 				height_v.asInteger(height);
 			}
@@ -4331,14 +4238,14 @@ int main(int argc, const char ** argv ) {
 
 			app->createWindows();
 
-			Value remote_screen(system_settings->getProperties().find("remote_screen"));
-			if (!system_settings->getStructureDefinition()) {
-				system_settings->setStructureDefinition(findClass("SYSTEM"));
+			Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+			if (!EditorGUI::systemSettings()->getStructureDefinition()) {
+				EditorGUI::systemSettings()->setStructureDefinition(findClass("SYSTEM"));
 			}
 
 			if (remote_screen == SymbolTable::Null) {
-				system_settings->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));
-				remote_screen = system_settings->getProperties().find("remote_screen");
+				EditorGUI::systemSettings()->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));
+				remote_screen = EditorGUI::systemSettings()->getProperties().find("remote_screen");
 			}
 			else {
 				LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());

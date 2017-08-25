@@ -86,6 +86,8 @@ public:
 
 	unsigned int sampleBufferSize() const { return sample_buffer_size; }
 
+	static Structure *systemSettings() { return system_settings; }
+	static void systemSettings(Structure *s) { system_settings = s; }
 	Structure *getSettings();
 	void updateProperties() {
 		EditorSettings::flush();
@@ -104,6 +106,7 @@ public:
 	void processModbusInitialisation(const std::string group_name, cJSON *obj);
 
 private:
+	static Structure *system_settings;
 	std::recursive_mutex linkables_mutex;
 	std::map<std::string, LinkableProperty*>linkables;
 	ViewListController views;
