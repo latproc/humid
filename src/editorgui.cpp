@@ -105,6 +105,16 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 				snprintf(buf, 10, "KEY_%c", key - GLFW_KEY_A + 'A');
 				key_name = buf;
 			}
+			else if (key == GLFW_KEY_LEFT)
+				key_name = "KEY_LEFT";
+			else if (key == GLFW_KEY_RIGHT)
+				key_name = "KEY_RIGHT";
+			else if (key == GLFW_KEY_UP)
+				key_name = "KEY_UP";
+			else if (key == GLFW_KEY_DOWN)
+				key_name = "KEY_DOWN";
+
+
 			if (!function_key && nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
 
 			if (key_name.length()) {
@@ -155,8 +165,8 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 							}
 							else if (eb && eb->getName() == conn) {
 								if (eb->callback()) eb->callback()();
-								else if (eb->changeCallback()) {
-									eb->changeCallback()(!eb->pushed());
+								if (eb->changeCallback()) {
+									eb->changeCallback()(eb->pushed());
 									return true;
 								}
 							}
