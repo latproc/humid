@@ -174,7 +174,10 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 							else if (eb && eb->getName() == conn) {
 								if (eb->callback()) eb->callback()();
 								if (eb->changeCallback()) {
-									eb->changeCallback()(eb->pushed());
+									if (eb->flags() & nanogui::Button::ToggleButton)
+										eb->changeCallback()(!eb->pushed());
+									else
+										eb->changeCallback()(eb->pushed());
 									return true;
 								}
 							}
