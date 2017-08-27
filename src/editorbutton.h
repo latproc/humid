@@ -53,6 +53,8 @@ public:
 	const std::string &onCaption() { return on_caption; }
 
 	virtual void draw(NVGcontext *ctx) override;
+
+	void setWrap(bool which) { wrap_text = which; }
 protected:
 	bool is_toggle;
 	std::string command_str;

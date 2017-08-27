@@ -295,7 +295,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     //if (!mEnabled)
     //    textColor = mTheme->mDisabledTextColor;
 
-    if (false && mIcon) {
+    if (mIcon) {
         auto icon = utf8(mIcon);
 
         float iw, ih = fontSize;
@@ -345,21 +345,64 @@ void EditorButton::draw(NVGcontext *ctx) {
         }
     }
 
+    // we are using two separate alignments: 1,2,4 so we 
+    // convert the default alignment from nanogui here
+    if (alignment == (NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE) ) {
+      alignment = 1;
+      valign = NVG_ALIGN_CENTER;
+    }
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
     nvgTextAlign(ctx, alignment);
+    int label_x = textPos.x();
+    int label_y = textPos.y();
+    int align = NVG_ALIGN_LEFT;
+
+    if (alignment & 2) {
+      label_x = mPos.x() + mSize.x()-5;
+      align = NVG_ALIGN_RIGHT;
+    }
+    else if (alignment & 1) {
+      label_x = mPos.x() + mSize.x()/2;
+      align = NVG_ALIGN_CENTER;
+    }
+    else
+      label_x = mPos.x();
+    
+    if (wrap_text) {
+      if (alignment & NVG_ALIGN_RIGHT) {
+        label_x = mPos.x() + mSize.x()-5;
+        align = NVG_ALIGN_RIGHT;
+      }
+      else if (alignment & NVG_ALIGN_CENTER) {
+        label_x = textPos.x();
+        align = NVG_ALIGN_CENTER;
+      }
+      else
+        label_x = mPos.x();
+    }
+    int alignv = NVG_ALIGN_MIDDLE;
+    if (valign & NVG_ALIGN_LEFT)
+      alignv = NVG_ALIGN_TOP;
+    else if (valign & NVG_ALIGN_RIGHT)
+      alignv = NVG_ALIGN_BOTTOM;
+
+
+    nvgTextAlign(ctx, align | alignv);
     if (shadow) {
       nvgFillColor(ctx, mTheme->mTextColorShadow);
       if (!wrap_text)
-        nvgText(ctx, textPos.x(), textPos.y(), text.c_str(), nullptr);
-      else
-        nvgTextBox(ctx, mPos.x(), mPos.y(), mSize.x(), mCaption.c_str(), nullptr);
-     }
+        nvgText(ctx, label_x, label_y, text.c_str(), nullptr);
+      else {
+        nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), mCaption.c_str(), nullptr);
+      }
+    }
     nvgFillColor(ctx, textColor);
     if (!wrap_text)
-      nvgText(ctx, textPos.x(), textPos.y() + 1, text.c_str(), nullptr);
-    else
-      nvgTextBox(ctx, mPos.x(), mPos.y(), mSize.x(), mCaption.c_str(), nullptr);
+      nvgText(ctx, label_x, label_y + 1, text.c_str(), nullptr);
+    else {
+      nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), mCaption.c_str(), nullptr);
+    }
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 
 }

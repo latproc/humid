@@ -1014,6 +1014,12 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
+			bool wrap = false;
+			{ 
+				const Value &wrap_v(element->getProperties().find("wrap"));
+				if (wrap_v != SymbolTable::Null) wrap_v.asBoolean(wrap);
+			}
+
 			bool ivis = false;
 			{ 
 				const Value &ivis_v(element->getProperties().find("inverted_visibility"));
@@ -1199,6 +1205,7 @@ void UserWindow::loadStructure( Structure *s) {
 				if (tab_pos) b->setTabPosition(tab_pos);
 				if (border != SymbolTable::Null) b->setBorder(border.iValue);
 				b->setInvertedVisibility(ivis);
+				b->setWrap(wrap);
 				EditorGUI *gui = this->gui;
 
 				{
