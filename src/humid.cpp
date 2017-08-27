@@ -3630,7 +3630,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			});
 		properties->addVariable<unsigned int> (
 			"Behaviour",
-			[&](unsigned int value) mutable{ setFlags(value & 0xff); },
+			[&, gui](unsigned int value) mutable{ setFlags(value & 0xff); setupButtonCallbacks(remote, gui); },
 			[&]()->unsigned int{ return flags(); });
 		properties->addVariable<std::string> (
 			"Command",
