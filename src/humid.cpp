@@ -730,7 +730,9 @@ void UserWindow::startEditMode() {
 	}
 }
 
-void UserWindow::endEditMode() { }
+void UserWindow::endEditMode() { 
+	clearSelections();
+}
 
 void UserWindow::select(Selectable * w) {
 	if (!dynamic_cast<nanogui::Widget*>(w)) return;
@@ -2086,7 +2088,7 @@ void PropertyWindow::update() {
 
 		properties->clear();
 		properties->setWindow(pw); // reset the grid layout
-		pw->setVisible(gui->getViewManager().get("Properties").visible);
+		pw->setVisible(EDITOR->isEditMode() && gui->getViewManager().get("Properties").visible);
 		int n = pw->children().size();
 
 		if (uw->getSelected().size()) {
@@ -2500,8 +2502,8 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				}
 				// fall through
 			case GUIWORKING:
-				getUserWindow()->setVisible(true);
 				getUserWindow()->endEditMode();
+				getUserWindow()->setVisible(true);
 				//getScreensWindow()->selectFirst();
 				getToolbar()->setVisible(!run_only);
 				if (getPropertyWindow()) {
