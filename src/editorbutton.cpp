@@ -232,9 +232,8 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     nvgBeginPath(ctx);
 
-    if (border)
-      nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
-                   mSize.y() - 2, mTheme->mButtonCornerRadius - 1);
+    nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
+                 mSize.y() - 2, mTheme->mButtonCornerRadius - 1);
 
     if (mPushed) {
       if (bg_on_color.w() != 0) {
