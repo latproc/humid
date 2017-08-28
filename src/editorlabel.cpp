@@ -6,6 +6,10 @@
 //	3-clause BSD License in LICENSE.txt.
 
 #include <iostream>
+#include <nanogui/widget.h>
+#include <nanogui/theme.h>
+#include <nanogui/opengl.h>
+#include <nanogui/widget.h>
 #include "editorwidget.h"
 #include "editorlabel.h"
 
@@ -43,7 +47,35 @@ bool EditorLabel::mouseEnterEvent(const Vector2i &p, bool enter) {
 }
 
 void EditorLabel::draw(NVGcontext *ctx) {
-    nanogui::Label::draw(ctx);
+    Widget::draw(ctx);
+    nvgFontFace(ctx, mFont.c_str());
+    nvgFontSize(ctx, fontSize());
+    nvgFillColor(ctx, mColor);
+    int align = NVG_ALIGN_LEFT;
+    int alignv = NVG_ALIGN_TOP;
+    if (alignment == 1)
+      align = NVG_ALIGN_CENTER;
+    else if (alignment == 2)
+      align = NVG_ALIGN_RIGHT;
+
+    int pos_v = mPos.y();
+    if (valign == 1) {
+      alignv = NVG_ALIGN_MIDDLE;
+      pos_v = mPos.y() + mSize.y()/2;
+    }
+    else if (valign == 2) {
+      alignv = NVG_ALIGN_BOTTOM;
+      pos_v = mPos.y() + mSize.y();
+    }
+
+
+    if (mFixedSize.x() > 0) {
+        nvgTextAlign(ctx, align | alignv);
+        nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), mCaption.c_str(), nullptr);
+    } else {
+        nvgTextAlign(ctx, align | alignv);
+        nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, mCaption.c_str(), nullptr);
+    }
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 }
 

@@ -1054,6 +1054,10 @@ void UserWindow::loadStructure( Structure *s) {
 					el->setConnection(connection.asString());
 				}
 				if (font_size) el->setFontSize(font_size);
+				const Value &alignment_v(element->getProperties().find("alignment"));
+				if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
+				const Value &valignment_v(element->getProperties().find("valign"));
+				if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				if (lp)
@@ -1117,6 +1121,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				const Value &alignment_v(element->getProperties().find("alignment"));
 				if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
+				const Value &valignment_v(element->getProperties().find("valign"));
+				if (valignment_v != SymbolTable::Null) textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (connection != SymbolTable::Null) {
