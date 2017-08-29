@@ -40,7 +40,39 @@ bool EditorImageView::mouseEnterEvent(const Vector2i &p, bool enter) {
 }
 
 void EditorImageView::draw(NVGcontext *ctx) {
-    nanogui::ImageView::draw(ctx);
+    using namespace nanogui;
+    Widget::draw(ctx);
+    nvgEndFrame(ctx); // Flush the NanoVG draw stack, not necessary to call nvgBeginFrame afterwards.
+
+    if (border) drawImageBorder(ctx);
+
+    // Calculate several variables that need to be send to OpenGL in order for the image to be
+    // properly displayed inside the widget.
+    const Screen* screen = dynamic_cast<const Screen*>(this->window()->parent());
+    assert(screen);
+    Vector2f screenSize = screen->size().cast<float>();
+    Vector2f scaleFactor = mScale * imageSizeF().cwiseQuotient(screenSize);
+    Vector2f positionInScreen = absolutePosition().cast<float>();
+    Vector2f positionAfterOffset = positionInScreen + mOffset;
+    Vector2f imagePosition = positionAfterOffset.cwiseQuotient(screenSize);
+    glEnable(GL_SCISSOR_TEST);
+    float r = screen->pixelRatio();
+    glScissor(positionInScreen.x() * r,
+              (screenSize.y() - positionInScreen.y() - size().y()) * r,
+              size().x() * r, size().y() * r);
+    mShader.bind();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, mImageID);
+    mShader.setUniform("image", 0);
+    mShader.setUniform("scaleFactor", scaleFactor);
+    mShader.setUniform("position", imagePosition);
+    mShader.drawIndexed(GL_TRIANGLES, 0, 2);
+    glDisable(GL_SCISSOR_TEST);
+
+    if (helpersVisible())
+        drawHelpers(ctx);
+
+    if (border) drawWidgetBorder(ctx);
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 }
 
@@ -97,3 +129,4 @@ void EditorImageView::setProperty(const std::string &prop, const std::string val
     setScale(std::atof(value.c_str()));
   }
 }
+
