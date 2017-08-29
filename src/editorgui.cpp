@@ -117,7 +117,9 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 				key_name = buf;
 				function_key = true;
 			}
-			if (!function_key && nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
+			if (key == GLFW_KEY_KP_ENTER 
+				  && nanogui::Screen::keyboardEvent(GLFW_KEY_ENTER, scancode, action, modifiers)) return true;
+			else if (!function_key && nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
 
 			key_name = EditorKeyboard::instance()->keyName(key);
 			if (key_name.empty()) {
