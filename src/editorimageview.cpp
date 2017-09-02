@@ -8,6 +8,9 @@
 #include <iostream>
 #include "editor.h"
 #include "editorimageview.h"
+#include "resourcemanager.h"
+
+TextureResourceManagerFactory texture_resource_manager_factory;
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
@@ -79,8 +82,12 @@ void EditorImageView::draw(NVGcontext *ctx) {
 void EditorImageView::setImageName(const std::string new_name, bool reload) {
     image_name = new_name;
     GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), reload);
-    mImageID = img;
-    updateImageParameters();
+    GLuint saved_img = mImageID;
+    if (img) {
+      mImageID = ResourceManager::manage(img, texture_resource_manager_factory);
+      updateImageParameters();
+      if (saved_img) ResourceManager::release(saved_img);
+    }
 }
 
 const std::string &EditorImageView::imageName() const { return image_name; }
