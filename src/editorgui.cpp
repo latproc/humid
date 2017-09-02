@@ -6,6 +6,8 @@
 #include <iostream>
 #include <boost/algorithm/string.hpp>
 #include <nanogui/common.h>
+#include <regular_expressions.h>
+
 #include "editorproject.h"
 #include "editorsettings.h"
 #include "editorgui.h"
@@ -26,12 +28,20 @@
 #include "patternswindow.h"
 #include "screenswindow.h"
 #include "objectwindow.h"
+#include "curl_helper.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
 
 Structure *EditorGUI::system_settings = 0;
 
+
+struct Texture {
+	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
+	GLTexture texture;
+	GLTexture::handleType data;
+};
+std::map<std::string, Texture*> texture_cache;
 
 class EditorKeyboard {
 public:
@@ -63,18 +73,6 @@ EditorGUI::EditorGUI(int width, int height, bool full_screen)
 	sample_buffer_size(5000), project(0)
 {
 	old_size = mSize;
-	/*
-	std::vector<std::pair<int, std::string>> icons = nanogui::loadImageDirectory(mNVGContext, "images");
-	// Load all of the images by creating a GLTexture object and saving the pixel data.
-	std::string resourcesFolderPath("./");
-	for (auto& icon : icons) {
-		GLTexture texture(icon.second);
-		auto data = texture.load(resourcesFolderPath + icon.second + ".png");
-		std::cout << "loaded image " << icon.second << " with id " << texture.texture() << "\n";
-		mImagesData.emplace_back(std::move(texture), std::move(data));
-	}
-	assert(mImagesData.size() > 0);
-	*/
 }
 
 Structure *EditorGUI::getSettings() {
@@ -192,6 +190,77 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 	return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 }
 
+void cleanupTextureCache(GLuint tex) {
+	auto iter = texture_cache.begin();
+	while (iter != texture_cache.end()) {
+		const std::pair<std::string, Texture*> &item = *iter;
+		if (item.second->texture.texture() == tex) {
+			Texture *texture = item.second;
+			delete texture;
+			iter = texture_cache.erase(iter);
+			return;
+		}
+		else ++iter;
+	}
+}
+
+bool isURL(const std::string name) {
+	//if (matches(name.c_str(), "((http[s]?|ftp):/)?/?([^:/\\s]+)((/\\w+)*/)([\\w-\\.]+[^#?\\s]+)(.*)?(#[\\w\\-]+)?")) return true;
+	return matches(name.c_str(), "^http://.*");
+}
+
+GLuint EditorGUI::getImageId(const char *source, bool reload) {
+	GLuint blank_id = 0;
+	std::string blank_name = "images/blank";
+	std::string name(source);
+	/*
+	for(auto it = mImagesData.begin(); it != mImagesData.end(); ++it) {
+		const GLTexture &tex = (*it).first;
+		if (tex.textureName() == name) {
+			cout << "found image " << tex.textureName() << "\n";
+			return tex.texture();
+		}
+		else if (blank_name == tex.textureName())
+			blank_id = tex.texture();
+	}
+	*/
+	if (isURL(name)) {
+		std::string cache_name = "cache";
+		if (!boost::filesystem::exists(cache_name))
+			boost::filesystem::create_directory(cache_name);
+		cache_name += "/" + shortName(name) + "." + extn(name);
+		// example: http://www.valeparksoftwaredevelopment.com/cmsimages/logo-full-1.png
+		if (!boost::filesystem::exists(cache_name) && !get_file(name, cache_name) ) {
+			std::cerr << "Error fetching image file\n";
+			return blank_id;
+		}
+		name = cache_name;
+	}
+	std::string tex_name = shortName(name);
+	auto found = texture_cache.find(tex_name);
+	if (!reload && found != texture_cache.end())
+		return (*found).second->texture.texture();
+	else if (reload || found == texture_cache.end()) {
+		if (found != texture_cache.end()) {
+			Texture *old = (*found).second;
+			texture_cache.erase(found);
+			delete old;
+		}
+
+		// not already loaded, attempt to load from file
+		GLTexture tex(tex_name);
+		try {
+			auto tex_data = tex.load(name);
+			GLuint res = tex.texture();
+			texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+			return res;
+		}
+		catch(std::invalid_argument &err) {
+			std::cerr << err.what() << "\n";
+		}
+	}
+	return blank_id;
+}
 
 EditorKeyboard::EditorKeyboard() {
 	key_names.insert(std::make_pair(GLFW_KEY_SPACE, "KEY_SPACE"));

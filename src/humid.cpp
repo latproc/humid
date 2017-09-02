@@ -98,7 +98,6 @@
 #include "themewindow.h"
 #include "propertywindow.h"
 #include "helper.h"
-#include "curl_helper.h"
 #include "screenswindow.h"
 
 // settings file parser globals
@@ -161,13 +160,6 @@ const char *program_name;
 extern const char *local_commands;
 extern ProgramState program_state;
 extern struct timeval start;
-
-struct Texture {
-	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
-	GLTexture texture;
-	GLTexture::handleType data;
-};
-std::map<std::string, Texture*> texture_cache;
 
 extern void setup_signals();
 
@@ -2685,62 +2677,6 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 	}
 }
 
-bool isURL(const std::string name) {
-	//if (matches(name.c_str(), "((http[s]?|ftp):/)?/?([^:/\\s]+)((/\\w+)*/)([\\w-\\.]+[^#?\\s]+)(.*)?(#[\\w\\-]+)?")) return true;
-	return matches(name.c_str(), "^http://.*");
-}
-
-GLuint EditorGUI::getImageId(const char *source, bool reload) {
-	GLuint blank_id = 0;
-	std::string blank_name = "images/blank";
-	std::string name(source);
-	for(auto it = mImagesData.begin(); it != mImagesData.end(); ++it) {
-		const GLTexture &tex = (*it).first;
-		if (tex.textureName() == name) {
-			cout << "found image " << tex.textureName() << "\n";
-			return tex.texture();
-		}
-		else if (blank_name == tex.textureName())
-			blank_id = tex.texture();
-	}
-	if (isURL(name)) {
-		std::string cache_name = "cache";
-		if (!boost::filesystem::exists(cache_name))
-			boost::filesystem::create_directory(cache_name);
-		cache_name += "/" + shortName(name) + "." + extn(name);
-		// example: http://www.valeparksoftwaredevelopment.com/cmsimages/logo-full-1.png
-		if (!boost::filesystem::exists(cache_name) && !get_file(name, cache_name) ) {
-			std::cerr << "Error fetching image file\n";
-			return blank_id;
-		}
-		name = cache_name;
-	}
-	std::string tex_name = shortName(name);
-	auto found = texture_cache.find(tex_name);
-	if (!reload && found != texture_cache.end())
-		return (*found).second->texture.texture();
-	else if (reload || found == texture_cache.end()) {
-		if (found != texture_cache.end()) {
-			Texture *old = (*found).second;
-			texture_cache.erase(found);
-			delete old;
-		}
-
-		// not already loaded, attempt to load from file
-		GLTexture tex(tex_name);
-		try {
-			auto tex_data = tex.load(name);
-			GLuint res = tex.texture();
-			texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
-			std::cout << "added texture " << tex_name << " id " << res << " to cache\n";
-			return res;
-		}
-		catch(std::invalid_argument &err) {
-			std::cerr << err.what() << "\n";
-		}
-	}
-	return blank_id;
-}
 nanogui::Vector2i fixPositionInWindow(const nanogui::Vector2i &pos, const nanogui::Vector2i &siz, const nanogui::Vector2i &area);
 
 bool EditorGUI::resizeEvent(const Vector2i &new_size) {
@@ -3029,6 +2965,15 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 		needs_update = false;
 	}
 	EditorSettings::flush();
+/*
+	auto iter = texture_cache.begin();
+	while (iter != texture_cache.end()) {
+		const std::pair<std::string, GLTexture *> &item = *iter;
+		if (item.second && item.second->texture()) {
+			if 
+		}
+	}
+*/
 }
 
 

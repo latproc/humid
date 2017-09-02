@@ -36,12 +36,12 @@ void ResourceManager::release() {
     assert(refs); 
     if (--refs == 0) { 
         resources.erase(item_id);
-        close(item_id);  
         delete this;
     } 
 }
     
-void ResourceManager::close(int which) { }
+void ResourceManager::close(int which) {
+}
 	
 ResourceManager *ResourceManager::find(int item) {
     std::map<int, ResourceManager*>::iterator found = resources.find(item);
@@ -51,8 +51,9 @@ ResourceManager *ResourceManager::find(int item) {
 	
 int ResourceManager::manage(int resource, const ResourceManager::Factory &factory) {
     ResourceManager *manager = ResourceManager::find(resource);
-    if (!manager)
+    if (!manager) {
         manager = factory.create(resource);
+    }
     else
         manager->use();
     return resource;
@@ -61,8 +62,11 @@ int ResourceManager::manage(int resource, const ResourceManager::Factory &factor
 int ResourceManager::release(int resource) {
     if (!resource) return resource;
     ResourceManager *manager = ResourceManager::find(resource);
-    assert(manager);
-    manager->release();
+    //assert(manager);
+    if (manager) {
+        manager->release();
+        return 0;
+    }
     return resource;
 }
 
@@ -74,7 +78,6 @@ void TextureResourceManager::close(int texture_id) {
     GLuint id = texture_id;
     if (glIsTexture(id)) {
         glDeleteTextures(1, &id);
-		std::cout << "freed texture " << texture_id << "\n";
     }
 }
 

@@ -51,7 +51,7 @@ public:
 	~GLTexture() noexcept {
 		if (mTextureId)
 			glDeleteTextures(1, &mTextureId);
-			}
+	}
 
 	GLuint texture() const { return mTextureId; }
 	const std::string& textureName() const { return mTextureName; }
