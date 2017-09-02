@@ -78,7 +78,7 @@ public:
 	nanogui::Vector2i pos();
 
 private:
-	const nanogui::Screen *screen;
+	const nanogui::Screen *screen_widget;
 	nanogui::Vector2i next_pos;
 	nanogui::Vector2i stagger;
 };

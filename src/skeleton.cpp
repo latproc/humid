@@ -223,15 +223,15 @@ struct comma_is_space : std::ctype<char> {
 
 
 // WindowStagger - provides an automatic position for the next window
-WindowStagger::WindowStagger(const nanogui::Screen *s) : screen(s), next_pos(20,40), stagger(20,20) {}
+WindowStagger::WindowStagger(const nanogui::Screen *s) : screen_widget(s), next_pos(20,40), stagger(20,20) {}
 WindowStagger::WindowStagger(const nanogui::Vector2i &stag) : next_pos(40,20), stagger(stag) {}
 
 nanogui::Vector2i WindowStagger::pos() {
 		nanogui::Vector2i pos(next_pos);
 		next_pos += stagger;
-		if (next_pos.x() > screen->size().x() - 100)
+		if (next_pos.x() > screen_widget->size().x() - 100)
 			next_pos.x() = 20;
-		if (next_pos.y() > screen->size().y() - 100)
+		if (next_pos.y() > screen_widget->size().y() - 100)
 			next_pos.y() = 40;
 		return pos;
 }
@@ -240,7 +240,6 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 : nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0),
 	window_stagger(this) {
-		screen = this;
 		gettimeofday(&start, 0);
 }
 
