@@ -11,10 +11,15 @@
 #include "resourcemanager.h"
 #include "editorgui.h"
 
-ResourceManager::Factory resource_manager_factory;
+TextureResourceManager::Factory resource_manager_factory;
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+
+  if (mImageID) {
+    ResourceManager::manage(mImageID, resource_manager_factory);
+    ResourceManager::find(mImageID)->use();
+  }
 }
 
 bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -82,8 +87,8 @@ void EditorImageView::draw(NVGcontext *ctx) {
 
 void EditorImageView::setImageName(const std::string new_name, bool reload) {
     GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), reload);
-    GLuint saved_img = mImageID;
-    if (img) {
+    if (img && img != mImageID) {
+      GLuint saved_img = mImageID;
       mImageID = ResourceManager::manage(img, resource_manager_factory);
       updateImageParameters();
       EDITOR->gui()->cleanupTexture(saved_img);
