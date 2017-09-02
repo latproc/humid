@@ -9,6 +9,7 @@
 #include "editor.h"
 #include "editorimageview.h"
 #include "resourcemanager.h"
+#include "editorgui.h"
 
 TextureResourceManagerFactory texture_resource_manager_factory;
 
@@ -86,7 +87,7 @@ void EditorImageView::setImageName(const std::string new_name, bool reload) {
     if (img) {
       mImageID = ResourceManager::manage(img, texture_resource_manager_factory);
       updateImageParameters();
-      if (saved_img) ResourceManager::release(saved_img);
+      EDITOR->gui()->cleanupTexture(saved_img);
     }
 }
 

@@ -192,6 +192,8 @@ public:
 
 	std::map<std::string, Connection *>getConnections() { return connections; }
 
+	void cleanupTexture(GLuint tex) { deferred_texture_cleanup.push_back(tex); }
+
 protected:
 	nanogui::Window *window;
 	std::map<std::string, Connection *>connections;
@@ -199,6 +201,7 @@ protected:
 	struct timeval start;
 	nanogui::ref<nanogui::Window> property_window;
 	WindowStagger window_stagger;
+	std::list<GLuint> deferred_texture_cleanup;
 };
 
 

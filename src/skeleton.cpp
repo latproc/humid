@@ -35,6 +35,7 @@
 
 #include "helper.h"
 #include "structure.h"
+#include "resourcemanager.h"
 
 long collect_history = 0;
 extern Structure *system_settings;
@@ -263,6 +264,12 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 void ClockworkClient::draw(NVGcontext *ctx) {
 	/* Draw the user interface */
 	Screen::draw(ctx);
+	auto iter = deferred_texture_cleanup.begin();
+	while (iter != deferred_texture_cleanup.end()) {
+		GLuint tex = *iter;
+		if (tex) ResourceManager::release(tex);
+		iter = deferred_texture_cleanup.erase(iter);
+	}
 }
 
 bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
