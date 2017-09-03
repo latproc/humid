@@ -91,6 +91,7 @@ void EditorImageView::setImageName(const std::string new_name, bool reload) {
       GLuint saved_img = mImageID;
       mImageID = ResourceManager::manage(img, resource_manager_factory);
       updateImageParameters();
+      // mark the previous image to be cleaned up
       EDITOR->gui()->cleanupTexture(saved_img);
 
       image_name = new_name;

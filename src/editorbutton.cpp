@@ -311,7 +311,7 @@ void EditorButton::draw(NVGcontext *ctx) {
             nvgImageSize(ctx, mIcon, &w, &h);
             iw = w * ih / h;
         }
-        if (mIconPosition != IconPosition::Filled && mCaption != "")
+        if (mIconPosition != IconPosition::Filled && text != "")
             iw += mSize.y() * 0.15f;
         nvgFillColor(ctx, textColor);
         nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
@@ -393,14 +393,14 @@ void EditorButton::draw(NVGcontext *ctx) {
       if (!wrap_text)
         nvgText(ctx, label_x, label_y, text.c_str(), nullptr);
       else {
-        nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), mCaption.c_str(), nullptr);
+        nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), text.c_str(), nullptr);
       }
     }
     nvgFillColor(ctx, textColor);
     if (!wrap_text)
       nvgText(ctx, label_x, label_y + 1, text.c_str(), nullptr);
     else {
-      nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), mCaption.c_str(), nullptr);
+      nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), text.c_str(), nullptr);
     }
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 
