@@ -3164,7 +3164,15 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				remote = lp;
 				if (lp) { lp->link(new LinkableNumber(this)); }
 			 },
-			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				} 
+				return "";
+			});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
@@ -3203,7 +3211,15 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 				remote = lp;
 				if (lp) { lp->link(new LinkableText(this)); }
 			 },
-			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				} 
+				return "";
+			});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
@@ -3252,7 +3268,15 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 				if (lp) { lp->link(new LinkableText(this)); }
 				//properties->refresh();
 			 },
-			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				} 
+				return "";
+			});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
@@ -3289,7 +3313,15 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 				if (lp) { lp->link(new LinkableNumber(this)); }
 				//properties->refresh();
 			 },
-			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				} 
+				return "";
+			});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
@@ -3400,7 +3432,15 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 					lp->link(new LinkableIndicator(this));
 				//properties->refresh();
 			 },
-			[&]()->std::string{ return remote ? remote->tagName() : ""; });
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				} 
+				return "";
+			});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
