@@ -18,6 +18,7 @@
 class ResourceManager {
 	int item_id;
 	int refs;
+	uint64_t last_release_time;
 	static std::map<int, ResourceManager*> resources;
 protected:
 	~ResourceManager();
@@ -37,6 +38,8 @@ public:
 
 	void use();
 	void release();
+	int uses() { return refs; }
+	uint64_t lastReleaseTime() { return last_release_time; }
 	virtual void close(int which);
 	
 	static ResourceManager *find(int item);

@@ -11,15 +11,8 @@
 #include "resourcemanager.h"
 #include "editorgui.h"
 
-TextureResourceManager::Factory resource_manager_factory;
-
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
-
-  if (mImageID) {
-    ResourceManager::manage(mImageID, resource_manager_factory);
-    ResourceManager::find(mImageID)->use();
-  }
 }
 
 bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -89,12 +82,10 @@ void EditorImageView::setImageName(const std::string new_name, bool reload) {
     GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), reload);
     if (img && img != mImageID) {
       GLuint saved_img = mImageID;
-      mImageID = ResourceManager::manage(img, resource_manager_factory);
+      mImageID = ResourceManager::manage(img);
       updateImageParameters();
-      // mark the previous image to be cleaned up
-      EDITOR->gui()->cleanupTexture(saved_img);
-
       image_name = new_name;
+      ResourceManager::release(saved_img);
     }
 }
 

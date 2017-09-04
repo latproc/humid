@@ -37,8 +37,8 @@ GLTexture& GLTexture::operator=(GLTexture&& other) noexcept {
 	return *this;
 }
 GLTexture::~GLTexture() noexcept {
-	//if (mTextureId)
-	//	glDeleteTextures(1, &mTextureId);
+	if (mTextureId)
+		glDeleteTextures(1, &mTextureId);
 }
 
 

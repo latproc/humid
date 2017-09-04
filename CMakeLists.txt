@@ -94,7 +94,7 @@ ${CLOCKWORK_DIR}/Message.cpp
 ${CLOCKWORK_DIR}/watchdog.cpp
 ${HEADER_FILES}
 )
-target_link_libraries(Clockwork "zmq" ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
+target_link_libraries(Clockwork ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
 target_include_directories(Clockwork PUBLIC ${ZeroMQ_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
 
 include_directories("${CLOCKWORK_DIR}")
@@ -227,7 +227,7 @@ endif ()
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
   		src/namedobject.cpp src/anchor.cpp
 	)
-  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork "zmq" ${Boost_LIBRARIES})
+  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
 
   # Copy icons for example application

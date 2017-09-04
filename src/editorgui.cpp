@@ -29,14 +29,17 @@
 #include "screenswindow.h"
 #include "objectwindow.h"
 #include "curl_helper.h"
+#include "resourcemanager.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
 
 Structure *EditorGUI::system_settings = 0;
 
+ResourceManager::Factory resource_manager_factory;
 
-struct Texture {
+class Texture {
+public:
 	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
 	GLTexture texture;
 	GLTexture::handleType data;
@@ -190,20 +193,6 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 	return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 }
 
-void cleanupTextureCache(GLuint tex) {
-	auto iter = texture_cache.begin();
-	while (iter != texture_cache.end()) {
-		const std::pair<std::string, Texture*> &item = *iter;
-		if (item.second->texture.texture() == tex) {
-			Texture *texture = item.second;
-			delete texture;
-			iter = texture_cache.erase(iter);
-			return;
-		}
-		else ++iter;
-	}
-}
-
 bool isURL(const std::string name) {
 	//if (matches(name.c_str(), "((http[s]?|ftp):/)?/?([^:/\\s]+)((/\\w+)*/)([\\w-\\.]+[^#?\\s]+)(.*)?(#[\\w\\-]+)?")) return true;
 	return matches(name.c_str(), "^http://.*");
@@ -252,7 +241,10 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 		try {
 			auto tex_data = tex.load(name);
 			GLuint res = tex.texture();
-			texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+			if (res) {
+				texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+			    ResourceManager::manage(res);
+			  }
 			return res;
 		}
 		catch(std::invalid_argument &err) {
@@ -261,6 +253,53 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	}
 	return blank_id;
 }
+
+void cleanupTextureCache() {
+	uint64_t now = microsecs();
+	auto iter = texture_cache.begin();
+	while (iter != texture_cache.end()) {
+		const std::pair<std::string, Texture*> &item = *iter;
+		Texture *texture = item.second;
+		GLuint tex = item.second->texture.texture();
+		ResourceManager *manager = ResourceManager::find(tex);
+		if (manager && manager->uses() == 1 && manager->lastReleaseTime() && now - manager->lastReleaseTime() > 1000000) {
+			ResourceManager::release(tex);
+			delete texture;
+			iter = texture_cache.erase(iter);
+		}
+		else ++iter;
+	}
+}
+/*
+void cleanupTextureCache(GLuint tex) {
+	auto iter = texture_cache.begin();
+	while (iter != texture_cache.end()) {
+		const std::pair<std::string, Texture*> &item = *iter;
+		if (item.second->texture.texture() == tex) {
+			Texture *texture = item.second;
+			delete texture;
+			iter = texture_cache.erase(iter);
+			return;
+		}
+		else ++iter;
+	}
+}
+
+void cleanupTextureCache() {
+	auto iter = deferred_texture_cleanup.begin();
+	while (iter != deferred_texture_cleanup.end()) {
+		std::pair<GLuint, uint64_t> item = *iter;
+		if (item.second - now > 60000) {
+			GLuint id = item.first;
+			if (ResourceManager::release(id) == 0)
+				cleanupTextureCache(id);
+
+			iter = deferred_texture_cleanup.erase(iter);
+		}
+		else ++iter;
+	}
+}
+*/
 
 EditorKeyboard::EditorKeyboard() {
 	key_names.insert(std::make_pair(GLFW_KEY_SPACE, "KEY_SPACE"));

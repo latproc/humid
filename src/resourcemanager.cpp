@@ -10,13 +10,14 @@
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
 #include <nanovg_gl.h>
+#include <value.h>
 
 std::map<int, ResourceManager*> ResourceManager::resources;
 ResourceManager::Factory ResourceManager::default_factory;
 
 ResourceManager::~ResourceManager() { close(item_id); }
 
-ResourceManager::ResourceManager() : item_id(0), refs(0) {}
+ResourceManager::ResourceManager() : item_id(0), refs(0), last_release_time(0) {}
 
 ResourceManager::ResourceManager(int resource, int init_refs) : item_id(resource), refs(init_refs) {
     resources.insert(std::make_pair(resource, this));
@@ -33,11 +34,12 @@ ResourceManager *ResourceManager::Factory::create(int item_id, int refs) const {
 void ResourceManager::use() { ++refs; }
 
 void ResourceManager::release() { 
-    assert(refs); 
+    assert(refs);
+    last_release_time = microsecs(); 
     if (--refs == 0) { 
         resources.erase(item_id);
         delete this;
-    } 
+    }
 }
     
 void ResourceManager::close(int which) {

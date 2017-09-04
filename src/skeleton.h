@@ -159,6 +159,7 @@ public:
 
 	Connection *setupConnection(Structure *s_conn);
 	bool setupConnections(Structure *project_settings);
+	
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 

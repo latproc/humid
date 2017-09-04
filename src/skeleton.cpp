@@ -261,7 +261,7 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 	return false;
 }
 
-void cleanupTextureCache(GLuint tex);
+void cleanupTextureCache();
 
 void ClockworkClient::cleanupTexture(GLuint tex) { 
 	deferred_texture_cleanup.push_back(std::make_pair(tex, microsecs())); 
@@ -271,17 +271,10 @@ void ClockworkClient::draw(NVGcontext *ctx) {
 	/* Draw the user interface */
 	Screen::draw(ctx);
 	uint64_t now = microsecs();
-	auto iter = deferred_texture_cleanup.begin();
-	while (iter != deferred_texture_cleanup.end()) {
-		std::pair<GLuint, uint64_t> item = *iter;
-		if (item.second - now > 60000) {
-			GLuint id = item.first;
-			if (ResourceManager::release(id) == 0)
-				cleanupTextureCache(id);
-
-			iter = deferred_texture_cleanup.erase(iter);
-		}
-		else ++iter;
+	static uint64_t last_cleanup = now;
+	if (now - last_cleanup > 1000) {
+		last_cleanup = now;
+		cleanupTextureCache();
 	}
 }
 
