@@ -122,7 +122,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
-#target_link_libraries(okdialog Clockwork "zmq" nanogui ${Boost_LIBRARIES})
+#target_link_libraries(okdialog Clockwork ${ZeroMQ_LIBRARY} nanogui ${Boost_LIBRARIES})
 
 # based on yacc instructions from Andy Cedilnik 2002.
 
@@ -218,10 +218,10 @@ endif ()
 		  src/resourcemanager.cpp
 		  ${HEADERS})
 
-  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork "zmq" ${Boost_LIBRARIES})
+  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork  ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp)
-  target_link_libraries(settingscheck Clockwork "zmq" ${Boost_LIBRARIES})
+  target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp

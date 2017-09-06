@@ -37,7 +37,7 @@ public:
 	};
 
 	void use();
-	void release();
+	int release(); // returns the number of references
 	int uses() { return refs; }
 	uint64_t lastReleaseTime() { return last_release_time; }
 	virtual void close(int which);
@@ -45,6 +45,9 @@ public:
 	static ResourceManager *find(int item);
 	
 	static int manage(int resource, const ResourceManager::Factory &factory = default_factory);
+
+	// handover management of this resource to an object created by the given factory
+	static int handover(int resource, const ResourceManager::Factory &factory = default_factory);	
 	
 	static int release(int resource);
 	

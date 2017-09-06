@@ -43,6 +43,11 @@ public:
 	GLuint texture() const { return mTextureId; }
 	const std::string& textureName() const { return mTextureName; }
 
+	/* detach this object from the GL texture so that this data can be removed without 
+		calling glDeleteTextures()
+	 */
+	void detach() { mTextureId = 0; }
+
 	/**
 	 *  Load a file in memory and create an OpenGL texture.
 	 *  Returns a handle type (an std::unique_ptr) to the loaded pixels.

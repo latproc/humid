@@ -128,7 +128,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 			}
 
 
-			{
+			if (w_user && w_user->structure()) {
 				std::cout << "detected key: " << key_name << "\n";
 				std::string conn;
 				StructureClass *sc = w_user->structure()->getStructureDefinition();
@@ -219,7 +219,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			boost::filesystem::create_directory(cache_name);
 		cache_name += "/" + shortName(name) + "." + extn(name);
 		// example: http://www.valeparksoftwaredevelopment.com/cmsimages/logo-full-1.png
-		if (!boost::filesystem::exists(cache_name) && !get_file(name, cache_name) ) {
+		if ( (reload || !boost::filesystem::exists(cache_name)) && !get_file(name, cache_name) ) {
 			std::cerr << "Error fetching image file\n";
 			return blank_id;
 		}
@@ -232,8 +232,23 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	else if (reload || found == texture_cache.end()) {
 		if (found != texture_cache.end()) {
 			Texture *old = (*found).second;
-			texture_cache.erase(found);
-			delete old;
+			if (old->texture.texture()) {
+				int texture_id = old->texture.texture();
+				assert(texture_id);
+				int refs = ResourceManager::release(texture_id);
+				if (refs == 0 ) {
+					texture_cache.erase(found);
+				}
+				else {
+					// there are image views that still reference this image but we have been asked to
+					// reload the cached value. We hand this over to a texture resource manager
+					// and let it remove the object once the last release occurs
+					TextureResourceManagerFactory factory;
+					ResourceManager::handover(texture_id, factory);
+					old->texture.detach(); // do not call glDeleteTextures() when old is deleted
+				}
+				delete old;
+			}
 		}
 
 		// not already loaded, attempt to load from file
@@ -256,18 +271,37 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 
 void cleanupTextureCache() {
 	uint64_t now = microsecs();
+	if (texture_cache.size() < 12) return;
+	std::map<uint64_t, Texture*> to_remove;
 	auto iter = texture_cache.begin();
 	while (iter != texture_cache.end()) {
 		const std::pair<std::string, Texture*> &item = *iter;
 		Texture *texture = item.second;
 		GLuint tex = item.second->texture.texture();
 		ResourceManager *manager = ResourceManager::find(tex);
-		if (manager && manager->uses() == 1 && manager->lastReleaseTime() && now - manager->lastReleaseTime() > 1000000) {
-			ResourceManager::release(tex);
-			delete texture;
-			iter = texture_cache.erase(iter);
+		if (manager && manager->uses() == 1 && manager->lastReleaseTime() && now - manager->lastReleaseTime() > 10000000) {
+			//ResourceManager::release(tex);
+			//delete texture;
+			//iter = texture_cache.erase(iter);
+			to_remove.insert(std::make_pair(manager->lastReleaseTime(), texture));
+			++iter;
 		}
 		else ++iter;
+	}
+	auto remove = to_remove.begin();
+	int n = texture_cache.size();
+	while (remove != to_remove.end()) {
+		const std::pair<uint64_t, Texture*> &item = *remove;
+		if (--n > 8 || (now - (*remove).first) > 60000000) { //minimum cache size and images older than 10m are flushed
+			Texture *texture = (*remove).second;
+			GLuint tex = (*remove).second->texture.texture();
+			texture_cache.erase(texture_cache.find(texture->texture.textureName()));
+			ResourceManager::release(tex);
+			delete texture;
+			remove = to_remove.erase(remove);
+		}
+		else ++remove;
+		std::cout << "texture cache flushed. remaining: " << texture_cache.size() << "\n";
 	}
 }
 /*

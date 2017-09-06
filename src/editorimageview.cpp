@@ -13,6 +13,11 @@
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+      ResourceManager::manage(mImageID);
+}
+
+EditorImageView::~EditorImageView() {
+      if (mImageID) ResourceManager::release(mImageID);
 }
 
 bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

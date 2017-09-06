@@ -15,7 +15,7 @@
 std::map<int, ResourceManager*> ResourceManager::resources;
 ResourceManager::Factory ResourceManager::default_factory;
 
-ResourceManager::~ResourceManager() { close(item_id); }
+ResourceManager::~ResourceManager() { }
 
 ResourceManager::ResourceManager() : item_id(0), refs(0), last_release_time(0) {}
 
@@ -33,13 +33,16 @@ ResourceManager *ResourceManager::Factory::create(int item_id, int refs) const {
 
 void ResourceManager::use() { ++refs; }
 
-void ResourceManager::release() { 
+int ResourceManager::release() { 
     assert(refs);
     last_release_time = microsecs(); 
     if (--refs == 0) { 
         resources.erase(item_id);
+        close(item_id);
         delete this;
+        return 0;
     }
+    return refs;
 }
     
 void ResourceManager::close(int which) {
@@ -60,16 +63,25 @@ int ResourceManager::manage(int resource, const ResourceManager::Factory &factor
         manager->use();
     return resource;
 }
+    
+int ResourceManager::handover(int resource, const ResourceManager::Factory &factory) {
+    auto found = resources.find(resource);
+    if (found != resources.end()) {
+        ResourceManager *manager = (*found).second;
+        resources.erase(found);
+        int refs = manager->uses();
+        delete manager;
+        factory.create(resource, refs);
+    }
+    else
+        factory.create(resource);
+    return resource;
+}
 
 int ResourceManager::release(int resource) {
-    if (!resource) return resource;
+    if (!resource) return 0;
     ResourceManager *manager = ResourceManager::find(resource);
-    //assert(manager);
-    if (manager) {
-        manager->release();
-        return 0;
-    }
-    return resource;
+    return (manager) ? manager->release() : 0;
 }
 
 size_t ResourceManager::size() { return resources.size(); }
