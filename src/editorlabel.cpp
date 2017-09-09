@@ -68,13 +68,29 @@ void EditorLabel::draw(NVGcontext *ctx) {
       pos_v = mPos.y() + mSize.y();
     }
 
+    std::string valStr(mCaption);
+    if (format_string.length()) {
+      if (value_type == Value::t_integer) {// integer
+        char buf[20];
+        int val = std::atoi(valStr.c_str());
+        snprintf(buf, 20, format_string.c_str(), val);
+        valStr = buf;
+      }
+      else if (value_type == Value::t_float) {
+        char buf[20];
+        float val = std::atof(valStr.c_str());
+        snprintf(buf, 20, format_string.c_str(), val);
+        valStr = buf;       
+      }
+    }
+
 
     if (mFixedSize.x() > 0) {
         nvgTextAlign(ctx, align | alignv);
-        nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), mCaption.c_str(), nullptr);
+        nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), valStr.c_str(), nullptr);
     } else {
         nvgTextAlign(ctx, align | alignv);
-        nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, mCaption.c_str(), nullptr);
+        nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, valStr.c_str(), nullptr);
     }
     if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
 }

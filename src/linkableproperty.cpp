@@ -26,18 +26,28 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
       }
     }
 const std::string &LinkableProperty::group() const { return group_name; }
+
 void LinkableProperty::setGroup(const std::string g) { group_name = g; }
+
 const std::string &LinkableProperty::tagName() const { return tag_name; }
+
 const std::string &LinkableProperty::typeName() const { return data_type_name; }
+
 void LinkableProperty::setTypeName(const std::string s) { data_type_name = s; }
+
 CircularBuffer::DataType LinkableProperty::dataType() const { return data_type; }
+
 void LinkableProperty::setDataTypeStr(const std::string dtype) {
     data_type = CircularBuffer::dataTypeFromString(dtype);
     data_type_name = dtype;
 }
+
 int LinkableProperty::getKind() const { return kind; }
+
 void LinkableProperty::setKind(int new_kind) { kind = new_kind; }
+
 std::string LinkableProperty::addressStr() const { return address_str; }
+
 void LinkableProperty::setAddressStr(const std::string s) {
     address_str = s;
     char *rest = 0;
@@ -46,6 +56,7 @@ void LinkableProperty::setAddressStr(const std::string s) {
     else
         modbus_address = (int)strtol(address_str.c_str()+1,&rest, 10);
 }
+
 void LinkableProperty::setAddressStr(int grp, int addr) {
     char buf[10];
     snprintf(buf,10, "'%d%04d", grp, addr);
@@ -67,10 +78,15 @@ void LinkableProperty::apply() {
 }
 
 Value & LinkableProperty::value() { return current; }
+
 int LinkableProperty::dataSize() const { return data_size; }
+
 void LinkableProperty::setDataSize(int new_size) { data_size = new_size; }
+
 int LinkableProperty::address() const { return modbus_address; }
+
 void LinkableProperty::setAddress(int a) { modbus_address = a; setAddressStr(address_group(), a); }
+
 int LinkableProperty::address_group() const {
     if (address_str.at(0) == '\'') return address_str.at(1)-'0'; else return address_str.at(0)-'0';
 }
@@ -80,6 +96,7 @@ void LinkableProperty::link(LinkableObject *lo) {
     links.push_back(lo);
     lo->update(value());
 }
+
 void LinkableProperty::unlink(EditorObject *w) {
     std::list<LinkableObject*>::iterator iter = links.begin();
     while (iter != links.end()) {

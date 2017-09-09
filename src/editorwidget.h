@@ -72,7 +72,6 @@ public:
 	void justSelected() override;
 	void justDeselected() override;
 
-
 	void setPatterns(const std::string patterns);
 	const std::string &patterns() const;
 
@@ -102,6 +101,11 @@ public:
 	void setBorder(int val) { border = val; }
 	int getBorder() { return border; }
 
+	const std::string &getValueFormat();
+	void setValueFormat(const std::string fmt);
+	int getValueType();
+	void setValueType(int val);
+
 protected:
 	std::list<Link>links;
 	std::string base;
@@ -111,11 +115,13 @@ protected:
 	MatrixXd handle_coordinates;
 	std::string pattern_list;
 	Structure *definition;
+	std::string format_string;
 	float value_scale;
 	int tab_position;
 	LinkableProperty *visibility;
 	bool inverted_visibility;
 	int border;
+	int value_type;
 };
 
 #endif

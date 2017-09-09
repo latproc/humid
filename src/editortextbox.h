@@ -28,6 +28,9 @@ public:
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
 	virtual Value getPropertyValue(const std::string &prop) override;
 	virtual void setProperty(const std::string &prop, const std::string value) override;
+	std::string getScaledValue(bool scaleUp);
+	float getScaledFloat(bool scaleUp);
+	int getScaledInteger(bool scaleUp);
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 

@@ -29,7 +29,7 @@ extern Handle::Mode all_handles[];
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1) {
+    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1), value_type(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -41,7 +41,7 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1) {
+  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1), value_type(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -51,6 +51,22 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 }
 
 EditorWidget::~EditorWidget() { }
+
+const std::string &EditorWidget::getValueFormat() {
+  return format_string;
+}
+
+void EditorWidget::setValueFormat(const std::string fmt) {
+    format_string = fmt;
+}
+
+int EditorWidget::getValueType() {
+  return value_type;
+}
+
+void EditorWidget::setValueType(int fmt) {
+    value_type = fmt;
+}
 
 void EditorWidget::setVisibilityLink(LinkableProperty *lp) {
   if(visibility) visibility->unlink(this);
@@ -62,11 +78,12 @@ EditorWidget *EditorWidget::create(const std::string kind) {
     return nullptr; // TBD
 }
 
-
 void EditorWidget::addLink(Link *new_link) { links.push_back(*new_link); }
+
 void EditorWidget::addLink(const Link &new_link) {
   links.push_back(new_link);
 }
+
 void EditorWidget::removeLink(Anchor *src, Anchor *dest) {
   std::list<Link>::iterator iter = links.begin();
   while (iter != links.end()) {
@@ -237,6 +254,8 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Border");
   names.push_back("Connection");
   names.push_back("Font Size");
+  names.push_back("Format");
+  names.push_back("Value Type");
   names.push_back("Height");
   names.push_back("Horizontal Pos");
   names.push_back("Inverted Visibility");
@@ -281,6 +300,14 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (w) w->setFontSize(std::stoi(value,&sz));
     return;
   }
+  if (prop == "Format") {
+    format_string = value;
+    return;
+  }
+  if (prop == "Value Type") {
+    value_type = std::atoi(value.c_str());
+    return;
+  }
   if (prop == "Value Scale") {
     float scale = std::atof(value.c_str());
     if (scale != 0.0) setValueScale(scale);
@@ -295,7 +322,7 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     border = std::atoi(value.c_str());
     return;
   }
- if (prop == "Remote") {
+  if (prop == "Remote") {
     if (remote) remote->unlink(this);
     remote = EDITOR->gui()->findLinkableProperty(value);
     // note: remote->link() not yet called. see subclass method.
@@ -341,6 +368,12 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return (w) ? w->fontSize() : 0;
   }
+  if (prop == "Format") {
+    return Value(getValueFormat(), Value::t_string);
+  }
+  if (prop == "Value Type") {
+    return getValueType();
+  }
   if (prop == "Value Scale") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return valueScale();
@@ -367,29 +400,6 @@ std::string EditorWidget::getProperty(const std::string &prop) {
   Value res = getPropertyValue(prop);
   if (res == SymbolTable::Null) return "";
   return res.asString();
-  /*
-  if (prop == "Structure") return base;
-  if (prop == "Horizontal Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[10]; snprintf(buf, 10, "%d", w->position().x()); return buf;
-  }
-  if (prop == "Vertical Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[10]; snprintf(buf, 10, "%d", w->position().y()); return buf;
-  }
-  if (prop == "Width") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[10]; snprintf(buf, 10, "%d", w->width()); return buf;
-  }
-  if (prop == "Height") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[10]; snprintf(buf, 10, "%d", w->height()); return buf;
-  }
-  if (prop == "Value Scale") {
-    char buf[10]; snprintf(buf, 10, "%6.6f", valueScale()); return buf;
-  }
-  return "";
-  */
 }
 
 void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
@@ -406,6 +416,8 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Vertical Pos"] = "pos_y";
   property_map["Visibility"] = "visibility";
   property_map["Width"] = "width";
+  property_map["Format"] = "format";
+  property_map["Value Type"] = "value_type";
 }
 
 // generate or update structure properties from the widget

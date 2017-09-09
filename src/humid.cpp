@@ -134,7 +134,6 @@ std::list<std::string>error_messages;
 std::list<std::string>settings_files;
 std::list<std::string> source_files;
 
-
 using std::cout;
 using std::cerr;
 using std::endl;
@@ -1021,6 +1020,10 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			long font_size = 0;
 			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
+			const Value &format_val(element->getProperties().find("format"));
+			const Value &value_type_val(element->getProperties().find("value_type"));
+			long value_type = -1;
+			if (value_type_val != SymbolTable::Null) value_type_val.asInteger(value_type);
 			const Value &scale_val(element->getProperties().find("value_scale"));
 			double value_scale = 1.0f;
 			if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
@@ -1050,6 +1053,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
 				const Value &valignment_v(element->getProperties().find("valign"));
 				if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
+				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
+				if (value_type != -1) el->setValueType(value_type);				
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				if (lp)
@@ -1073,6 +1078,8 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
+				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
+				if (value_type != -1) el->setValueType(value_type);				
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
@@ -1097,6 +1104,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (connection != SymbolTable::Null) {
 					ep->setConnection(connection.asString());
 				}
+				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
+				if (value_type != -1) ep->setValueType(value_type);				
 				if (value_scale != 1.0) ep->setValueScale( value_scale );
 				if (tab_pos) ep->setTabPosition(tab_pos);
 				if (border != SymbolTable::Null) ep->setBorder(border.iValue);
@@ -1120,6 +1129,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (connection != SymbolTable::Null) {
 					textBox->setConnection(connection.asString());
 				}
+				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
+				if (value_type != -1) textBox->setValueType(value_type);				
 				if (value_scale != 1.0) textBox->setValueScale( value_scale );
 				fixElementPosition( textBox, element->getProperties());
 				fixElementSize( textBox, element->getProperties());
@@ -1147,7 +1158,7 @@ void UserWindow::loadStructure( Structure *s) {
 							gui->queueMessage(conn,
 									gui->getIODSyncCommand(conn,
 									textBox->getRemote()->address_group(),
-									textBox->getRemote()->address(), (int)val),
+									textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
 								[](std::string s){std::cout << s << "\n"; });
 							return true;
 						}
@@ -1157,7 +1168,7 @@ void UserWindow::loadStructure( Structure *s) {
 						if (*rest == 0)  {
 							gui->queueMessage(conn,
 								gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
-									textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+									textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
 							return true;
 						}
 					}
@@ -1173,6 +1184,8 @@ void UserWindow::loadStructure( Structure *s) {
 				if (connection != SymbolTable::Null) {
 					lp->setConnection(connection.asString());
 				}
+				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
+				if (value_type != -1) lp->setValueType(value_type);				
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
@@ -3060,10 +3073,18 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 			"Tab Position",
 			[&,w](int value) mutable{ setTabPosition(value); },
 			[&,w]()->int{ return tabPosition(); });
+		properties->addVariable<std::string> (
+			"Format",
+			[&](std::string value) { setValueFormat(value); },
+			[&]()->std::string{ return getValueFormat(); });
 		properties->addVariable<int> (
+			"Value Type",
+			[&,w](int value) mutable{ setValueType(value); },
+			[&,w]()->int{ return getValueType(); });
+		properties->addVariable<float> (
 			"Value Scale",
-			[&,w](int value) mutable{ setValueScale(value); },
-			[&,w]()->int{ return valueScale(); });
+			[&](float value) { setValueScale(value_scale); },
+			[&]()->float{ return valueScale(); });
 		properties->addVariable<int> (
 			"Border",
 			[&,w](int value) mutable{ setBorder(value); },
@@ -3125,28 +3146,15 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
-		{
-			nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox* >(this);
-			if (tb) {
-				properties->addVariable<std::string> (
-					"Text",
-					[&,tb](std::string value) { tb->setValue(value); },
-					[&,tb]()->std::string{ return tb->value(); });
-				properties->addVariable<int> (
-					"Alignment",
-					[&,tb](int value) { tb->setAlignment((Alignment)value); },
-					[&,tb]()->int{ return (int)tb->alignment(); });
-			}
-		}
-		{
-		nanogui::FloatBox<double> *tb = dynamic_cast<nanogui::FloatBox<double>* >(this);
-		if (tb) {
-			properties->addVariable<std::string> (
-				"Number format",
-				[&,tb](std::string value) { tb->numberFormat(value); },
-				[&,tb]()->std::string{ return tb->numberFormat(); });
-		}
-		}
+		properties->addVariable<std::string> (
+			"Text",
+			[&](std::string value) { setProperty("Text", value); },
+			[&]()->std::string{ return getPropertyValue("Text").asString(); });
+
+		properties->addVariable<int> (
+			"Alignment",
+			[&](int value) { setAlignment((Alignment)value); },
+			[&]()->int{ return (int)alignment(); });
 		properties->addVariable<int> (
 			"Vertical Alignment",
 			[&](int value) mutable{ valign = value; },
@@ -3179,7 +3187,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				if (remote) remote->setGroup(value); else setConnection(value);
 			 },
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
-	}
+
 		properties->addVariable<std::string> (
 			"Visibility",
 			[&,this,properties](std::string value) {
@@ -3188,7 +3196,9 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				visibility = lp;
 				if (lp) { lp->link(new LinkableVisibility(this)); }
 			 },
-			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; 
+		});
+	}
 }
 
 void EditorImageView::loadProperties(PropertyFormHelper* properties) {

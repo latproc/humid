@@ -17,6 +17,7 @@
 #include "nanogui/textbox.h"
 #include "nanogui/label.h"
 #include "editor.h"
+#include "editortextbox.h"
 
 extern std::string shortName(const std::string s);
 
@@ -46,7 +47,36 @@ LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) {}
 
 void LinkableText::update(const Value &value) {
 	nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox*>(widget);
-	if (tb) { tb->setValue(value.asString()); return; }
+    EditorTextBox *eb = dynamic_cast<EditorTextBox*>(widget);
+    if (eb) { 
+        float value_scale = eb->valueScale();
+        if (value_scale == 0.0f) value_scale = 1.0f;
+        if (eb->getValueType() == Value::t_integer) {
+            long v;
+            if (value.asInteger(v))
+                eb->setValue( Value(v / value_scale).asString() );
+            else
+                eb->setValue(0);
+        }
+        else if (eb->getValueType() == Value::t_float) {
+            double f;
+            if (value.asFloat(f)) 
+                eb->setValue( Value(f / value_scale).asString() );
+            else
+                eb->setValue(Value(0.0).asString());
+        }
+        else {
+            double f;
+            long v;
+            if (value.asFloat(f)) 
+                eb->setValue( Value(f / value_scale).asString() );
+            else if (value.asInteger(v))
+                eb->setValue( Value(v / value_scale).asString() );
+            else
+                eb->setValue(value.asString());
+        }
+    }
+	else if (tb) { tb->setValue(value.asString()); return; }
 	nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(widget);
 	if (lbl) { lbl->setCaption(value.asString()); return; }
 	EditorImageView *iv = dynamic_cast<EditorImageView*>(widget);

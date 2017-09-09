@@ -67,14 +67,70 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
   Value res = EditorWidget::getPropertyValue(prop);
   if (res != SymbolTable::Null)
     return res;
-  if (prop == "Text") {
+  if (prop == "Text")
     return Value(value(), Value::t_string);
-  }
-  if (prop == "Font Size") return fontSize();
-  if (prop == "Alignment") return (int)alignment();
-  if (prop == "Vertical Alignment") return valign;
-  if (prop == "Wrap Text") return wrap_text ? 1 : 0;
+  else if (prop == "Font Size") return fontSize();
+  else if (prop == "Alignment") return (int)alignment();
+  else if (prop == "Vertical Alignment") return valign;
+  else if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   return SymbolTable::Null;
+}
+
+std::string EditorTextBox::getScaledValue(bool scaleUp) {
+  if (value_scale != 1.0f && (value_type == Value::t_integer || value_type == Value::t_float) ) {
+    const char *p = value().c_str();
+    while (*p && (!isdigit(*p) || *p=='0')) ++p;
+    if (value_type == Value::t_integer && value_scale != 1.0f) {
+      long i_value = std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
+      char buf[20];
+      if (format_string.empty())
+        snprintf(buf, 20, "%ld", i_value);
+      else
+        snprintf(buf, 20, format_string.c_str(), i_value);
+      return buf;
+    }
+    else if (value_type == Value::t_float && value_scale != 1.0f) {
+      std::string v;
+      double f_value = std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
+      char buf[20];
+      if (format_string.empty())
+        snprintf(buf, 20, "%7.6lf", f_value);
+      else
+        snprintf(buf, 20, format_string.c_str(), f_value);
+      return buf;
+    }
+  }
+  return value();
+}
+
+int EditorTextBox::getScaledInteger(bool scaleUp) {
+  if (value_type == Value::t_float) {
+    const char *p = value().c_str();
+    while (*p && (!isdigit(*p) || *p=='0')) ++p;
+    float f_value = std::atof(p);
+    if (value_scale != 1.0f) f_value *= (scaleUp) ? value_scale : 1.0f / value_scale;
+    return f_value;
+  }
+  const char *p = value().c_str();
+  while (*p && (!isdigit(*p) || *p=='0')) ++p;
+  int i_value = std::atoi(p);
+  if (value_scale != 1.0f) i_value *= (scaleUp) ? value_scale : 1.0f / value_scale;
+  return i_value;
+}
+
+float EditorTextBox::getScaledFloat(bool scaleUp) {
+  if (value_type == Value::t_integer) {
+    const char *p = value().c_str();
+    while (*p && (!isdigit(*p) || *p=='0')) ++p;
+    int i_value = std::atoi(p);
+    if (value_scale != 1.0f) i_value *= (scaleUp) ? value_scale : 1.0f / value_scale;
+    return i_value;
+  }
+  const char *p = value().c_str();
+  while (*p && (!isdigit(*p) || *p=='0')) ++p;
+  float f_value = std::atof(p);
+  if (value_scale != 1.0f) f_value *= (scaleUp) ? value_scale : 1.0f / value_scale;
+  return f_value;
 }
 
 
@@ -87,15 +143,15 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
     if (prop == "Text") {
       setValue(value);
     }
-    if (prop == "Font Size") {
+    else if (prop == "Font Size") {
       int fs = std::atoi(value.c_str());
       setFontSize(fs);
     }
-    if (prop == "Alignment") {
+    else if (prop == "Alignment") {
       setAlignment((Alignment)std::atoi(value.c_str()));
     }
-    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-    if (prop == "Wrap Text") {
+    else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+    else if (prop == "Wrap Text") {
       wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
 }
@@ -233,24 +289,43 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
     nvgSave(ctx);
     nvgIntersectScissor(ctx, clipX, clipY, clipWidth, clipHeight);
+    // mValueTemp is used for display while editing is open
+    std::string valStr(mValueTemp);
+    if (mCommitted) valStr = mValue;
+    if (format_string.length() && mCommitted) {
+      const char *p = valStr.c_str();
+      while (*p && (!isdigit(*p) || *p=='0')) ++p;
+      if (value_type == Value::t_integer) {// integer
+        char buf[20];
+        int val = std::atoi(p);
+        snprintf(buf, 20, format_string.c_str(), val);
+        valStr = buf;
+      }
+      else if (value_type == Value::t_float) {
+        char buf[20];
+        float val = std::atof(p);
+        snprintf(buf, 20, format_string.c_str(), val);
+        valStr = buf;       
+      }
+    }
 
     Vector2i oldDrawPos(drawPos);
     drawPos.x() += mTextOffset;
 
     if (mCommitted) {
-        nvgText(ctx, drawPos.x(), drawPos.y(), mValue.c_str(), nullptr);
+        nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
     } else {
         const int maxGlyphs = 1024;
         NVGglyphPosition glyphs[maxGlyphs];
         float textBound[4];
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
                       nullptr, textBound);
         float lineh = textBound[3] - textBound[1];
 
         // find cursor positions
         int nglyphs =
             nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
-                                  mValueTemp.c_str(), nullptr, glyphs, maxGlyphs);
+                                  valStr.c_str(), nullptr, glyphs, maxGlyphs);
         updateCursor(ctx, textBound[2], glyphs, nglyphs);
 
         // compute text offset
@@ -267,13 +342,13 @@ void EditorTextBox::draw(NVGcontext* ctx) {
         drawPos.x() = oldDrawPos.x() + mTextOffset;
 
         // draw text with offset
-        nvgText(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(), nullptr);
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+        nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
                       nullptr, textBound);
 
         // recompute cursor positions
         nglyphs = nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
-                mValueTemp.c_str(), nullptr, glyphs, maxGlyphs);
+                valStr.c_str(), nullptr, glyphs, maxGlyphs);
 
         if (mCursorPos > -1) {
             if (mSelectionPos > -1) {
@@ -307,8 +382,8 @@ void EditorTextBox::draw(NVGcontext* ctx) {
      nvgFillColor(ctx,
                  mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
         // draw text with offset
-        nvgText(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(), nullptr);
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), mValueTemp.c_str(),
+        nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
                       nullptr, textBound);
 
     }
