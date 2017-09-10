@@ -66,14 +66,7 @@ void LinkableText::update(const Value &value) {
                 eb->setValue(Value(0.0).asString());
         }
         else {
-            double f;
-            long v;
-            if (value.asFloat(f)) 
-                eb->setValue( Value(f / value_scale).asString() );
-            else if (value.asInteger(v))
-                eb->setValue( Value(v / value_scale).asString() );
-            else
-                eb->setValue(value.asString());
+            eb->setValue(value.asString());
         }
     }
 	else if (tb) { tb->setValue(value.asString()); return; }
