@@ -82,6 +82,18 @@ void EditorLabel::draw(NVGcontext *ctx) {
         snprintf(buf, 20, format_string.c_str(), val);
         valStr = buf;       
       }
+    } 
+    else if (value_type == Value::t_float) {
+        char buf[20];
+        float val = std::atof(valStr.c_str());
+        snprintf(buf, 20, "%5.3f", val);
+        valStr = buf;       
+   }
+    else if (value_type == Value::t_integer) {
+        char buf[20];
+        int val = std::atoi(valStr.c_str());
+        snprintf(buf, 20, "%d", val);
+        valStr = buf;
     }
 
 

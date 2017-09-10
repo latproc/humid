@@ -89,12 +89,12 @@ std::string EditorTextBox::getScaledValue(bool scaleUp) {
         snprintf(buf, 20, format_string.c_str(), i_value);
       return buf;
     }
-    else if (value_type == Value::t_float && value_scale != 1.0f) {
+    else if (value_type == Value::t_float) {
       std::string v;
       double f_value = std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
       char buf[20];
       if (format_string.empty())
-        snprintf(buf, 20, "%7.6lf", f_value);
+        snprintf(buf, 20, "%5.3lf", f_value);
       else
         snprintf(buf, 20, format_string.c_str(), f_value);
       return buf;
@@ -292,20 +292,34 @@ void EditorTextBox::draw(NVGcontext* ctx) {
     // mValueTemp is used for display while editing is open
     std::string valStr(mValueTemp);
     if (mCommitted) valStr = mValue;
-    if (format_string.length() && mCommitted) {
+    if (mCommitted) {
       const char *p = valStr.c_str();
       while (*p && (!isdigit(*p) || *p=='0')) ++p;
-      if (value_type == Value::t_integer) {// integer
-        char buf[20];
-        int val = std::atoi(p);
-        snprintf(buf, 20, format_string.c_str(), val);
-        valStr = buf;
+      if (format_string.length()) {
+        if (value_type == Value::t_integer) {// integer
+          char buf[20];
+          int val = std::atoi(p);
+          snprintf(buf, 20, format_string.c_str(), val);
+          valStr = buf;
+        }
+        else if (value_type == Value::t_float) {
+          char buf[20];
+          float val = std::atof(p);
+          snprintf(buf, 20, format_string.c_str(), val);
+          valStr = buf;       
+        }
       }
       else if (value_type == Value::t_float) {
         char buf[20];
         float val = std::atof(p);
-        snprintf(buf, 20, format_string.c_str(), val);
+        snprintf(buf, 20, "%5.3f", val);
         valStr = buf;       
+      }
+      else if (value_type == Value::t_integer) {
+        char buf[20];
+        int val = std::atoi(p);
+        snprintf(buf, 20, "%d", val);
+        valStr = buf;
       }
     }
 
