@@ -38,6 +38,7 @@ public:
 
 	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override;
 
+	virtual bool focusEvent(bool focused) override;
 	virtual void draw(NVGcontext *ctx) override;
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;

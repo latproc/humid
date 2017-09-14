@@ -102,7 +102,7 @@ std::string EditorTextBox::getScaledValue(bool scaleUp) {
   }
   return value();
 }
-
+/*
 int EditorTextBox::getScaledInteger(bool scaleUp) {
   if (value_type == Value::t_float) {
     const char *p = value().c_str();
@@ -132,7 +132,7 @@ float EditorTextBox::getScaledFloat(bool scaleUp) {
   if (value_scale != 1.0f) f_value *= (scaleUp) ? value_scale : 1.0f / value_scale;
   return f_value;
 }
-
+*/
 
 void EditorTextBox::setProperty(const std::string &prop, const std::string value) {
   EditorWidget::setProperty(prop, value);
@@ -156,6 +156,21 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
     }
 }
 
+
+bool EditorTextBox::focusEvent(bool focused) {
+    bool res = TextBox::focusEvent(focused);
+    if (!res) return res;
+    if (value_scale == 1.0f) return res;
+
+    if (mEditable) {
+        if (focused)
+            mValueTemp = getScaledValue(false);
+        else
+            mValue = getScaledValue(true);
+    }
+
+    return true;
+}
 
 void EditorTextBox::draw(NVGcontext* ctx) {
   using namespace nanogui;
@@ -293,32 +308,34 @@ void EditorTextBox::draw(NVGcontext* ctx) {
     std::string valStr(mValueTemp);
     if (mCommitted) valStr = mValue;
     if (mCommitted) {
+      float scale = value_scale;
+      if (scale == 0.0f) scale = 1.0f;
       const char *p = valStr.c_str();
       while (*p && (!isdigit(*p) || *p=='0')) ++p;
       if (format_string.length()) {
         if (value_type == Value::t_integer) {// integer
           char buf[20];
           int val = std::atoi(p);
-          snprintf(buf, 20, format_string.c_str(), val);
+          snprintf(buf, 20, format_string.c_str(), val / scale);
           valStr = buf;
         }
         else if (value_type == Value::t_float) {
           char buf[20];
           float val = std::atof(p);
-          snprintf(buf, 20, format_string.c_str(), val);
+          snprintf(buf, 20, format_string.c_str(), val / scale);
           valStr = buf;       
         }
       }
       else if (value_type == Value::t_float) {
         char buf[20];
         float val = std::atof(p);
-        snprintf(buf, 20, "%5.3f", val);
+        snprintf(buf, 20, "%5.3f", val / scale);
         valStr = buf;       
       }
       else if (value_type == Value::t_integer) {
         char buf[20];
         int val = std::atoi(p);
-        snprintf(buf, 20, "%d", val);
+        snprintf(buf, 20, "%d", (int)(val / scale));
         valStr = buf;
       }
     }

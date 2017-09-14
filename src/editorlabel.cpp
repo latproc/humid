@@ -69,33 +69,34 @@ void EditorLabel::draw(NVGcontext *ctx) {
     }
 
     std::string valStr(mCaption);
+    float scale = value_scale;
+    if (scale == 0.0f) scale = 1.0f;
     if (format_string.length()) {
       if (value_type == Value::t_integer) {// integer
         char buf[20];
         int val = std::atoi(valStr.c_str());
-        snprintf(buf, 20, format_string.c_str(), val);
+        snprintf(buf, 20, format_string.c_str(), val / scale);
         valStr = buf;
       }
       else if (value_type == Value::t_float) {
         char buf[20];
         float val = std::atof(valStr.c_str());
-        snprintf(buf, 20, format_string.c_str(), val);
+        snprintf(buf, 20, format_string.c_str(), val / scale);
         valStr = buf;       
       }
     } 
     else if (value_type == Value::t_float) {
         char buf[20];
         float val = std::atof(valStr.c_str());
-        snprintf(buf, 20, "%5.3f", val);
+        snprintf(buf, 20, "%5.3f", val / scale);
         valStr = buf;       
    }
     else if (value_type == Value::t_integer) {
         char buf[20];
         int val = std::atoi(valStr.c_str());
-        snprintf(buf, 20, "%d", val);
+        snprintf(buf, 20, "%d", (int)(val / scale));
         valStr = buf;
     }
-
 
     if (mFixedSize.x() > 0) {
         nvgTextAlign(ctx, align | alignv);

@@ -3083,7 +3083,10 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 			[&,w]()->int{ return getValueType(); });
 		properties->addVariable<float> (
 			"Value Scale",
-			[&](float value) { setValueScale(value_scale); },
+			[&](float value) { 
+				setValueScale(value);
+				if (remote) remote->apply();
+			},
 			[&]()->float{ return valueScale(); });
 		properties->addVariable<int> (
 			"Border",

@@ -255,7 +255,6 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Connection");
   names.push_back("Font Size");
   names.push_back("Format");
-  names.push_back("Value Type");
   names.push_back("Height");
   names.push_back("Horizontal Pos");
   names.push_back("Inverted Visibility");
@@ -264,6 +263,7 @@ void EditorWidget::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Structure");
   names.push_back("Tab Position");
   names.push_back("Value Scale");
+  names.push_back("Value Type");
   names.push_back("Vertical Pos");
   names.push_back("Visibility");
   names.push_back("Width");
@@ -375,7 +375,6 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
     return getValueType();
   }
   if (prop == "Value Scale") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     return valueScale();
   }
   if (prop == "Border") {
@@ -406,6 +405,7 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Border"] = "border";
   property_map["Connection"] = "connection";
   property_map["Font Size"] = "font_size";
+  property_map["Format"] = "format";
   property_map["Height"] = "height";
   property_map["Horizontal Pos"] = "pos_x";
   property_map["Inverted Visibility"] = "inverted_visibility";
@@ -413,11 +413,10 @@ void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Structure"] = ""; // not to be copied
   property_map["Tab Position"] = "tab_position";
   property_map["Value Scale"] = "value_scale";
+  property_map["Value Type"] = "value_type";
   property_map["Vertical Pos"] = "pos_y";
   property_map["Visibility"] = "visibility";
   property_map["Width"] = "width";
-  property_map["Format"] = "format";
-  property_map["Value Type"] = "value_type";
 }
 
 // generate or update structure properties from the widget
