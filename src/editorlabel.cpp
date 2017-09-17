@@ -74,8 +74,8 @@ void EditorLabel::draw(NVGcontext *ctx) {
     if (format_string.length()) {
       if (value_type == Value::t_integer) {// integer
         char buf[20];
-        int val = std::atoi(valStr.c_str());
-        snprintf(buf, 20, format_string.c_str(), val / scale);
+        long val = std::atol(valStr.c_str());
+        snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
         valStr = buf;
       }
       else if (value_type == Value::t_float) {
@@ -93,8 +93,8 @@ void EditorLabel::draw(NVGcontext *ctx) {
    }
     else if (value_type == Value::t_integer) {
         char buf[20];
-        int val = std::atoi(valStr.c_str());
-        snprintf(buf, 20, "%d", (int)(val / scale));
+        long val = std::atol(valStr.c_str());
+        snprintf(buf, 20, "%ld", (long)(val / scale));
         valStr = buf;
     }
 
