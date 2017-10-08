@@ -166,7 +166,7 @@ bool EditorTextBox::focusEvent(bool focused) {
         if (focused)
             mValueTemp = getScaledValue(false);
         else
-            mValue = getScaledValue(true);
+            mValue =  mValueTemp; mValue = getScaledValue(true);
     }
 
     return true;
