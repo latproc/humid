@@ -50,6 +50,7 @@ size_t receive_data(void *buffer, size_t size, size_t nmemb, void *userp)
 bool get_file(const std::string url_s, const std::string filename) {
     CURLcode result = CURLE_OK;
     CURLcode curl = curl_global_init(CURL_GLOBAL_NOTHING);
+    if (curl) return false; // initialisation failed, curl functions cannot be used
     CURL *curl_handle = curl_easy_init();
 
     struct buffer_info *buf = (struct buffer_info *)malloc(sizeof(struct buffer_info));
