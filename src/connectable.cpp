@@ -7,5 +7,3 @@
 
 #include <iostream>
 #include "connectable.h"
-
-

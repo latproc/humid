@@ -57,8 +57,8 @@ void LinkableText::update(const Value &value) {
 	}
 }
 
-
 LinkableNumber::LinkableNumber(EditorObject *w) : LinkableObject(w) { }
+
 void LinkableNumber::update(const Value &value) {
     EditorProgressBar *pb = dynamic_cast<EditorProgressBar*>(widget);
     if (pb) {

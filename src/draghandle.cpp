@@ -45,8 +45,6 @@ bool DragHandle::mouseDragEvent(const Vector2i &p, const Vector2i & /* rel */,
 	if (y>parent()->size().y()) y = parent()->size().y();
 	setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
 	if (property_monitor) property_monitor->update(this);
-
-	//mValue = std::min(std::max((p.x() - mPos.x()) / (float) mSize.x(), (float) 0.0f), (float) 1.0f);
 	if (mCallback)
 		mCallback(mValue);
 	return true;
@@ -57,7 +55,6 @@ bool DragHandle::mouseButtonEvent(const Vector2i &p, int /* button */, bool down
 		std::cout << "not enabled\n";
 		return false;
 	}
-	//mValue = std::min(std::max((p.x() - mPos.x()) / (float) mSize.x(), (float) 0.0f), (float) 1.0f);
 	if (down) {
 		int x = p.x(); 
 		if (x < 0) x = 0;

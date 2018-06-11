@@ -90,7 +90,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
         float val = std::atof(valStr.c_str());
         snprintf(buf, 20, "%5.3f", val / scale);
         valStr = buf;       
-   }
+    }
     else if (value_type == Value::t_integer) {
         char buf[20];
         long val = std::atol(valStr.c_str());

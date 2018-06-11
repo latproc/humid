@@ -162,7 +162,7 @@ void Editor::save() {
 			continue;
 		}
 		*/
-	std::ofstream out;
+	  std::ofstream out;
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {
 			char buf[200];

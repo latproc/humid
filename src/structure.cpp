@@ -121,7 +121,6 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 	const char *begin_properties = "(";
 	const char *property_delim = ",";
 	const char *delim = begin_properties;
-	int count = 0;
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
@@ -133,7 +132,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 			delim = property_delim;
 		}
 	}
-	if (delim == property_delim) out << ")";
+	if (delim == property_delim) out << ")"; // only output the ')' if there were properties
 	return true;
 }
 
@@ -141,7 +140,6 @@ bool writeOptions(std::ostream &out,const std::map<std::string, Value> &options)
 	const char *begin_properties = "";
 	const char *property_delim = ";\n";
 	const char *delim = begin_properties;
-	int count = 0;
 	std::map<std::string, Value>::const_iterator i = options.begin();
 	while (i != options.end()) {
 		auto item = *i++;

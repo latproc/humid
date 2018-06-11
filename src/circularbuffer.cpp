@@ -16,11 +16,11 @@
 
 CircularBuffer::CircularBuffer(int size, DataType dt)
 {
-    bufsize = size;
-    front = -1;
-    back = -1;
-    values = (double*)malloc( sizeof(double) * size);
-    times = (uint64_t*)malloc( sizeof(uint64_t) * size);
+	bufsize = size;
+	front = -1;
+	back = -1;
+	values = (double*)malloc( sizeof(double) * size);
+	times = (uint64_t*)malloc( sizeof(uint64_t) * size);
 	total = 0;
 	zero_time = 0;
 	start_time = 0;
@@ -115,7 +115,6 @@ void CircularBuffer::deregisterCallback(Handler *handler, SampleTrigger::Event e
 	}
 }
 
-
 void CircularBuffer::addSampleDebug(long time, double val) {
 	addSample(val, time);
 	printf("buffer added: %5.2f, %ld at %d\n", val, time, front);
@@ -138,7 +137,6 @@ void CircularBuffer::findRange(double &min_v, double &max_v) {
 	/* reading the buffer without entering data is a non-recoverable error */
 	int l = length();
 	if (l == 0) { min_v = max_v = 0.0; }
-	int n = 0;
 	int idx = front;
 	max_v = values[idx];
 	min_v = values[idx];
@@ -209,15 +207,11 @@ double CircularBuffer::getBufferValueAt(unsigned long t) {
 	if (t >= times[front]) return values[front];
 	int nxt = (idx+1) % bufsize;
 	while (times[nxt] < t) { idx = nxt; nxt = (idx+1) % bufsize; }
-	double dt = times[nxt] - times[idx];
-	double scale = (double)(t - times[idx]) / dt;
 	return values[nxt];
-	//return values[idx] + scale * (values[nxt] - values[idx]);
 }
 
 double CircularBuffer::bufferSum(int n) {
 	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
-	//return total;
 	int i = length();
 	if (i>n) i = n;
 	double tot = 0.0;
@@ -291,23 +285,19 @@ void CircularBuffer::setTriggerValue(SampleTrigger::Event evt, int val, SampleTr
 
 double CircularBuffer::slope() {
 	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
-    double sumX = 0.0, sumY = 0.0, sumXY = 0.0;
-    double sumXsquared = 0.0, sumYsquared = 0.0;
-    int n = length()-1;
-    double t0 = getTime(n);
-	int i = 0;
-    for (i = n-1; i>0; i--) {
-        double y = getBufferValue(i) - getBufferValue(n); // degrees
-        double x = getTime(i) - t0;
-        sumX += x; sumY += y; sumXsquared += x*x; sumYsquared += y*y; sumXY += x*y;
-    }
-    double denom = (double)n*sumXsquared - sumX*sumX;
-	
-    double m = 0.0;
+	double sumX = 0.0, sumY = 0.0, sumXY = 0.0;
+	double sumXsquared = 0.0, sumYsquared = 0.0;
+	int n = length()-1;
+	double t0 = getTime(n);
+	for (int i = n-1; i>0; i--) {
+			double y = getBufferValue(i) - getBufferValue(n); // degrees
+			double x = getTime(i) - t0;
+			sumX += x; sumY += y; sumXsquared += x*x; sumYsquared += y*y; sumXY += x*y;
+	}
+	double denom = (double)n*sumXsquared - sumX*sumX;
+	double m = 0.0;
 	if (denom != 0.0) m  = ((double)n * sumXY - sumX*sumY) / denom;
-	
-    //double c = (sumXsquared * sumY - sumXY * sumX) / denom;
-    return m;
+	return m;
 }
 
 #ifdef TEST
@@ -351,30 +341,30 @@ int main(int argc, const char *argv[]) {
 
 	/// negative numbers
 	destroyBuffer(mybuf);
-    mybuf = createBuffer(test_buffer_size);
+	mybuf = createBuffer(test_buffer_size);
 	long ave = average(mybuf, test_buffer_size);
 	//printf("%ld\n",ave);
 	addSample(mybuf,10000,1);
 	//printf("%ld\n",ave);
 	addSample(mybuf,10040,-20);
 	//printf("%ld\n",ave);
-    for (i=0; i<10; ++i) addSample(mybuf, i, -1.5*i);
-    ++tests; if (rate(mybuf, size(mybuf)) != -1.5) { 
-		fail(tests); printf("unexpected rate: %lf expected -1.5\n", rate(mybuf, size(mybuf))); }
+	for (i=0; i<10; ++i) addSample(mybuf, i, -1.5*i);
+	++tests; if (rate(mybuf, size(mybuf)) != -1.5) {
+	fail(tests); printf("unexpected rate: %lf expected -1.5\n", rate(mybuf, size(mybuf))); }
 
 	i=0;
 	while (i<test_buffer_size) { addSample(mybuf, i, random()%5000); ++i; }
 	while (i<8) { addSample(mybuf, i, 0); ++i; }
 	++tests; if ( fabs(bufferAverage(mybuf, size(mybuf))) >1.0E-4) {
-			fail(tests); printf("unexpected average: %lf\n", average(mybuf, size(mybuf)));}
+	fail(tests); printf("unexpected average: %lf\n", average(mybuf, size(mybuf)));}
 	++tests; if (bufferSum(mybuf, size(mybuf)) != 0.0) {
-			fail(tests); printf("unexpected sum: %lf\n", bufferSum(mybuf, size(mybuf)));}
+	fail(tests); printf("unexpected sum: %lf\n", bufferSum(mybuf, size(mybuf)));}
 
 	destroyBuffer(mybuf);
 
 	/* test whether findMovement correctly finds a net movememnt */
 	++tests; 
-    mybuf = createBuffer(20);
+	mybuf = createBuffer(20);
 	addSample(mybuf, 0, 2200);
 	addSample(mybuf, 1, 2200);
 	for (i=2; i<10; ++i) addSample(mybuf, i, 2000);
@@ -398,8 +388,8 @@ int main(int argc, const char *argv[]) {
 		generate a sign curve and calculate the slope using
 		the rate() and slope() functions for comparison purposes
 	*/
-/*
-   mybuf = createBuffer(4);
+  /*
+	mybuf = createBuffer(4);
 	for (i=0; i<70; i++) {
 		double x = i/4.0;
 		double y = sin( x );
@@ -407,7 +397,7 @@ int main(int argc, const char *argv[]) {
 		if (i>mybufsize) printf("%d,%lf,%lf,%lf\n",i, cos(x)/4.0, rate(mybuf), slope(mybuf));
 	}
 	destroyBuffer(mybuf);
-*/
+  */
 
   mybuf = createBuffer(6);
   for (i=0; i<6; ++i) { double x = i*22+10; double y = i*20 + 30; addSample(mybuf, x, y); }
