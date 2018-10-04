@@ -100,6 +100,10 @@
 #include "helper.h"
 #include "screenswindow.h"
 
+#ifndef ENTYPO_ICON_LAYOUT
+#define ENTYPO_ICON_LAYOUT                              0x0000268F
+#endif
+
 // settings file parser globals
 #define __MAIN__ 1
 #include "settingslang.h"
@@ -197,7 +201,7 @@ public:
 	void update();
 	Selectable *getSelectedItem();
 	void selectFirst();
-	void select(const std::string path);
+
 private:
 	nanogui::VScrollPanel *palette_scroller;
 	nanogui::Widget *palette_content;
@@ -488,9 +492,6 @@ Selectable *ListPanel::getSelectedItem() {
 	return *selections.begin();
 }
 void ListPanel::selectFirst() {
-
-}
-void ListPanel::select(const std::string path) {
 
 }
 
@@ -3804,12 +3805,12 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	if (!widget) return false;
 	SkeletonWindow *skel = dynamic_cast<SkeletonWindow *>(widget);
 
-	EditorSettings::setDirty();
 	Structure *s = EditorSettings::find(name);
 	if (!s) {
 		s = new Structure(nullptr, name, "WINDOW");
 		st_structures.push_back(s);
 		std::cout << "added structure for window " << name << "\n";
+		EditorSettings::setDirty();
 	}
 	const nanogui::Vector2i &pos(widget->position());
 	SymbolTable &properties(s->getProperties());

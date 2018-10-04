@@ -27,7 +27,7 @@ public:
 
 	static void add(const std::string &name, nanogui::Widget *w);
 	static void setDirty() { dirty = true; }
-    std::ostream &operator<<(std::ostream &out) const;
+	std::ostream &operator<<(std::ostream &out) const;
 
 private:
 	static std::map<std::string, nanogui::Widget *> widgets;

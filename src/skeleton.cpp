@@ -36,6 +36,7 @@
 #include "helper.h"
 #include "structure.h"
 #include "resourcemanager.h"
+#include "editorsettings.h"
 
 long collect_history = 0;
 extern Structure *system_settings;
@@ -116,6 +117,7 @@ bool SkeletonWindow::mouseButtonEvent(const nanogui::Vector2i &p, int button, bo
 				s->performLayout();
 		}
 	}
+	EditorSettings::setDirty();
 	return nanogui::Window::mouseButtonEvent(p, button, down, modifiers);
 }
 

@@ -66,8 +66,8 @@ Structure *EditorSettings::create() {
 }
 
 void EditorSettings::flush() {
-    //if (!dirty) return;
-    //dirty = false;
+    if (!dirty) return;
+    dirty = false;
     if (settings_files.size() == 0) return;
     std::string fname(settings_files.front());
     std::ofstream settings_file(fname);
