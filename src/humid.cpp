@@ -1050,6 +1050,9 @@ void UserWindow::loadStructure( Structure *s) {
 					el->setConnection(connection.asString());
 				}
 				if (font_size) el->setFontSize(font_size);
+        const Value &bg_colour(element->getProperties().find("bg_color"));
+        if (bg_colour != SymbolTable::Null)
+          el->setBackgroundColor(colourFromProperty(element, "bg_color"));
 				const Value &alignment_v(element->getProperties().find("alignment"));
 				if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
 				const Value &valignment_v(element->getProperties().find("valign"));
@@ -3254,6 +3257,7 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 
 void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
+  EditorLabel *lbl = dynamic_cast<EditorLabel*>(this);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
 		properties->addVariable<std::string> (
@@ -3272,6 +3276,10 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			"Wrap Text",
 			[&](bool value) mutable{ wrap_text = value; },
 			[&]()->bool{ return wrap_text; });
+    properties->addVariable<nanogui::Color> (
+      "Background Colour",
+      [&,lbl](const nanogui::Color &value) mutable{ lbl->setBackgroundColor(value); },
+      [&,lbl]()->const nanogui::Color &{ return lbl->backgroundColor(); });
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",

@@ -17,7 +17,7 @@ EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string n
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
 : Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
-  alignment(1), valign(1), wrap_text(true) {
+mBackgroundColor(nanogui::Color(0,0)), alignment(1), valign(1), wrap_text(true) {
 }
 
 bool EditorLabel::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -48,6 +48,14 @@ bool EditorLabel::mouseEnterEvent(const Vector2i &p, bool enter) {
 
 void EditorLabel::draw(NVGcontext *ctx) {
     Widget::draw(ctx);
+
+  if (mBackgroundColor != nanogui::Color(0,0)) {
+      nvgBeginPath(ctx);
+      nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
+      nvgFillColor(ctx, nanogui::Color(mBackgroundColor));
+      nvgFill(ctx);
+    }
+
     nvgFontFace(ctx, mFont.c_str());
     nvgFontSize(ctx, fontSize());
     nvgFillColor(ctx, mColor);
@@ -115,15 +123,17 @@ void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> 
   property_map["Alignment"] = "alignment";
   property_map["Vertical Alignment"] = "valign";
   property_map["Wrap Text"] = "wrap";
+  property_map["Background Colour"] = "bg_color";
 }
 
 void EditorLabel::getPropertyNames(std::list<std::string> &names) {
-    EditorWidget::getPropertyNames(names);
-    names.push_back("Caption");
-    names.push_back("Font Size");
-    names.push_back("Vertical Alignment");
-    names.push_back("Alignment");
-    names.push_back("Wrap Text");
+  EditorWidget::getPropertyNames(names);
+  names.push_back("Caption");
+  names.push_back("Font Size");
+  names.push_back("Vertical Alignment");
+  names.push_back("Alignment");
+  names.push_back("Wrap Text");
+  names.push_back("Background Colour");
 }
 
 Value EditorLabel::getPropertyValue(const std::string &prop) {
@@ -135,6 +145,13 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
   if (prop == "Alignment") return alignment;
   if (prop == "Vertical Alignment") return valign;
   if (prop == "Wrap Text") return wrap_text ? 1 : 0;
+  if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
+    char buf[50];
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
+             backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
+    return Value(buf, Value::t_string);
+  }
+
   return SymbolTable::Null;
 }
 

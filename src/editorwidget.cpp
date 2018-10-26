@@ -24,6 +24,7 @@
 #include "propertywindow.h"
 #include "themewindow.h"
 #include "helper.h"
+#include "editorlabel.h"
 
 extern Handle::Mode all_handles[];
 

@@ -35,10 +35,16 @@ public:
 	virtual void setProperty(const std::string &prop, const std::string value) override;
 	virtual void draw(NVGcontext *ctx) override;
 
+  const nanogui::Color &backgroundColor() { return mBackgroundColor; }
+
+  /// Sets the background color of this Button.
+  void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
+
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
 protected:
+  nanogui::Color mBackgroundColor;
 	int alignment;
 	int valign;
 	bool wrap_text;

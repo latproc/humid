@@ -327,7 +327,6 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 	const Value &chn = s_conn->getProperties().find("channel");
 	const Value &host = s_conn->getProperties().find("host");
 	long port = s_conn->getIntProperty("port", 5555);
-	std::cout << "Loaded connection details " << chn << " " << host << " " << port << "\n";
 	if (chn != SymbolTable::Null && host != SymbolTable::Null) {
 		Connection *conn = new Connection(this, s_conn->getName(), chn.asString(), host.asString(), port);
 		conn->setDefinition(s_conn);
