@@ -46,7 +46,11 @@ bool EditorProgressBar::mouseEnterEvent(const Vector2i &p, bool enter) {
 
 void EditorProgressBar::draw(NVGcontext *ctx) {
     nanogui::ProgressBar::draw(ctx);
-    if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+    if (mSelected)
+      drawSelectionBorder(ctx, mPos, mSize);
+    else if (EDITOR->isEditMode()) {
+      drawElementBorder(ctx, mPos, mSize);
+    }
 }
 
 void EditorProgressBar::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {

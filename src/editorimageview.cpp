@@ -80,7 +80,11 @@ void EditorImageView::draw(NVGcontext *ctx) {
         drawHelpers(ctx);
 
     if (border) drawWidgetBorder(ctx);
-    if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+    if (mSelected)
+      drawSelectionBorder(ctx, mPos, mSize);
+    else if (EDITOR->isEditMode()) {
+      drawElementBorder(ctx, mPos, mSize);
+    }
 }
 
 void EditorImageView::setImageName(const std::string new_name, bool reload) {

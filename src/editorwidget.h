@@ -64,6 +64,7 @@ public:
 	void updateHandles(nanogui::Widget *w);
 
 	virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
+  virtual void drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
 
 	std::string baseName() const;
 

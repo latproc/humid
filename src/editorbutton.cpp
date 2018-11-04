@@ -13,6 +13,7 @@
 #include "editorwidget.h"
 #include "editorbutton.h"
 #include "linkableproperty.h"
+#include "editor.h"
 #include "editorgui.h"
 #include "structure.h"
 
@@ -402,6 +403,11 @@ void EditorButton::draw(NVGcontext *ctx) {
     else {
       nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), text.c_str(), nullptr);
     }
-    if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+    if (mSelected)
+      drawSelectionBorder(ctx, mPos, mSize);
+    else if (EDITOR->isEditMode()) {
+      drawElementBorder(ctx, mPos, mSize);
+    }
+
 
 }

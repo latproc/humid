@@ -12,6 +12,7 @@
 #include <nanogui/widget.h>
 #include "editorwidget.h"
 #include "editorlabel.h"
+#include "editor.h"
 
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
@@ -113,7 +114,11 @@ void EditorLabel::draw(NVGcontext *ctx) {
         nvgTextAlign(ctx, align | alignv);
         nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, valStr.c_str(), nullptr);
     }
-    if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+    if (mSelected)
+      drawSelectionBorder(ctx, mPos, mSize);
+    else if (EDITOR->isEditMode()) {
+      drawElementBorder(ctx, mPos, mSize);
+    }
 }
 
 void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {

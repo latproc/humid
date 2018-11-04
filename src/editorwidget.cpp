@@ -202,6 +202,16 @@ void EditorWidget::drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, n
     }
 }
 
+void EditorWidget::drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size) {
+  if (EDITOR->isEditMode()) {
+    nvgStrokeWidth(ctx, 4.0f);
+    nvgBeginPath(ctx);
+    nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
+    nvgStrokeColor(ctx, nvgRGBA(192, 192, 255, 255));
+    nvgStroke(ctx);
+  }
+}
+
 std::string EditorWidget::baseName() const {
     return base;
 }

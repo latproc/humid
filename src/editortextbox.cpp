@@ -10,6 +10,7 @@
 #include <nanogui/opengl.h>
 #include <nanogui/widget.h>
 #include <nanogui/entypo.h>
+#include "editor.h"
 
 #include "editortextbox.h"
 
@@ -419,7 +420,11 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
     }
     nvgRestore(ctx);
-  if (mSelected) drawSelectionBorder(ctx, mPos, mSize);
+  if (mSelected)
+    drawSelectionBorder(ctx, mPos, mSize);
+  else if (EDITOR->isEditMode()) {
+    drawElementBorder(ctx, mPos, mSize);
+  }
 
 }
 
