@@ -1008,6 +1008,13 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
+      LinkableProperty *lp = nullptr;
+      if (remote != SymbolTable::Null)
+        lp = gui->findLinkableProperty(remote.asString());
+      LinkableProperty *visibility = nullptr;
+      if (vis != SymbolTable::Null) {
+        visibility = gui->findLinkableProperty(vis.asString());
+      }
 			bool wrap = false;
 			{ 
 				const Value &wrap_v(element->getProperties().find("wrap"));
@@ -1031,17 +1038,10 @@ void UserWindow::loadStructure( Structure *s) {
 			long tab_pos = 0;
 			const Value &tab_pos_val(element->getProperties().find("tab_pos"));
 			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
-			LinkableProperty *lp = nullptr;
-			if (remote != SymbolTable::Null)
-				lp = gui->findLinkableProperty(remote.asString());
-			LinkableProperty *visibility = nullptr;
-			if (vis != SymbolTable::Null) {
-				visibility = gui->findLinkableProperty(vis.asString());
-			}
 			if (kind == "LABEL") {
-				const Value &caption_v(element->getProperties().find("caption"));
+        const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
-												  (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
+												  (caption_v != SymbolTable::Null)?caption_v.asString(): "");
 				el->setName(element->getName());
 				el->setDefinition(element);
 				fixElementPosition( el, element->getProperties());
@@ -1088,6 +1088,7 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				el->setInvertedVisibility(ivis);
+        const Value &image_file_v( (lp) ? lp->value() : (element->getProperties().find("image_file")));
 				if (image_file_v != SymbolTable::Null) {
 					std::string ifn = image_file_v.asString();
 					el->setImageName(ifn);
@@ -1123,7 +1124,7 @@ void UserWindow::loadStructure( Structure *s) {
 			if (kind == "TEXT") {
 				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
 				textBox->setDefinition(element);
-				const Value &text_v(element->getProperties().find("text"));
+        const Value &text_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("text"));
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				const Value &alignment_v(element->getProperties().find("alignment"));
 				if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
