@@ -1047,6 +1047,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (connection != SymbolTable::Null) {
+          el->setRemoteName(remote.asString());
 					el->setConnection(connection.asString());
 				}
 				if (font_size) el->setFontSize(font_size);
@@ -1105,7 +1106,8 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( ep, element->getProperties());
 				fixElementSize( ep, element->getProperties());
 				if (connection != SymbolTable::Null) {
-					ep->setConnection(connection.asString());
+          ep->setRemoteName(remote.asString());
+          ep->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
 				if (value_type != -1) ep->setValueType(value_type);				
@@ -1130,6 +1132,7 @@ void UserWindow::loadStructure( Structure *s) {
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (connection != SymbolTable::Null) {
+          textBox->setRemoteName(remote.asString());
 					textBox->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
@@ -1185,6 +1188,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
 				if (connection != SymbolTable::Null) {
+          lp->setRemoteName(remote.asString());
 					lp->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
@@ -1213,6 +1217,7 @@ void UserWindow::loadStructure( Structure *s) {
 				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
 				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 				if (connection != SymbolTable::Null) {
+          b->setRemoteName(remote.asString());
 					b->setConnection(connection.asString());
 				}
 				fixElementPosition( b, element->getProperties());
@@ -3007,6 +3012,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableNumber(this)); }
@@ -3056,6 +3062,7 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableText(this)); }
@@ -3117,6 +3124,7 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableText(this)); }
@@ -3162,6 +3170,7 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&, w, this,properties](std::string value) mutable {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableNumber(this)); }
@@ -3280,6 +3289,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,btn,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
 				if (this->remote) this->remote->unlink(this);
 				this->setRemote(lp);
 				if (lp &&getDefinition()->getKind() == "INDICATOR")
@@ -3388,7 +3398,7 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 		properties->addGroup("Remote");
 		properties->addVariable<std::string> (
 			"Remote object",
-			[&](std::string value) { /*setName(value);*/ },
+      [&](std::string value) { setRemoteName(value); },
 			[&]()->std::string{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->tagName() : ""; });
 		properties->addVariable<std::string> (
 			"Connection",

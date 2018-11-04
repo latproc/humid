@@ -96,6 +96,8 @@ public:
 	void setInvertedVisibility(bool which) { inverted_visibility = which; }
 	bool invertedVisibility() { return inverted_visibility; }
 
+  void setRemoteName(const std::string rn) { remote_name = rn; }
+  std::string getRemoteName() { return remote_name; }
 	void setConnection(const std::string c) { connection_name = c; }
 	std::string getConnection() { return connection_name; }
 
@@ -110,6 +112,7 @@ public:
 protected:
 	std::list<Link>links;
 	std::string base;
+  std::string remote_name; // only used if there is no remote
 	std::string connection_name; // only used if there is no remote
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;

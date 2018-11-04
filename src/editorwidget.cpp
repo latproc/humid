@@ -334,8 +334,11 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     return;
   }
   if (prop == "Remote") {
-    if (remote) remote->unlink(this);
-    remote = EDITOR->gui()->findLinkableProperty(value);
+    remote_name = value;
+    LinkableProperty *remote_prop = EDITOR->gui()->findLinkableProperty(value);
+    if (remote)
+      remote->unlink(this);
+    remote = remote_prop;
     // note: remote->link() not yet called. see subclass method.
   }
   if (prop == "Connection") {
@@ -392,7 +395,7 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
     return border;
   }
   if (prop == "Remote") {
-    return remote ? Value(remote->tagName(), Value::t_string) : "";
+    return Value(remote ? remote->tagName() : remote_name, Value::t_string);
   }
   if (prop == "Connection") {
     return Value(remote ? remote->group() : connection_name, Value::t_string);
