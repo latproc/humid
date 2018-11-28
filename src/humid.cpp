@@ -1197,7 +1197,11 @@ void UserWindow::loadStructure( Structure *s) {
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
-				if (element->getProperties().find("overlay").asString() == "1") lp->overlay(true);
+        {
+          bool should_overlay_plots;
+          if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
+            lp->overlay(should_overlay_plots);
+        }
 				const Value &monitors(element->getProperties().find("monitors"));
 				lp->setInvertedVisibility(ivis);
 				if (monitors != SymbolTable::Null) {
