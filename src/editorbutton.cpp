@@ -283,9 +283,9 @@ void EditorButton::draw(NVGcontext *ctx) {
         mTextColor.w() == 0 ? mTheme->mTextColor : mTextColor;
 
     std::string text = mCaption;
-    if (mPushed && on_text_colour.w() != 0) {
+    if (mPushed) {
+      if (on_text_colour.w() != 0) textColor = on_text_colour;
       if (!on_caption.empty()) text = on_caption;
-      textColor = on_text_colour;
     }
     float tw = nvgTextBounds(ctx, 0,0, text.c_str(), nullptr, nullptr);
 
