@@ -17,8 +17,8 @@
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
-: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
-mBackgroundColor(nanogui::Color(0,0)), alignment(1), valign(1), wrap_text(true) {
+: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2), mBackgroundColor(nanogui::Color(0,0)), mTextColor(nanogui::Color(0,0)),
+  alignment(1), valign(1), wrap_text(true) {
 }
 
 bool EditorLabel::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -49,6 +49,7 @@ bool EditorLabel::mouseEnterEvent(const Vector2i &p, bool enter) {
 
 void EditorLabel::draw(NVGcontext *ctx) {
     Widget::draw(ctx);
+    NVGcolor textColor = mTextColor.w() == 0 ? mColor : mTextColor;
 
   if (mBackgroundColor != nanogui::Color(0,0)) {
       nvgBeginPath(ctx);
@@ -59,7 +60,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
 
     nvgFontFace(ctx, mFont.c_str());
     nvgFontSize(ctx, fontSize());
-    nvgFillColor(ctx, mColor);
+    nvgFillColor(ctx, textColor);
     int align = NVG_ALIGN_LEFT;
     int alignv = NVG_ALIGN_TOP;
     if (alignment == 1)
@@ -125,6 +126,7 @@ void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> 
   EditorWidget::loadPropertyToStructureMap(property_map);
   property_map["Caption"] = "caption";
   property_map["Font Size"] = "font_size";
+  property_map["Text Color"] = "text_color";
   property_map["Alignment"] = "alignment";
   property_map["Vertical Alignment"] = "valign";
   property_map["Wrap Text"] = "wrap";
@@ -135,6 +137,7 @@ void EditorLabel::getPropertyNames(std::list<std::string> &names) {
   EditorWidget::getPropertyNames(names);
   names.push_back("Caption");
   names.push_back("Font Size");
+  names.push_back("Text Color");
   names.push_back("Vertical Alignment");
   names.push_back("Alignment");
   names.push_back("Wrap Text");
@@ -147,6 +150,13 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
     return res;
   if (prop == "Caption") return Value(caption(), Value::t_string);
   if (prop == "Font Size") return fontSize();
+  if (prop == "Text Color") {
+      nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+      nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(this);
+      char buf[50];
+      snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", mTextColor.r(), mTextColor.g(), mTextColor.b(), mTextColor.w());
+      return Value(buf, Value::t_string);
+  }
   if (prop == "Alignment") return alignment;
   if (prop == "Vertical Alignment") return valign;
   if (prop == "Wrap Text") return wrap_text ? 1 : 0;
@@ -162,9 +172,10 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
 
 void EditorLabel::setProperty(const std::string &prop, const std::string value) {
   EditorWidget::setProperty(prop, value);
-  if (prop == "Remote") {
-    if (remote) {
-        remote->link(new LinkableText(this));  }
+    if (prop == "Remote") {
+      if (remote) {
+        remote->link(new LinkableText(this));
+      }
     }
     if (prop == "Font Size") {
       int fs = std::atoi(value.c_str());

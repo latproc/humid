@@ -166,7 +166,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 					else {
 						//search the current screen for a button with this name and click it
 						for (auto w : w_user->getWindow()->children()) {
-							EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
+							//EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
 							EditorTextBox *et = dynamic_cast<EditorTextBox*>(w);
 							EditorButton *eb = dynamic_cast<EditorButton*>(w);
 							if (et && et->getName() == conn) {

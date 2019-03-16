@@ -30,21 +30,24 @@ public:
 
 	virtual void getPropertyNames(std::list<std::string> &names) override;
 	void loadProperties(PropertyFormHelper* properties) override;
-  virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
+    virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) override;
 	virtual Value getPropertyValue(const std::string &prop) override;
 	virtual void setProperty(const std::string &prop, const std::string value) override;
 	virtual void draw(NVGcontext *ctx) override;
 
-  const nanogui::Color &backgroundColor() { return mBackgroundColor; }
+    const nanogui::Color &backgroundColor() { return mBackgroundColor; }
+    const nanogui::Color &textColor() { return mTextColor; }
 
-  /// Sets the background color of this Button.
-  void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
+    /// Sets the background color of this Button.
+    void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
+    void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
 
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
 protected:
-  nanogui::Color mBackgroundColor;
+    nanogui::Color mBackgroundColor;
+    nanogui::Color mTextColor;
 	int alignment;
 	int valign;
 	bool wrap_text;
