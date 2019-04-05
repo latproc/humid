@@ -3918,6 +3918,10 @@ int main(int argc, const char ** argv ) {
 			}
 			app->setVisible(true);
 
+			if (!app->getUserWindow()->structure()) {
+				app->getScreensWindow()->selectFirst();
+			}
+
 			nanogui::mainloop();
 		}
 

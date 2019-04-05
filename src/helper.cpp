@@ -225,7 +225,7 @@ void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem
 						if (ext == ".humid") files.push_back(fn);
 				}
 				else if (is_directory(fp)) {
-						collect_humid_files( fp / (*iter), files);
+						collect_humid_files( (*iter), files);
 				}
 		}
 }
