@@ -116,6 +116,8 @@ bool SkeletonWindow::mouseButtonEvent(const nanogui::Vector2i &p, int button, bo
 			if (s)
 				s->performLayout();
 		}
+		EditorSettings::setDirty();
+		return true;
 	}
 	EditorSettings::setDirty();
 	return nanogui::Window::mouseButtonEvent(p, button, down, modifiers);
