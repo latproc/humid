@@ -2173,6 +2173,12 @@ void EditorGUI::createWindows() {
 	w_screens->getSkeletonWindow()->setMoveListener(
 		[](nanogui::Window *value) { updateSettingsStructure("ScreensWindow", value); }
 	);
+	{
+		SkeletonWindow *properties_skel = dynamic_cast<SkeletonWindow*>(w_properties->getWindow());
+		if (properties_skel) properties_skel->setMoveListener(
+			[](nanogui::Window *value) { updateSettingsStructure("Properties", value); }
+		);
+	}
 	w_screens->update();
 	performLayout(mNVGContext);
 	setState(EditorGUI::GUISELECTPROJECT);
