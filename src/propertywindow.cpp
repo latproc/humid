@@ -1,4 +1,5 @@
-//
+
+ //
 //  PropertyWindow.cpp
 //  Project: humid
 //
@@ -6,6 +7,8 @@
 //	3-clause BSD License in LICENSE.txt.
 
 #include <iostream>
+#include <nanogui/widget.h>
+#include <nanogui/vscrollpanel.h>
 #include "propertywindow.h"
 #include "editor.h"
 #include "editorwidget.h"
@@ -21,7 +24,7 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	//item_proxy = new ItemProxy(properties, 0);
 	window = properties->addWindow(Eigen::Vector2i(30, 50), "Property List");
 	window->setTheme(theme);
-	window->setFixedSize(nanogui::Vector2i(260,560));
+	window->setFixedSize(nanogui::Vector2i(320,560));
 
 	window->setVisible(false);
 }
@@ -130,3 +133,53 @@ void PropertyWindow::update() {
 		gui->performLayout();
 	}
 }
+
+nanogui::Window *PropertyFormHelper::addWindow(const Vector2i &pos,
+																							 const std::string &title) {
+	assert(mScreen);
+	if (mWindow) { mWindow->decRef(); mWindow = 0; }
+	PropertyFormWindow *pfw = new PropertyFormWindow(mScreen, title);
+	mWindow = pfw;
+	//mWindow->setSize(nanogui::Vector2i(160, 640));
+	//mWindow->setFixedSize(nanogui::Vector2i(160, 640));
+	mWindow->setWidth(400);
+	nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
+	//palette_scroller->setSize(Vector2i(mWindow->width()-60, mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
+	//palette_scroller->setFixedSize(Vector2i(mWindow->width()-60, mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
+	//palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
+	mContent = new nanogui::Widget(palette_scroller);
+	pfw->setContent(mContent);
+	//mContent->setFixedSize(Vector2i(400,  200));
+	mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
+	mLayout->setMargin(1);
+	mLayout->setColStretch(1, 1.0);
+	mLayout->setColStretch(2, 1.0);
+	mContent->setLayout(mLayout);
+	mWindow->setPosition(pos);
+	mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
+	mWindow->setVisible(true);
+	return mWindow;
+}
+
+void PropertyFormHelper::setWindow(nanogui::Window *wind) {
+	assert(mScreen);
+	mWindow = wind;
+	mWindow->setSize(nanogui::Vector2i(wind->width(), 500));
+	mWindow->setFixedSize(nanogui::Vector2i(wind->width(), 500));
+	nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
+	palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
+	palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
+	palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
+	mContent = new nanogui::Widget(palette_scroller);
+	PropertyFormWindow *pfw = dynamic_cast<PropertyFormWindow*>(wind);
+	if (pfw) pfw->setContent(mContent);
+	mContent->setFixedSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
+	mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
+	mLayout->setMargin(1);
+	mLayout->setColStretch(1, 1.0);
+	mLayout->setColStretch(2, 1.0);
+	mContent->setLayout(mLayout);
+	mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
+	mWindow->setVisible(true);
+}
+

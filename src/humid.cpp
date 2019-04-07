@@ -234,55 +234,7 @@ void PropertyFormHelper::clear() {
 	}
 }
 
-nanogui::Window *PropertyFormHelper::addWindow(const Vector2i &pos,
-							  const std::string &title) {
-	assert(mScreen);
-	if (mWindow) { mWindow->decRef(); mWindow = 0; }
-	PropertyFormWindow *pfw = new PropertyFormWindow(mScreen, title);
-	mWindow = pfw;
-	mWindow->setSize(nanogui::Vector2i(320, 640));
-	mWindow->setFixedSize(nanogui::Vector2i(320, 640));
-	nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
-	palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-	palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-	palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
-	mContent = new nanogui::Widget(palette_scroller);
-	pfw->setContent(mContent);
-	mContent->setFixedSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
-	mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
-	mLayout->setMargin(1);
-	setFixedSize(Vector2i(150, 30));
-	//mLayout->setColStretch(1, 0);
-	mLayout->setColStretch(2, 1);
-	mContent->setLayout(mLayout);
-	mWindow->setPosition(pos);
-	mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
-	mWindow->setVisible(true);
-	return mWindow;
-}
 
-void PropertyFormHelper::setWindow(nanogui::Window *wind) {
-	assert(mScreen);
-	mWindow = wind;
-	mWindow->setSize(nanogui::Vector2i(320, 640));
-	mWindow->setFixedSize(nanogui::Vector2i(320, 640));
-	nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
-	palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-	palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-	palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
-	mContent = new nanogui::Widget(palette_scroller);
-	PropertyFormWindow *pfw = dynamic_cast<PropertyFormWindow*>(wind);
-	if (pfw) pfw->setContent(mContent);
-	mContent->setFixedSize(Vector2i(palette_scroller->width()-20,  palette_scroller->height()));
-	mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
-	mLayout->setMargin(1);
-	setFixedSize(Vector2i(150, 30));
-	//mLayout->setColStretch(1, 0);
-	//mLayout->setColStretch(2, 1);
-	mContent->setLayout(mLayout);
-	mWindow->setLayout( new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
-	mWindow->setVisible(true);
-}
 
 nanogui::Widget *PropertyFormHelper::content() {
 	return mContent;
@@ -2009,7 +1961,7 @@ void ObjectWindow::loadTagFile(const std::string tags) {
 ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme) :gui(screen) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);
-	window = properties->addWindow(Eigen::Vector2i(80, 50), "Theme Properties");
+	window = properties->addWindow(Eigen::Vector2i(100, 400), "Theme Properties");
 	window->setTheme(theme);
 	loadTheme(theme);
 	window->setVisible(false);
@@ -2178,6 +2130,12 @@ void EditorGUI::createWindows() {
 		if (properties_skel) properties_skel->setMoveListener(
 			[](nanogui::Window *value) { updateSettingsStructure("Properties", value); }
 		);
+	}
+	{
+		SkeletonWindow *theme_skel = dynamic_cast<SkeletonWindow*>(w_theme->getWindow());
+		if (theme_skel) theme_skel->setMoveListener(
+			[](nanogui::Window *value) { updateSettingsStructure("ThemeSettings", value); }
+			);
 	}
 	w_screens->update();
 	performLayout(mNVGContext);

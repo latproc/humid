@@ -394,7 +394,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
                 // draw selection
                 nvgBeginPath(ctx);
-                nvgFillColor(ctx, nvgRGBA(160, 255, 160, 160));
+                nvgFillColor(ctx, nvgRGBA(160, 255, 160, 255));
                 nvgRect(ctx, caretx, drawPos.y() - lineh * 0.5f, selx - caretx,
                         lineh);
                 nvgFill(ctx);
