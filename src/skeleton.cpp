@@ -91,32 +91,36 @@ nanogui::Vector2i fixPositionInWindow(const nanogui::Vector2i &pos, const nanogu
 	return res;
 }
 
+void SkeletonWindow::toggleShrunk() {
+	if (shrunk) {
+		shrunk = false;
+		setFixedSize(saved_size);
+		saved_pos = fixPositionInWindow(saved_pos, size(), parent()->size());
+		setPosition(saved_pos);
+	}
+	else {
+		saved_size = fixedSize(); saved_pos = position();
+		setFixedSize(nanogui::Vector2i(80, 20));
+		if (shrunk_pos != nanogui::Vector2i(0,0) ) setPosition(shrunk_pos);
+		shrunk = true;
+	}
+	requestFocus();
+	nanogui::Widget *p = parent();
+	nanogui::Widget *w = this;
+	while (p && p->parent()) {
+		if (p->parent()) { w = p; p = p->parent(); }
+	}
+	if (w) {
+		nanogui::Screen *s = dynamic_cast<nanogui::Screen *>(p);
+		if (s)
+			s->performLayout();
+	}
+	EditorSettings::setDirty();
+}
+
 bool SkeletonWindow::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && !down) {
-		if (shrunk) {
-			shrunk = false;
-			setFixedSize(saved_size);
-			saved_pos = fixPositionInWindow(saved_pos, size(), parent()->size());
-			setPosition(saved_pos);
-		}
-		else {
-			saved_size = fixedSize(); saved_pos = position();
-			setFixedSize(nanogui::Vector2i(80, 20));
-			if (shrunk_pos != nanogui::Vector2i(0,0) ) setPosition(shrunk_pos);
-			shrunk = true;
-		}
-		requestFocus();
-		nanogui::Widget *p = parent();
-		nanogui::Widget *w = this;
-		while (p && p->parent()) {
-			if (p->parent()) { w = p; p = p->parent(); }
-		}
-		if (w) {
-			nanogui::Screen *s = dynamic_cast<nanogui::Screen *>(p);
-			if (s)
-				s->performLayout();
-		}
-		EditorSettings::setDirty();
+		toggleShrunk();
 		return true;
 	}
 	EditorSettings::setDirty();
