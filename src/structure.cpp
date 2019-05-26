@@ -55,8 +55,23 @@ Structure *StructureClass::instantiate(Structure *parent, const std::string s_na
 	return s;
 }
 
+void StructureClass::removeLocal(Structure *machine) {
+	unsigned int i=0;
+	size_t n = locals.size();
+	for (i=0; i<n; ++i) {
+		if (locals[i].machine == machine) {
+			while (i+1 < n) {
+				locals[i] = locals[i+1];
+				++i;
+			}
+			locals.pop_back();
+			break;
+		}
+	}
+}
+
 Structure::Structure(Structure *parent, const std::string sname, const std::string skind)
-	: NamedObject(parent, sname), kind(skind), changed_(false), class_definition(0), owner(parent) {
+	: NamedObject(parent, sname), kind(skind), class_definition(0), changed_(false), owner(parent) {
 }
 
 /*
