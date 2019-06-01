@@ -28,7 +28,7 @@ public:
 
 	void saveAs(const std::string &path);
 	void load(const std::string &path);
-	void save();
+	void save(const char *new_path = 0);
 
 	EditorGUI *gui() { return screen; }
 

@@ -82,24 +82,30 @@ void Editor::load(const std::string &path) {
 }
 
 void Editor::saveAs(const std::string &path) {
-
+	save(path.c_str());
 }
-void Editor::save() {
+
+void Editor::save(const char *new_base_path) {
 	using namespace nanogui;
 	using namespace boost::filesystem;
 	UserWindow *uw = screen->getUserWindow();
 	uw->clearSelections();
 	//if (uw) uw->save(path);
+	std::string base_path_str;
 	Structure *settings = EditorSettings::find("EditorSettings");
 	assert(settings);
-	const Value &base_v(settings->getProperties().find("project_base"));
-	assert(base_v != SymbolTable::Null);
-	std::string base_path_str = base_v.asString();
-	path project_base_path(base_path_str);
-	{
-		std::string x = settings->getProperties().find("project_base").asString();
-		assert(boost::filesystem::is_directory(x));
+	if (new_base_path) {
+		base_path_str = new_base_path;
+		settings->getProperties().add("project_base", Value(base_path_str, Value::t_string));
 	}
+	else {
+		const Value &base_v(settings->getProperties().find("project_base"));
+		assert(base_v != SymbolTable::Null);
+		base_path_str = base_v.asString();
+		if (!boost::filesystem::exists(base_path_str))
+			boost::filesystem::create_directory(base_path_str);
+	}
+	path project_base_path(base_path_str);
 	backup_humid_files(project_base_path);
 	{
 		std::string x = settings->getProperties().find("project_base").asString();
@@ -136,9 +142,9 @@ void Editor::save() {
 			fname = filename.asString();
 		}
 
-		std::cout << "filing structure " << s->getName() << " into " << base_v << "/"<< fname << "\n";
+		std::cout << "filing structure " << s->getName() << " into " << base_path_str << "/"<< fname << "\n";
 
-		std::string file_path(base_v.asString());
+		std::string file_path(base_path_str);
 		file_path += "/" + fname;
 		structure_files[s] = file_path;
 	}

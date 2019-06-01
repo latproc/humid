@@ -2,13 +2,14 @@ cmake_minimum_required(VERSION 3.5)
 
 project("Humid")
 
+set (RUN_TESTS OFF)
+
 if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 	message("Including local CMake settings")
 	include("${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 endif()
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
-
 
 set(NANOGUI_BUILD_SHARED ON)
 if(APPLE AND NANOGUI_BUILD_SHARED)
@@ -120,6 +121,11 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
 		  src/resourcemanager.h src/shrinkable.h
   )
+
+if (RUN_TESTS)
+enable_testing()
+add_subdirectory(tests)
+endif()
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
 #target_link_libraries(okdialog Clockwork ${ZeroMQ_LIBRARY} nanogui ${Boost_LIBRARIES})

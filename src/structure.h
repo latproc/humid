@@ -49,6 +49,7 @@ public:
 	}
 
 	void addLocal(Parameter item) { locals.push_back(item); }
+	void removeLocal(Structure *machine);
 
 	virtual void addProperty(const char *name);
 	virtual void addProperty(const std::string &name);

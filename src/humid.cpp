@@ -342,12 +342,29 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 					{ {"humid", "Humid layout file"},
 					{"txt", "Text file"} }, true));
 				if (file_path.length()) {
-					editor->saveAs(file_path);
+					{
+						std::string parent_path = file_path;
+						parent_path.erase(parent_path.rfind('/'));
+						editor->saveAs(parent_path);
+					}
 					editor->gui()->updateProperties();
 					Structure *s = editor->gui()->getSettings();
-					boost::filesystem::path base(source_files.front());
-					if (boost::filesystem::is_regular_file(base))
-						base = base.parent_path();
+					boost::filesystem::path base;
+					base = source_files.front();
+					if (boost::filesystem::is_regular_file(base)) {
+						if (base.has_parent_path()) {
+							base = base.parent_path();
+						}
+						else {
+							std::string parent_path = source_files.front();
+							parent_path.erase(parent_path.rfind('/'));
+						}
+					}
+					else {
+						if (base.has_parent_path()) {
+							base = base.parent_path();
+						}
+					}
 					assert(boost::filesystem::is_directory(base));
 					s->getProperties().add("project_base", Value(base.string(), Value::t_string));
 					EditorSettings::setDirty(); // TBD fix this
@@ -753,11 +770,17 @@ NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
 void UserWindow::deleteSelections() {
 	if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
 	getWindow()->requestFocus();
-	for (auto sel : getSelected()) {
+	auto to_delete = getSelected();
+	clearSelections();
+	for (auto sel : to_delete) {
 		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
+		EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
+		if (ew) {
+			Structure *s = ew->getDefinition();
+			current_structure->getStructureDefinition()->removeLocal(s);
+		}
 		if (w) getWindow()->removeChild(w);
 	}
-	clearSelections();
 }
 
 void UserWindow::clear() {
@@ -851,7 +874,7 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 
 	std::string base = "";
 	if (settings) base = settings->getProperties().find("project_base").asString();
-	assert(boost::filesystem::is_directory(base));
+	if (!boost::filesystem::is_directory(base)) return;
 	std::cout << "Project Base: " << base << "\n";
 
 	/* load configuration from files named on the commandline */
