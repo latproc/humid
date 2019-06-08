@@ -850,6 +850,17 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 	assert(settings);
 	bool base_checked = false;
 
+	std::string base = "";
+	if (settings) base = settings->getProperties().find("project_base").asString();
+	if (!boost::filesystem::is_directory(base)) {
+		settings->getProperties().add("project_base", SymbolTable::Null);
+	}
+	else {
+		std::cout << "Project Base: " << base << "\n";
+		if (files_and_directories.empty())
+			files_and_directories.push_back(base);
+	}
+
 	std::list<path> files;
 	{
 		std::list<std::string>::iterator fd_iter = files_and_directories.begin();
@@ -871,11 +882,6 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 			}
 		}
 	}
-
-	std::string base = "";
-	if (settings) base = settings->getProperties().find("project_base").asString();
-	if (!boost::filesystem::is_directory(base)) return;
-	std::cout << "Project Base: " << base << "\n";
 
 	/* load configuration from files named on the commandline */
 	int opened_file = 0;
@@ -3711,8 +3717,8 @@ int main(int argc, const char ** argv ) {
 					if (found == s.length()-1) s.erase(found);
 					source_files.push_back(s);
 				}
-				loadProjectFiles(source_files);
 			}
+			loadProjectFiles(source_files);
 			StructureClass *system_class = findClass("SYSTEM");
 			if (!system_class) {
 				system_class = new StructureClass("SYSTEM", "");
