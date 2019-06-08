@@ -16,15 +16,15 @@
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
 #include "panelscreen.h"
+#include "shrinkable.h"
 
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 
 class Structure;
-class SkeletonWindow : public nanogui::Window, public PanelScreen {
+class SkeletonWindow : public nanogui::Window, public PanelScreen, public Shrinkable {
 public:
 	SkeletonWindow(Widget *parent, const std::string &title = "Untitled")
-	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ),
-		shrunk_pos(nanogui::Vector2i(0,0)), shrunk(false) {
+	: Window(parent, title), PanelScreen(title), move_listener( [](nanogui::Window* value){ } ) {
 	}
 	void setMoveListener( std::function<void(nanogui::Window*)> f) {
 		move_listener = f;
@@ -36,16 +36,10 @@ public:
 		return res;
 	}
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
-	nanogui::Vector2i shrunkPos() { return shrunk_pos; }
-	void setShrunkPos( const nanogui::Vector2i &sp ) { shrunk_pos = sp; }
-	bool isShrunk() { return shrunk; }
+	void toggleShrunk();
+
 protected:
 	std::function<void(nanogui::Window*)> move_listener;
-	nanogui::Vector2i saved_size;
-	nanogui::Vector2i saved_pos;
-	nanogui::Vector2i shrunk_pos;
-
-	bool shrunk;
 };
 
 class Skeleton {

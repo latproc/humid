@@ -119,7 +119,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/structureswindow.h src/themewindow.h src/propertywindow.h
 		  src/helper.h src/curl_helper.h src/screenswindow.h
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
-		  src/resourcemanager.h
+		  src/resourcemanager.h src/shrinkable.h
   )
 
 if (RUN_TESTS)
@@ -221,7 +221,7 @@ endif ()
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
 		  src/curl_helper.cpp src/screenswindow.cpp
 		  src/linkableproperty.cpp src/anchor.cpp src/objectwindow.cpp src/patternswindow.cpp
-		  src/resourcemanager.cpp
+		  src/resourcemanager.cpp src/shrinkable.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork  ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
