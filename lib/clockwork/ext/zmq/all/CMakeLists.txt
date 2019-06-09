@@ -1,18 +1,18 @@
 
-set(exe_name "ZMQ-Dummy")
+set(exe_name "ZMQ-Dep")
 
 
 get_property(ZMQ_HPP-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ_HPP-Dep_INCLUDE_DIRS)
-get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
+get_property(ZMQ-Dummy_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dummy_INCLUDE_DIRS)
 
 set(INCLUDE
     ${ZMQ_HPP-Dep_INCLUDE_DIRS}
-    ${ZMQ-Dep_INCLUDE_DIRS}
+    ${ZMQ-Dummy_INCLUDE_DIRS}
 )
 set(LIBRARY
     #cZMQ-Dep
     ZMQ_HPP-Dep
-    ZMQ-Dep
+    ZMQ-Dummy
 )
 
 #################################

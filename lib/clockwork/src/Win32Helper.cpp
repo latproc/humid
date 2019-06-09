@@ -1,5 +1,6 @@
 #include "Win32Helper.h"
 #include <boost/chrono.hpp>
+#include <boost/thread/thread.hpp>
 
 #ifdef WIN32
 #include <stdint.h>

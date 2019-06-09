@@ -1,5 +1,5 @@
 
-set(exe_name "ZMQ-Dep")
+set(exe_name "ZMQ-Dummy")
 
 
 #################################

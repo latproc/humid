@@ -7,7 +7,7 @@
   modify it under the terms of the GNU General Public License
   as published by the Free Software Foundation; either version 2
   of the License, or (at your option) any later version.
-  
+
   Latproc is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -23,8 +23,9 @@
 #include <exception>
 #include <math.h>
 #include "Win32Helper.h"
-//#include <dru_zmq_dep.hpp> TBD, broke this somehow
-#include <zmq.hpp>
+#include <dru_zmq_dep.hpp>
+// TBD, broke this somehow
+// #include <zmq.hpp>
 #include <map>
 #include "Logger.h"
 #include "DebugExtra.h"
@@ -90,7 +91,7 @@ bool CommandManager::checkConnections(zmq::pollitem_t *items, int num_items, zmq
         rc = zmq::poll( &items[1], num_items-1, 0);
     else
         rc = zmq::poll(&items[0], num_items, 0);
-    
+
     char buf[1000];
     size_t msglen = 0;
     if (rc > 0 && run_status == e_waiting_cmd && items[1].revents & ZMQ_POLLIN) {
@@ -136,8 +137,7 @@ CommandManager::CommandManager(const char *host, int portnum)
 void CommandManager::init() {
     // client
     boost::thread setup_monitor(boost::ref(*monit_setup));
-    
+
     run_status = e_waiting_cmd;
     setup_status = e_startup;
 }
-

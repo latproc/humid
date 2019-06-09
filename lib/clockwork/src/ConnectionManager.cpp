@@ -7,7 +7,7 @@
   modify it under the terms of the GNU General Public License
   as published by the Free Software Foundation; either version 2
   of the License, or (at your option) any later version.
-  
+
   Latproc is distributed in the hope that it will be useful,
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -86,7 +86,7 @@ public:
 };
 
 ConnectionManager::ConnectionManager() : internals(0),aborted(false) {
-#ifndef WIN32
+#ifndef _WIN32
   owner_thread = pthread_self();
 #endif
 }
@@ -190,7 +190,7 @@ int SubscriptionManager::configurePoll(zmq::pollitem_t *items) {
 	int idx = 0;
 	if (setup_) {
 		// this cast should not be necessary as there is an operator for it
-		items[idx].socket = (void*)setup(); 
+		items[idx].socket = (void*)setup();
 		items[idx].events = ZMQ_POLLERR | ZMQ_POLLIN;
 		items[idx].fd = 0;
 		items[idx].revents = 0;
@@ -255,7 +255,7 @@ bool SubscriptionManager::requestChannel() {
 					{
 						FileLogger fl(program_name);
 						fl.f() << channel_name << " attempting recovery requesting channels\n" << std::flush; }
-					zmq::message_t m; setup().recv(&m, ZMQ_DONTWAIT); 
+					zmq::message_t m; setup().recv(&m, ZMQ_DONTWAIT);
 					return false;
 				}
 			}
@@ -339,7 +339,7 @@ void SubscriptionManager::configureSetupConnection(const char *host, int port) {
 	setup_host = host; // TBD this has to be the same as the subscriber host
 	setup_port = port;
 }
-    
+
 static char *setup_url = 0;
 bool SubscriptionManager::setupConnections() {
 	char url[100];
@@ -381,7 +381,7 @@ bool SubscriptionManager::setupConnections() {
 		monit_setup->setEndPoint(url);
 		setSetupStatus(SubscriptionManager::e_waiting_connect);
 		usleep(1000);
-	} 
+	}
 	if (requestChannel()) {
 		// define the channel
 		snprintf(url, 100, "tcp://%s:%d", subscriber_host.c_str(), subscriber_port);
@@ -412,9 +412,9 @@ bool SubscriptionManager::setupConnections() {
 
 void SubscriptionManager::setSetupStatus( Status new_status ) {
 	assert(isClient());
-	if (_setup_status != new_status) 
+	if (_setup_status != new_status)
 	{
-		FileLogger fl(program_name); fl.f() 
+		FileLogger fl(program_name); fl.f()
 			<< "setup status " << STATUS_NAMES[_setup_status] << " -> " << STATUS_NAMES[new_status] << "\n"<<std::flush;
 		state_start = microsecs();
 		_setup_status = new_status;
@@ -816,10 +816,13 @@ bool SubscriptionManager::checkConnections() {
 }
 
 bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_items, zmq::socket_t &cmd) {
+#ifdef _WIN32
+    const char *tnam = "";
+#else
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
-
+#endif
 	if (!checkConnections() &&isClient()) {
 		/*
 		FileLogger fl(program_name); fl.f()
@@ -830,7 +833,7 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
     int rc = 0;
 
 	/* client programs that are not yet connected only monitor their own command channel for activity
-	 	and this is assumed to always be item 2 in the poll items(!) 
+	 	and this is assumed to always be item 2 in the poll items(!)
 	 */
 	try {
 		if (isClient() && num_items>2 && (monit_subs.disconnected() || monit_setup->disconnected()) ) {

@@ -96,7 +96,9 @@ int64_t get_diff_in_microsecs(const struct timeval *now, uint64_t then_t) {
 zmq::context_t *MessagingInterface::getContext() { return zmq_context; }
 
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout) {
-#ifndef WIN32
+#ifdef _WIN32
+    const char *tnam = "";
+#else
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
@@ -141,11 +143,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 			return (*response_len == 0) ? false : true;
 		}
 		catch (zmq::error_t e) {
-			std::cerr 
-#ifndef WIN32
-			<< tnam 
-#endif
-			<< " safeRecv error " << errno << " " << zmq_strerror(errno) << "\n";
+			std::cerr << tnam << " safeRecv error " << errno << " " << zmq_strerror(errno) << "\n";
 			if (errno == EINTR) {
 				{
 					FileLogger fl(program_name);
@@ -161,13 +159,13 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 }
 
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout, MessageHeader &header) {
+#ifndef _WIN32
+	char tnam[100];
+	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
+	assert(pgn_rc == 0);
 
-	// char tnam[100];
-	// int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
-	// assert(pgn_rc == 0);
-
-  //{FileLogger fl(program_name); fl.f() << tnam << " receiving\n";}
-
+    {FileLogger fl(program_name); fl.f() << tnam << " receiving\n";}
+#endif
 	*response_len = 0;
 	if (block && timeout == 0) timeout = 500;
 
@@ -208,7 +206,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 							if (got_address) {
 								{FileLogger fl(program_name); fl.f() << tnam << " received 	addressed message " << header << " " << (*buf) << "\n"; }
 							}
-							else 
+							else
 								{FileLogger fl(program_name); fl.f() << tnam << " received: " << *buf << "\n"; }
 						}
 #endif
@@ -246,7 +244,9 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 }
 
 bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &response_len, int64_t timeout) {
-#ifndef WIN32
+#ifdef _WIN32
+    const char *tnam = "";
+#else
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
@@ -281,7 +281,7 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
 		}
 		catch (zmq::error_t e) {
 			{
-				FileLogger fl(program_name); 
+				FileLogger fl(program_name);
 				fl.f() << tnam << " safeRecv error " << errno << " " << zmq_strerror(errno) << "\n";
 			}
 			if (--retries == 0) {
@@ -298,11 +298,16 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
 }
 
 void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen, const MessageHeader &header) {
-	char tnam[100];
-	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
-	assert(pgn_rc == 0);
+#ifdef _WIN32
+    const char *tnam = "";
+#else
+    char tnam[100];
+    int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
+    assert(pgn_rc == 0);
 
-	//if (buflen>10) {FileLogger fl(program_name); fl.f() << tnam << " Sending\n"; }
+    //if (buflen>10) {FileLogger fl(program_name); fl.f() << tnam << " Sending\n"; }
+
+#endif
 
 	enum send_stage {e_sending_dest, e_sending_source, e_sending_data} stage = e_sending_data;
 	if (header.dest || header.source) {
@@ -351,7 +356,9 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen, const Message
 }
 
 void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
-#ifndef WIN32
+#ifdef _WIN32
+    const char *tnam = "";
+#else
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
@@ -368,7 +375,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 		catch (zmq::error_t) {
 			if (zmq_errno() != EINTR && zmq_errno() != EAGAIN) {
 				{
-					FileLogger fl(program_name); 
+					FileLogger fl(program_name);
 					fl.f()  << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
 				}
 				if (zmq_errno() == EFSM || STATE_ERROR == zmq_strerror(errno)) {
@@ -378,7 +385,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 				usleep(10);
 				continue;
 			} else {
-				std::cerr << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
+                std::cerr << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
 				usleep(10);
 			}
 		}
@@ -387,12 +394,13 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 
 bool sendMessage(const char *msg, zmq::socket_t &sock, std::string &response,
 				 int32_t timeout_us, const MessageHeader &header) {
+#ifndef _WIN32
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
 
-	//{FileLogger fl(program_name); fl.f() << tnam << " sendMessage " << msg << "\n"; }
-
+	{FileLogger fl(program_name); fl.f() << tnam << " sendMessage " << msg << "\n"; }
+#endif
 	safeSend(sock, msg, strlen(msg), header);
 
 	char *buf;
@@ -407,7 +415,7 @@ bool sendMessage(const char *msg, zmq::socket_t &sock, std::string &response,
 }
 
 bool sendMessage(const char *msg, zmq::socket_t &sock, std::string &response, int32_t timeout_us) {
-#ifndef WIN32
+#ifndef _WIN32
 	char tnam[100];
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
@@ -449,7 +457,7 @@ MessagingInterface *MessagingInterface::create(std::string host, int port, Proto
 MessagingInterface::MessagingInterface(int num_threads, int port_, bool deferred_start, ProtocolType proto)
 		: Receiver("messaging_interface"), protocol(proto), socket(0),is_publisher(false),
 			connection(-1), port(port_), started_(false) {
-#ifndef WIN32
+#ifndef _WIN32
 		    owner_thread = pthread_self();
 #endif
 		is_publisher = true;
@@ -471,7 +479,7 @@ void MessagingInterface::start() {
 		return;
 	}
 	if (protocol == eCLOCKWORK || protocol == eZMQ|| protocol == eCHANNEL) {
-#ifndef WIN32
+#ifndef _WIN32
 		owner_thread = pthread_self();
 #endif
 		if (hostname == "*" || hostname == "0.0.0.0") {
@@ -499,7 +507,7 @@ bool MessagingInterface::started() {
 MessagingInterface::MessagingInterface(std::string host, int remote_port, bool deferred, ProtocolType proto)
 		:Receiver("messaging_interface"), protocol(proto), socket(0),is_publisher(false),
             connection(-1), hostname(host), port(remote_port), started_(false) {
-#ifndef WIN32
+#ifndef _WIN32
 		owner_thread = pthread_self();
 #endif
 		std::stringstream ss;
@@ -568,9 +576,9 @@ int MessagingInterface::uniquePort(unsigned int start, unsigned int end) {
 
 void MessagingInterface::connect() {
 	if (protocol == eCLOCKWORK || protocol == eZMQ || protocol == eCHANNEL) {
-#ifndef WIN32
+#ifndef _WIN32
 		if (pthread_equal(owner_thread, pthread_self())) {
-			FileLogger fl(program_name); fl.f() << hostname<<":"<<port 
+			FileLogger fl(program_name); fl.f() << hostname<<":"<<port
 				<<" attempt to call socket connect from a thread that isn't the owner\n";
 		  // return; // no longer returning here, we have some evidence this is not a good test. TBD
 		}
@@ -614,7 +622,7 @@ void MessagingInterface::handle(const Message&msg, Transmitter *from, bool needs
 
 
 char *MessagingInterface::send(const char *txt) {
-#ifndef WIN32
+#ifndef _WIN32
 	if (owner_thread != pthread_self()) {
 		char tnam1[100], tnam2[100];
 		int pgn_rc = pthread_getname_np(pthread_self(),tnam1, 100);
@@ -682,11 +690,11 @@ char *MessagingInterface::send(const char *txt) {
 			    continue;
 		    }
 		    if (zmq_errno()) {
-			    FileLogger fl(program_name); fl.f() 
+			    FileLogger fl(program_name); fl.f()
 				    << "Exception when sending " << url << ": " << zmq_strerror(zmq_errno()) << "\n";
 		    }
 		    else {
-			    FileLogger fl(program_name); fl.f() 
+			    FileLogger fl(program_name); fl.f()
 				    << "Exception when sending " << url << ": " << e.what() << "\n";
 		    }
 		    /*			socket->disconnect(url.c_str());

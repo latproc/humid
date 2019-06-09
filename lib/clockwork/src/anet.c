@@ -58,6 +58,12 @@ static void tiny_sleep(uint32_t amt) {
 }
 */
 
+#ifdef _WIN32
+#define SOCKOPTVALCAST (const char *)
+#else
+#define SOCKOPTVALCAST
+#endif
+
 static void anetSetError(char *err, const char *fmt, ...)
 {
     va_list ap;
@@ -100,7 +106,7 @@ int anetNonBlock(char *err, int fd)
 int anetTcpNoDelay(char *err, int fd)
 {
     int yes = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &yes, sizeof(yes)) == -1)
+    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, SOCKOPTVALCAST &yes, sizeof(yes)) == -1)
     {
         anetSetError(err, "setsockopt TCP_NODELAY: %s\n", strerror(errno));
         return ANET_ERR;
@@ -110,7 +116,7 @@ int anetTcpNoDelay(char *err, int fd)
 
 int anetSetSendBuffer(char *err, int fd, int buffsize)
 {
-    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &buffsize, sizeof(buffsize)) == -1)
+    if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, SOCKOPTVALCAST &buffsize, sizeof(buffsize)) == -1)
     {
         anetSetError(err, "setsockopt SO_SNDBUF: %s\n", strerror(errno));
         return ANET_ERR;
@@ -121,7 +127,7 @@ int anetSetSendBuffer(char *err, int fd, int buffsize)
 int anetTcpKeepAlive(char *err, int fd)
 {
     int yes = 1;
-    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &yes, sizeof(yes)) == -1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, SOCKOPTVALCAST &yes, sizeof(yes)) == -1) {
         anetSetError(err, "setsockopt SO_KEEPALIVE: %s\n", strerror(errno));
         return ANET_ERR;
     }
@@ -164,11 +170,7 @@ static int anetTcpGenericConnect(char *err, const char *addr, int port, int flag
     }
     /* Make sure connection-intensive things like the redis benckmark
      * will be able to close/open sockets a zillion of times */
-#if __MINGW32__
-    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on));
-#else
-    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-#endif
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, SOCKOPTVALCAST &on, sizeof(on));
 
     sa.sin_family = AF_INET;
     sa.sin_port = htons(port);
@@ -261,11 +263,7 @@ int anetTcpServer(char *err, int port, char *bindaddr)
         return ANET_ERR;
     }
 
-    #if __MINGW32__
-        int sock_opt_res = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on));
-    #else
-        int sock_opt_res = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-    #endif
+    int sock_opt_res = setsockopt(s, SOL_SOCKET, SO_REUSEADDR, SOCKOPTVALCAST &on, sizeof(on));
 
     if (sock_opt_res == -1) {
         anetSetError(err, "setsockopt SO_REUSEADDR: %s\n", strerror(errno));

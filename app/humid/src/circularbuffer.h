@@ -7,7 +7,7 @@
 
 #include <inttypes.h>
 #include <thread>
-// #include <mutex>
+//#include <mutex>
 #include <dru_boost_dep.hpp>
 #include "sampletrigger.h"
 
@@ -91,8 +91,8 @@ private:
     uint64_t *times;
 	uint64_t zero_time;
 	uint64_t start_time;
-	std::recursive_mutex update_mutex;
-	//boost::recursive_mutex update_mutex;
+	//std::recursive_mutex update_mutex;
+	boost::recursive_mutex update_mutex;
 	bool frozen;
 	SampleTrigger *start_trigger;
 	SampleTrigger *stop_trigger;

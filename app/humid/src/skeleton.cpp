@@ -510,9 +510,9 @@ void ClockworkClient::idle() {
 					if (conn->Ready() && conn->update()) 
 						update(conn);
 					zmq::pollitem_t items[] = {
-						{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
-						{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
-						{ *conn->iosh_cmd, 0, ZMQ_POLLIN, 0 }
+						{ (void*) subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
+						{ (void*) subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
+						{ (void*) conn->iosh_cmd, 0, ZMQ_POLLIN, 0 }
 					};
 
 					try {

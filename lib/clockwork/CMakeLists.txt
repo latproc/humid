@@ -69,5 +69,12 @@ include_directories(
     ${${exe_name}_INCLUDE_DIRS}
 )
 
-install(TARGETS ${exe_name}
-				LIBRARY DESTINATION ${PROJECT_SOURCE_DIR})
+if (MINGW_BUILD)
+else()
+    install(
+        TARGETS
+        ${exe_name}
+        LIBRARY DESTINATION
+        ${PROJECT_SOURCE_DIR}
+    )
+endif()
