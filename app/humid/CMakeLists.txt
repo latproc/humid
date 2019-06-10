@@ -59,6 +59,7 @@ set(INCLUDE
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
+if (MINGW_BUILD)
 set(LIBRARY
     # ZMQ-Dep
     # Boost-Dep
@@ -68,6 +69,17 @@ set(LIBRARY
     # DruidOpenGL-Dep
     opengl32
 )
+else()
+set(LIBRARY
+    # ZMQ-Dep
+    # Boost-Dep
+    # Curl-Dep
+    Clockwork
+    nanogui
+    # DruidOpenGL-Dep
+    # opengl32
+)
+endif()
 
 include_directories(${INCLUDE})
 # message("HUMID INCLUDE DIRS: " ${INCLUDE})
@@ -198,6 +210,7 @@ add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleto
 	  ${HEADERS}
 )
 
+if (MINGW_BUILD)
 add_definitions(
     "-DGLAD_GLAPI_EXPORT"
     # "MINGW_BUILD=1"
@@ -206,9 +219,16 @@ add_definitions(
     "-DNVG_SHARED"
     # "_USE_MATH_DEFINES"
 )
-
-
-
+else()
+add_definitions(
+    # "-DGLAD_GLAPI_EXPORT"
+    # "MINGW_BUILD=1"
+    # "-DNANOGUI_GLAD"
+    "-DNANOGUI_SHARED"
+    "-DNVG_SHARED"
+    # "_USE_MATH_DEFINES"
+)
+endif()
 
 message("HUMID LIBRARIES: ${LIBRARY}")
 target_link_libraries(humid ${LIBRARY})
