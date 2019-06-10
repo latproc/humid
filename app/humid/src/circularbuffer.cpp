@@ -253,6 +253,7 @@ SampleTrigger *CircularBuffer::getTrigger(SampleTrigger::Event evt) {
 			break;
 		default:;
 	}
+    return 0;
 }
 
 void CircularBuffer::setTrigger(SampleTrigger *t, SampleTrigger::Event evt) {

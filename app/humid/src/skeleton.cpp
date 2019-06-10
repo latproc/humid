@@ -24,7 +24,9 @@
 #include <cJSON.h>
 #include <MessageEncoding.h>
 #include <MessagingInterface.h>
+#ifndef _WIN32
 #include <signal.h>
+#endif
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
 
@@ -271,8 +273,8 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 
 void cleanupTextureCache();
 
-void ClockworkClient::cleanupTexture(GLuint tex) { 
-	deferred_texture_cleanup.push_back(std::make_pair(tex, microsecs())); 
+void ClockworkClient::cleanupTexture(GLuint tex) {
+	deferred_texture_cleanup.push_back(std::make_pair(tex, microsecs()));
 }
 
 void ClockworkClient::draw(NVGcontext *ctx) {
@@ -302,9 +304,9 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 		}
 	}
 
-ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
+ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p)
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
-		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
+		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0),
 		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds") {
 	local_commands += "_" + connection_name;
 }
@@ -466,7 +468,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	return res;
 }
 
-bool ClockworkClient::Connection::Ready() { 
+bool ClockworkClient::Connection::Ready() {
 	return sm && sm->setupStatus() == SubscriptionManager::e_done;
 }
 
@@ -479,8 +481,8 @@ void ClockworkClient::idle() {
 
 	Structure *project_settings = findStructure("ProjectSettings");
 	if (program_state == s_initialising) {
-			
-		//if (setupConnections(project_settings)) 
+
+		//if (setupConnections(project_settings))
 			program_state = s_running;
 	}
 	else if (program_state == s_running) {
@@ -507,7 +509,7 @@ void ClockworkClient::idle() {
 				//std::cout << conn->getName() << " state: " << subscription_manager->setupStatus() << "\n";
 
 				{
-					if (conn->Ready() && conn->update()) 
+					if (conn->Ready() && conn->update())
 						update(conn);
 					zmq::pollitem_t items[] = {
 						{ (void*) subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
@@ -581,7 +583,7 @@ ClockworkClient::Connection *findConnection(const std::string &connection_name, 
 }
 
 void ClockworkClient::queueMessage(const std::string & connection_name, const std::string s, std::function< void(const std::string) >f) {
-	Connection *conn = findConnection(connection_name, connections); 
+	Connection *conn = findConnection(connection_name, connections);
 	if (conn) conn->queueMessage(s, f);
 }
 
@@ -590,6 +592,7 @@ void ClockworkClient::queueMessage(const std::string & connection_name, const ch
 	if (conn) conn->queueMessage(s, f);
 }
 
+#ifndef _WIN32
 static void finish(int sig) {
 
 	struct sigaction sa;
@@ -602,7 +605,7 @@ static void finish(int sig) {
 	sigaction(SIGUSR2, &sa, 0);
 	program_state = s_finished;
 }
-
+#endif
 static void toggle_debug(int sig) {
 	if (debug && debug != saved_debug) saved_debug = debug;
 
@@ -618,7 +621,7 @@ static void toggle_debug_all(int sig) {
 	if (debug) debug = 0;
 	else debug = DEBUG_ALL;
 }
-
+#ifndef _WIN32
 bool setup_signals() {
 
 	struct sigaction sa;
@@ -650,6 +653,7 @@ bool setup_signals() {
 
 	return true;
 }
+#endif
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, bool which) {
 	//Connection *conn = findConnection(connection_name, connections);

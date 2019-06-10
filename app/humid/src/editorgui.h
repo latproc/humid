@@ -13,6 +13,11 @@
 #include <nanogui/window.h>
 #include <nanogui/screen.h>
 #include <nanogui/opengl.h>
+#ifdef _WIN32
+#include <Win32Helper.h>
+#else
+#include <mutex>
+#endif
 
 #include "gltexture.h"
 
@@ -79,7 +84,7 @@ public:
 	void update(ClockworkClient::Connection *connection) override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
-	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, 
+	virtual void handleClockworkMessage(ClockworkClient::Connection *conn,
 		unsigned long time, const std::string &op, std::list<Value> *message) override;
 
 	void needsUpdate() { needs_update = true; }
@@ -107,7 +112,11 @@ public:
 
 private:
 	static Structure *system_settings;
-	std::recursive_mutex linkables_mutex;
+    #ifdef MINGW_USE_BOOST_MUTEX
+    	boost::recursive_mutex linkables_mutex;
+    #else
+        std::recursive_mutex linkables_mutex;
+    #endif
 	std::map<std::string, LinkableProperty*>linkables;
 	ViewListController views;
 	std::list<PanelScreen*>user_screens;

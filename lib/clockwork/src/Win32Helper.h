@@ -12,6 +12,7 @@ void usleep(uint64_t);
 #define RECURSIVE_LOCK std::lock_guard<std::recursive_mutex>
 #else
 #define MINGW_USE_BOOST_MUTEX
+#include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #define RECURSIVE_LOCK boost::lock_guard<boost::recursive_mutex>

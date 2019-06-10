@@ -18,10 +18,15 @@ if (MINGW_BUILD) #copy_paste from libdruid.git/
     include_directories(
         /usr/x86_64-w64-mingw32/include
     )
+    add_definitions(-DMINGW_BUILD=1)
     add_definitions(-include winsock2.h)
     add_definitions(-include windows.h)
     add_definitions(-include stdint.h)
     add_definitions(-D_USE_MATH_DEFINES)
+
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
     # add_definitions(-include mingw.thread.h)
 

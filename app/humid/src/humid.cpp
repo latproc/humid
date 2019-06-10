@@ -164,7 +164,9 @@ extern const char *local_commands;
 extern ProgramState program_state;
 extern struct timeval start;
 
+#ifndef _WIN32
 extern void setup_signals();
+#endif
 
 std::string stripEscapes(const std::string &s);
 StructureClass *findClass(const std::string &name);
@@ -682,7 +684,7 @@ void UserWindow::startEditMode() {
 	}
 }
 
-void UserWindow::endEditMode() { 
+void UserWindow::endEditMode() {
 	clearSelections();
 }
 
@@ -988,13 +990,13 @@ void UserWindow::loadStructure( Structure *s) {
                 visibility = gui->findLinkableProperty(vis.asString());
 
 			bool wrap = false;
-			{ 
+			{
 				const Value &wrap_v(element->getProperties().find("wrap"));
 				if (wrap_v != SymbolTable::Null) wrap_v.asBoolean(wrap);
 			}
 
 			bool ivis = false;
-			{ 
+			{
 				const Value &ivis_v(element->getProperties().find("inverted_visibility"));
 				if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
 			}
@@ -1034,7 +1036,7 @@ void UserWindow::loadStructure( Structure *s) {
 				const Value &valignment_v(element->getProperties().find("valign"));
 				if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
-				if (value_type != -1) el->setValueType(value_type);				
+				if (value_type != -1) el->setValueType(value_type);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				if (lp)
@@ -1058,7 +1060,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementSize( el, element->getProperties());
 				if (font_size) el->setFontSize(font_size);
 				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
-				if (value_type != -1) el->setValueType(value_type);				
+				if (value_type != -1) el->setValueType(value_type);
 				if (value_scale != 1.0) el->setValueScale( value_scale );
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
@@ -1086,7 +1088,7 @@ void UserWindow::loadStructure( Structure *s) {
           ep->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
-				if (value_type != -1) ep->setValueType(value_type);				
+				if (value_type != -1) ep->setValueType(value_type);
 				if (value_scale != 1.0) ep->setValueScale( value_scale );
 				if (tab_pos) ep->setTabPosition(tab_pos);
 				if (border != SymbolTable::Null) ep->setBorder(border.iValue);
@@ -1112,7 +1114,7 @@ void UserWindow::loadStructure( Structure *s) {
 					textBox->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
-				if (value_type != -1) textBox->setValueType(value_type);				
+				if (value_type != -1) textBox->setValueType(value_type);
 				if (value_scale != 1.0) textBox->setValueScale( value_scale );
 				fixElementPosition( textBox, element->getProperties());
 				fixElementSize( textBox, element->getProperties());
@@ -1168,7 +1170,7 @@ void UserWindow::loadStructure( Structure *s) {
 					lp->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
-				if (value_type != -1) lp->setValueType(value_type);				
+				if (value_type != -1) lp->setValueType(value_type);
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
@@ -2184,7 +2186,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				if (hm_structures.size()>1) { // files were specified on the commandline
 					getStartupWindow()->setVisible(false);
 					getScreensWindow()->update();
-					
+
 					Structure *settings = EditorSettings::find("EditorSettings");
 					assert(settings);
 					const Value &project_base_v(settings->getProperties().find("project_base"));
@@ -2699,7 +2701,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 	while (iter != texture_cache.end()) {
 		const std::pair<std::string, GLTexture *> &item = *iter;
 		if (item.second && item.second->texture()) {
-			if 
+			if
 		}
 	}
 */
@@ -2799,7 +2801,7 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
 			[&,w]()->int{ return getValueType(); });
 		properties->addVariable<float> (
 			"Value Scale",
-			[&](float value) { 
+			[&](float value) {
 				setValueScale(value);
 				if (remote) remote->apply();
 			},
@@ -2898,7 +2900,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 					const Value &rmt_v = getDefinition()->getProperties().find("remote");
 					if (rmt_v != SymbolTable::Null)
 						return rmt_v.asString();
-				} 
+				}
 				return "";
 			});
 		properties->addVariable<std::string> (
@@ -2916,7 +2918,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 				visibility = lp;
 				if (lp) { lp->link(new LinkableVisibility(this)); }
 			 },
-			[&]()->std::string{ return visibility ? visibility->tagName() : ""; 
+			[&]()->std::string{ return visibility ? visibility->tagName() : "";
 		});
 	}
 }
@@ -2948,7 +2950,7 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 					const Value &rmt_v = getDefinition()->getProperties().find("remote");
 					if (rmt_v != SymbolTable::Null)
 						return rmt_v.asString();
-				} 
+				}
 				return "";
 			});
 		properties->addVariable<std::string> (
@@ -3015,7 +3017,7 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 					const Value &rmt_v = getDefinition()->getProperties().find("remote");
 					if (rmt_v != SymbolTable::Null)
 						return rmt_v.asString();
-				} 
+				}
 				return "";
 			});
 		properties->addVariable<std::string> (
@@ -3061,7 +3063,7 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
 					const Value &rmt_v = getDefinition()->getProperties().find("remote");
 					if (rmt_v != SymbolTable::Null)
 						return rmt_v.asString();
-				} 
+				}
 				return "";
 			});
 		properties->addVariable<std::string> (
@@ -3181,7 +3183,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 					const Value &rmt_v = getDefinition()->getProperties().find("remote");
 					if (rmt_v != SymbolTable::Null)
 						return rmt_v.asString();
-				} 
+				}
 				return "";
 			});
 		properties->addVariable<std::string> (
@@ -3556,7 +3558,7 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 		properties.add("w", widget->width());
 		properties.add("h", widget->height());
 	}
-	
+
 	if (!EDITOR->gui()->getViewManager().get(name).visible)
 		properties.add("visible", 0);
 	return true;
@@ -3636,9 +3638,9 @@ int main(int argc, const char ** argv ) {
 	int cw_port = 5555;
 	std::string hostname;
 	//std::string tag_file_name;
-
+#ifndef _WIN32
 	setup_signals();
-
+#endif
 	po::options_description generic("Commandline options");
 	generic.add_options()
 	("help", "produce help message")
@@ -3729,7 +3731,7 @@ int main(int argc, const char ** argv ) {
 				EditorGUI::systemSettings(system_class->instantiate(nullptr, "System"));
 			}
 
-			// if necessary create a project settings structure to store the 
+			// if necessary create a project settings structure to store the
 			// nominated connection details
 			Structure *project_settings = findStructure("ProjectSettings");
 			if (!project_settings) {

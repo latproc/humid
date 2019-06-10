@@ -14,7 +14,11 @@
 #include <list>
 #include <nanogui/widget.h>
 #include <string>
+#ifdef _WIN32
+#include <Win32Helper.h>
+#else
 #include <mutex>
+#endif
 #include <map>
 #include "sampletrigger.h"
 
@@ -188,7 +192,11 @@ protected:
 	float x_scale; // horizontal scale applied to all plots
 	float x_scroll; // horizontal offset applied to all plots
 	TimeSeries *master_series;
-	std::recursive_mutex series_mutex;
+    #ifdef MINGW_USE_BOOST_MUTEX
+    	boost::recursive_mutex series_mutex;
+    #else
+        std::recursive_mutex series_mutex;
+    #endif
 	bool frozen;
 	uint64_t freeze_time_ms;
 	unsigned int buffer_size;
