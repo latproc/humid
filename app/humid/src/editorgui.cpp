@@ -86,7 +86,7 @@ Structure *EditorGUI::getSettings() {
 }
 
 void EditorGUI::addLinkableProperty(const std::string name, LinkableProperty*lp) {
-	std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
+	RECURSIVE_LOCK  lock(linkables_mutex);
 	linkables[name] = lp;
 }
 

@@ -7,8 +7,7 @@
 
 #include <inttypes.h>
 #include <thread>
-#include <mutex>
-//#include <dru_boost_dep.hpp>
+#include "Win32Helper.h"
 #include "sampletrigger.h"
 
 class CircularBuffer {
@@ -91,7 +90,11 @@ private:
     uint64_t *times;
 	uint64_t zero_time;
 	uint64_t start_time;
-	std::recursive_mutex update_mutex;
+#ifdef MINGW_USE_BOOST_MUTEX
+	boost::recursive_mutex update_mutex;
+#else
+    std::recursive_mutex update_mutex;
+#endif
 	//boost::recursive_mutex update_mutex;
 	bool frozen;
 	SampleTrigger *start_trigger;

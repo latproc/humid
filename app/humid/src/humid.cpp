@@ -2475,7 +2475,7 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 }
 
 LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
-	std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
+	RECURSIVE_LOCK  lock(linkables_mutex);
 	std::map<std::string, LinkableProperty*>::iterator found = linkables.find(name);
 	if (found == linkables.end()) return 0;
 	return (*found).second;
@@ -2583,7 +2583,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 				//	insert((int)group.iValue, (int)addr.iValue-1, (int)value.iValue, len.iValue);
 				LinkableProperty *lp = findLinkableProperty(prop_name);
 				if (!lp) {
-					std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
+					RECURSIVE_LOCK  lock(linkables_mutex);
 					char buf[10];
 					snprintf(buf, 10, "'%d%4d", (int)group.iValue, (int)addr.iValue);
 					std::string addr_str(buf);

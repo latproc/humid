@@ -11,6 +11,7 @@
 #include <string>
 #include <sstream>
 #include <boost/foreach.hpp>
+#include <mutex>
 #include <symboltable.h>
 #include <Logger.h>
 

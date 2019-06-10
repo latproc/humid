@@ -32,22 +32,22 @@ CircularBuffer::CircularBuffer(int size, DataType dt)
 
 void CircularBuffer::destroy() {
 	{
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+    RECURSIVE_LOCK lock(update_mutex);
     free(values);
-    free(times); 
+    free(times);
 	}
 	delete this;
 }
 
 void CircularBuffer::clear() {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	front = back = -1;
 }
 
 int CircularBuffer::bufferIndexFor(int i) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int l = length();
-	/* it is a non recoverable error to access the buffer without 
+	/* it is a non recoverable error to access the buffer without
 		adding a value */
 	if (l == 0) { assert(0); abort(); }
 
@@ -57,7 +57,7 @@ int CircularBuffer::bufferIndexFor(int i) {
 
 void CircularBuffer::addSample(long time, double val) {
 	if (frozen) return;
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 
 	if (data_type == INT16) val = (int16_t)val;
 	else if (data_type == UINT16) val = (uint16_t)val;
@@ -121,7 +121,7 @@ void CircularBuffer::addSampleDebug(long time, double val) {
 }
 
 double CircularBuffer::rate(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
     if (front == back || back == -1) return 0.0f;
 	int idx = bufferIndexFor(n);
     double v1 = values[idx], v2 = values[front];
@@ -133,7 +133,7 @@ double CircularBuffer::rate(int n) {
 }
 
 void CircularBuffer::findRange(double &min_v, double &max_v) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	/* reading the buffer without entering data is a non-recoverable error */
 	int l = length();
 	if (l == 0) { min_v = max_v = 0.0; }
@@ -148,14 +148,14 @@ void CircularBuffer::findRange(double &min_v, double &max_v) {
 }
 
 int CircularBuffer::findMovement(double amount, int max_len) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	/* reading the buffer without entering data is a non-recoverable error */
 	int l = length();
 	if (l == 0) { assert(0); abort(); }
 	int n = 0;
 	int idx = front;
 	double current = values[idx];
-	
+
 	while (idx != back && n<max_len) {
 		idx--; if (idx == -1) idx = bufsize-1;
 		++n;
@@ -165,13 +165,13 @@ int CircularBuffer::findMovement(double amount, int max_len) {
 }
 
 double CircularBuffer::rateDebug() {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
     if (front == back || back == -1) return 0.0f;
     double v1 = values[back], v2 = values[front];
     double t1 = times[back], t2 = times[front];
     double ds = v2-v1;
     double dt = t2-t1;
-		if (dt == 0) 
+		if (dt == 0)
 			printf("error calculating rate: (%5.2f - %5.2f)/(%5.2f - %5.2f) = %5.2f / %5.2f \n", v2, v1, t2, t1, ds, dt);
 		else
 			printf("calculated rate: (%5.2f - %5.2f)/(%5.2f - %5.2f) = %5.2f / %5.2f = %5.2f\n", v2, v1, t2, t1, ds, dt, ds/dt);
@@ -180,26 +180,26 @@ double CircularBuffer::rateDebug() {
 }
 
 double CircularBuffer::bufferAverage(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int l = length();
 	if (n>l) n = l;
 	return (n==0) ? n : bufferSum(n) / n;
 }
 
 double CircularBuffer::getBufferValue(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int idx = bufferIndexFor(n);
 	return values[ idx ];
 }
 
 long CircularBuffer::getBufferTime(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int idx = bufferIndexFor(n);
 	return times[ idx ];
 }
 
 double CircularBuffer::getBufferValueAt(unsigned long t) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int n = length() - 1;
 	int idx = bufferIndexFor(n);
 
@@ -211,7 +211,7 @@ double CircularBuffer::getBufferValueAt(unsigned long t) {
 }
 
 double CircularBuffer::bufferSum(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	int i = length();
 	if (i>n) i = n;
 	double tot = 0.0;
@@ -227,13 +227,13 @@ int CircularBuffer::size() {
 }
 
 int CircularBuffer::length() {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
     if (front == -1) return 0;
     return (front - back + bufsize) % bufsize + 1;
 }
 
 double CircularBuffer::getTime(int n) {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	return times[ (front + bufsize - n) % bufsize];
 }
 
@@ -284,7 +284,7 @@ void CircularBuffer::setTriggerValue(SampleTrigger::Event evt, int val, SampleTr
 }
 
 double CircularBuffer::slope() {
-	std::lock_guard<std::recursive_mutex>  lock(update_mutex);
+	RECURSIVE_LOCK  lock(update_mutex);
 	double sumX = 0.0, sumY = 0.0, sumXY = 0.0;
 	double sumXsquared = 0.0, sumYsquared = 0.0;
 	int n = length()-1;
@@ -313,7 +313,7 @@ void fail(int test) {
 int main(int argc, const char *argv[]) {
 	double (*sum)(CircularBuffer *buf, int n) = bufferSum;
 	double (*average)(CircularBuffer *buf, int n) = bufferAverage;
-	
+
   int tests = 0;
   int test_buffer_size = 4;
   struct CircularBuffer *mybuf = createBuffer(test_buffer_size);
@@ -321,19 +321,19 @@ int main(int argc, const char *argv[]) {
 
   for (i=0; i<10; ++i) addSample(mybuf, i, i);
   for (i=0; i<10; ++i) printf("index for %d: %d\n", i, bufferIndexFor(mybuf, i));
-	  ++tests; if (rate(mybuf, 6) != 1.0) { 
-		fail(tests); 
-		printf("rate returned %.3lf\n", rate(mybuf, 4) ); 
+	  ++tests; if (rate(mybuf, 6) != 1.0) {
+		fail(tests);
+		printf("rate returned %.3lf\n", rate(mybuf, 4) );
 	}
 
   for (i=0; i<10; ++i) addSample(mybuf, i, 1.5*i);
-	++tests; if (rate(mybuf,8) != 1.5) { 
-		fail(tests); 
-		printf("rate returned %.3lf\n", rate(mybuf, 4) ); 
+	++tests; if (rate(mybuf,8) != 1.5) {
+		fail(tests);
+		printf("rate returned %.3lf\n", rate(mybuf, 4) );
 	}
 	++tests; if (slope(mybuf) != 1.5) { fail(tests); }
 	++tests; if (length(mybuf) != test_buffer_size) { fail(tests); }
-	++tests; if (sum(mybuf, size(mybuf)) / test_buffer_size != average(mybuf,size(mybuf))) 
+	++tests; if (sum(mybuf, size(mybuf)) / test_buffer_size != average(mybuf,size(mybuf)))
 				{ fail(tests); }
 	if (test_buffer_size == 4) { /* this test only works if the buffer is of length 4 */
 		++tests; if (sum(mybuf, size(mybuf)) != (6 + 7 + 8 + 9)*1.5) { fail(tests); }
@@ -363,7 +363,7 @@ int main(int argc, const char *argv[]) {
 	destroyBuffer(mybuf);
 
 	/* test whether findMovement correctly finds a net movememnt */
-	++tests; 
+	++tests;
 	mybuf = createBuffer(20);
 	addSample(mybuf, 0, 2200);
 	addSample(mybuf, 1, 2200);
@@ -381,10 +381,10 @@ int main(int argc, const char *argv[]) {
 	}
 	}
 	destroyBuffer(mybuf);
-	
+
 	printf("tests:\t%d\nfailures:\t%d\n", tests, failures );
 
-	/* 
+	/*
 		generate a sign curve and calculate the slope using
 		the rate() and slope() functions for comparison purposes
 	*/

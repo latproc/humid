@@ -345,7 +345,7 @@ void LinePlot::draw(NVGcontext *ctx) {
 	// plot each series
 	int plot_num = 0;
 	{
-		std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+		RECURSIVE_LOCK  lock(series_mutex);
 		std::vector<Axis>y_axes(CircularBuffer::NumTypes);
 		{
 			Axis a;
@@ -558,7 +558,7 @@ bool LinePlot::load(Serializer &s) {
 }
 #endif
 std::string LinePlot::monitors() {
-	std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+	RECURSIVE_LOCK  lock(series_mutex);
 	std::string res;
 	std::list<TimeSeries*>::const_iterator iter = data.begin();
 	while (iter != data.end()) {
@@ -573,7 +573,7 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 
 	if (!user_window) return;
 
-	std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+	RECURSIVE_LOCK  lock(series_mutex);
 	for (auto ts : data) delete ts;
 	data.clear();
 
@@ -611,7 +611,7 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 
 void LinePlot::saveData(const std::string fname) {
 	if (data.size() == 0) return;
-	std::lock_guard<std::recursive_mutex>  lock(series_mutex);
+	RECURSIVE_LOCK  lock(series_mutex);
 
 	std::ofstream out(fname);
 	if (!out.good()) {
