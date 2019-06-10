@@ -7,8 +7,8 @@
 
 		NanoGUI was developed by Wenzel Jakob <wenzel.jakob@epfl.ch>.
 		The widget drawing code is based on the NanoVG demo application
-		by Mikko Mononen. 
-		
+		by Mikko Mononen.
+
 		Refer to NanoGUI-LICENSE.txt for details on the nanogui license.
 
 	All rights reserved. Use of this source code is governed by the
@@ -26,7 +26,7 @@ NAMESPACE_BEGIN(nanogui)
 /**
  * \brief Simple manual layout for hand drawn panels
  */
-class NANOGUI_EXPORT ManualLayout : public Layout {
+class ManualLayout : public Layout {
 public:
 		ManualLayout(Vector2i requested_size);
 

@@ -1,6 +1,6 @@
 /*
 	DragHandle.h -- Handle widget with mouse control
-	
+
 	This file is based on controls in the NanoGUI souce.
 
 	Please refer to the NanoGUI Licence file NonoGUI-LICENSE.txt
@@ -19,7 +19,7 @@ class PropertyMonitor;
 
 NAMESPACE_BEGIN(nanogui)
 
-class NANOGUI_EXPORT DragHandle : public ToolButton {
+class DragHandle : public ToolButton {
 public:
 	DragHandle(Widget *parent, PropertyMonitor *pm);
 	virtual ~DragHandle() {}
@@ -47,7 +47,7 @@ public:
 	virtual void save(Serializer &s) const override;
 	virtual bool load(Serializer &s) override;
 	*/
-	
+
 	Widget *getTarget() { return target; }
 	void setTarget(Widget *w) { target = w; }
 	PropertyMonitor *propertyMonitor() { return property_monitor; }

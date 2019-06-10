@@ -1,6 +1,6 @@
 /*
 	DragHandle.cpp -- Handle widget with mouse control
-	
+
 	This file is based on controls in the NanoGUI souce.
 
 	Please refer to the NanoGUI Licence file NonoGUI-LICENSE.txt
@@ -11,7 +11,7 @@
 
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
-//#include <nanogui/serializer/core.h>
+#include <nanogui/serializer/core.h>
 #include "propertymonitor.h"
 #include "draghandle.h"
 #include <iostream>
@@ -37,10 +37,10 @@ bool DragHandle::mouseDragEvent(const Vector2i &p, const Vector2i & /* rel */,
 	if (!mEnabled) {
 		return false;
 	}
-	int x = p.x(); 
+	int x = p.x();
 	if (x < 0) x = 0;
 	if (x>parent()->size().x()) x = parent()->size().x();
-	int y = p.y(); 
+	int y = p.y();
 	if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
 	if (y>parent()->size().y()) y = parent()->size().y();
 	setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
@@ -50,16 +50,16 @@ bool DragHandle::mouseDragEvent(const Vector2i &p, const Vector2i & /* rel */,
 	return true;
 }
 
-bool DragHandle::mouseButtonEvent(const Vector2i &p, int /* button */, bool down, int /* modifiers */) { 
+bool DragHandle::mouseButtonEvent(const Vector2i &p, int /* button */, bool down, int /* modifiers */) {
 	if (!mEnabled) {
 		std::cout << "not enabled\n";
 		return false;
 	}
 	if (down) {
-		int x = p.x(); 
+		int x = p.x();
 		if (x < 0) x = 0;
 		if (x>parent()->size().x()) x = parent()->size().x();
-		int y = p.y(); 
+		int y = p.y();
 		if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
 		if (y>parent()->size().y()) y = parent()->size().y();
 		setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );

@@ -9,6 +9,7 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
+#include <nanogui/common.h>
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
 #include <fstream>
@@ -557,6 +558,7 @@ bool LinePlot::load(Serializer &s) {
     return true;
 }
 #endif
+
 std::string LinePlot::monitors() {
 	RECURSIVE_LOCK  lock(series_mutex);
 	std::string res;

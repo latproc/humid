@@ -11,6 +11,10 @@ release:
 release-install:
 	cd build/Release && make -j 6 install
 
+mingw:
+	[ -d "mingw_build" ] || mkdir mingw_build
+	cd mingw_build && cmake .. -DCMAKE_TOOLCHAIN_FILE=../lib/clockwork/cmake_modules/mingw_toolchain.cmake -DMINGW_BUILD=YES && make
+
 debug:
 	[ -d "build" ] || mkdir build
 	[ -d "build/Debug" ] || mkdir build/Debug

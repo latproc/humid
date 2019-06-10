@@ -20,6 +20,8 @@
 #include <mutex>
 #endif
 #include <map>
+#include <nanogui/serializer/core.h>
+
 #include "sampletrigger.h"
 
 class CircularBuffer;
@@ -110,7 +112,7 @@ private:
  * \brief Lineplot widget for showing a line plot based on sampled values.
  * 		Used to display a time series.
  */
-class NANOGUI_EXPORT LinePlot : public Widget {
+class LinePlot : public Widget {
 public:
     LinePlot(Widget *parent, const std::string &caption = "Untitled");
 
@@ -146,6 +148,7 @@ public:
     virtual void save(Serializer &s) const override;
     virtual bool load(Serializer &s) override;
 #endif
+
 	TimeSeries *getTimeSeries(std::string name);
 	void addTimeSeries(TimeSeries *);
 

@@ -48,7 +48,7 @@ get_property(Boost-Dep_INCLUDE_DIRS GLOBAL PROPERTY Boost-Dep_INCLUDE_DIRS)
 get_property(Curl-Dep_INCLUDE_DIRS GLOBAL PROPERTY Curl-Dep_INCLUDE_DIRS)
 get_property(Clockwork_INCLUDE_DIRS GLOBAL PROPERTY Clockwork_INCLUDE_DIRS)
 get_property(nanogui_INCLUDE_DIRS GLOBAL PROPERTY nanogui_INCLUDE_DIRS)
-
+# message("NANOGUI EXTRA LIBS: ${NANOGUI_EXTRA_LIBS}")
 set(INCLUDE
     ${ZMQ_HPP-Dep_INCLUDE_DIRS}
     ${_ZMQ-Dep_INCLUDE_DIRS}
@@ -60,11 +60,13 @@ set(INCLUDE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 set(LIBRARY
-    ZMQ-Dep
-    Boost-Dep
-    Curl-Dep
+    # ZMQ-Dep
+    # Boost-Dep
+    # Curl-Dep
     Clockwork
     nanogui
+    # DruidOpenGL-Dep
+    opengl32
 )
 
 include_directories(${INCLUDE})
@@ -173,7 +175,6 @@ SET_SOURCE_FILES_PROPERTIES(${settings_lex_output} GENERATED)
 SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
 
 
-
 add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
 	  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp
 	  src/lineplot.cpp src/circularbuffer.cpp src/propertylist.cpp
@@ -197,20 +198,33 @@ add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleto
 	  ${HEADERS}
 )
 
-  target_link_libraries(humid ${LIBRARY})
-  # target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+add_definitions(
+    "-DGLAD_GLAPI_EXPORT"
+    # "MINGW_BUILD=1"
+    "-DNANOGUI_GLAD"
+    "-DNANOGUI_SHARED"
+    "-DNVG_SHARED"
+    # "_USE_MATH_DEFINES"
+)
 
-  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp)
-  # target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
-  # target_link_libraries(settingscheck Clockwork ${LIBRARY})
-  target_link_libraries(settingscheck Clockwork ZMQ-Dep Boost-Dep)
-  #
-  # # ${ZMQ_HPP-Dep}
-  # # ${_ZMQ-Dep}
-  #
-  # ${Curl-Dep}
-  # Clockwork
-  # nanogui
+
+
+
+message("HUMID LIBRARIES: ${LIBRARY}")
+target_link_libraries(humid ${LIBRARY})
+# target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+
+add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp)
+# target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+# target_link_libraries(settingscheck Clockwork ${LIBRARY})
+target_link_libraries(settingscheck Clockwork ZMQ-Dep Boost-Dep)
+#
+# # ${ZMQ_HPP-Dep}
+# # ${_ZMQ-Dep}
+#
+# ${Curl-Dep}
+# Clockwork
+# nanogui
 
 
 
