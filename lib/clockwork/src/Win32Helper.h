@@ -19,6 +19,7 @@ void usleep(uint64_t);
 #endif
 #else
 #include <mutex>
+#define RECURSIVE_LOCK std::lock_guard<std::recursive_mutex>
 #endif
 
 #endif
