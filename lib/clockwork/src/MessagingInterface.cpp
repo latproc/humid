@@ -103,7 +103,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
 	assert(pgn_rc == 0);
 
-	{FileLogger fl(program_name); fl.f() << tnam << " receiving\n";}
+	//{FileLogger fl(program_name); fl.f() << tnam << " receiving\n";}
 #endif
 	*response_len = 0;
 	if (block && timeout == 0) timeout = 500;
@@ -128,7 +128,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 						*buf = new char[*response_len+1];
 						memcpy(*buf, message.data(), *response_len);
 						(*buf)[*response_len] = 0;
-						if (*response_len>0){FileLogger fl(program_name); fl.f() << tnam << " received: " << *buf << "\n"; }
+						//if (*response_len>0){FileLogger fl(program_name); fl.f() << tnam << " received: " << *buf << "\n"; }
 						return true;
 					}
 					else {
@@ -188,7 +188,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 						if ( message.more() && message.size() == sizeof(MessageHeader) ) {
 							memcpy(&header, message.data(), sizeof(MessageHeader));
 #if 0
-              NB_MSG << "received message header\n";
+            				NB_MSG << "received message header\n";
 							got_address = true;
 #endif
 							continue;
@@ -197,16 +197,14 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 						*buf = new char[*response_len+1];
 						memcpy(*buf, message.data(), *response_len);
 						(*buf)[*response_len] = 0;
-            NB_MSG << "received msg: " << *buf << " from remote\n";
-            if (strcmp(*buf, "status") == 0)
-              int x = 1;
+						//DBG_MSG << "received msg: " << *buf << " from remote\n";
 
 #if 0
 						if (*response_len > 0) {
 							if (got_address) {
 								{FileLogger fl(program_name); fl.f() << tnam << " received 	addressed message " << header << " " << (*buf) << "\n"; }
 							}
-							else
+							else 
 								{FileLogger fl(program_name); fl.f() << tnam << " received: " << *buf << "\n"; }
 						}
 #endif
@@ -281,7 +279,7 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
 		}
 		catch (zmq::error_t e) {
 			{
-				FileLogger fl(program_name);
+				FileLogger fl(program_name); 
 				fl.f() << tnam << " safeRecv error " << errno << " " << zmq_strerror(errno) << "\n";
 			}
 			if (--retries == 0) {
@@ -301,11 +299,11 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen, const Message
 #ifdef _WIN32
     const char *tnam = "";
 #else
-    char tnam[100];
-    int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
-    assert(pgn_rc == 0);
+	char tnam[100];
+	int pgn_rc = pthread_getname_np(pthread_self(),tnam, 100);
+	assert(pgn_rc == 0);
 
-    //if (buflen>10) {FileLogger fl(program_name); fl.f() << tnam << " Sending\n"; }
+	//if (buflen>10) {FileLogger fl(program_name); fl.f() << tnam << " Sending\n"; }
 
 #endif
 
@@ -375,7 +373,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 		catch (zmq::error_t) {
 			if (zmq_errno() != EINTR && zmq_errno() != EAGAIN) {
 				{
-					FileLogger fl(program_name);
+					FileLogger fl(program_name); 
 					fl.f()  << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
 				}
 				if (zmq_errno() == EFSM || STATE_ERROR == zmq_strerror(errno)) {
@@ -385,7 +383,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 				usleep(10);
 				continue;
 			} else {
-                std::cerr << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
+				std::cerr << tnam << " safeSend error " << errno << " " << zmq_strerror(errno) << "\n";
 				usleep(10);
 			}
 		}
@@ -578,7 +576,7 @@ void MessagingInterface::connect() {
 	if (protocol == eCLOCKWORK || protocol == eZMQ || protocol == eCHANNEL) {
 #ifndef _WIN32
 		if (pthread_equal(owner_thread, pthread_self())) {
-			FileLogger fl(program_name); fl.f() << hostname<<":"<<port
+			FileLogger fl(program_name); fl.f() << hostname<<":"<<port 
 				<<" attempt to call socket connect from a thread that isn't the owner\n";
 		  // return; // no longer returning here, we have some evidence this is not a good test. TBD
 		}
@@ -690,11 +688,11 @@ char *MessagingInterface::send(const char *txt) {
 			    continue;
 		    }
 		    if (zmq_errno()) {
-			    FileLogger fl(program_name); fl.f()
+			    FileLogger fl(program_name); fl.f() 
 				    << "Exception when sending " << url << ": " << zmq_strerror(zmq_errno()) << "\n";
 		    }
 		    else {
-			    FileLogger fl(program_name); fl.f()
+			    FileLogger fl(program_name); fl.f() 
 				    << "Exception when sending " << url << ": " << e.what() << "\n";
 		    }
 		    /*			socket->disconnect(url.c_str());

@@ -25,7 +25,7 @@ debug-install:	debug
 
 xcode:
 	[ -d "xcode" ] || mkdir xcode
-	cd xcode && cmake -G Xcode .. && open humid.xcodeproj -parallelizeTargets -jobs 6
+	cd xcode && cmake -G Xcode .. && xcodebuild -parallelizeTargets -jobs 6
 #	[ -d "xcode/Debug" ] || mkdir xcode/Debug
 #	cd xcode/Debug && cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug ../.. && open humid.xcodeproj
 

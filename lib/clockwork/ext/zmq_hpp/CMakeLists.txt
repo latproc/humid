@@ -1,18 +1,17 @@
 
-set(exe_name "ZMQ-Dep")
+set(exe_name "ZMQ_HPP-Dep")
 
+get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
 
-get_property(ZMQ_HPP-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ_HPP-Dep_INCLUDE_DIRS)
-get_property(ZMQ-Dummy_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dummy_INCLUDE_DIRS)
-
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+FIND_PACKAGE(ZMQ 4.2 REQUIRED)
 set(INCLUDE
-    ${ZMQ_HPP-Dep_INCLUDE_DIRS}
-    ${ZMQ-Dummy_INCLUDE_DIRS}
+				#${ZMQ-Dep_INCLUDE_DIRS}
+		${ZMQ_INCLUDE_DIRS}
 )
 set(LIBRARY
-    #cZMQ-Dep
-    ZMQ_HPP-Dep
-    ZMQ-Dummy
+	#    ${ZMQ-Dep}
+	${ZMQ_LIBRARIES}
 )
 
 #################################
@@ -37,7 +36,7 @@ target_link_libraries(${exe_name}
 #################################
 set(${exe_name}_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${INCLUDE}
+    # ${INCLUDE}
 )
 
 set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
@@ -45,4 +44,5 @@ set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
 )
 include_directories(
     ${${exe_name}_INCLUDE_DIRS}
+    ${INCLUDE}
 )

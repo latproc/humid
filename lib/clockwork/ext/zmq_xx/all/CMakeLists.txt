@@ -1,34 +1,19 @@
 
-set(exe_name "ZMQ-Dummy")
+set(exe_name "ZMQ-Dep")
 
 
-#################################
-##         find  ZMQ           ##
-#################################
+get_property(ZMQ_HPP-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ_HPP-Dep_INCLUDE_DIRS)
+get_property(ZMQ-Dummy_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dummy_INCLUDE_DIRS)
 
-set(INCLUDE "")
-set(LIBRARY "")
-if (MINGW_BUILD)
-    set(LIBRARY
-        zmq
-    )
-else()
-    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
-    FIND_PACKAGE(Sodium REQUIRED)
-    if(SODIUM_FOUND)
-        add_definitions(-DHAVE_LIBSODIUM)
-    else()
-        message(FATAL_ERROR "no sodium?")
-    endif()
-    FIND_PACKAGE(ZMQ 4.2 REQUIRED)
-    if (ZMQ_FOUND)
-        set(LIBRARY ${ZMQ_LIBRARIES})
-        set(INCLUDE ${ZMQ_INCLUDE_DIRS})
-    else (ZMQ_FOUND)
-        message(FATAL_ERROR "## Not Found - ZMQ")
-    endif (ZMQ_FOUND)
-endif ()
-
+set(INCLUDE
+    ${ZMQ_HPP-Dep_INCLUDE_DIRS}
+    ${ZMQ-Dummy_INCLUDE_DIRS}
+)
+set(LIBRARY
+    cZMQ-Dep
+    ZMQ_HPP-Dep
+    ZMQ-Dummy
+)
 
 #################################
 ##      make the library       ##
