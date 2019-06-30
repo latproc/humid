@@ -1,0 +1,4 @@
+[submodule "ext/nanogui_/nanogui"]
+	path = ext/nanogui_/nanogui
+	url = https://github.com/latproc/nanogui
+	branch = wip
