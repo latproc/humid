@@ -217,7 +217,7 @@ bool SubscriptionManager::requestChannel() {
         zmq::message_t m;
         if (!setup().recv(&m, ZMQ_DONTWAIT)) {
           if (smi->sent_request) {
-            FileLogger fl(program_name); fl.f() << channel_name<< " response timed out; waited: " << (smi->send_time - now) << "\n" << std::flush;
+            //FileLogger fl(program_name); fl.f() << channel_name<< " response timed out; waited: " << (smi->send_time - now) << "\n" << std::flush;
             return false;
           }
         }
@@ -847,15 +847,17 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
 			rc = zmq::poll(items, num_items, 5);
 	}
 	catch (zmq::error_t zex) {
-		char buf[200];
-		snprintf(buf, 200, "%s %s %d %s %s",
-				 channel_name.c_str(),
-				 "exception",
-				 zmq_errno(),
-				 zmq_strerror(zmq_errno()),
-				 "polling connections");
-		FileLogger fl(program_name); fl.f() << buf << "\n";
-		MessageLog::instance()->add(buf);
+		if (zmq_errno() != 38) {
+			char buf[200];
+			snprintf(buf, 200, "%s %s %d %s %s",
+					 channel_name.c_str(),
+					 "exception",
+					 zmq_errno(),
+					 zmq_strerror(zmq_errno()),
+					 "polling connections");
+			FileLogger fl(program_name); fl.f() << buf << "\n";
+			MessageLog::instance()->add(buf);
+		}
 		return false;
 	}
     if (rc == 0) return true; // no sockets have messages

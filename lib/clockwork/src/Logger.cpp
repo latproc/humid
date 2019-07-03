@@ -98,6 +98,8 @@ void FileLogger::getTimeString(char *buf, size_t buf_size) {
     boost::chrono::system_clock::time_point now = boost::chrono::system_clock::now();
     std::time_t now_tt = boost::chrono::system_clock::to_time_t(now);
     snprintf(buf, buf_size, "%s", std::ctime(&now_tt));
+		if (buf[strlen(buf)-1] == '\n')
+			buf[strlen(buf)-1] = 0;
 
   // localtime_r(&now_tv.tv_sec, &now_tm);
   // uint32_t msec = now_tv.tv_usec;
@@ -116,9 +118,11 @@ void Logger::setLevel(std::string level_name){
 }
 
 void Logger::getTimeString(char *buf, size_t buf_size) {
-    boost::chrono::system_clock::time_point now = boost::chrono::system_clock::now();
-    std::time_t now_tt = boost::chrono::system_clock::to_time_t(now);
-    snprintf(buf, buf_size, "%s", std::ctime(&now_tt));
+	boost::chrono::system_clock::time_point now = boost::chrono::system_clock::now();
+	std::time_t now_tt = boost::chrono::system_clock::to_time_t(now);
+	snprintf(buf, buf_size, "%s", std::ctime(&now_tt));
+	if (buf[strlen(buf)-1] == '\n')
+		buf[strlen(buf)-1] = 0;
 	// struct timeval now_tv;
 	// gettimeofday(&now_tv,0);
 	// struct tm now_tm;
