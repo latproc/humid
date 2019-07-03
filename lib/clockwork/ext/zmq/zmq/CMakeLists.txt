@@ -1,18 +1,34 @@
 
-set(exe_name "ZMQ_HPP-Dep")
+set(exe_name "ZMQ_internal-Dep")
 
-get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
-FIND_PACKAGE(ZMQ 4.2 REQUIRED)
-set(INCLUDE
-				#${ZMQ-Dep_INCLUDE_DIRS}
-		${ZMQ_INCLUDE_DIRS}
-)
-set(LIBRARY
-	#    ${ZMQ-Dep}
-	${ZMQ_LIBRARIES}
-)
+#################################
+##         find  ZMQ           ##
+#################################
+
+set(INCLUDE "")
+set(LIBRARY "")
+if (MINGW_BUILD)
+    set(LIBRARY
+        zmq
+    )
+else()
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+    FIND_PACKAGE(Sodium REQUIRED)
+    if(SODIUM_FOUND)
+        add_definitions(-DHAVE_LIBSODIUM)
+    else()
+        message(FATAL_ERROR "no sodium?")
+    endif()
+    FIND_PACKAGE(ZMQ 4.2 REQUIRED)
+    if (ZMQ_FOUND)
+        set(LIBRARY ${ZMQ_LIBRARIES})
+        set(INCLUDE ${ZMQ_INCLUDE_DIRS})
+    else (ZMQ_FOUND)
+        message(FATAL_ERROR "## Not Found - ZMQ")
+    endif (ZMQ_FOUND)
+endif ()
+
 
 #################################
 ##      make the library       ##
@@ -36,7 +52,7 @@ target_link_libraries(${exe_name}
 #################################
 set(${exe_name}_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    # ${INCLUDE}
+    ${INCLUDE}
 )
 
 set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
@@ -44,5 +60,4 @@ set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
 )
 include_directories(
     ${${exe_name}_INCLUDE_DIRS}
-    ${INCLUDE}
 )

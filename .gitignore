@@ -49,6 +49,7 @@ Thumbs.db
 
 #project build files
 build/
+mingw_build/
 xcode/
 
 #local cmake settings

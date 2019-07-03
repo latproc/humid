@@ -1,30 +1,18 @@
 
-set(exe_name "Boost-Dep")
-SET(BUILD_SHARED_LIBS OFF)
+set(exe_name "ZMQ_HPP-Dep")
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
 
-if (MINGW_BUILD)
-    set(LIBRARY
-        boost_chrono
-        boost_system
-        boost_filesystem
-        boost_thread
-        boost_program_options
-        pthread
-    )
-else()
-    FIND_PACKAGE(Boost 1.55 COMPONENTS system filesystem thread chrono program_options REQUIRED)
-    if (Boost_FOUND)
-        set(LIBRARY ${Boost_LIBRARIES})
-        set(INCLUDE ${Boost_INCLUDE_DIR})
-    else (Boost_Found)
-        message(FATAL_ERROR "## Not Found -  BOOST")
-    endif (Boost_FOUND)
-endif()
-
-
-
+# list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+# FIND_PACKAGE(ZMQ 4.2 REQUIRED)
+set(INCLUDE
+    ${ZMQ_internal-Dep_INCLUDE_DIRS}
+	# ${ZMQ_INCLUDE_DIRS}
+)
+set(LIBRARY
+    ZMQ_internal-Dep
+	# ${ZMQ_LIBRARIES}
+)
 
 #################################
 ##      make the library       ##
@@ -44,11 +32,11 @@ target_link_libraries(${exe_name}
 )
 
 #################################
-##    sort out include files    ##
+##    sort out include files   ##
 #################################
 set(${exe_name}_INCLUDE_DIRS
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${INCLUDE}
+    # ${INCLUDE}
 )
 
 set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
@@ -56,4 +44,5 @@ set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
 )
 include_directories(
     ${${exe_name}_INCLUDE_DIRS}
+    ${INCLUDE}
 )

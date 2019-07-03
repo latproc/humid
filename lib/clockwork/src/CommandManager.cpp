@@ -25,7 +25,8 @@
 #include "Win32Helper.h"
 //#include <dru_zmq_dep.hpp>
 // TBD, broke this somehow
-#include <zmq.hpp>
+// #include <zmq.hpp>
+#include <dru_zmq_dep.hpp>
 #include <map>
 #include "Logger.h"
 #include "DebugExtra.h"
