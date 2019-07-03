@@ -313,7 +313,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setTooltip("New Project");
 	tb->setFixedSize(Vector2i(32,32));
 
-	tb = new ToolButton(toolbar, ENTYPO_ICON_NOTE);
+	tb = new ToolButton(toolbar, ENTYPO_ICON_TEXT_DOCUMENT);
+	tb->setFixedSize(Vector2i(32,32));
 	//tb->setFlags(Button::ToggleButton);
 	tb->setTooltip("Open Project");
 	tb->setFlags(Button::NormalButton);
@@ -380,8 +381,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	});
 	tb->setFixedSize(Vector2i(32,32));
 
-	tb = new ToolButton(toolbar, ENTYPO_ICON_OPEN_BOOK);
-	tb->setFlags(Button::ToggleButton);
+	tb = new ToolButton(toolbar, ENTYPO_ICON_PRICE_TAG);
+	tb->setFlags(Button::NormalButton);
 	tb->setTooltip("Tags");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setCallback([&] {
@@ -390,12 +391,12 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 		gui->getObjectWindow()->loadTagFile(tags);
 	});
 
-	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
-	tb->setTooltip("Refresh");
-	tb->setFixedSize(Vector2i(32,32));
-	tb->setChangeCallback([this](bool state) {
-	});
-
+//	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
+//	tb->setTooltip("Refresh");
+//	tb->setFixedSize(Vector2i(32,32));
+//	tb->setChangeCallback([this](bool state) {
+//	});
+//
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
 	settings_button->setFixedSize(Vector2i(32,32));
 	settings_button->setTooltip("Theme properties");
@@ -405,12 +406,13 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 			this->gui->getThemeWindow()->getWindow()->requestFocus();
 	});
 
-	tb = new ToolButton(toolbar, ENTYPO_ICON_LAYOUT);
-	tb->setTooltip("Create");
-	tb->setFixedSize(Vector2i(32,32));
-	tb->setChangeCallback([](bool state) { });
-
+//	tb = new ToolButton(toolbar, ENTYPO_ICON_LAYOUT);
+//	tb->setTooltip("Create");
+//	tb->setFixedSize(Vector2i(32,32));
+//	tb->setChangeCallback([](bool state) { });
+//
 	tb = new ToolButton(toolbar, ENTYPO_ICON_EYE);
+	tb->setFlags(Button::ToggleButton);
 	tb->setTooltip("Views");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setChangeCallback([this](bool state) {

@@ -20,9 +20,6 @@ debug:
 	[ -d "build/Debug" ] || mkdir build/Debug
 	cd build/Debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make -j
 
-debug-install:	debug
-	cd build/Debug && make -j install
-
 xcode:
 	[ -d "xcode" ] || mkdir xcode
 	cd xcode && cmake -G Xcode .. && xcodebuild -parallelizeTargets -jobs 6
@@ -30,7 +27,11 @@ xcode:
 #	cd xcode/Debug && cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug ../.. && open humid.xcodeproj
 
 debug-test:
+	[ -d "build" ] || mkdir build
+	[ -d "build/Debug" ] || mkdir build/Debug
 	cd build/Debug && make test
 
 debug-install:	debug
+	[ -d "build" ] || mkdir build
+	[ -d "build/Debug" ] || mkdir build/Debug
 	cd build/Debug && make install
