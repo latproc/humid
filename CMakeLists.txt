@@ -33,7 +33,9 @@ endif()
 #
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-unknown-warning-option -Wno-unknown-pragmas")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wno-int-in-bool-context -Wno-implicit-fallthrough -Wno-misleading-indentation")
-set(NANOGUI_BUILD_PYTHON NO)
+
+option(NANOGUI_BUILD_PYTHON  "Build a Python plugin for NanoGUI?" OFF)
+option(NANOGUI_BUILD_EXAMPLE "Build NanoGUI example application?" OFF)
 
 add_subdirectory(ext)
 
