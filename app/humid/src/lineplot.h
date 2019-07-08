@@ -51,7 +51,7 @@ private:
 
 class TimeSeries {
 public:
-	enum LineStyle { SOLID, POINTS };
+	enum LineStyle { tsSOLID, tsPOINTS };
 	TimeSeries();
 	TimeSeries(const std::string title, CircularBuffer *data);
 	static const uint64_t TIME_ANY = 0;

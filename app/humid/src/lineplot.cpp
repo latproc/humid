@@ -33,13 +33,13 @@ NAMESPACE_BEGIN(nanogui)
 
 TimeSeries::TimeSeries() : mColor(255, 255), data(0), /*t_start(TIME_ANY), t_end(TIME_ANY),*/
 		min_v(0.0), max_v(1.0), v_scale(1.0), h_scale(1.0), v_offset(0.0), /*h_offset(0.0), frozen(false)*/
-	app_zero_time(0), zero_time(0), line_width(2.0f), line_style(SOLID)
+	app_zero_time(0), zero_time(0), line_width(2.0f), line_style(tsSOLID)
 { }
 
 TimeSeries::TimeSeries(const std::string title, CircularBuffer *buf)
 : name(title), mColor(255, 255), data(buf), /*t_start(TIME_ANY), t_end(TIME_ANY),*/
 	v_scale(1.0), h_scale(1.0), v_offset(0.0), /*h_offset(0.0), , frozen(false)*/
-	line_width(2.0f), line_style(SOLID)
+	line_width(2.0f), line_style(tsSOLID)
 {
 
 }
@@ -173,6 +173,9 @@ void TimeSeries::drawLabel(NVGcontext *ctx, Vector2i &pos, float val) {
 	nvgText(ctx, pos.x(),pos.y(),buf, NULL);
 }
 
+static uint64_t last = 0;
+static bool display = false;
+
 long calcX(CircularBuffer *buf, int i) {
 	long xx1 = buf->getTime(i);
 	long xx2 = buf->getZeroTime();
@@ -186,6 +189,10 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 	CircularBuffer *buf = getData();
 	int height = size.y();
 	nvgFontFace(ctx, "sans");
+
+	if (last == 0) last = microsecs()/1000;
+	uint64_t now = microsecs() / 1000;
+	display = (now - last > 10000);
 
 	if (show_name && getName().length()) {
 		nvgFontSize(ctx, 16.0f);
@@ -224,6 +231,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 			}
 			++i;
 		}
+		if (display) std::cout << "lineplot: ";
 		nvgBeginPath(ctx);
 		nvgStrokeWidth(ctx, line_width);
 		// indent the graph in the x direction
@@ -231,7 +239,7 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 		x_scale *= 1.0f - (float)x_indent * 2.0f / (float)size.x();
 		float vx = x_indent;
 		float last_x = vx;
-		if (line_style == SOLID) {
+		if (line_style == tsSOLID) {
 			double y = buf->getBufferValue(i);
 			vy =  (double)height - ( (y - y_axis.min()) * y_scale + y_offset);
 			if (i == n) { // not enough points to fill the graph..
@@ -241,31 +249,38 @@ void TimeSeries::draw(NVGcontext *ctx, Vector2i &pos, Vector2i &size, const Axis
 				if (vx < 0.0) vx = 0.0;
 			}
 			nvgMoveTo(ctx, pos.x() + vx, pos.y() + vy);
+			if (display) std::cout << (pos.x() + vx) << "," << pos.y() + vy << " ";
 		}
 		if (i == n) --i;
 		for (; i>0; ) {
 			--i;
 			x = calcX(buf, i);
 			vx = (x - x_min) * getXScale() * x_scale + x_indent;
-			if (line_style == SOLID)
+			if (line_style == tsSOLID)
 				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 
 			double y = buf->getBufferValue(i);
 			vy =  (double)height - ( (y-y_axis.min()) * y_scale + y_offset);
 			if (vy > height) vy = height;
 			else if (vy < 0.0) vy = 0.0;
-			if (line_style == SOLID) {
+			if (line_style == tsSOLID) {
 				nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
 			}
 			else {
 				float l = line_width/2.0f;
 				nvgRect(ctx, pos.x() + vx - l, pos.y() + vy - l, line_width, line_width);
 			}
+			if (display) std::cout << (pos.x() + vx) << "," << pos.y() + vy << " ";
 		}
 		vx = (x_max - x_min) * getXScale() * x_scale + x_indent;
 		nvgLineTo(ctx, pos.x() + vx, pos.y() + vy);
+		if (display) std::cout << (pos.x() + vx) << "," << pos.y() + vy << "\n" << std::flush;
 		nvgStrokeColor(ctx, mColor);
 		nvgStroke(ctx);
+		if (display) {
+			last = now;
+			display = false;
+		}
 	}
 }
 
