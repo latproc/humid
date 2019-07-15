@@ -850,19 +850,30 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 	using namespace boost::filesystem;
 
 	Structure *settings = EditorSettings::find("EditorSettings");
-	if (!settings) settings = EditorSettings::create();
+	if (!settings)
+    {
+        std::cout << "## not found - EditorSettings\n";
+        std::cout << "\t" << "creating..\n";
+        settings = EditorSettings::create();
+    }
 	assert(settings);
 	bool base_checked = false;
 
 	std::string base = "";
-	if (settings) base = settings->getProperties().find("project_base").asString();
+	if (settings)
+    {
+        base = settings->getProperties().find("project_base").asString();
+    }
 	if (!boost::filesystem::is_directory(base)) {
 		settings->getProperties().add("project_base", SymbolTable::Null);
 	}
 	else {
-		std::cout << "Project Base: " << base << "\n";
+		// std::cout << "Project Base: " << base << "\n";
 		if (files_and_directories.empty())
+        {
+            // std::cout << "- adding " << base << " to files_and_dirs list \n";
 			files_and_directories.push_back(base);
+        }
 	}
 
 	std::list<path> files;
@@ -870,7 +881,16 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 		std::list<std::string>::iterator fd_iter = files_and_directories.begin();
 		while (fd_iter != files_and_directories.end()) {
 			path fp = (*fd_iter++).c_str();
-			if (!exists(fp)) continue;
+			if (!exists(fp))
+            {
+                std::cout << "## - Not Found " << fp << "\n";
+                continue;
+            }
+            else
+            {
+                // std::cout << "++ - Found " << fp << "\n";
+            }
+
 			if (is_regular_file(fp)) {
 				std::string ext = boost::filesystem::extension(fp);
 			 	if (ext == ".humid") files.push_back(fp);
@@ -891,29 +911,39 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 	int opened_file = 0;
 	std::set<std::string>loaded_files;
 	std::list<path>::const_iterator f_iter = files.begin();
+    // std::cout << "- Loading Files\n";
 	while (f_iter != files.end())
 	{
-		const char *filename = (*f_iter).string().c_str();
-		std::string fname(filename);
+        boost::filesystem::path next_path = *f_iter++;
+		const char *filename = next_path.string().c_str();
+        std::string fname = next_path.string();
+        // std::cout << "\t - file " << fname << "\n";
+        // std::string fname(filename);
+
+        // boost::filesystem::path path_fix(filename);
+        // std::string fname = path_fix.string();
 
 		if (filename[0] != '-')
 		{
 			// strip project path from the file name
 			if (base.length() && fname.find(base) == 0) {
-				fname = fname.substr(base.length()+1);
+
+				// fname = fname.substr(base.length()+1);
+
 				if (loaded_files.count(fname)) {
-					std::cout << "Skipping second load of " << fname << "\n";
+					// std::cout << "\t\t" << "Skipping second load of " << fname << "\n";
 					continue; // already loaded this one-line
 				}
 				loaded_files.insert(fname);
 			}
-			if (exists(filename)) {
-				std::cout << "reading project file " << fname << "\n";
+			if (exists(next_path)) {
+				// std::cout << "\t\t" << "reading project file " << fname << "\n";
 				opened_file = 1;
-				yyin = fopen(filename, "r");
+				yyin = fopen(fname.c_str(), "r");
 				if (yyin)
 				{
-					std::cerr << "Processing file: " << filename << "\n";
+					// std::cerr << "\t\t" << "Processing file: " << fname << "\n";
+					// std::cout << "\t\t" << "Processing file: " << fname << "\n";
 					yylineno = 1;
 					yycharno = 1;
 					yyfilename = fname.c_str();
@@ -923,11 +953,16 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 				else
 				{
 					std::stringstream ss;
-					ss << "## - Error: failed to load project file: " << filename;
+					ss << "\t\t" << "## - Error: failed to load project file: " << fname;
+                    std::cout << "\t\t" << "## - Error: failed to load project file: " << fname << "\n";
 					error_messages.push_back(ss.str());
 					++num_errors;
 				}
 			}
+            else
+            {
+                std::cout << "\t\t" << "## Not Found: " << fname << "\n";
+            }
 		}
 		else if (strlen(filename) == 1) /* '-' means stdin */
 		{
@@ -939,7 +974,6 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 			yycharno = 1;
 			yyparse();
 		}
-		f_iter++;
 	}
 }
 
@@ -2725,7 +2759,8 @@ nanogui::Window *ObjectWindow::createPanelPage(
 	using namespace nanogui;
 
 	if (filename && palette_content) {
-		std::string modbus_settings(filename);
+        boost::filesystem::path path_fix(filename);
+        std::string modbus_settings = path_fix.string();
 		std::ifstream init(modbus_settings);
 
 		if (init.good()) {
@@ -3584,29 +3619,32 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	std::list<std::string>::iterator f_iter = files.begin();
 	while (f_iter != files.end())
 	{
-		const char *filename = (*f_iter).c_str();
-		if (filename[0] != '-')
+		const char *param = (*f_iter).c_str();
+		if (param[0] != '-')
 		{
 			opened_file = 1;
-			st_yyin = fopen(filename, "r");
+            boost::filesystem::path path_fix(param);
+            std::string filename = path_fix.string();
+            const char* filename_cstr = filename.c_str();
+			st_yyin = fopen(filename_cstr, "r");
 			if (st_yyin)
 			{
 				std::cerr << "Processing file: " << filename << "\n";
 				st_yylineno = 1;
 				st_yycharno = 1;
-				st_yyfilename = filename;
+				st_yyfilename = filename_cstr;
 				st_yyparse();
 				fclose(st_yyin);
 			}
 			else
 			{
 				std::stringstream ss;
-				ss << "## - Error: failed to load config: " << filename;
+				ss << "## - Error: failed to load config: " << filename_cstr;
 				error_messages.push_back(ss.str());
 				++num_errors;
 			}
 		}
-		else if (strlen(filename) == 1) /* '-' means stdin */
+		else if (strlen(param) == 1) /* '-' means stdin */
 		{
 			opened_file = 1;
 			std::cerr << "\nProcessing stdin\n";
@@ -3716,8 +3754,14 @@ int main(int argc, const char ** argv ) {
 			if (vm.count("source-file")) {
 				const std::vector<std::string> &files( vm["source-file"].as< std::vector<std::string> >() );
 				for (auto s : files) {
+                    std::cout << "Reading source-file: " << s << "\n";
 					int found = s.rfind("/");
-					if (found == s.length()-1) s.erase(found);
+					if (found == s.length()-1)
+                    {
+                        s.erase(found);
+                        std::cout << "\t edited path: " << s << "\n";
+                    }
+                    std::cout << "\t added path: " << s << "\n";
 					source_files.push_back(s);
 				}
 			}

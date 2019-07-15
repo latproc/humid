@@ -219,14 +219,20 @@ void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem
 		std::copy(directory_iterator(fp), directory_iterator(), std::back_inserter(items));
 		std::sort(items.begin(), items.end());
 		for (path_vec::const_iterator iter(items.begin()); iter != items.end(); ++iter) {
-				if (is_regular_file(*iter) ) {
-						path fn(*iter);
-						std::string ext = boost::filesystem::extension(fn);
-						if (ext == ".humid") files.push_back(fn);
-				}
-				else if (is_directory(fp)) {
-						collect_humid_files( (*iter), files);
-				}
+            boost::filesystem::path next_path = *iter;
+			if (is_regular_file(next_path) ) {
+				path fn(next_path);
+				std::string ext = boost::filesystem::extension(fn);
+				if (ext == ".humid")
+                {
+                    // std::cout << "++ - file added << " << fn.string() << "\n";
+                    files.push_back(fn);
+                }
+			}
+			else if (is_directory(next_path)) {
+                // std::cout << "++ - directory (adding) << " << fp.string() << "\n";
+				collect_humid_files(next_path, files);
+			}
 		}
 }
 
@@ -239,14 +245,14 @@ void backup_humid_files(boost::filesystem::path base) {
 
 		// backup all .humid files
 		for (auto item : all_humid_files) {
-			std::cout << "backing up humid file: " << item.string();
+			// std::cout << "backing up humid file: " << item.string();
 			if (!exists(item)) {
-				std::cout << " aborted: file does not exist\n";
+				std::cout << "(warning)skipped file: " << item.string() << " (does not exist)\n";
 				continue;
 			}
 			path backup(item);
 			backup += '_';
-			std::cout << " to " << backup << "\n";
+			// std::cout << " to " << backup << "\n";
 			boost::filesystem::rename(item,backup);
 		}
 }
@@ -286,4 +292,3 @@ int dataTypeFromModbus(int val, int len) {
 		return DOUBLE;
 #endif
 }
-

@@ -153,7 +153,6 @@ void Editor::save(const char *new_base_path) {
 	for (auto item : structure_files) {
 		Structure *s = dynamic_cast<Structure *>(item.first);
 		StructureClass *sc = dynamic_cast<StructureClass *>(item.first);
-		std::string fn = item.second;
 		if (!s && sc && sc->isBuiltIn()) {
 			continue; // skip saving builtin objects
 		}
@@ -169,6 +168,9 @@ void Editor::save(const char *new_base_path) {
 		}
 		*/
 	  std::ofstream out;
+      boost::filesystem::path fn_fix(item.second);
+      std::string fn = fn_fix.string();
+
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {
 			char buf[200];

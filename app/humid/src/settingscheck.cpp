@@ -72,17 +72,21 @@ void loadFiles(std::list<std::string> &files) {
     std::list<std::string>::iterator f_iter = files.begin();
     while (f_iter != files.end())
     {
-        const char *filename = (*f_iter).c_str();
-        if (filename[0] != '-')
+        const char *param = (*f_iter).c_str();
+        if (param[0] != '-')
         {
             opened_file = 1;
-            st_yyin = fopen(filename, "r");
+
+            boost::filesystem::path path_fix(param);
+            std::string filename = path_fix.string();
+            const char* filename_cstr = filename.c_str();
+            st_yyin = fopen(filename_cstr, "r");
             if (st_yyin)
             {
                 std::cerr << "Processing file: " << filename << "\n";
                 st_yylineno = 1;
                 st_yycharno = 1;
-                st_yyfilename = filename;
+                st_yyfilename = filename_cstr;
                 st_yyparse();
                 fclose(st_yyin);
             }
@@ -94,7 +98,7 @@ void loadFiles(std::list<std::string> &files) {
                 ++num_errors;
             }
         }
-        else if (strlen(filename) == 1) /* '-' means stdin */
+        else if (strlen(param) == 1) /* '-' means stdin */
         {
             opened_file = 1;
             std::cerr << "\nProcessing stdin\n";

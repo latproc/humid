@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
+#include <dru_boost_dep.hpp>
 
 struct buffer_info {
     size_t size; /* allocated size */
@@ -47,7 +48,9 @@ size_t receive_data(void *buffer, size_t size, size_t nmemb, void *userp)
     return size * nmemb;
 }
 
-bool get_file(const std::string url_s, const std::string filename) {
+bool get_file(const std::string url_s, const std::string filename_) {
+    boost::filesystem::path path_fix(filename_);
+    std::string filename = path_fix.string();
     CURLcode result = CURLE_OK;
     CURLcode curl = curl_global_init(CURL_GLOBAL_NOTHING);
     if (curl) return false; // initialisation failed, curl functions cannot be used
@@ -68,7 +71,7 @@ bool get_file(const std::string url_s, const std::string filename) {
     //curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, receive_data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, buf);
- 
+
     result = curl_easy_perform(curl_handle);
     if (result != 0)
         std::cerr << "Error %d from curl when retrieving " << url << "\n";

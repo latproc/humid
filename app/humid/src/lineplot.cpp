@@ -24,6 +24,7 @@
 #include <nanogui/button.h>
 #include <nanogui/label.h>
 #include <nanogui/layout.h>
+#include <dru_boost_dep.hpp>
 #include "userwindow.h"
 
 #include <iostream>
@@ -626,10 +627,11 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 	master_series = 0;
 }
 
-void LinePlot::saveData(const std::string fname) {
+void LinePlot::saveData(const std::string fname_) {
 	if (data.size() == 0) return;
 	RECURSIVE_LOCK  lock(series_mutex);
-
+    boost::filesystem::path path_fix(fname_);
+    std::string fname = path_fix.string();
 	std::ofstream out(fname);
 	if (!out.good()) {
 		std::cerr << "failed to open file for writing\n";

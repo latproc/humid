@@ -9,6 +9,7 @@
 #include "settingslang.h"
 #include "editorsettings.h"
 #include <list>
+#include <dru_boost_dep.hpp>
 #include <fstream>
 
 std::map<std::string, nanogui::Widget *> EditorSettings::widgets;
@@ -69,7 +70,9 @@ void EditorSettings::flush() {
     if (!dirty) return;
     dirty = false;
     if (settings_files.size() == 0) return;
-    std::string fname(settings_files.front());
+    // std::string fname(settings_files.front());
+    boost::filesystem::path path_fix(settings_files.front());
+    std::string fname = path_fix.string();
     std::ofstream settings_file(fname);
     Structure *s = EditorSettings::find("EditorSettings");
     assert(s);

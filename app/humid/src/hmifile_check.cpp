@@ -78,9 +78,11 @@ void loadFiles(std::list<std::string> &files) {
     std::list<std::string>::iterator f_iter = files.begin();
     while (f_iter != files.end())
     {
-        const char *filename = (*f_iter).c_str();
-        if (filename[0] != '-')
+        const char *param = (*f_iter).c_str();
+        if (param[0] != '-')
         {
+            boost::filesystem::path path_fix(param);
+            std::string filename = path_fix.string();
             opened_file = 1;
             yyin = fopen(filename, "r");
             if (yyin)
