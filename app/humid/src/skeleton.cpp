@@ -539,7 +539,7 @@ void ClockworkClient::idle() {
 							<< zmq_strerror(zmq_errno()) << " polling connection " << conn->getName() << "\n";
 						}
 					}
-					catch (std::exception ex) {
+					catch (const std::exception &ex) {
 						std::cerr << "polling connection: " << conn->getName() << " " << ex.what() << "\n";
 					}
 				}

@@ -228,7 +228,7 @@ bool SubscriptionManager::requestChannel() {
           FileLogger fl(program_name); fl.f() << channel_name<< " got unexpected: " << buf << "\n" << std::flush;
         }
       }
-      catch (zmq::error_t ex) {
+      catch (const zmq::error_t &ex) {
         {FileLogger fl(program_name); fl.f() << channel_name<< " exception " << zmq_errno()  << " "
           << zmq_strerror(zmq_errno()) << " checking for setup data\n"<<std::flush; }
       }
@@ -242,7 +242,7 @@ bool SubscriptionManager::requestChannel() {
 				smi->sent_request = true;
 				smi->send_time = now;
 			}
-			catch (zmq::error_t ex) {
+			catch (const zmq::error_t &ex) {
 				++error_count;
 				{FileLogger fl(program_name); fl.f() << channel_name<< " exception " << zmq_errno()  << " "
 					<< zmq_strerror(zmq_errno()) << " requesting channel\n"<<std::flush; }

@@ -43,42 +43,22 @@ set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
-get_property(Boost-Dep_INCLUDE_DIRS GLOBAL PROPERTY Boost-Dep_INCLUDE_DIRS)
-get_property(Curl-Dep_INCLUDE_DIRS GLOBAL PROPERTY Curl-Dep_INCLUDE_DIRS)
-get_property(Clockwork_INCLUDE_DIRS GLOBAL PROPERTY Clockwork_INCLUDE_DIRS)
 get_property(nanogui_INCLUDE_DIRS GLOBAL PROPERTY nanogui_INCLUDE_DIRS)
-# message("NANOGUI EXTRA LIBS: ${NANOGUI_EXTRA_LIBS}")
 set(INCLUDE
-    ${ZMQ_HPP-Dep_INCLUDE_DIRS}
-    ${_ZMQ-Dep_INCLUDE_DIRS}
-    ${Boost-Dep_INCLUDE_DIRS}
-    ${Curl-Dep_INCLUDE_DIRS}
-    ${Clockwork_INCLUDE_DIRS}
     ${nanogui_INCLUDE_DIRS}
-
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 if (MINGW_BUILD)
-set(LIBRARY
-    # ZMQ-Dep
-    # Boost-Dep
-    # Curl-Dep
-    Clockwork
-    nanogui
-    # OpenGL-Dep
-    opengl32
-)
+    set(LIBRARY
+        clockwork_client
+        nanogui
+        opengl32
+    )
 else()
-set(LIBRARY
-    # ZMQ-Dep
-    # Boost-Dep
-    # Curl-Dep
-    Clockwork
-    nanogui
-    # OpenGL-Dep
-    # opengl32
-)
+    set(LIBRARY
+        clockwork_client
+        nanogui
+    )
 endif()
 
 include_directories(${INCLUDE})
@@ -232,18 +212,18 @@ endif()
 
 message("HUMID LIBRARIES: ${LIBRARY}")
 target_link_libraries(humid ${LIBRARY})
-# target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+# target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} clockwork_client ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
 add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp)
-# target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
-# target_link_libraries(settingscheck Clockwork ${LIBRARY})
-target_link_libraries(settingscheck Clockwork ZMQ-Dep Boost-Dep)
+# target_link_libraries(settingscheck clockwork_client  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+# target_link_libraries(settingscheck clockwork_client ${LIBRARY})
+target_link_libraries(settingscheck clockwork_client ZMQ-Dep Boost-Dep)
 #
 # # ${ZMQ_HPP-Dep}
 # # ${_ZMQ-Dep}
 #
 # ${Curl-Dep}
-# Clockwork
+# clockwork_client
 # nanogui
 
 
@@ -255,7 +235,7 @@ if (NO)
         src/namedobject.cpp src/anchor.cpp
     )
 
-    target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+    target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} clockwork_client ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
 endif()
 

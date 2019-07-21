@@ -363,7 +363,7 @@ public:
 						          << zmq_strerror(zmq_errno()) << " polling connections\n";
 					}
 				}
-				catch (std::exception ex) {
+				catch (const std::exception &ex) {
 					std::cerr << "polling connections: " << ex.what() << "\n";
 				}
 			}
