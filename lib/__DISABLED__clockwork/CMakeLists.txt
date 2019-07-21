@@ -13,15 +13,11 @@ endif()
 ##        find library         ##
 #################################
 
-get_property(ZMQ-Dep_INCLUDE_DIRS GLOBAL PROPERTY ZMQ-Dep_INCLUDE_DIRS)
-get_property(Boost-Dep_INCLUDE_DIRS GLOBAL PROPERTY Boost-Dep_INCLUDE_DIRS)
-get_property(Curl-Dep_INCLUDE_DIRS GLOBAL PROPERTY Curl-Dep_INCLUDE_DIRS)
-
 set(INCLUDE
     ${ZMQ-Dep_INCLUDE_DIRS}
     ${Boost-Dep_INCLUDE_DIRS}
     ${Curl-Dep_INCLUDE_DIRS}
-		${INCLUDE}
+    ${INCLUDE}
 )
 set(LIBRARY
     ZMQ-Dep
@@ -34,9 +30,6 @@ if (MINGW_BUILD)
     list(APPEND LIBRARY
         ws2_32
     )
-
-else ()
-
 endif ()
 
 
@@ -80,6 +73,8 @@ else()
         TARGETS
         ${exe_name}
         LIBRARY DESTINATION
+        ${PROJECT_SOURCE_DIR}
+        ARCHIVE DESTINATION
         ${PROJECT_SOURCE_DIR}
     )
 endif()
