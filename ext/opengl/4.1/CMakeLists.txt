@@ -1,5 +1,5 @@
 
-set(exe_name "DruidOpenGL_4_1-Dep")
+set(exe_name "OpenGL_4_1-Dep")
 
 
 ##################################
@@ -50,13 +50,4 @@ set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
 )
 include_directories(
     ${${exe_name}_INCLUDE_DIRS}
-)
-
-get_property(X_DRUID_INCLUDE_DIRECTORIES GLOBAL PROPERTY X_DRUID_INCLUDE_DIRECTORIES)
-list(APPEND X_DRUID_INCLUDE_DIRECTORIES
-    ${${exe_name}_INCLUDE_DIRS}
-)
-
-set_property(GLOBAL PROPERTY X_DRUID_INCLUDE_DIRECTORIES
-    ${X_DRUID_INCLUDE_DIRECTORIES}
 )

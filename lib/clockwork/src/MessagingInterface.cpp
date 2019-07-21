@@ -329,7 +329,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen, const Message
 			}
 			break;
 		}
-		catch (zmq::error_t) {
+		catch (const zmq::error_t &err) {
 			if (zmq_errno() != EINTR && zmq_errno() != EAGAIN) {
 				{
 					FileLogger fl(program_name);
@@ -370,7 +370,7 @@ void safeSend(zmq::socket_t &sock, const char *buf, size_t buflen) {
 			sock.send(msg);
 			break;
 		}
-		catch (zmq::error_t) {
+		catch (const zmq::error_t &err) {
 			if (zmq_errno() != EINTR && zmq_errno() != EAGAIN) {
 				{
 					FileLogger fl(program_name); 
@@ -670,7 +670,7 @@ char *MessagingInterface::send(const char *txt) {
 			    continue;
 		    }
 	    }
-	    catch (std::exception e) {
+	    catch (const std::exception &e) {
 		    if (errno == EINTR || errno == EAGAIN) {
 			    std::cerr << "MessagingInterface::send " << strerror(errno);
 			    if (--retries <= 0) {
@@ -729,7 +729,7 @@ char *MessagingInterface::send(const char *txt) {
                 }
                 break;
             }
-            catch (std::exception e) {
+            catch (const std::exception &e) {
                 if (zmq_errno())
                     std::cerr << "Exception when receiving response " << url << ": " << zmq_strerror(zmq_errno()) << "\n";
                 else

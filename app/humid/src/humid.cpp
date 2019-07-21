@@ -3706,7 +3706,7 @@ int main(int argc, const char ** argv ) {
 		options(cmdline_options).positional(p).run(), vm);
 		po::notify(vm);
 	}
-	catch (std::exception e) {
+	catch (const std::exception &e) {
 		std::cerr << e.what() << "\n";
 		exit(2);
 	}

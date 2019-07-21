@@ -66,7 +66,7 @@ set(LIBRARY
     # Curl-Dep
     Clockwork
     nanogui
-    # DruidOpenGL-Dep
+    # OpenGL-Dep
     opengl32
 )
 else()
@@ -76,7 +76,7 @@ set(LIBRARY
     # Curl-Dep
     Clockwork
     nanogui
-    # DruidOpenGL-Dep
+    # OpenGL-Dep
     # opengl32
 )
 endif()

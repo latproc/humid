@@ -8,9 +8,7 @@ endif()
 
 # cmake .. -DMINGW_BUILD=YES -DCMAKE_TOOLCHAIN_FILE=../lib/clockwork/cmake_modules/mingw_toolchain.cmake -DNANOGUI_BUILD_PYTHON=NO
 
-if (MINGW_BUILD) #copy_paste from libdruid.git/
-    # cmake ../simple.git/ -DMINGW_BUILD=YES -DCMAKE_TOOLCHAIN_FILE=../simple.git/lib/libdruid.git/cmake_modules/mingw_toolchain.cmake
-    # add_definitions(-DCMAKE_TOOLCHAIN_FILE="${CMAKE_CURRENT_SOURCE_DIR}/lib/libdruid.git/cmake_modules/mingw_toolchain.cmake")
+if (MINGW_BUILD)
     link_directories(
         /usr/x86_64-w64-mingw32/lib
         /usr/x86_64-w64-mingw32/lib64

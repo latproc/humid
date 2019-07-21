@@ -1,8 +1,9 @@
 
 set(exe_name "Boost-Dep")
-SET(BUILD_SHARED_LIBS OFF)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+##################################
+#       Gather Dependencies      #
+##################################
 
 if (MINGW_BUILD)
     set(LIBRARY
@@ -11,10 +12,10 @@ if (MINGW_BUILD)
         boost_filesystem
         boost_thread
         boost_program_options
-        pthread
     )
 else()
-    FIND_PACKAGE(Boost 1.55 COMPONENTS system filesystem thread chrono program_options REQUIRED)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
+    FIND_PACKAGE(Boost 1.58 COMPONENTS system filesystem thread chrono program_options REQUIRED)
     if (Boost_FOUND)
         set(LIBRARY ${Boost_LIBRARIES})
         set(INCLUDE ${Boost_INCLUDE_DIR})
@@ -22,13 +23,23 @@ else()
         message(FATAL_ERROR "## Not Found -  BOOST")
     endif (Boost_FOUND)
 endif()
+# if (APPLE)
+#     #
+# endif ()
+#
+if("${CMAKE_SYSTEM}" MATCHES "Linux")
+    # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+    list(APPEND LIBRARY pthread)
+endif ()
+#
+# if (WINDOWS)
+#     #
+# endif ()
 
 
-
-
-#################################
-##      make the library       ##
-#################################
+##################################
+#          Build Binary          #
+##################################
 
 FILE(GLOB_RECURSE source_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c*
@@ -37,23 +48,17 @@ FILE(GLOB_RECURSE header_files RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h*
 )
 
-add_library(${exe_name} ${source_files} ${header_files})
+add_library(${exe_name}
+    STATIC
+    ${source_files}
+    ${header_files}
+)
 
 target_link_libraries(${exe_name}
     ${LIBRARY}
 )
-
-#################################
-##    sort out include files    ##
-#################################
-set(${exe_name}_INCLUDE_DIRS
+target_include_directories(${exe_name}
+    PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${INCLUDE}
-)
-
-set_property(GLOBAL PROPERTY ${exe_name}_INCLUDE_DIRS
-    ${${exe_name}_INCLUDE_DIRS}
-)
-include_directories(
-    ${${exe_name}_INCLUDE_DIRS}
 )
