@@ -1,8 +1,8 @@
-#include "dru_boost_dep.hpp"
+#include "cw_opengl_2_1_dep.hpp"
 
 namespace dru
 {
-    namespace boostdep
+    namespace opengl
     {
         void empty()
         {

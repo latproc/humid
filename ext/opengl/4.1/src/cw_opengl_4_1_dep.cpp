@@ -1,4 +1,4 @@
-#include "dru_opengl_4_1_dep.hpp"
+#include "cw_opengl_4_1_dep.hpp"
 
 namespace dru
 {

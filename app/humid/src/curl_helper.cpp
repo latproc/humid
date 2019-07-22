@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
-#include <dru_boost_dep.hpp>
+#include <cw_boost_dep.hpp>
 
 struct buffer_info {
     size_t size; /* allocated size */

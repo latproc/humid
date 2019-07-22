@@ -24,7 +24,7 @@
 #include <nanogui/button.h>
 #include <nanogui/label.h>
 #include <nanogui/layout.h>
-#include <dru_boost_dep.hpp>
+#include <cw_boost_dep.hpp>
 #include "userwindow.h"
 
 #include <iostream>

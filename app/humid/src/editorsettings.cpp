@@ -9,7 +9,7 @@
 #include "settingslang.h"
 #include "editorsettings.h"
 #include <list>
-#include <dru_boost_dep.hpp>
+#include <cw_boost_dep.hpp>
 #include <fstream>
 
 std::map<std::string, nanogui::Widget *> EditorSettings::widgets;

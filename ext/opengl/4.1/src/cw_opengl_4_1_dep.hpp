@@ -1,12 +1,10 @@
-
 #pragma once
 
-#include <curl/curl.h>
-
+#include "cw_gl.hpp"
 
 namespace dru
 {
-    namespace dru_curl
+    namespace opengl_4_1
     {
         void empty();
     }
