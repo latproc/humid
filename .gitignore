@@ -1,62 +1,55 @@
-# Compiled source #
-###################
-*.com
-*.class
-*.dll
-*.exe
-*.o
-*.so
-*.so.*
-*.dSYM
-a.out
-*.tab.cpp
-*.tab.hpp
-*.yy.cpp
-*.dylib
-nohup.out
+## my project
 
-# Packages #
-############
-# it's better to unpack these files and commit the raw source
-# git has its own built in compression methods
-*.7z
-*.dmg
-*.gz
-*.iso
-*.jar
-*.rar
-*.tar
-*.zip
-*.tgz
+## generic
+._*
 
-# Logs and databases #
-######################
-*.log
-*.sql
+## sqlite
 *.sqlite
 
-# OS generated files #
-######################
-.DS_Store*
-ehthumbs.db
-Icon?
-Thumbs.db
+## c++
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles
+*.app
+build
+mingw_build
+*.[oa]
 
-# Temporary editor files
-._*
-*.lyx?
-.~*
+#node.js
+node_modules
 
-#project build files
-build/
-mingw_build/
-xcode/
+#build files
+*.out
 
-#local cmake settings
-LocalCMakeLists.txt
+#visual studio
+.vscode
 
-#editor files
-.vscode/
-.project
-.cproject
-junk/
+# xcode
+xcode
+*.mode1
+*.mode1v3
+*.mode2v3
+*.perspective
+*.perspectivev3
+*.pbxuser
+
+# codeblocks
+gmon.out
+
+### - mac - ###
+.DS_Store
+
+
+# repositories
+.hg
+.svn
+CVS
+
+# automatic backup files
+*~.nib
+*.swp
+*~
+*(Autosaved).rtfd/
+Backup[ ]of[ ]*.pages/
+Backup[ ]of[ ]*.key/
+Backup[ ]of[ ]*.numbers/
