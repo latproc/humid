@@ -232,7 +232,7 @@ int CircularBuffer::length() {
     return (front - back + bufsize) % bufsize + 1;
 }
 
-double CircularBuffer::getTime(int n) {
+uint64_t CircularBuffer::getTime(int n) {
 	RECURSIVE_LOCK  lock(update_mutex);
 	return times[ (front + bufsize - n) % bufsize];
 }

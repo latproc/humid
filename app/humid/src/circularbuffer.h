@@ -38,7 +38,7 @@ public:
 
 	double getBufferValueAt(unsigned long t); /* return an estimate of the value at time t */
 
-	double getTime(int n) ;
+	uint64_t getTime(int n) ;
 	/* calculate the rate of change by a direct method */
 	double rate(int n);
 	double rateDebug();
