@@ -6,7 +6,7 @@ set(exe_name "nanogui")
 ##      make the library       ##
 #################################
 set(NANOGUI_BUILD_PYTHON NO)
-set(NANOGUI_BUILD_PYTHON NANOGUI_BUILD_EXAMPLE)
+set(NANOGUI_BUILD_EXAMPLE NO)
 
 add_subdirectory(nanogui)
 
