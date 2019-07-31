@@ -135,11 +135,11 @@ Structure * findStructureFromClass(std::string class_name) {
 		assert(s);
 		if (s->getStructureDefinition()
 					&& (s->getStructureDefinition()->getName() == class_name
-						|| s->getStructureDefinition()->getBase() == class_name) )
+						|| s->getStructureDefinition()->getBase() == class_name))
 				return s;
 		else if (!s->getStructureDefinition() && s->getKind() == class_name) {
 			s->setStructureDefinition(findClass(class_name));
-			std::cout << "Notice: structure " << s->getName() << " is now linked to class " << class_name << "\n";
+			// std::cout << "Notice: structure " << s->getName() << " is now linked to class " << class_name << "\n";
 			return s;
 		}
 	}

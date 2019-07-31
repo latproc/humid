@@ -83,7 +83,7 @@ void loadFiles(std::list<std::string> &files) {
             st_yyin = fopen(filename_cstr, "r");
             if (st_yyin)
             {
-                std::cerr << "Processing file: " << filename << "\n";
+                // std::cerr << "Processing file: " << filename << "\n";
                 st_yylineno = 1;
                 st_yycharno = 1;
                 st_yyfilename = filename_cstr;

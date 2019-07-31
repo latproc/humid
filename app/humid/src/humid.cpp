@@ -1539,10 +1539,13 @@ class ScreenSelectButton : public SelectableButton {
 		: SelectableButton(kind, pal, parent, caption),  screens_window(sw) {
 			screen = findScreen(caption);
 			if (screen)
-				std::cout << "screen select button " << caption << " selects structure "
-				<< screen->getName() << ":" << screen->getKind() << "\n";
-			else
-				std::cout << "screen select button " << caption << " has no screen\n";
+            {
+				// std::cout << "screen select button " << caption << " selects structure " << screen->getName() << ":" << screen->getKind() << "\n";
+			}
+            else
+            {
+				// std::cout << "screen select button " << caption << " has no screen\n";
+            }
 		 }
 	virtual void justDeselected() override {
 		UserWindow *uw = screens_window->getUserWindow();
@@ -1666,11 +1669,13 @@ void ScreensWindow::update() {
 	// check whether all screens are instantiated
 	int created = createScreens();
 	if (created)
-		std::cout << "Warning: " << created << " screen instances were missing!\n";
+    {
+		// std::cout << "Warning: " << created << " screen instances were missing!\n";
+    }
 
 	for (auto item : hm_structures ) {
 		Structure *s = item;
-		std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
+		// std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
 		StructureClass *sc = findClass(s->getKind());
 		int count = 0;
 		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
@@ -3576,7 +3581,7 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	if (!s) {
 		s = new Structure(nullptr, name, "WINDOW");
 		st_structures.push_back(s);
-		std::cout << "added structure for window " << name << "\n";
+		// std::cout << "added structure for window " << name << "\n";
 		EditorSettings::setDirty();
 	}
 	const nanogui::Vector2i &pos(widget->position());
@@ -3629,7 +3634,7 @@ void loadSettingsFiles(std::list<std::string> &files) {
 			st_yyin = fopen(filename_cstr, "r");
 			if (st_yyin)
 			{
-				std::cerr << "Processing file: " << filename << "\n";
+				// std::cerr << "Processing file: " << filename << "\n";
 				st_yylineno = 1;
 				st_yycharno = 1;
 				st_yyfilename = filename_cstr;
@@ -3725,14 +3730,16 @@ int main(int argc, const char ** argv ) {
 
 	std::string home(".");
 	char *home_env = nullptr;
-	if ( (home_env = getenv("HOME")) != nullptr )
+	if ((home_env = getenv("HOME")) != nullptr)
+    {
 		home = home_env;
-	std::string fname(home);
-	fname += "/.humidrc";
-	settings_files.push_back(fname);
+    }
+	// std::string fname(home);
+	// fname += "/.humidrc";
+	// settings_files.push_back(fname);
 	loadSettingsFiles(settings_files);
 	for (auto item : st_structures) {
-		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
+		// std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
 		structures[item->getName()] = item;
 	}
 	Structure *es = EditorSettings::find("EditorSettings");
@@ -3797,18 +3804,21 @@ int main(int argc, const char ** argv ) {
 			Value full_screen_v = EditorGUI::systemSettings()->getProperties().find("full_screen");
 			long full_screen = 1;
 			full_screen_v.asInteger(full_screen);
-			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
+			if (vm.count("full_screen"))
+            {
+                full_screen = vm["full_screen"].as<long>();
+            }
 
 			long width = mode->width;
 			long height = mode->height;
-			std::cout << "intial videomode: " << width << "x" << height << "\n";
+			// std::cout << "intial videomode: " << width << "x" << height << "\n";
 			{
 				const Value width_v = EditorGUI::systemSettings()->getProperties().find("w");
 				const Value height_v = EditorGUI::systemSettings()->getProperties().find("h");
 				width_v.asInteger(width);
 				height_v.asInteger(height);
 			}
-			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
+			// std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
 
 			nanogui::ref<EditorGUI> app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)

@@ -93,7 +93,7 @@ settings_section:
 machine_instantiation:
 instantiation ';'
 {
-	std::cerr << std::setw(5) << st_yylineno << " " << "Instance of a machine:" << *sts.current_machine << "\n";
+	// std::cerr << std::setw(5) << st_yylineno << " " << "Instance of a machine:" << *sts.current_machine << "\n";
 	st_structures.push_back(sts.current_machine);
 	sts.current_machine = NULL;
 }

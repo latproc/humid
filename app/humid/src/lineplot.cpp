@@ -630,7 +630,10 @@ void LinePlot::setMonitors(UserWindow *user_window, std::string items_to_monitor
 			ts->setColor(color);
 			addTimeSeries(ts);
 		}
-		else std::cerr << "Failed to create time series for unknown object '" << item << "'\n";
+		else
+        {
+            // std::cerr << "Failed to create time series for unknown object '" << item << "'\n";
+        }
 	}
 	master_series = 0;
 }

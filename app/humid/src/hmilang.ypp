@@ -130,7 +130,7 @@ definition_header '{' definition_body '}' {
       // save the current list of commands to the class
       // etc
       if (hps.current_locals.size()) {
-				std::cout << hps.current_machineclass->getName() << " has " <<hps.current_locals.size() << " locals\n";
+				// std::cout << hps.current_machineclass->getName() << " has " <<hps.current_locals.size() << " locals\n";
 				std::copy(hps.current_locals.begin(), hps.current_locals.end(),back_inserter(hps.current_machineclass->getLocals()));
 				hps.current_locals.clear();
       }
@@ -242,7 +242,7 @@ basic_anchor
 machine_instantiation:
 instantiation ';'
 {
-	std::cerr << std::setw(5) << yylineno << " " << "Instance: " << *hps.current_machine << "\n";
+	// std::cerr << std::setw(5) << yylineno << " " << "Instance: " << *hps.current_machine << "\n";
 	hm_structures.push_back(hps.current_machine);
 	hps.current_machine = NULL;
 }
