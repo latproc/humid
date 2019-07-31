@@ -13,11 +13,6 @@
 #include <nanogui/window.h>
 #include <nanogui/screen.h>
 #include <nanogui/opengl.h>
-#ifdef _WIN32
-#include <Win32Helper.h>
-#else
-#include <mutex>
-#endif
 
 #include "gltexture.h"
 

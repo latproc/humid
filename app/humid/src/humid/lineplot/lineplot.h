@@ -14,11 +14,7 @@
 #include <list>
 #include <nanogui/widget.h>
 #include <string>
-#ifdef _WIN32
-#include <Win32Helper.h>
-#else
-#include <mutex>
-#endif
+#include <humid/common/includes.hpp>
 #include <map>
 #include <nanogui/serializer/core.h>
 
