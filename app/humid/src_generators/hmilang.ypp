@@ -1,0 +1,443 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+%{
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <sstream>
+#include <boost/foreach.hpp>
+#include <mutex>
+#include <lib_clockwork_client/includes.hpp>
+
+#define COMPILER_MAIN
+#include "hmilang.h"
+
+int yylex(void);
+
+extern int yylineno;
+extern int yycharno;
+extern char *yytext;
+
+int line_num = 1;   /* updated by the lexical analysis and used for error reporting */
+extern int num_errors;
+extern std::list<std::string>error_messages;
+struct HumidParserState {
+	Value current_value;
+	SymbolTable properties;
+	std::list<Parameter> current_parameters;
+  std::list<Parameter> current_locals;
+  std::list<std::string> current_name_list;
+	std::list<SymbolTable> property_stack;
+	std::list<Command*> command_list;
+	Structure *current_machine;
+	StructureClass *current_machineclass;
+	ClassExtension *current_base;
+} ;
+HumidParserState hps;
+
+static char *error_message_name = 0;
+static char *timeout_message_name = 0;
+
+%}
+
+%token MODULES MODULE DEFAULTS DEFAULT
+%token STATE ENTER NUMBER SEPARATOR OEXPR EEXPR OBRACE
+%token EBRACE QUOTE LE LT GE GT NE EQ
+%token NOT SET AND OR SQUOTE LOG FLAG
+%token PROPERTY DEFINE COLLECT FROM TEST EXECUTE SPAWN RUN
+%token CALL TRIM LINE OF USING MATCH tokIN REPLACE WITH INTERPRET
+%token COMMA BEGINPROP ENDPROP PROPSEP STATEMACHINE WHEN TO RECEIVE
+%token DURING WAIT WAITFOR TRANSITION TAG INC DEC BY CONCAT
+%token SEND CONDITION INITSTATE IF_ ELSE ENABLE DISABLE BECOMES
+%token GLOBAL tokGROUP OPTION LOCK UNLOCK ON RESUME AT SHUTDOWN COMMAND
+%token EXPORT READONLY READWRITE tokWORD tokDOUBLEWORD STRINGTYPE
+%token STATES MATCHES COMMANDS COPY EXTRACT ALL REQUIRES
+%token WHERE ROUTE ANY ARE COUNT SELECT TAKE LENGTH
+%token INCLUDES INCLUDE CREATE BITSET PROPERTIES ENTRIES SORT
+%token ENABLED DISABLED tokSIZE ITEM FIRST LAST
+%token COMMON BETWEEN tokDIFFERENCE COMBINATION CLEAR
+%token LEAVE ASSIGN WITHIN PUSH MOVE ITEMS PLUGIN
+%token CHANNEL IDENTIFIER VERSION SHARES MONITORS UPDATES SENDS RECEIVES
+%token tokINTERFACE EXTENDS KEY MACHINES MATCHING NAME EXPORTS
+%token CONSTRAINT tokIGNORE IGNORES THROTTLE tokPUBLISHER EXISTS
+%token THROW CATCH ABORT RETURN tokERROR ERRORS TIMEOUT
+%token REPORTS STATE_CHANGES PROPERTY_CHANGES MODBUS
+%token LINKED SDO LOCAL CLASS STRUCTURE SCREEN
+%token LINK REMOTE ACTION
+
+%union {
+	int iVal;
+	double fVal;
+	const char *sVal;
+	const char *symbol;
+	const char *pVal;
+	Value *val;
+	Parameter *param;
+	ClassExtension *extension;
+	Anchor *anchor;
+};
+
+%token <iVal> INTEGER
+%token <fVal> FLOATVAL
+%token <iVal> ADDRESS
+%token <symbol> SYMBOL
+%token <sVal> STRINGVAL
+%token <pVal> tokPATTERN
+
+%left BECOMES
+%left OR
+%left AND
+%left GE LE EQ NE LT GT
+%left '+' '-' '|'
+%left '*' '/' '%' '&' '^'
+%nonassoc NOT
+%nonassoc UMINUS
+%nonassoc '~'
+%left IFX
+%left IFELSE
+
+%type <val> value
+%type <param> parameter
+%type <extension> extension
+%type <anchor> basic_anchor
+%type <anchor> source_anchor
+%type <anchor> destination_anchor
+
+%%
+
+program:
+program_section
+| program program_section
+;
+
+program_section:
+| machine_definition
+| machine_instantiation
+| error ';'
+| error '}'
+;
+
+machine_definition:
+definition_header '{' definition_body '}' {
+  if (hps.current_machineclass) {
+      // save the current list of states to the class
+      // save the current list of commands to the class
+      // etc
+      if (hps.current_locals.size()) {
+				// std::cout << hps.current_machineclass->getName() << " has " <<hps.current_locals.size() << " locals\n";
+				std::copy(hps.current_locals.begin(), hps.current_locals.end(),back_inserter(hps.current_machineclass->getLocals()));
+				hps.current_locals.clear();
+      }
+      hm_classes.push_back(hps.current_machineclass);
+      hps.current_machineclass = NULL;
+  }
+}
+;
+
+definition_header:
+SYMBOL STRUCTURE parameters {
+    hps.current_machineclass = new StructureClass($1);
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
+    hps.current_parameters.clear();
+}
+| SYMBOL STRUCTURE parameters extension {
+    hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
+    hps.current_parameters.clear();
+}
+| SYMBOL STRUCTURE property_block parameters  {
+    hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    hps.properties = hps.property_stack.back();
+    hps.property_stack.pop_back();
+    hps.current_machineclass->setProperties(hps.properties);
+    hps.properties.clear();
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters()));
+    hps.current_parameters.clear();
+}
+| SYMBOL STRUCTURE property_block parameters extension  {
+    hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    hps.properties = hps.property_stack.back();
+    hps.property_stack.pop_back();
+    hps.current_machineclass->setProperties(hps.properties);
+    hps.properties.clear();
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters()));
+    hps.current_parameters.clear();
+}
+| SYMBOL SCREEN parameters {
+    hps.current_machineclass = new StructureClass($1);
+		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
+    hps.current_parameters.clear();
+}
+| SYMBOL SCREEN property_block parameters  {
+    hps.current_machineclass = new StructureClass($1);
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+    hps.properties = hps.property_stack.back();
+    hps.property_stack.pop_back();
+    hps.current_machineclass->setProperties(hps.properties);
+    hps.properties.clear();
+    std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters()));
+    hps.current_parameters.clear();
+}
+;
+
+extension:
+EXTENDS SCREEN {
+	hps.current_base = new ClassExtension("SCREEN");
+	$$=hps.current_base;
+}
+| EXTENDS SYMBOL {
+	hps.current_base = new ClassExtension($2);
+	std::cout << "new extension of " <<  hps.current_base->getName() << "\n";
+	$$=hps.current_base;
+}
+;
+
+definition_body:
+definition_section
+| definition_body definition_section
+;
+
+
+definition_section:
+GLOBAL global_references ';'
+| OPTION option_settings ';'
+| LOCAL OPTION local_option_settings ';'
+| LINK source_anchor TO destination_anchor ';'
+| local_machine_instantiation;
+|
+;
+
+basic_anchor:
+REMOTE PROPERTY SYMBOL
+{ $$ = new RemoteAnchor($3); }
+| PROPERTY SYMBOL
+{ $$ = new StructurePropertyAnchor($2, 0); }
+| SYMBOL /* state */
+{ $$ = new StateAnchor($1, 0); }
+;
+
+source_anchor:
+basic_anchor
+| KEY INTEGER
+{ $$ = new KeyAnchor($2); }
+;
+
+destination_anchor:
+basic_anchor
+| ACTION SYMBOL parameters
+{ $$ = new ActionAnchor(new Action($2, hps.current_parameters, hps.command_list)); }
+;
+
+machine_instantiation:
+instantiation ';'
+{
+	// std::cerr << std::setw(5) << yylineno << " " << "Instance: " << *hps.current_machine << "\n";
+	hm_structures.push_back(hps.current_machine);
+	hps.current_machine = NULL;
+}
+;
+
+local_machine_instantiation:
+instantiation ';'
+{
+    bool found = false;
+    // check for duplicate names in local variables
+    BOOST_FOREACH(Parameter &p, hps.current_locals) {
+        if (p.val.kind == Value::t_symbol && p.val.sValue == hps.current_machine->getName()) {
+            std::stringstream ss;
+            ss << "## - Error: " << yyfilename << ":" << yylineno
+                << " local machine " << hps.current_machine->getName() << " already defined";
+            error_messages.push_back(ss.str());
+            ++num_errors;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+	    char *name = strdup(hps.current_machine->getName().c_str());
+        Parameter p(name);
+        p.machine = hps.current_machine;
+        hps.current_locals.push_back(p);
+    }
+}
+
+
+instantiation:
+SYMBOL SYMBOL parameters
+{
+	hps.current_machine = new Structure(nullptr, $1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties.clear();
+}
+| SYMBOL SYMBOL '<' pattern_list '>' parameters
+{
+	hps.current_machine = new Structure(nullptr, $1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties.clear();
+}
+| SYMBOL SYMBOL property_block parameters
+{
+	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
+	//__FILE__, __LINE__, properties,
+	//MachineInstance::MACHINE_INSTANCE));
+	//current_machine = 0;
+	hps.current_machine = new Structure(nullptr, $1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties = hps.property_stack.back();
+	hps.property_stack.pop_back();
+	hps.current_machine->setProperties(hps.properties);
+	hps.properties.clear();
+}
+| SYMBOL SYMBOL '<' pattern_list '>' property_block parameters
+{
+	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
+	//__FILE__, __LINE__, properties,
+	//MachineInstance::MACHINE_INSTANCE));
+	//current_machine = 0;
+	hps.current_machine = new Structure(nullptr, $1, $2);
+	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
+	hps.current_parameters.clear();
+	hps.current_machine->setDefinitionLocation(yyfilename, yylineno);
+	hps.properties = hps.property_stack.back();
+	hps.property_stack.pop_back();
+	hps.current_machine->setProperties(hps.properties);
+	hps.properties.clear();
+}
+;
+
+parameters:
+parameter
+| parameters COMMA parameter
+;
+
+pattern_list:
+SYMBOL
+| SYMBOL COMMA SYMBOL
+;
+
+parameter:
+value {
+	hps.current_value = *$1;
+	std::cerr << std::setw(5) << yylineno << " "  << "Symbol, value: " << *$1 << "\n";
+	hps.current_parameters.push_back(Parameter(*$1));
+	$$ = new Parameter(*$1);
+	delete $1;
+}
+| SYMBOL property_block {
+	hps.current_value = $1;
+	hps.properties = hps.property_stack.back();
+	hps.property_stack.pop_back();
+	std::cerr << std::setw(5) << yylineno << " "  << "Symbol, value: " << $1 << '[' << hps.properties << "]\n";
+	hps.current_parameters.push_back(Parameter($1, hps.properties));
+	$$ = new Parameter($1, hps.properties);
+	hps.properties.clear();
+}
+| {}
+;
+
+property_block:
+'(' properties ')'
+{
+	hps.property_stack.push_back(hps.properties);
+	hps.properties.clear();
+}
+;
+
+global_references:
+global_reference
+| global_references COMMA global_reference
+;
+
+global_reference:
+SYMBOL {
+    std::string name($1);
+    hps.current_machineclass->getGlobalRefs().insert( std::make_pair(name, (Structure*)0) );
+}
+;
+
+
+
+properties:
+property
+| properties COMMA property
+;
+
+property:
+SYMBOL PROPSEP value
+{
+	hps.properties.add($1, *$3);
+	delete $3;
+}
+| SYMBOL {
+	hps.properties.add($1, 0);
+}
+;
+
+local_option_settings:
+local_option_setting
+| local_option_settings COMMA local_option_setting
+;
+
+option_settings:
+option_setting
+| option_settings COMMA option_setting
+;
+
+
+option_setting:
+SYMBOL value {
+	std::string name($1);
+	Value v(*$2);
+	hps.current_machineclass->getOptions().insert(std::make_pair(name, v));
+	delete $2;
+}
+
+local_option_setting:
+SYMBOL value {
+	std::string name($1);
+	Value v(*$2);
+	hps.current_machineclass->getOptions().insert(std::make_pair(name, v));
+	hps.current_machineclass->addProperty(name);
+	hps.current_machineclass->addPrivateProperty(name);
+	delete $2;
+}
+
+value:
+INTEGER   {
+	$$ = new Value($1);
+}
+| FLOATVAL {
+	$$ = new Value($1);
+}
+| STRINGVAL {
+	$$ = new Value($1, Value::t_string);
+}
+| SYMBOL {
+	$$ = new Value($1);
+}
+
+%%
+void yyerror(const char *str)
+{
+	std::stringstream ss;
+	ss << "## - Error: " << yyfilename << ":" << yylineno << ": " << str << " at token: " << yytext;
+	error_messages.push_back(ss.str());
+	std::cerr << ss.str() << "\n";
+	num_errors++;
+}
