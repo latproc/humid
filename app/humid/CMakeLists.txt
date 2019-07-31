@@ -14,18 +14,41 @@ endif()
 set(INCLUDE
     "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
-set(LIBRARY
-    clockwork_client
-    nanogui
-)
-
 
 if (MINGW_BUILD)
-    list(APPEND LIBRARY
+    set(LIBRARY
+        clockwork_client
+        nanogui
+        opengl32
         ws2_32
+    )
+else()
+    set(LIBRARY
+        clockwork_client
+        nanogui
     )
 endif()
 
+##################################
+if (MINGW_BUILD)
+    add_definitions(
+        "-DGLAD_GLAPI_EXPORT"
+        # "MINGW_BUILD=1"
+        "-DNANOGUI_GLAD"
+        "-DNANOGUI_SHARED"
+        "-DNVG_SHARED"
+        # "_USE_MATH_DEFINES"
+    )
+else()
+    add_definitions(
+        # "-DGLAD_GLAPI_EXPORT"
+        # "MINGW_BUILD=1"
+        # "-DNANOGUI_GLAD"
+        "-DNANOGUI_SHARED"
+        "-DNVG_SHARED"
+        # "_USE_MATH_DEFINES"
+    )
+endif()
 
 ##################################
 #  generate yacc and bison files #
