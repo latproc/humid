@@ -7,8 +7,9 @@
 #include <nanogui/layout.h>
 #include <nanogui/label.h>
 #include <nanogui/button.h>
+#include "includes.hpp"
 #include "skeleton.h"
-#include "manuallayout.h"
+// #include "manual-layout.h"
 #include <iostream>
 
 #include <nanogui/glutil.h>

@@ -25,7 +25,7 @@
 #include "hmilang.h"
 #include "linkableobject.h"
 #include "linkableproperty.h"
-#include "manuallayout.h"
+#include "manual_layout/includes.hpp"
 #include "namedobject.h"
 #include "objectwindow.h"
 #include "palette.h"

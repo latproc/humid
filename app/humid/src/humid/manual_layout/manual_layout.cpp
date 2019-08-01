@@ -8,7 +8,7 @@
 #include <nanogui/theme.h>
 #include <nanogui/label.h>
 #include <numeric>
-#include "manuallayout.h"
+#include "manual_layout.h"
 
 NAMESPACE_BEGIN(nanogui)
 
