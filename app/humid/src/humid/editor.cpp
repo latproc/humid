@@ -118,6 +118,7 @@ void Editor::save(const char *new_base_path) {
 	std::map<NamedObject*, std::string> structure_files;
 	for (auto s : hm_classes) {
 		assert(s);
+		if (s->isBuiltIn()) continue; // skip generating file name for built-in classes
 		std::string fname = s->getName();
 		fname += ".humid";
 

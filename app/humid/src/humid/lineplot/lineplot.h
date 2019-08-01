@@ -17,6 +17,7 @@
 #include <humid/common/includes.hpp>
 #include <map>
 #include <nanogui/serializer/core.h>
+#include <lib_clockwork_client.hpp>
 
 #include "sampletrigger.h"
 

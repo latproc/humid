@@ -334,30 +334,12 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 					{ {"humid", "Humid layout file"},
 					{"txt", "Text file"} }, true));
 				if (file_path.length()) {
-					{
-						std::string parent_path = file_path;
-						parent_path.erase(parent_path.rfind('/'));
-						editor->saveAs(parent_path);
-					}
+					boost::filesystem::path base(file_path);
+					base = base.parent_path();
+					assert(boost::filesystem::is_directory(base));
+					editor->saveAs(base.native());
 					editor->gui()->updateProperties();
 					Structure *s = editor->gui()->getSettings();
-					boost::filesystem::path base;
-					base = source_files.front();
-					if (boost::filesystem::is_regular_file(base)) {
-						if (base.has_parent_path()) {
-							base = base.parent_path();
-						}
-						else {
-							std::string parent_path = source_files.front();
-							parent_path.erase(parent_path.rfind('/'));
-						}
-					}
-					else {
-						if (base.has_parent_path()) {
-							base = base.parent_path();
-						}
-					}
-					assert(boost::filesystem::is_directory(base));
 					s->getProperties().add("project_base", Value(base.string(), Value::t_string));
 					EditorSettings::setDirty(); // TBD fix this
 					EditorSettings::flush();
