@@ -2,9 +2,6 @@
 	path = ext/nanogui_/nanogui
 	url = https://github.com/latproc/nanogui
 	branch = wip
-[submodule "lib/clockwork.git"]
-	path = lib/clockwork_client.git
-	url = git@github.com:latproc/lib_clockwork_client.git
 [submodule "lib/clockwork_client.git"]
 	path = lib/clockwork_client.git
 	url = git@github.com:latproc/lib_clockwork_client.git
