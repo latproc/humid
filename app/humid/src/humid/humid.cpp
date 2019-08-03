@@ -500,15 +500,14 @@ private:
 
 void UserWindowWin::draw(NVGcontext *ctx) {
 	nvgSave(ctx);
-//    glMatrixMode(GL_PROJECTION);
-//    glLoadIdentity();
-//	float aspect = (float)width() / (float)height();
-//    glOrtho(3.0 * aspect, 3.0 * aspect, -3.0, 3.0, 1.0, 50.0);
-//	glMatrixMode(GL_MODELVIEW);
-//    glLoadIdentity();
-//nvgScale(ctx, 0.9f, 0.9f);
+	// TODO: add a scale  and offset setting for the user window and use them here for zooming and panning
+	// Note: NanoGUI widgets seem to have a scroll event so zooming/panning should hook into that
+	// TODO: (possibly?) add mouseMotionEvent, mouseButtonEvent etc to rescale mouse clicks etc
+	//	float scale = 0.5f;
+	//	int offset = width() * (1.0f - scale) / 2.0f;
+	//  nvgScale(ctx, 0.5f, 0.5f);
+	//	nvgTranslate(ctx, offset, offset);
 	nanogui::Window::draw(ctx);
-	//nvgScale(ctx, 1.0f/0.9f, 1.0f/1.9f);
 	nvgRestore(ctx);
 
 }
@@ -2234,7 +2233,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					project = new EditorProject(path.asString().c_str());
 				if (!project)
 					project = new EditorProject("UntitledProject");
-				getUserWindow()->setStructure(createScreenStructure());
+				//getUserWindow()->setStructure(createScreenStructure());
 				getUserWindow()->setVisible(true);
 				getToolbar()->setVisible(!run_only);
 				done = true;
