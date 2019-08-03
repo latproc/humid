@@ -12,7 +12,7 @@
 
 typedef std::map<std::string, NamedObject*> Dict;
 Dict NamedObject::global_objects;
-unsigned int NamedObject::user_object_sequence = 1;
+unsigned int NamedObject::user_object_sequence = 0;
 
 NamedObject::NamedObject(NamedObject *owner) : _named(false), parent(owner) {
     nextName(this);
