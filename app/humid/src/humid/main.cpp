@@ -41,53 +41,16 @@
 #include <vector>
 #include <set>
 #include <functional>
-#include <lib_clockwork_client.hpp>
-#include "propertymonitor.h"
-#include "draghandle.h"
-#include "manuallayout.h"
-#include "skeleton.h"
-#include "lineplot/includes.hpp"
-#include "panelscreen.h"
-#include "editorproject.h"
-#include "editorsettings.h"
-#include "editorgui.h"
-#include "anchor.h"
-#include "linkableproperty.h"
-
 #include <libgen.h>
-#include "helpers/includes.hpp"
-
 #include <boost/thread.hpp>
 #include <boost/thread/condition.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include "propertylist.h"
-#include "gltexture.h"
-#include "palette.h"
-#include "selectablewidget.h"
-#include "selectablebutton.h"
-#include "userwindow.h"
-#include "viewlistcontroller.h"
-#include "editorobject.h"
-#include "linkableobject.h"
-#include "editor.h"
-#include "factorybuttons.h"
-#include "editorwidget.h"
-#include "editorbutton.h"
-#include "editortextbox.h"
-#include "editorlabel.h"
-#include "editorimageview.h"
-#include "editorlineplot.h"
-#include "editorprogressbar.h"
-#include "structureswindow.h"
-#include "objectwindow.h"
-#include "patternswindow.h"
-#include "themewindow.h"
-#include "propertywindow.h"
-#include "helper.h"
-#include "screenswindow.h"
+#include <lib_clockwork_client.hpp>
+#include "includes.hpp"
+
 
 #ifndef ENTYPO_ICON_LAYOUT
 #define ENTYPO_ICON_LAYOUT                              0x0000268F
@@ -123,8 +86,8 @@ int run_only = 0;
 extern long collect_history;
 
 int num_errors = 0;
-std::list<std::string>error_messages;
-std::list<std::string>settings_files;
+std::list<std::string> error_messages;
+std::list<std::string> settings_files;
 std::list<std::string> source_files;
 
 using std::cout;
