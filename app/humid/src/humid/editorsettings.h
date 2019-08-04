@@ -11,7 +11,7 @@
 #include <ostream>
 #include <string>
 #include <map>
-#include <nanogui/widget.h>
+#include <nanogui/common.h>
 #include "structure.h"
 
 bool updateSettingsStructure(const std::string name, nanogui::Widget *widget);
@@ -27,6 +27,7 @@ public:
 
 	static void add(const std::string &name, nanogui::Widget *w);
 	static void setDirty() { dirty = true; }
+	static void updateWindowSettings(const std::string &name, const nanogui::Vector2i &pos, const nanogui::Vector2i &size, bool visible, bool is_shrunk);
 	std::ostream &operator<<(std::ostream &out) const;
 
 private:

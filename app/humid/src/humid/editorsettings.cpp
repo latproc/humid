@@ -89,3 +89,27 @@ void EditorSettings::add(const std::string &name, nanogui::Widget *w) {
     updateSettingsStructure(name, w);
     widgets[name] = w;
 }
+
+void EditorSettings::updateWindowSettings(const std::string &name, const nanogui::Vector2i &pos, const nanogui::Vector2i &size, bool visible, bool is_shrunk) {
+	Structure *s = EditorSettings::find(name);
+	if (!s) {
+		s = new Structure(nullptr, name, "WINDOW");
+		st_structures.push_back(s);
+		EditorSettings::setDirty();
+	}
+	SymbolTable &properties(s->getProperties());
+
+	if (is_shrunk) {
+		properties.add("sx", pos.x());
+		properties.add("sy", pos.y());
+	}
+	else {
+		properties.add("x", pos.x());
+		properties.add("y", pos.y());
+		properties.add("w", size.x());
+		properties.add("h", size.y());
+	}
+
+	properties.add("visible", visible ? 1 : 0);
+	setDirty();
+}

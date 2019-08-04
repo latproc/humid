@@ -50,6 +50,7 @@
 #include <boost/filesystem.hpp>
 #include <lib_clockwork_client.hpp>
 #include "includes.hpp"
+#include "list_panel.h"
 
 
 #ifndef ENTYPO_ICON_LAYOUT
@@ -146,19 +147,6 @@ public:
 	}
 private:
 	EditorGUI *gui;
-};
-
-class ListPanel : public nanogui::Widget, public Palette {
-public:
-	ListPanel(nanogui::Widget *owner);
-	virtual ~ListPanel() {}
-	void update();
-	Selectable *getSelectedItem();
-	void selectFirst();
-
-private:
-	nanogui::VScrollPanel *palette_scroller;
-	nanogui::Widget *palette_content;
 };
 
 class StartupWindow : public Skeleton {
@@ -3520,34 +3508,16 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 
 bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	if (!widget) return false;
-
-	Structure *s = EditorSettings::find(name);
-	if (!s) {
-		s = new Structure(nullptr, name, "WINDOW");
-		st_structures.push_back(s);
-		// std::cout << "added structure for window " << name << "\n";
-		EditorSettings::setDirty();
-	}
-	const nanogui::Vector2i &pos(widget->position());
-	SymbolTable &properties(s->getProperties());
-
-	Shrinkable *skel = dynamic_cast<Shrinkable *>(widget);
-	if (skel && skel->isShrunk()) {
-		properties.add("sx", pos.x());
-		properties.add("sy", pos.y());
-		skel->setShrunkPos(pos);
-		std::cout << "set shrunk position to " << pos.x() << "," << pos.y() << "\n";
-	}
-	else {
-		properties.add("x", pos.x());
-		properties.add("y", pos.y());
-		properties.add("w", widget->width());
-		properties.add("h", widget->height());
-	}
-
-	if (!EDITOR->gui()->getViewManager().get(name).visible)
-		properties.add("visible", 0);
-	return true;
+	const nanogui::Vector2i pos(widget->position());
+    const nanogui::Vector2i size(widget->width(), widget->height());
+    Shrinkable *skel = dynamic_cast<Shrinkable *>(widget);
+    bool is_shrunk = skel && skel->isShrunk();
+    if (is_shrunk) {
+        skel->setShrunkPos(widget->position());
+    }
+	bool visible = EDITOR->gui()->getViewManager().get(name).visible;
+    EditorSettings::updateWindowSettings(name, pos, size, visible, is_shrunk);
+    return true;
 }
 
 StartupWindow *EditorGUI::getStartupWindow() { return w_startup; }
