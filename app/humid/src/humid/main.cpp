@@ -2975,10 +2975,6 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
 			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
-void EditorLinePlot::setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val) {
-	if (evt == SampleTrigger::START) start_trigger_value = val;
-	else if (evt == SampleTrigger::STOP) stop_trigger_value = val;
-}
 
 void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
@@ -3073,43 +3069,26 @@ void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
 	properties->addVariable<std::string> (
 			"Start trigger",
 			[&,gui](const std::string value) mutable{
-			setTriggerName(gui->getUserWindow(),
-			SampleTrigger::START, value);},
+				UserWindow *uwin = gui->getUserWindow();
+				CircularBuffer *buf = uwin ? uwin->getDataBuffer(value) : nullptr;
+				setTriggerName(buf, SampleTrigger::START, value);},
 			[&]()->std::string { return start_trigger_name; });
 	properties->addVariable<int> ("Start Value",
 			[&,gui](int value) mutable{
-				setTriggerValue(gui->getUserWindow(),
-				SampleTrigger::START, value); },
+				setTriggerValue(SampleTrigger::START, value); },
 				[&]()->int { return start_trigger_value; });
 	properties->addVariable<std::string> ("Stop trigger",
 			[&,gui](const std::string value) mutable{
-				setTriggerName(gui->getUserWindow(),
-				SampleTrigger::STOP, value);},
-				[&,gui]()->std::string { return start_trigger_name; });
+				UserWindow *uwin = gui->getUserWindow();
+				CircularBuffer *buf = uwin ? uwin->getDataBuffer(value) : nullptr;
+				setTriggerName(buf, SampleTrigger::STOP, value);},
+			[&,gui]()->std::string { return start_trigger_name; });
 	properties->addVariable<int> ("Stop Value",
 			[&](int value) mutable{
-				setTriggerValue(gui->getUserWindow(),
-				SampleTrigger::STOP, value); },
-				[&]()->int { return stop_trigger_value; });
+				setTriggerValue(SampleTrigger::STOP, value); },
+			[&]()->int { return stop_trigger_value; });
 }
 
-
-void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Event evt, const std::string name) {
-
-	if (!user_window) return;
-
-	CircularBuffer *buf = user_window->getDataBuffer(name);
-	if (!buf) return;
-	SampleTrigger *t = buf->getTrigger(evt);
-	if (!t) {
-		t = new SampleTrigger(name, 0);
-		if (evt == SampleTrigger::START) t->setTriggerValue(start_trigger_value);
-		else if (evt == SampleTrigger::STOP) t->setTriggerValue(stop_trigger_value);
-		buf->setTrigger(t, evt);
-	}
-	else
-		t->setPropertyName(name);
-}
 
 void ObjectWindow::loadItems(const std::string group, const std::string match) {
 	using namespace nanogui;

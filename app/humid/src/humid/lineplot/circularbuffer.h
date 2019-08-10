@@ -95,14 +95,12 @@ private:
 #else
     std::recursive_mutex update_mutex;
 #endif
-	//boost::recursive_mutex update_mutex;
 	bool frozen;
 	SampleTrigger *start_trigger;
 	SampleTrigger *stop_trigger;
 	Humid::DataType data_type;
 
 	std::multimap<SampleTrigger::Event, Handler *> handlers;
-
 };
 
 #endif

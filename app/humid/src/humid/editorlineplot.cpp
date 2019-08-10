@@ -105,3 +105,21 @@ Value EditorLinePlot::getPropertyValue(const std::string &prop) {
   }
   return SymbolTable::Null;
 }
+
+void EditorLinePlot::setTriggerValue(SampleTrigger::Event evt, int val) {
+	if (evt == SampleTrigger::START) start_trigger_value = val;
+	else if (evt == SampleTrigger::STOP) stop_trigger_value = val;
+}
+
+void EditorLinePlot::setTriggerName(CircularBuffer *buf, SampleTrigger::Event evt, const std::string name) {
+	if (!buf) return;
+	SampleTrigger *t = buf->getTrigger(evt);
+	if (!t) {
+		t = new SampleTrigger(name, 0);
+		if (evt == SampleTrigger::START) t->setTriggerValue(start_trigger_value);
+		else if (evt == SampleTrigger::STOP) t->setTriggerValue(stop_trigger_value);
+		buf->setTrigger(t, evt);
+	}
+	else
+		t->setPropertyName(name);
+}

@@ -25,9 +25,7 @@ public:
     typedef enum { START, STOP } Event;
 	typedef enum { EQUAL, RISING, FALLING, ST_PASSTHROUGH } Kind;
 	typedef enum { IDLE, ACTIVE, TRIGGERED } State;
-        // enum Event { START, STOP };
-    	// enum Kind { EQUAL, RISING, FALLING, ST_PASSTHROUGH };
-    	// enum State { IDLE, ACTIVE, TRIGGERED };
+
 	SampleTrigger(const std::string prop,
 				  const Value val, Kind trigger_type = EQUAL);
     SampleTrigger(const SampleTrigger &orig);

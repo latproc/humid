@@ -34,8 +34,8 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override;
 
-	void setTriggerName(UserWindow *user_window, SampleTrigger::Event evt, const std::string name);
-	void setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val);
+	void setTriggerName(CircularBuffer *buf, SampleTrigger::Event evt, const std::string name);
+	void setTriggerValue(SampleTrigger::Event evt, int val);
 
 private:
 	Eigen::MatrixXd handle_coordinates;
