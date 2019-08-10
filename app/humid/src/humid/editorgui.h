@@ -39,6 +39,8 @@ class PropertyFormHelper;
 class ScreensWindow;
 class ViewsWindow;
 
+void setupTheme(nanogui::Theme *theme);
+
 class EditorGUI : public ClockworkClient {
 public:
 	enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };

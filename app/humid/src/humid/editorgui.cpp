@@ -29,6 +29,10 @@
 #include "screenswindow.h"
 #include "objectwindow.h"
 #include "resourcemanager.h"
+#include "userwindowwin.h"
+#include "toolbar.h"
+#include "startupwindow.h"
+#include "viewswindow.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -84,9 +88,149 @@ Structure *EditorGUI::getSettings() {
         return EditorSettings::create();
 }
 
+
+void setupTheme(nanogui::Theme *theme) {
+	using namespace nanogui;
+	theme->mStandardFontSize                 = 20;
+	theme->mButtonFontSize                   = 20;
+	theme->mTextBoxFontSize                  = -1;
+	theme->mWindowCornerRadius               = 2;
+	theme->mWindowHeaderHeight               = 30;
+	theme->mWindowDropShadowSize             = 10;
+	theme->mButtonCornerRadius               = 2;
+	theme->mTabBorderWidth                   = 0.75f;
+	theme->mTabInnerMargin                   = 5;
+	theme->mTabMinButtonWidth                = 20;
+	theme->mTabMaxButtonWidth                = 160;
+	theme->mTabControlWidth                  = 20;
+	theme->mTabButtonHorizontalPadding       = 10;
+	theme->mTabButtonVerticalPadding         = 2;
+
+	theme->mDropShadow                       = Color(0, 128);
+	theme->mTransparent                      = Color(0, 0);
+	theme->mBorderDark                       = Color(29, 255);
+	theme->mBorderLight                      = Color(92, 255);
+	theme->mBorderMedium                     = Color(35, 255);
+	theme->mTextColor                        = Color(0, 160);
+	theme->mDisabledTextColor                = Color(100, 80);
+	theme->mTextColorShadow                  = Color(100, 160);
+	theme->mIconColor                        = theme->mTextColor;
+
+	theme->mButtonGradientTopFocused         = Color(255, 255);
+	theme->mButtonGradientBotFocused         = Color(240, 255);
+	theme->mButtonGradientTopUnfocused       = Color(240, 255);
+	theme->mButtonGradientBotUnfocused       = Color(235, 255);
+	theme->mButtonGradientTopPushed          = Color(180, 255);
+	theme->mButtonGradientBotPushed          = Color(196, 255);
+
+	/* Window-related */
+	theme->mWindowFillUnfocused              = Color(220, 230);
+	theme->mWindowFillFocused                = Color(225, 230);
+	theme->mWindowTitleUnfocused             = theme->mDisabledTextColor;
+	theme->mWindowTitleFocused               = theme->mTextColor;
+
+	theme->mWindowHeaderGradientTop          = theme->mButtonGradientTopUnfocused;
+	theme->mWindowHeaderGradientBot          = theme->mButtonGradientBotUnfocused;
+	theme->mWindowHeaderSepTop               = theme->mBorderLight;
+	theme->mWindowHeaderSepBot               = theme->mBorderDark;
+
+	theme->mWindowPopup                      = Color(255, 255);
+	theme->mWindowPopupTransparent           = Color(255, 0);
+}
+
+void EditorGUI::createWindows() {
+	using namespace nanogui;
+	editor = new Editor(this);
+
+	UserWindowWin *uww = new UserWindowWin(this, "Untitled");
+	user_screens.push_back(uww);
+	nanogui::Theme *uwTheme = new nanogui::Theme(nvgContext());
+	setupTheme(uwTheme);
+	uwTheme->mWindowHeaderHeight = 0;
+	w_user = new UserWindow(this, uwTheme, uww);
+	w_theme = new ThemeWindow(this, theme);
+	w_properties = new PropertyWindow(this, theme);
+	w_toolbar = new Toolbar(this, theme);
+	w_startup = new StartupWindow(this, theme);
+	w_objects = new ObjectWindow(this, theme);
+
+	w_structures = StructuresWindow::create(this, theme);
+
+	w_patterns = new PatternsWindow(this, theme);
+	w_screens = new ScreensWindow(this, theme);
+	w_views = new ViewsWindow(this, theme);
+	/*
+	 ConfirmDialog *cd = new ConfirmDialog(this, "Humid V0.23");
+	 cd->setCallback([cd,this]{
+	 cd->setVisible(false);
+	 this->setState(EditorGUI::GUISELECTPROJECT);
+	 });
+	 window = cd->getWindow();
+	 window->setTheme(theme);
+	 */
+
+	EditorSettings::applySettings("MainWindow", this);
+	EditorSettings::applySettings("ThemeSettings", w_theme->getWindow());
+	EditorSettings::applySettings("Properties", w_properties->getWindow());
+	EditorSettings::applySettings("Structures", w_structures->getWindow());
+	EditorSettings::applySettings("Patterns", w_patterns->getWindow());
+	EditorSettings::applySettings("Objects", w_objects->getWindow());
+	EditorSettings::applySettings("ScreensWindow", w_screens->getWindow());
+
+	// delayed adding windows to the view manager window until the visibility settings are loaded.
+	w_views->addWindows();
+
+	EditorSettings::add("MainWindow", this);
+	EditorSettings::add("ThemeSettings", w_theme->getWindow());
+	EditorSettings::add("Properties", w_properties->getWindow());
+	EditorSettings::add("Structures", w_structures->getWindow());
+	EditorSettings::add("Patterns", w_patterns->getWindow());
+	EditorSettings::add("Objects", w_objects->getWindow());
+	EditorSettings::add("ScreensWindow", w_screens->getWindow());
+
+	uww->setMoveListener([](nanogui::Window *value) {
+		updateSettingsStructure("MainWindow", value);
+	});
+	w_objects->getSkeletonWindow()->setMoveListener(
+		[](nanogui::Window *value) { updateSettingsStructure("Objects", value); }
+	);
+	w_patterns->getSkeletonWindow()->setMoveListener(
+		[](nanogui::Window *value) { updateSettingsStructure("Patterns", value); }
+	);
+	w_structures->getSkeletonWindow()->setMoveListener(
+		[](nanogui::Window *value) { updateSettingsStructure("Structures", value); }
+	);
+	w_screens->getSkeletonWindow()->setMoveListener(
+		[](nanogui::Window *value) { updateSettingsStructure("ScreensWindow", value); }
+	);
+	{
+		SkeletonWindow *properties_skel = dynamic_cast<SkeletonWindow*>(w_properties->getWindow());
+		if (properties_skel) properties_skel->setMoveListener(
+			[](nanogui::Window *value) { updateSettingsStructure("Properties", value); }
+		);
+	}
+	{
+		SkeletonWindow *theme_skel = dynamic_cast<SkeletonWindow*>(w_theme->getWindow());
+		if (theme_skel) theme_skel->setMoveListener(
+			[](nanogui::Window *value) { updateSettingsStructure("ThemeSettings", value); }
+		);
+	}
+	w_screens->update();
+	performLayout(mNVGContext);
+	setState(EditorGUI::GUISELECTPROJECT);
+}
+
 void EditorGUI::addLinkableProperty(const std::string name, LinkableProperty*lp) {
 	RECURSIVE_LOCK  lock(linkables_mutex);
 	linkables[name] = lp;
+}
+
+
+LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
+	RECURSIVE_LOCK  lock(linkables_mutex);
+	std::map<std::string, LinkableProperty*>::iterator found = linkables.find(name);
+	if (found == linkables.end()) return 0;
+	return (*found).second;
 }
 
 
