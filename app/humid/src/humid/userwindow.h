@@ -22,6 +22,8 @@ class PanelScreen;
 class Structure;
 class PropertyFormHelper;
 
+// the UserWindow displays user interface widgets for a Screen structure
+// the widgets are linked to remote objects and update automatically from remote changes
 class UserWindow : public Skeleton, public Palette, public LinkableObject {
 public:
 	//UserWindow(EditorGUI *screen, nanogui::Theme *theme);
@@ -54,8 +56,14 @@ public:
 	CircularBuffer *createBuffer(const std::string name);
 
 	Structure *structure() { return current_structure; }
+
+	// syncs the current widget state to their owning structure and loads the given structure 
 	void setStructure( Structure *s);
+
+	// create and initialise widgets in the user window from the given structure
 	void loadStructure( Structure *s);
+
+	// remove all widgets from the user window
 	void clear();
 
 	virtual void select(Selectable * w) override;

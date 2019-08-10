@@ -83,8 +83,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	toolbar->setTheme(theme);
 	ToolButton *tb = new ToolButton(toolbar, ENTYPO_ICON_PENCIL);
 	tb->setFlags(Button::ToggleButton);
-	tb->setFixedSize(nanogui::Vector2i(32,32));
-	tb->setPosition(nanogui::Vector2i(32, 64));
+	tb->setFixedSize(Vector2i(32,32));
+	tb->setPosition(Vector2i(32, 64));
 	tb->setChangeCallback([this](bool state) {
 		Editor *editor = EDITOR;
 		if (state)

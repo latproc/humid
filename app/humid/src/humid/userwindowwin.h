@@ -28,7 +28,7 @@ public:
 
 	bool keyboardEvent(int key, int /* scancode */, int action, int modifiers) override;
 
-	bool mouseEnterEvent(const Vector2i &p, bool enter) override;
+	bool mouseEnterEvent(const nanogui::Vector2i &p, bool enter) override;
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
 		if (button == GLFW_MOUSE_BUTTON_RIGHT && !down) return true;

@@ -14,6 +14,10 @@
 #include "editor.h"
 #include "editorwidget.h"
 #include "editorprogressbar.h"
+#include "editorgui.h"
+#include "propertywindow.h"
+#include "factorybuttons.h"
+#include "objectwindow.h"
 
 EditorProgressBar::EditorProgressBar(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp)
 	: ProgressBar(parent), EditorWidget(owner, "ProgressBar", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
@@ -74,4 +78,50 @@ void EditorProgressBar::setProperty(const std::string &prop, const std::string v
     if (remote) {
         remote->link(new LinkableNumber(this));  }
     }
+}
+
+void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addVariable<float> (
+			"Value",
+			[&](float value) mutable { setValue(value); },
+			[&]()->float{ return value(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&, w, this,properties](std::string value) mutable {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
+				if (remote) remote->unlink(this);
+				remote = lp;
+				if (lp) { lp->link(new LinkableNumber(this)); }
+				//properties->refresh();
+			 },
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				}
+				return "";
+			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+	}
 }

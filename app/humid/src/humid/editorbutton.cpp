@@ -16,6 +16,9 @@
 #include "editor.h"
 #include "editorgui.h"
 #include "structure.h"
+#include "propertywindow.h"
+#include "factorybuttons.h"
+#include "objectwindow.h"
 
 std::string stripEscapes(const std::string &s);
 
@@ -409,4 +412,124 @@ void EditorButton::draw(NVGcontext *ctx) {
     }
 
 
+}
+
+void EditorButton::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
+	if (btn) {
+		EditorGUI *gui = EDITOR->gui();
+		properties->addVariable<nanogui::Color> (
+			"Off colour",
+			 [&,btn](const nanogui::Color &value) mutable{ setBackgroundColor(value); },
+			 [&,btn]()->const nanogui::Color &{ return backgroundColor(); });
+		properties->addVariable<nanogui::Color> (
+	 		"On colour",
+	 			 [&,btn](const nanogui::Color &value) mutable{ setOnColor(value); },
+	 			 [&,btn]()->const nanogui::Color &{ return onColor(); });
+	 	properties->addVariable<nanogui::Color> (
+	 		"Off text colour",
+	 			[&,btn](const nanogui::Color &value) mutable{ setTextColor(value); },
+	 			[&,btn]()->const nanogui::Color &{ return textColor(); } );
+		properties->addVariable<nanogui::Color> (
+			"On text colour",
+			[&,btn](const nanogui::Color &value) mutable{ setOnTextColor(value); },
+			[&,btn]()->const nanogui::Color &{ return onTextColor(); } );
+		properties->addVariable<std::string> (
+			"Off caption",
+			[&](std::string value) mutable{ setCaption(value); },
+			[&]()->std::string{ return caption(); });
+			properties->addVariable<std::string> (
+			"On caption",
+				[&](std::string value) mutable{ setOnCaption(value); },
+				[&]()->std::string{ return onCaption(); });
+		properties->addVariable<int> (
+			"Icon",
+			[&](int value) mutable{ setIcon(value); },
+			[&]()->int{ return icon(); });
+		properties->addVariable<int> (
+			"Alignment",
+			[&](int value) mutable{ alignment = value; },
+			[&]()->int{ return alignment; });
+		properties->addVariable<int> (
+			"Vertical Alignment",
+			[&](int value) mutable{ valign = value; },
+			[&]()->int{ return valign; });
+		properties->addVariable<bool> (
+			"Wrap Text",
+			[&](bool value) mutable{ wrap_text = value; },
+			[&]()->bool{ return wrap_text; });
+		properties->addVariable<int> (
+			"IconPosition",
+			[&](int value) mutable{
+				nanogui::Button::IconPosition icon_pos(nanogui::Button::IconPosition::Left);
+				switch(value) {
+					case 0: break;
+					case 1: icon_pos = nanogui::Button::IconPosition::LeftCentered; break;
+					case 2: icon_pos = nanogui::Button::IconPosition::RightCentered; break;
+					case 3: icon_pos = nanogui::Button::IconPosition::Right; break;
+					case 4: icon_pos = nanogui::Button::IconPosition::Filled; break;
+					default: break;
+				}
+				setIconPosition(icon_pos);
+				},
+			[&]()->int{
+				switch(iconPosition()) {
+					case nanogui::Button::IconPosition::Left: return 0;
+					case nanogui::Button::IconPosition::LeftCentered: return 1;
+					case nanogui::Button::IconPosition::RightCentered: return 2;
+					case nanogui::Button::IconPosition::Right: return 3;
+					case nanogui::Button::IconPosition::Filled: return 4;
+				}
+				return 0;
+			});
+		properties->addVariable<unsigned int> (
+			"Behaviour",
+			[&, gui](unsigned int value) mutable{ setFlags(value & 0xff); setupButtonCallbacks(remote, gui); },
+			[&]()->unsigned int{ return flags(); });
+		properties->addVariable<std::string> (
+			"Command",
+			[&](std::string value) { setCommand(value); },
+			[&]()->std::string{ return command(); });
+		properties->addVariable<bool> (
+			"Pushed",
+			[&](bool value) { setPushed(value); },
+			[&]()->bool{ return pushed(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&,btn,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
+				if (this->remote) this->remote->unlink(this);
+				this->setRemote(lp);
+				if (lp &&getDefinition()->getKind() == "INDICATOR")
+					lp->link(new LinkableIndicator(this));
+				//properties->refresh();
+			 },
+			[&]()->std::string{
+				if (remote) return remote->tagName();
+				if (getDefinition()) {
+					const Value &rmt_v = getDefinition()->getProperties().find("remote");
+					if (rmt_v != SymbolTable::Null)
+						return rmt_v.asString();
+				}
+				return "";
+			});
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+	}
 }

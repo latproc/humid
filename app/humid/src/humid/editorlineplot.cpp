@@ -14,6 +14,11 @@
 #include <nanovg_gl.h>
 
 #include "editorlineplot.h"
+#include "editorgui.h"
+#include "propertywindow.h"
+#include "editor.h"
+#include "factorybuttons.h"
+#include "objectwindow.h"
 
 EditorLinePlot::EditorLinePlot(NamedObject *owner, Widget *parent, std::string nam, LinkableProperty *lp, int icon)
 : LinePlot(parent, "Test"), EditorWidget(owner, "PLOT", nam, this, lp), handle_coordinates(9,2),
@@ -122,4 +127,118 @@ void EditorLinePlot::setTriggerName(CircularBuffer *buf, SampleTrigger::Event ev
 	}
 	else
 		t->setPropertyName(name);
+}
+
+
+void EditorLinePlot::loadProperties(PropertyFormHelper* properties) {
+	EditorWidget::loadProperties(properties);
+	EditorGUI *gui = EDITOR->gui();
+
+	properties->addVariable<float> ("X scale",
+		[&](float value) mutable{ x_scale = value; },
+		[&]()->float { return x_scale; });
+	properties->addVariable<float> ("X offset",
+		[&](float value) mutable{ x_scroll = value; },
+		[&]()->float { return x_scroll; });
+	properties->addVariable<float> ("Grid Intensity",
+		[&](float value) mutable{ grid_intensity = value; },
+		[&]()->float { return grid_intensity; });
+	properties->addVariable<bool> ("Display Grid",
+		[&](bool value) mutable{ display_grid = value; },
+		[&]()->bool { return display_grid; });
+	properties->addVariable<bool> ("Overlay plots",
+		[&](bool value) mutable{ overlay_plots = value; },
+		[&]()->bool { return overlay_plots; });
+	properties->addVariable<std::string> ("Monitors",
+		[&, gui](std::string value) mutable{
+			setMonitors( gui->getUserWindow(), value); },
+		[&, gui]()->std::string{ return monitors(); });
+	properties->addButton("Monitor Selected", [&,gui]() mutable{
+		if (gui->getObjectWindow()->hasSelections()) {
+			requestFocus();
+			std::string items;
+			for (auto sel : gui->getObjectWindow()->getSelected()) {
+				if (items.length()) items += ",";
+				ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+				if (btn) {
+					items += btn->tagName();
+				}
+			}
+			if (items.length()) {
+				setMonitors( gui->getUserWindow(), items );
+				gui->getObjectWindow()->clearSelections();
+			}
+
+			gui->getPropertyWindow()->update();
+		}
+	});
+	properties->addButton("Save Data", [&,gui,this]() {
+		std::string file_path( nanogui::file_dialog(
+				{ {"csv", "Comma separated values"},
+				  {"txt", "Text file"} }, true));
+		if (file_path.length())
+			this->saveData(file_path);
+	});
+	properties->addButton("Clear Data", [&]() {
+		for (auto *ts : data) {
+			ts->getData()->clear();
+		}
+	});
+	for (auto series : data) {
+		properties->addGroup(series->getName());
+		properties->addVariable<int> (
+			"Line style",
+			[&,series](int value) mutable{
+				series->setLineStyle(static_cast<nanogui::TimeSeries::LineStyle>(value));
+			},
+			[&,series]()->int{ return (int)series->getLineStyle(); });
+		properties->addVariable<float> (
+			"Line thickness",
+			[&,series](float value) mutable{
+				series->setLineWidth(value);
+			},
+			[&,series]()->float{ return series->getLineWidth(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+      [&](std::string value) { setRemoteName(value); },
+			[&]()->std::string{ LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(series->getName()); return lp ? lp->tagName() : ""; });
+		properties->addVariable<std::string> (
+			"Connection",
+			[&,this,properties](std::string value) {
+				if (remote) remote->setGroup(value); else setConnection(value);
+			 },
+			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
+		properties->addVariable<std::string> (
+			"Visibility",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				if (visibility) visibility->unlink(this);
+				visibility = lp;
+				if (lp) { lp->link(new LinkableVisibility(this)); }
+			 },
+			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+	}
+	properties->addGroup("Triggers");
+	properties->addVariable<std::string> (
+			"Start trigger",
+			[&,gui](const std::string value) mutable{
+				UserWindow *uwin = gui->getUserWindow();
+				CircularBuffer *buf = uwin ? uwin->getDataBuffer(value) : nullptr;
+				setTriggerName(buf, SampleTrigger::START, value);},
+			[&]()->std::string { return start_trigger_name; });
+	properties->addVariable<int> ("Start Value",
+			[&,gui](int value) mutable{
+				setTriggerValue(SampleTrigger::START, value); },
+				[&]()->int { return start_trigger_value; });
+	properties->addVariable<std::string> ("Stop trigger",
+			[&,gui](const std::string value) mutable{
+				UserWindow *uwin = gui->getUserWindow();
+				CircularBuffer *buf = uwin ? uwin->getDataBuffer(value) : nullptr;
+				setTriggerName(buf, SampleTrigger::STOP, value);},
+			[&,gui]()->std::string { return start_trigger_name; });
+	properties->addVariable<int> ("Stop Value",
+			[&](int value) mutable{
+				setTriggerValue(SampleTrigger::STOP, value); },
+			[&]()->int { return stop_trigger_value; });
 }

@@ -67,6 +67,10 @@ void PropertyFormHelper::clear() {
 	}
 }
 
+nanogui::Widget *PropertyFormHelper::content() {
+	return mContent;
+}
+
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);

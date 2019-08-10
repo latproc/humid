@@ -25,6 +25,8 @@
 #include "themewindow.h"
 #include "helper.h"
 #include "editorlabel.h"
+#include "objectwindow.h"
+#include "factorybuttons.h"
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
@@ -474,4 +476,122 @@ void EditorWidget::updateStructure() {
       }
     }
   }
+}
+
+void EditorWidget::loadProperties(PropertyFormHelper* properties) {
+	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+	if (w) {
+		properties->addVariable<std::string> (
+			"Structure",
+			[&,w](const std::string value) { },
+			[&,w]()->std::string{ return getDefinition()->getKind(); });
+		properties->addVariable<int> (
+			"Horizontal Pos",
+			[&,w](int value) mutable{
+			  Eigen::Vector2i pos(value, w->position().y());
+			  w->setPosition(pos);
+			},
+			[&,w]()->int{ return w->position().x(); });
+		properties->addVariable<int> (
+			"Vertical Pos",
+			[&,w](int value) mutable{
+			  Eigen::Vector2i pos(w->position().x(), value);
+			  w->setPosition(pos);
+			},
+			[&,w]()->int{ return w->position().y(); });
+		properties->addVariable<int> (
+			"Width",
+			[&,w](int value) mutable{ w->setWidth(value); },
+			[&,w]()->int{ return w->width(); });
+		properties->addVariable<int> (
+			"Height",
+			[&,w](int value) mutable{ w->setHeight(value); },
+			[&,w]()->int{ return w->height(); });
+		properties->addVariable<std::string> (
+			"Name",
+			[&](std::string value) mutable{
+				setName(value);
+				if (getDefinition()) {
+					getDefinition()->setName(value);
+				}
+			},
+			[&]()->std::string{ return getName(); });
+		properties->addVariable<int> (
+			"Font Size",
+			[&,w](int value) mutable{ w->setFontSize(value); },
+			[&,w]()->int{ return w->fontSize(); });
+		properties->addVariable<int> (
+			"Tab Position",
+			[&,w](int value) mutable{ setTabPosition(value); },
+			[&,w]()->int{ return tabPosition(); });
+		properties->addVariable<std::string> (
+			"Format",
+			[&](std::string value) { setValueFormat(value); },
+			[&]()->std::string{ return getValueFormat(); });
+		properties->addVariable<int> (
+			"Value Type",
+			[&,w](int value) mutable{ setValueType(value); },
+			[&,w]()->int{ return getValueType(); });
+		properties->addVariable<float> (
+			"Value Scale",
+			[&](float value) {
+				setValueScale(value);
+				if (remote) remote->apply();
+			},
+			[&]()->float{ return valueScale(); });
+		properties->addVariable<int> (
+			"Border",
+			[&,w](int value) mutable{ setBorder(value); },
+			[&,w]()->int{ return border; });
+		properties->addVariable<std::string> (
+			"Patterns",
+			[&,w](std::string value) mutable{ setPatterns(value); },
+			[&,w]()->std::string{ return patterns(); });
+		EditorGUI *gui = EDITOR->gui();
+		properties->addButton(
+			"Link to Remote", [&,gui,this,properties]() mutable{
+			if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
+				gui->getUserWindow()->getWindow()->requestFocus();
+				std::string items;
+				for (auto sel : gui->getObjectWindow()->getSelected()) {
+					ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+					LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+					if (remote) remote->unlink(this);
+					remote = lp;
+					setProperty("Remote", btn->tagName());
+					break;
+				}
+				gui->getObjectWindow()->clearSelections();
+				//properties->refresh();
+				gui->getUserWindow()->clearSelections();
+				gui->getPropertyWindow()->update();
+				//gui->getUserWindow()->select(this);
+			}
+		});
+		properties->addButton(
+			"Link Visibility", [&,gui,this,properties]() mutable{
+			if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
+				gui->getUserWindow()->getWindow()->requestFocus();
+				std::string items;
+				for (auto sel : gui->getObjectWindow()->getSelected()) {
+					ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
+					if (btn) {
+						LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+						if (visibility) visibility->unlink(this);
+						visibility = lp;
+						setProperty("Visibility", btn->tagName());
+						visibility->link(new LinkableVisibility(this));
+					}
+					break;
+				}
+				gui->getObjectWindow()->clearSelections();
+				gui->getUserWindow()->clearSelections();
+				gui->getPropertyWindow()->update();
+			}
+		});
+		properties->addVariable<bool> (
+			"Inverted Visibility",
+			[&,w](bool value) mutable{ inverted_visibility = value; },
+			[&,w]()->bool{ return inverted_visibility; });
+	}
 }

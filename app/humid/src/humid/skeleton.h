@@ -18,6 +18,8 @@
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 
 class Structure;
+
+// SkeletonWindow is the base class for editor panels, property window and content area
 class SkeletonWindow : public nanogui::Window, public PanelScreen, public Shrinkable {
 public:
 	SkeletonWindow(Widget *parent, const std::string &title = "Untitled")
