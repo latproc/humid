@@ -2,6 +2,9 @@ all:
 	[ -d "build" ] || mkdir build
 	cd build && cmake .. && make -j4
 
+test:
+	[ -d "build" ] || mkdir build
+	cd build && cmake .. && make -j4 && cd app/humid/tests && ctest
 
 release:
 	[ -d "build" ] || mkdir build

@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 2.80)
 
+if(MINGW_BUILD)
+else()
+    if (RUN_TESTS)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
+endif()
+
 set(exe_name "humid")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 
