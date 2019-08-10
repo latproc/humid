@@ -8,6 +8,10 @@
 	#include "hmilang.tab.hpp"
 	#include "linkableobject.h"
 
+    #if __cplusplus > 199711L
+    #define register // Deprecated in C++11.
+    #endif
+
 	void yyerror(const char *);
 
 	static char *buf;

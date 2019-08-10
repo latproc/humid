@@ -13,6 +13,9 @@
 #include <boost/foreach.hpp>
 #include <mutex>
 #include <lib_clockwork_client/includes.hpp>
+#if __cplusplus > 199711L
+#define register // Deprecated in C++11.
+#endif
 
 #define COMPILER_MAIN
 #include "hmilang.h"

@@ -6,6 +6,10 @@
 	#include <stdlib.h>
 	#include "settingslang.h"
 	#include "settingslang.tab.hpp"
+    #if __cplusplus > 199711L
+    #define register // Deprecated in C++11.
+    #endif
+
 	void st_yyerror(const char *);
 
 	static char *st_buf;
