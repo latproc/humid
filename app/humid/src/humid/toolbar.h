@@ -27,7 +27,7 @@ class Toolbar : public nanogui::Window {
 public:
 	Toolbar(EditorGUI *screen, nanogui::Theme *);
 	nanogui::Window *getWindow() { return this; }
-	bool mouseDragEvent(const Vector2i &p, const Vector2i &rel, int button, int modifiers) override {
+	bool mouseDragEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override {
 		bool res = nanogui::Window::mouseDragEvent(p, rel, button, modifiers);
 		updateSettingsStructure("ToolBar", this);
 		return res;

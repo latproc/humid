@@ -14,6 +14,18 @@ using Eigen::Vector2i;
 
 #define TO_STRING( ID ) #ID
 
+Handle::Mode all_handles[] = {
+	Handle::POSITION,
+	Handle::RESIZE_TL,
+	Handle::RESIZE_T,
+	Handle::RESIZE_TR,
+	Handle::RESIZE_R,
+	Handle::RESIZE_BL,
+	Handle::RESIZE_L,
+	Handle::RESIZE_BR,
+	Handle::RESIZE_B
+};
+
 Handle Handle::create(Handle::Mode which, nanogui::Vector2i pos, nanogui::Vector2i size) {
 	Handle result;
 	result.setMode(which);
@@ -51,6 +63,28 @@ Handle Handle::create(Handle::Mode which, nanogui::Vector2i pos, nanogui::Vector
 	return result;
 }
 
+std::ostream &Handle::operator<<(std::ostream& out) const{ 
+	return out;
+}
+
+Handle::Handle() : mMode(NONE) { }
+
+void Handle::setPosition(Vector2i newpos) { pos = newpos; }
+Vector2i Handle::position() const { return pos; }
+
+void Handle::setMode(Mode newmode) { mMode = newmode; }
+
+Handle::Mode Handle::mode() { return mMode; }
+
+Handle::Mode *Handle::handles() { return all_handles; }
+unsigned int Handle::numHandles() { return 9; }
+
+#if 0
+//TODO:
+Handle Handle::closest(Vector2i pt) {
+	return Handle();
+}
+#endif
 
 void PositionMonitor::update(nanogui::DragHandle *dh) {
 	if (dh && dh->getTarget()) {

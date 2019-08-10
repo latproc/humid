@@ -13,9 +13,59 @@
 #include "editor.h"
 #include "editorwidget.h"
 
+class Proxy {
+public:
+
+};
+
+class ItemProxy {
+public:
+	ItemProxy(PropertyFormHelper *pfh, nanogui::Widget *w) : helper(pfh), item(w) {
+		getAll();
+	}
+	void getAll() {
+		if (!item) return;
+		x = item->position().x();
+		y = item->position().y();
+		//tbd
+	}
+	void setAll() {
+		if (!item) return;
+		item->setPosition(Eigen::Vector2i(x,y));
+		//tbd
+	}
+	void link(nanogui::Widget *w) {
+		item = w;
+		getAll();
+		helper->clear();
+		helper->addVariable("x pos", x);
+		helper->addVariable("y pos", y);
+	}
+	int x;
+	int y;
+private:
+	PropertyFormHelper *helper;
+	nanogui::Widget *item;
+};
+
 void PropertyWindow::toggleShrunk() {
 }
 
+PropertyFormWindow::PropertyFormWindow(nanogui::Widget *parent, const std::string &title) : SkeletonWindow(parent, title), mContent(0) { }
+
+void PropertyFormWindow::setContent(nanogui::Widget *content) { mContent = content; }
+
+bool PropertyFormWindow::focusEvent(bool focused) {
+	using namespace nanogui;
+	return nanogui::Window::focusEvent(focused);
+}
+
+void PropertyFormHelper::clear() {
+	using namespace nanogui;
+	while (window()->childCount()) {
+		window()->removeChild(0);
+	}
+}
 
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;

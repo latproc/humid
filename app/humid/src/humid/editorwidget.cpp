@@ -26,8 +26,6 @@
 #include "helper.h"
 #include "editorlabel.h"
 
-extern Handle::Mode all_handles[];
-
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
     definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1), value_type(0) {
@@ -184,8 +182,8 @@ bool EditorWidget::editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i
 }
 
 void EditorWidget::updateHandles(nanogui::Widget *w) {
-    for (int i=0; i<9; ++i) {
-        Handle h = Handle::create(all_handles[i], w->position(), w->size());
+    for (int i=0; i < Handle::numHandles(); ++i) {
+        Handle h = Handle::create(Handle::handles()[i], w->position(), w->size());
         handle_coordinates(i,0) = h.position().x();
         handle_coordinates(i,1) = h.position().y();
         handles[i] = h;

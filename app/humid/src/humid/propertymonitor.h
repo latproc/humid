@@ -21,29 +21,21 @@ using Eigen::Vector2i;
 class Handle {
 public:
 
-enum Mode { NONE, POSITION, RESIZE_TL, RESIZE_T, RESIZE_TR, RESIZE_R, RESIZE_BL, RESIZE_L, RESIZE_BR, RESIZE_B};
+	enum Mode { NONE, POSITION, RESIZE_TL, RESIZE_T, RESIZE_TR, RESIZE_R, RESIZE_BL, RESIZE_L, RESIZE_BR, RESIZE_B};
+	static Handle create(Mode which, nanogui::Vector2i pos, nanogui::Vector2i size);
+	static Handle::Mode *handles();
+	static unsigned int numHandles();
 
+	std::ostream &operator<<(std::ostream& out) const;
+	Handle();
 
-static Handle create(Mode which, nanogui::Vector2i pos, nanogui::Vector2i size);
+	void setPosition(Vector2i newpos);
+	Vector2i position() const;
 
-std::ostream &operator<<(std::ostream& out) const{ 
-	return out;
-}
+	void setMode(Mode newmode);
+	Mode mode();
 
-Handle() : mMode(NONE) {}
-
-void setPosition(Vector2i newpos) { pos = newpos; }
-Vector2i position() const { return pos; }
-
-void setMode(Mode newmode) { mMode = newmode; }
-Mode mode() { return mMode; }
-
-Handle closest(Vector2i pt) {
-	Handle result;
-	
-	
-	return result;
-}
+	Handle closest(Vector2i pt);
 
 protected:
 	Mode mMode;
