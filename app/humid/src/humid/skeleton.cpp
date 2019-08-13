@@ -409,27 +409,36 @@ zmq::socket_t* ClockworkClient::Connection::getCommandSocket() const {
 }
 
 bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
-	if (command_state == WaitingCommand && !messages.empty()) {
-		std::string msg = messages.front().first;
-		std::cout << name << " sending " << msg << "\n";
-		safeSend(*cmd_interface, msg.c_str(), msg.length());
-		command_state = WaitingResponse;
+	if (command_state == WaitingCommand) {
+		bool need_send = false;
+		{
+			boost::lock_guard<boost::mutex> lock(messages_mutex);
+			if (!messages.empty()) {
+				transit_message = messages.front().first;
+				response_handler = messages.front().second;
+				messages.pop_front();
+				need_send = true;
+			}
+		}
+		if (need_send) {
+			safeSend(*cmd_interface, transit_message.c_str(), transit_message.length());
+			command_state = WaitingResponse;
+		}
 	}
 	else if (command_state == WaitingResponse) {
 		char *buf = 0;
 		size_t len = 0;
 		if (safeRecv(*cmd_interface, &buf, &len, false, 0)) {
-			std::string s = messages.front().first;
 			if (buf) {
 				buf[len] = 0;
-				messages.front().second(buf);
+				response_handler(buf);
+				delete[] buf;
 			}
-			messages.pop_front();
-			delete[] buf;
+			transit_message = "";
 			command_state = WaitingCommand;
 		}
 	}
-	return command_state == WaitingCommand && !messages.empty();
+	return false;
 }
 
 bool ClockworkClient::Connection::handleSubscriber() {
@@ -565,10 +574,18 @@ std::string ClockworkClient::escapeNonprintables(const char *buf) {
 }
 
 void ClockworkClient::Connection::queueMessage(const std::string s, std::function< void(std::string) >f) {
-	messages.push_back(std::make_pair(s, f) );
+	{
+		boost::lock_guard<boost::mutex> lock(messages_mutex);
+		messages.push_back(std::make_pair(s, f) );
+	}
+	message_available.notify_one();
 }
 void ClockworkClient::Connection::queueMessage(const char *s, std::function< void(std::string) >f) {
-	messages.push_back(std::make_pair(s, f) );
+	{
+		boost::lock_guard<boost::mutex> lock(messages_mutex);
+		messages.push_back(std::make_pair(s, f) );
+	}
+	message_available.notify_one();
 }
 
 ClockworkClient::Connection *findConnection(const std::string &connection_name, std::map<std::string, ClockworkClient::Connection*> &connections) {

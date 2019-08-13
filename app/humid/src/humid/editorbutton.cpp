@@ -41,20 +41,19 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
       if (cmd.length()) {
-          std::cout << name << " sending " << cmd << " to " << conn << "\n";
           gui->queueMessage(conn, cmd,
-            [](std::string s){std::cout << " Response: " << s << "\n"; });
+            [](std::string s){ });
       }
       else if (flags() & nanogui::Button::RemoteButton) {
         std::string msgon = gui->getIODSyncCommand(conn, 0, address(), pushed() ? 1 : 0);
-            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgon, [](std::string s){ });
       }
       if (flags() & nanogui::Button::NormalButton && !(flags() & nanogui::Button::RemoteButton)) {
         if (getRemote()) {
             std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgon, [](std::string s){ });
             std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-            gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgoff, [](std::string s){ });
           }
       }
 
@@ -65,11 +64,11 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
         if ( !(flags() & nanogui::Button::NormalButton ) )  {
           if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){ });
           }
           else
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(),(state)?1:0), [](std::string s){ });
         }
       }
     });

@@ -138,14 +138,24 @@ public:
 		zmq::socket_t *iosh_cmd;
 		zmq::socket_t *cmd_interface;
 	protected:
+		// when messages are sent to clockwork they are queued onto this 'messages' list along
+		// with a handler function that is called when the response arrives.
+		// There can be only one message in transit at a time and this message and its response handler
+		// are copied into local variables and removed from the queue once the messages is sent.
 		std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
+		boost::mutex messages_mutex;
+		boost::condition_variable message_available;
+		std::string transit_message;
+		std::function< void(std::string) >response_handler;
+
 		MessagingInterface *g_iodcmd;
+		// when the message queue is empty, the command_state will be 'waitingCommand', when a
+		// message has been sent, the command_state will be 'WaitingResponse'
 		CommandState command_state;
 		uint64_t last_update;
 		uint64_t first_message_time;
 		long message_time_scale;
 		std::string local_commands;
-
 	};
 
 	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
