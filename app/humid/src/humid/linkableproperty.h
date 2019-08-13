@@ -43,6 +43,7 @@ public:
 	void unlink(EditorObject*w);
 	void save(std::ostream &out) const;
 	void apply();
+	std::ostream &operator<<(std::ostream &out) const;
 private:
 	std::string group_name;
 	int kind;
@@ -56,6 +57,7 @@ private:
 	std::list<LinkableObject*> links;
 };
 
+std::ostream& operator<<(std::ostream &out, const LinkableProperty &);
 
 class PropertyLink {
 public:

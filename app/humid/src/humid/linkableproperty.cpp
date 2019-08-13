@@ -24,6 +24,7 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
         char *rest = 0;
         modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
       }
+      std::cout << "created LinkableProperty: " << *this << "\n";
     }
 const std::string &LinkableProperty::group() const { return group_name; }
 
@@ -109,11 +110,20 @@ void LinkableProperty::unlink(EditorObject *w) {
     }
 }
 
-void LinkableProperty::save(std::ostream &out) const {
+std::ostream &LinkableProperty::operator<<(std::ostream &out) const {
 	out << "group:" << shortName(group_name) << ", "
 		<< "kind:" << kind << ", "
 		<< "address:" << address_str << ", "
 		<< "type:" << data_type_name << ", "
 		<< "size:" << data_size << ", "
 		<< "remote:" << tag_name;
+    return out;
+}
+
+void LinkableProperty::save(std::ostream &out) const {
+    operator<<(out);
+}
+
+std::ostream& operator<<(std::ostream &out, const LinkableProperty &lp) {
+    return lp.operator<<(out);
 }

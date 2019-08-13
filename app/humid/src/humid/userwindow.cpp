@@ -504,6 +504,7 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setName(element->getName());
 				el->setDefinition(element);
 				if (connection != SymbolTable::Null) {
+					// TODO: why is there no setRemoteName() here?
 					el->setConnection(connection.asString());
 				}
 				const Value &img_scale_val(element->getProperties().find("scale"));
@@ -537,8 +538,8 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( ep, element->getProperties());
 				fixElementSize( ep, element->getProperties());
 				if (connection != SymbolTable::Null) {
-          ep->setRemoteName(remote.asString());
-          ep->setConnection(connection.asString());
+					ep->setRemoteName(remote.asString());
+					ep->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
 				if (value_type != -1) ep->setValueType(value_type);
@@ -563,7 +564,7 @@ void UserWindow::loadStructure( Structure *s) {
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (connection != SymbolTable::Null) {
-          textBox->setRemoteName(remote.asString());
+					textBox->setRemoteName(remote.asString());
 					textBox->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
@@ -619,7 +620,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
 				if (connection != SymbolTable::Null) {
-          lp->setRemoteName(remote.asString());
+					lp->setRemoteName(remote.asString());
 					lp->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
@@ -652,7 +653,7 @@ void UserWindow::loadStructure( Structure *s) {
 				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
 				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 				if (connection != SymbolTable::Null) {
-          b->setRemoteName(remote.asString());
+					b->setRemoteName(remote.asString());
 					b->setConnection(connection.asString());
 				}
 				fixElementPosition( b, element->getProperties());
