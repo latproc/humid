@@ -42,13 +42,14 @@ class ScreenSelectButton : public SelectableButton {
 		UserWindow *uw = screens_window->getUserWindow();
 		if (uw) {
 			uw->clear();
-			std::cout << "cleared main view\n";
 		}
 	}
 	virtual void justSelected() override {
+		UserWindow *uw = EDITOR->gui()->getUserWindow();
+		if (uw)
+			uw->clearSelections();
 		if (!getScreen())
 			setScreen(findScreen(caption()));
-		UserWindow *uw = EDITOR->gui()->getUserWindow();
 		if (uw && getScreen()) {
 			// in edit mode the active screen is set by user actions.
 			// otherwise it is only changed by a property change from the remote end
@@ -119,7 +120,8 @@ ScreensWindow::ScreensWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleto
 void ScreensWindow::clearSelections(Selectable * except) {
 	if (except == 0)
 		int x = 1;
-	return Palette::clearSelections(except);
+	Palette::clearSelections(except);
+	reset();
 }
 
 UserWindow *ScreensWindow::getUserWindow() {
@@ -183,8 +185,8 @@ void ScreensWindow::update() {
 			b->setPosition(Vector2i(2,2));
 			b->setPassThrough(true);
 			b->setCallback( [app,b](){
-				app->getScreensWindow()->getWindow()->requestFocus();
 				app->getUserWindow()->clearSelections();
+				app->getScreensWindow()->getWindow()->requestFocus();
 				app->getScreensWindow()->clearSelections(b);
 				b->select();
 			});

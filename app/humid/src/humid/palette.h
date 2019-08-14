@@ -26,6 +26,7 @@ public:
 	virtual void select(Selectable * w);
 	virtual void deselect(Selectable *w);
 	virtual void clearSelections(Selectable * except = 0);
+	virtual void reset(); // clear selections without attempting callbacks
 
 	const std::set<Selectable *> &getSelected() const;
 protected:

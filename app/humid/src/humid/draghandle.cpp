@@ -16,6 +16,9 @@
 #include <nanogui/entypo.h>
 #include "propertymonitor.h"
 #include "draghandle.h"
+#include "editorgui.h"
+#include "editorwidget.h"
+#include "structure.h"
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -63,6 +66,10 @@ bool DragHandle::mouseButtonEvent(const Vector2i &p, int /* button */, bool down
 		if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
 		if (y>parent()->size().y()) y = parent()->size().y();
 		setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
+	}
+	else {
+		EditorWidget *ew = dynamic_cast<EditorWidget*>(getTarget());
+		if (ew) ew->updateStructure();
 	}
 	if (mCallback)
 		mCallback(mValue);

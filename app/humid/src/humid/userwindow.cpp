@@ -435,12 +435,12 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
-            LinkableProperty *lp = nullptr;
-            if (remote != SymbolTable::Null)
-                lp = gui->findLinkableProperty(remote.asString());
-            LinkableProperty *visibility = nullptr;
-            if (vis != SymbolTable::Null)
-                visibility = gui->findLinkableProperty(vis.asString());
+			LinkableProperty *lp = nullptr;
+			if (remote != SymbolTable::Null)
+					lp = gui->findLinkableProperty(remote.asString());
+			LinkableProperty *visibility = nullptr;
+			if (vis != SymbolTable::Null)
+					visibility = gui->findLinkableProperty(vis.asString());
 
 			bool wrap = false;
 			{

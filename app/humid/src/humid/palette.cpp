@@ -23,12 +23,17 @@ void Palette::clearSelections(Selectable * except) {
 	if (!selections.empty()) {
 		std::list<Selectable*> to_deselect;
 		std::copy(selections.begin(), selections.end(), std::back_inserter(to_deselect) );
+		selections.clear();
 		for (auto iter = to_deselect.begin(); iter != to_deselect.end(); ++iter) {
 			Selectable *sel = *iter;
 			if (sel != except && sel->isSelected()) 
 				sel->deselect();
 		}
 	}
+}
+
+void Palette::reset() {
+	selections.clear();
 }
 
 const std::set<Selectable *> &Palette::getSelected() const {
