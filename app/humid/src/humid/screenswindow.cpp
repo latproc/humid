@@ -28,21 +28,26 @@ class ScreenSelectButton : public SelectableButton {
 			const std::string &caption, ScreensWindow*sw)
 		: SelectableButton(kind, pal, parent, caption),  screens_window(sw) {
 			screen = findScreen(caption);
-			if (screen)
-            {
-				// std::cout << "screen select button " << caption << " selects structure " << screen->getName() << ":" << screen->getKind() << "\n";
+#if 0
+			if (screen) {
+				std::cout << "screen select button " << caption << " selects structure " << screen->getName() << ":" << screen->getKind() << "\n";
 			}
-            else
-            {
-				// std::cout << "screen select button " << caption << " has no screen\n";
-            }
-		 }
+			else
+			{
+				std::cout << "screen select button " << caption << " has no screen\n";
+			}
+#endif
+		}
 	virtual void justDeselected() override {
 		UserWindow *uw = screens_window->getUserWindow();
-		if (uw) uw->clear();
+		if (uw) {
+			uw->clear();
+			std::cout << "cleared main view\n";
+		}
 	}
 	virtual void justSelected() override {
-		if (!getScreen()) setScreen(findScreen(caption()));
+		if (!getScreen())
+			setScreen(findScreen(caption()));
 		UserWindow *uw = EDITOR->gui()->getUserWindow();
 		if (uw && getScreen()) {
 			// in edit mode the active screen is set by user actions.
@@ -165,8 +170,8 @@ void ScreensWindow::update() {
 
 	for (auto item : hm_structures ) {
 		Structure *s = item;
-		// std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
-		StructureClass *sc = findClass(s->getKind());
+		//std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
+		StructureClass *sc = s->getStructureDefinition(); //findClass(s->getKind());
 		int count = 0;
 		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
 			++count;
@@ -184,6 +189,8 @@ void ScreensWindow::update() {
 				b->select();
 			});
 		}
+		//else
+		//	std::cout << s->getName() << ":" << ((sc) ? sc->getName() : "null") << " is not a screen\n";
 	}
 
 	if (!palette_content->childCount()) {

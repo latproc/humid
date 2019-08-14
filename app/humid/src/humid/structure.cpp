@@ -14,7 +14,7 @@ std::list<Structure *>hm_structures;
 std::list<StructureClass *> hm_classes;
 
 std::ostream &Structure::operator<<(std::ostream &out) const {
-	return out << name << " " << kind;
+	return out << name << " " << kind << " (" << ((getStructureDefinition())? getStructureDefinition()->getName() : "null") << ")";
 }
 
 std::ostream &operator<<(std::ostream &out, const Structure &s) {

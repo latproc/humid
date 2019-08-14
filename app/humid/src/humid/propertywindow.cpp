@@ -141,17 +141,17 @@ void PropertyWindow::update() {
 					for (auto prop : common) {
 						std::string label(prop);
 						properties->addVariable<std::string>(label,
-																								 [widgets, label](std::string value) {
-																									 for (auto sel : widgets) {
-																										 assert(sel);
-																										 sel->setProperty(label, value);
-																									 }
-																								 },
-																								 [widgets, label]()->std::string{
-																									 EditorWidget *ew = widgets.front();
-																									 assert(ew);
-																									 return ew->getProperty(label);
-																								 });
+							 [widgets, label](std::string value) {
+								 for (auto sel : widgets) {
+									 assert(sel);
+									 sel->setProperty(label, value);
+								 }
+							 },
+							 [widgets, label]()->std::string{
+								 EditorWidget *ew = widgets.front();
+								 assert(ew);
+								 return ew->getProperty(label);
+							 });
 					}
 				}
 				else {

@@ -786,59 +786,61 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 	{
 	std::string label("Screen Name");
 	properties->addVariable<std::string>(label,
-							 [uw](std::string value) {
-								 PanelScreen *ps = uw->getActivePanel();
-								 if (ps) {
-									 ps->setName(value);
-									 assert(uw->structure());
-									 uw->structure()->setName(value);
-								 }
-								 uw->getWindow()->requestFocus();
-								 if (uw->app()->getScreensWindow()) {
-									 uw->app()->getScreensWindow()->updateSelectedName();
-								 }
-							 },
-							 [uw]()->std::string{
-								 PanelScreen *ps = uw->getActivePanel();
-								 if (ps) return ps->getName();
-								 return "";
-							 });
+		 [uw](std::string value) {
+			 PanelScreen *ps = uw->getActivePanel();
+			 if (ps) {
+				 ps->setName(value);
+				 assert(uw->structure());
+				 uw->structure()->setName(value);
+			 }
+			 uw->getWindow()->requestFocus();
+			 if (uw->app()->getScreensWindow()) {
+				 uw->app()->getScreensWindow()->updateSelectedName();
+			 }
+		 },
+		 [uw]()->std::string{
+			 PanelScreen *ps = uw->getActivePanel();
+			 if (ps) return ps->getName();
+			 return "";
+		 });
 	}
 	{
 	std::string label("File Name");
 	properties->addVariable<std::string>(label,
-							 [uw](std::string value) {
-								 std::cout << "setting file name for " << uw->structure()->getName() << " to " << value << "\n";
-								 	if (uw->structure())
-									uw->structure()->getInternalProperties().add("file_name", Value(value, Value::t_string));
-							 },
-							 [uw]()->std::string{
-									if (!uw->structure()) return "";
-									const Value &vx = uw->structure()->getInternalProperties().find("file_name");
-									if (vx != SymbolTable::Null) return vx.asString();
-									return "";
-							 });
+		 [uw](std::string value) {
+			 std::cout << "setting file name for " << uw->structure()->getName() << " to " << value << "\n";
+				if (uw->structure())
+				uw->structure()->getInternalProperties().add("file_name", Value(value, Value::t_string));
+		 },
+		 [uw]()->std::string{
+				if (!uw->structure()) return "";
+				const Value &vx = uw->structure()->getInternalProperties().find("file_name");
+				if (vx != SymbolTable::Null) return vx.asString();
+				return "";
+		 });
 	}
 	{
 	std::string label("Screen Class");
 	properties->addVariable<std::string>(label,
-							 [uw](std::string value) {
-								 assert(uw->structure());
-								 StructureClass *sc = findClass(value);
-								 if (sc && sc != uw->structure()->getStructureDefinition())  {
-									 std::cout << "Error: structure class " << value << " already exists\n";
-									 return;
-								 }
-								 if (uw->structure()->getStructureDefinition())
-								 uw->structure()->getStructureDefinition()->setName(value);
-							 },
-							 [uw]()->std::string{
-								 ScreensWindow *sw = (uw->app()->getScreensWindow());
-								 if (!sw) return "";
-								 if (!uw->structure()) return "Untitled";
-								  if (!uw->structure()->getStructureDefinition()) return "Unknown";
-								 return uw->structure()->getStructureDefinition()->getName();
-							 });
+		 [uw](std::string value) {
+			 assert(uw->structure());
+			 StructureClass *sc = findClass(value);
+			 if (sc && sc != uw->structure()->getStructureDefinition())  {
+				 std::cout << "Error: structure class " << value << " already exists\n";
+				 return;
+			 }
+			 if (uw->structure()->getStructureDefinition()) {
+			 		uw->structure()->getStructureDefinition()->setName(value);
+					uw->structure()->setKind(value);
+			 }
+		 },
+		 [uw]()->std::string{
+			 ScreensWindow *sw = (uw->app()->getScreensWindow());
+			 if (!sw) return "";
+			 if (!uw->structure()) return "Untitled";
+				if (!uw->structure()->getStructureDefinition()) return "Unknown";
+			 return uw->structure()->getStructureDefinition()->getName();
+		 });
 	}
 	{
 	std::string label("Class File");

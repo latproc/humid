@@ -87,7 +87,7 @@ public:
 	virtual ~Structure() {}
 	std::list<Parameter> parameters;
 	void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
-	StructureClass *getStructureDefinition() { return class_definition; }
+	StructureClass *getStructureDefinition() const { return class_definition; }
 	// set the location of the instance of the structure (not its class)
 	void setDefinitionLocation(const std::string fnam, int lineno) {
 		internal_properties.add("file_name", Value(fnam, Value::t_string));
@@ -103,6 +103,7 @@ public:
 	const std::string &getName() { return name; }
 	void setName( const std::string new_name) { name = new_name; }
 	const std::string &getKind() { return kind; }
+	void setKind(const std::string new_kind) { kind = new_kind; }
 
 	bool isA(const std::string &kind);
 
