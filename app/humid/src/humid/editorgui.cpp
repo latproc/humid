@@ -526,7 +526,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				}
 				if (getPatternsWindow()) {
 					nanogui::Window *w = getPatternsWindow()->getWindow();
-					w->setVisible(editmode && views.get("Patterns").visible);
+					w->setVisible(editmode && views.get("Patterns", false).visible);
 				}
 				if (getStructuresWindow()) {
 					nanogui::Window *w = getStructuresWindow()->getWindow();

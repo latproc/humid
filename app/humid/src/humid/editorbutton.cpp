@@ -207,13 +207,14 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
   if (prop == "Remote") {
     if (remote) {
       if (getDefinition()->getKind() == "INDICATOR")
-        remote->link(new LinkableIndicator(this));  }
+        remote->link(new LinkableIndicator(this));
     }
-    if (prop == "Alignment") alignment = std::atoi(value.c_str());
-    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-    if (prop == "Wrap Text") {
-      wrap_text = (value == "1" || value == "true" || value == "TRUE");
-    }
+  }
+  if (prop == "Alignment") alignment = std::atoi(value.c_str());
+  if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  if (prop == "Wrap Text") {
+    wrap_text = (value == "1" || value == "true" || value == "TRUE");
+  }
 }
 
 

@@ -26,11 +26,11 @@ public:
 	void set(std::string name, bool vis) {
 		items[name].visible = vis;
 	}
-	ViewOptions get(std::string name) {
+	ViewOptions get(std::string name, bool default_visibility = true) {
 		// default is for views to be visible
 		auto found = items.find(name);
 		if (found == items.end()) {
-			set(name, true);
+			set(name, default_visibility);
 			return items[name];
 		}
 		return (*found).second;

@@ -28,7 +28,7 @@ public:
 	void setVisible(bool which) { window->setVisible(which); }
 	nanogui::Window *getWindow()  { return window; }
 	void addWindows();
-	void add(const std::string name, nanogui::Widget *);
+	void add(const std::string name, nanogui::Widget *, bool visible = true);
 private:
 	EditorGUI *gui;
 	nanogui::Window *window;

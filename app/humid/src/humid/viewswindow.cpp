@@ -32,22 +32,22 @@ void ViewsWindow::addWindows() {
 	add("Structures", gui->getStructuresWindow()->getWindow());
 	add("Properties", gui->getPropertyWindow()->getWindow());
 	add("Objects", gui->getObjectWindow()->getWindow());
-	add("Patterns", gui->getPatternsWindow()->getWindow());
+	add("Patterns", gui->getPatternsWindow()->getWindow(), false);
 	add("Screens", gui->getScreensWindow()->getWindow());
 }
 
-void ViewsWindow::add(const std::string name, nanogui::Widget *w) {
+void ViewsWindow::add(const std::string name, nanogui::Widget *w, bool visible) {
 	assert(w);
 	properties->addVariable<bool> (
 		name,
 		  [&,name,this](bool value) mutable{
 				nanogui::Widget *w = gui->getNamedWindow(name);
-			  if (w) w->setVisible(value);
+				if (w) w->setVisible(value);
 				gui->getViewManager().set(name, value);
 			  EditorSettings::flush();
 		  },
 		  [&,name,this]()->bool{
-			  return this->gui->getViewManager().get(name).visible;
+			  return this->gui->getViewManager().get(name, visible).visible;
 		  });
 }
 
