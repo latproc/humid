@@ -142,10 +142,10 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 
 	// if a file was given, use its parent directory as the base
 	boost::filesystem::path base_path(files_and_directories.front());
-	if (!boost::filesystem::is_directory(base_path.native()) && base_path.has_parent_path()) {
+	if (!boost::filesystem::is_directory(base_path.string()) && base_path.has_parent_path()) {
 		base_path = base_path.parent_path();
 	}
-	assert(boost::filesystem::is_directory(base_path.native())); // what should we do here?
+	assert(boost::filesystem::is_directory(base_path.string())); // what should we do here?
 	bool base_checked = false;
 
 	// Set the directory as the project base, subsequent file references will all be relative to this base.
@@ -156,7 +156,7 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 		settings = EditorSettings::create();
 	}
 	assert(settings);
-	settings->getProperties().add("project_base", Value(base_path.native(), Value::t_string));
+	settings->getProperties().add("project_base", Value(base_path.string(), Value::t_string));
 
 	std::list<path> files;
 	{
@@ -191,7 +191,8 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 
 	/* load configuration from given files */
 	int opened_file = 0;
-	std::string base(base_path.native());
+	// std::string base(base_path.string());
+	std::string base = base_path.string();
 	std::set<std::string>loaded_files;
 	std::list<path>::const_iterator f_iter = files.begin();
     // std::cout << "- Loading Files\n";

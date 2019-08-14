@@ -136,7 +136,7 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 					boost::filesystem::path base(file_path);
 					base = base.parent_path();
 					assert(boost::filesystem::is_directory(base));
-					editor->saveAs(base.native());
+					editor->saveAs(base.string());
 					editor->gui()->updateProperties();
 					Structure *s = editor->gui()->getSettings();
 					s->getProperties().add("project_base", Value(base.string(), Value::t_string));

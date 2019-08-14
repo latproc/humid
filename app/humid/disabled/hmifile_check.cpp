@@ -48,7 +48,7 @@ static void listDirectory( const std::string pathToCheck, std::list<std::string>
         for (boost::filesystem::directory_iterator iter = boost::filesystem::directory_iterator(dir); iter != boost::filesystem::directory_iterator(); iter++)
         {
             boost::filesystem::directory_entry file = *iter;
-            char *path_str = strdup(file.path().native().c_str());
+            char *path_str = strdup(file.path().string().c_str());
             struct stat file_stat;
             int err = stat(path_str, &file_stat);
             if (err == -1) {
@@ -60,7 +60,7 @@ static void listDirectory( const std::string pathToCheck, std::list<std::string>
             else if (boost::filesystem::exists(file.path()) &&
 				(file.path().extension() == ".lpc" || file.path().extension() == ".cw") )
             {
-                file_list.push_back( file.path().native() );
+                file_list.push_back( file.path().string() );
             }
             free(path_str);
         }
