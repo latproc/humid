@@ -80,7 +80,7 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
 std::string EditorTextBox::getScaledValue(bool scaleUp) {
   if (value_scale != 1.0f && (value_type == Value::t_integer || value_type == Value::t_float) ) {
     const char *p = value().c_str();
-    while (*p && (!isdigit(*p) || *p=='0')) ++p;
+    while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
     if (value_type == Value::t_integer && value_scale != 1.0f) {
       long i_value = std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
       char buf[20];
@@ -312,7 +312,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
       float scale = value_scale;
       if (scale == 0.0f) scale = 1.0f;
       const char *p = valStr.c_str();
-      while (*p && (!isdigit(*p) || *p=='0')) ++p;
+      while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
       if (format_string.length()) {
         if (value_type == Value::t_integer) {// integer
           char buf[20];
