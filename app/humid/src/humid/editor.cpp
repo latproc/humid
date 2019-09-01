@@ -127,9 +127,12 @@ void Editor::save(const char *new_base_path) {
 			filename = s->getInternalProperties().find("file_name");
 		if (filename != SymbolTable::Null)
 			fname = filename.asString();
+		path file_path(fname);
+		std::cout << "filing structure " << s->getName() << " into " << file_path << "\n";
 
-		std::string file_path = base_path_str + "/" + fname;
-		structure_files[s] = file_path;
+		//std::string file_path = fname; //base_path_str + "/" + fname;
+		std::string path_str = file_path.filename().native();
+		structure_files[s] = path_str;
 	}
 	for (auto s : hm_structures) {
 		if (s->getOwner()) {
@@ -144,14 +147,17 @@ void Editor::save(const char *new_base_path) {
 		if (filename != SymbolTable::Null) {
 			fname = filename.asString();
 		}
+		path file_path(fname);
 
 		std::cout << "filing structure " << s->getName() << " into " << base_path_str << "/"<< fname << "\n";
 
-		std::string file_path(base_path_str);
-		file_path += "/" + fname;
-		structure_files[s] = file_path;
+		//std::string file_path(base_path_str);
+		//file_path += "/" + fname;
+		std::string path_str = file_path.filename().native();
+		structure_files[s] = path_str;
 	}
 	// save to the files
+	path base_path(base_path_str);
 	std::set<StructureClass*>saved_classes;
 	for (auto item : structure_files) {
 		Structure *s = dynamic_cast<Structure *>(item.first);
@@ -171,8 +177,8 @@ void Editor::save(const char *new_base_path) {
 		}
 		*/
 	  std::ofstream out;
-      boost::filesystem::path fn_fix(item.second);
-      std::string fn = fn_fix.string();
+		boost::filesystem::path fn_fix = base_path / item.second;
+		std::string fn = fn_fix.string();
 
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {
