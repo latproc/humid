@@ -1544,7 +1544,8 @@ class ScreenSelectButton : public SelectableButton {
 		if (uw && getScreen()) {
 			// in edit mode the active screen is set by user actions.
 			// otherwise it is only changed by a property change from the remote end
-			EditorGUI::systemSettings()->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
+			if (EDITOR->isEditMode())
+				EditorGUI::systemSettings()->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
 			uw->setStructure(getScreen());
 			uw->refresh();
 		}
@@ -1717,6 +1718,35 @@ void ScreensWindow::selectFirst() {
 	if (s) s->select();
 }
 
+void ScreensWindow::select(const std::string screen_name) {
+	std::cout << "selecting " << screen_name << "\n";
+	if (hasSelections()) return;
+	int n = palette_content->childCount();
+	if (!n) return;
+	for (int i=0; i<n; ++i) {
+		std::cout << "searching\n";
+
+		nanogui::Widget *cell = palette_content->childAt(i);
+		if (!cell->childCount()) continue;
+		ScreenSelectButton *btn = dynamic_cast<ScreenSelectButton*>(cell->childAt(0));
+		if (btn) {
+			if (btn->caption() != screen_name) {
+				std::cout << "skipping " << btn->caption() << "\n";
+				continue;
+			}
+			Selectable *s = dynamic_cast<Selectable*>(cell->childAt(0));
+			if (s) {
+				std::cout << "selectting item " << i << "\n";
+
+				s->select();
+				return;
+			}
+			else std::cout << "item " << i << "is not named\n";
+		}
+		else std::cout << "item " << i << "is not a button\n";
+
+	}
+}
 
 ViewsWindow::ViewsWindow(EditorGUI *screen, nanogui::Theme *theme) : gui(screen) {
 	using namespace nanogui;
@@ -2763,36 +2793,38 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 void EditorGUI::update(ClockworkClient::Connection *connection) {
 	if (connection->getStartupState() != sDONE && connection->getStartupState() != sRELOAD) {
 		// if the tag file is loaded, get initial values
-		if (/*linkables.size() && */ connection->getStartupState() == sINIT && connection) {
-			std::cout << "Sending data initialisation request\n";
-			connection->setState(sSENT);
-			queueMessage( connection->getName(), "MODBUS REFRESH",
-				[this, connection](std::string s) {
-					if (s != "failed") {
-						cJSON *obj = cJSON_Parse(s.c_str());
-						if (!obj) {
-							connection->setState(sINIT);
-							return;
-						}
-						if (obj->type == cJSON_Array) {
-							processModbusInitialisation(connection->getName(), obj);
-							w_objects->rebuildWindow();
-							w_user->setStructure(w_user->structure());
-							const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-							if (remote_screen != SymbolTable::Null) {
-								LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-								if (lp) {
-									lp->link(getUserWindow());
-								}
+		if (/*linkables.size() && */ connection->getStartupState() == sINIT) {
+			if (connection) {
+				std::cout << "Sending data initialisation request\n";
+				connection->setState(sSENT);
+				queueMessage( connection->getName(), "MODBUS REFRESH",
+					[this, connection](std::string s) {
+						if (s != "failed") {
+							cJSON *obj = cJSON_Parse(s.c_str());
+							if (!obj) {
+								connection->setState(sINIT);
+								return;
 							}
+							if (obj->type == cJSON_Array) {
+								processModbusInitialisation(connection->getName(), obj);
+								w_objects->rebuildWindow();
+								w_user->setStructure(w_user->structure());
+								const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+								if (remote_screen != SymbolTable::Null) {
+									LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+									if (lp) {
+										lp->link(getUserWindow());
+									}
+								}
 
+							}
+							connection->setState(sRELOAD);
 						}
-						connection->setState(sRELOAD);
+						else
+							connection->setState(sINIT);
 					}
-					else
-						connection->setState(sINIT);
-				}
-			);
+				);
+			}
 		}
 	}
 
@@ -3919,7 +3951,14 @@ int main(int argc, const char ** argv ) {
 			app->setVisible(true);
 
 			if (!app->getUserWindow()->structure()) {
-				app->getScreensWindow()->selectFirst();
+				const Value &active(EditorGUI::systemSettings()->getProperties().find("active_screen"));
+				if (active == SymbolTable::Null) {
+					app->getScreensWindow()->selectFirst();
+				}
+				else {
+					std::cout << "attempting to select screen " << active << "\n";
+					app->getScreensWindow()->select(active.asString());
+				}
 			}
 
 			nanogui::mainloop();
