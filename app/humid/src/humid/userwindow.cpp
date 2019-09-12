@@ -465,6 +465,9 @@ void UserWindow::loadStructure( Structure *s) {
 			long tab_pos = 0;
 			const Value &tab_pos_val(element->getProperties().find("tab_pos"));
 			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
+			double x_scale = 0;
+			const Value &x_scale_val(element->getProperties().find("x_scale"));
+			if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
 			if (kind == "LABEL") {
                 const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
@@ -628,11 +631,12 @@ void UserWindow::loadStructure( Structure *s) {
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
-        {
-          bool should_overlay_plots;
-          if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
-            lp->overlay(should_overlay_plots);
-        }
+				if (x_scale) lp->setTimeScale(x_scale);
+				{
+					bool should_overlay_plots;
+					if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
+					lp->overlay(should_overlay_plots);
+				}
 				const Value &monitors(element->getProperties().find("monitors"));
 				lp->setInvertedVisibility(ivis);
 				if (monitors != SymbolTable::Null) {

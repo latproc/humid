@@ -53,7 +53,8 @@ class ScreenSelectButton : public SelectableButton {
 		if (uw && getScreen()) {
 			// in edit mode the active screen is set by user actions.
 			// otherwise it is only changed by a property change from the remote end
-			EditorGUI::systemSettings()->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
+			if (EDITOR->isEditMode())
+				EditorGUI::systemSettings()->getProperties().add("active_screen", Value(getScreen()->getName(), Value::t_string));
 			uw->setStructure(getScreen());
 			uw->refresh();
 		}
@@ -231,4 +232,24 @@ void ScreensWindow::selectFirst() {
 	if (s) s->select();
 }
 
-
+void ScreensWindow::select(const std::string screen_name) {
+	if (hasSelections()) return;
+	int n = palette_content->childCount();
+	if (!n) return;
+	for (int i=0; i<n; ++i) {
+		nanogui::Widget *cell = palette_content->childAt(i);
+		if (!cell->childCount()) continue;
+		ScreenSelectButton *btn = dynamic_cast<ScreenSelectButton*>(cell->childAt(0));
+		if (btn) {
+			if (btn->caption() != screen_name) {
+				continue;
+			}
+			Selectable *s = dynamic_cast<Selectable*>(cell->childAt(0));
+			if (s) {
+				s->select();
+				return;
+			}
+		}
+	}
+}
+ 

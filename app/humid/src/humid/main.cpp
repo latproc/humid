@@ -575,7 +575,14 @@ int main(int argc, const char ** argv ) {
 			app->setVisible(true);
 
 			if (!app->getUserWindow()->structure()) {
-				app->getScreensWindow()->selectFirst();
+				const Value &active(EditorGUI::systemSettings()->getProperties().find("active_screen"));
+				if (active == SymbolTable::Null) {
+					app->getScreensWindow()->selectFirst();
+				}
+				else {
+					app->getScreensWindow()->select(active.asString());
+				}
+
 			}
 
 			nanogui::mainloop();

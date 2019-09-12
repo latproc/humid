@@ -29,6 +29,7 @@ public:
 	virtual void clearSelections(Selectable * except = 0) override;
 	Structure *getSelectedStructure();
 	void selectFirst();
+	void select(const std::string screen_name);
 	void updateSelectedName();
 private:
 	EditorGUI *gui;
