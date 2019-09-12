@@ -1038,6 +1038,9 @@ void UserWindow::loadStructure( Structure *s) {
 			long tab_pos = 0;
 			const Value &tab_pos_val(element->getProperties().find("tab_pos"));
 			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
+			double x_scale = 0;
+			const Value &x_scale_val(element->getProperties().find("x_scale"));
+			if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
 			if (kind == "LABEL") {
                 const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
@@ -1192,7 +1195,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
 				if (connection != SymbolTable::Null) {
-          lp->setRemoteName(remote.asString());
+          			lp->setRemoteName(remote.asString());
 					lp->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
@@ -1200,11 +1203,12 @@ void UserWindow::loadStructure( Structure *s) {
 				if (value_scale != 1.0) lp->setValueScale( value_scale );
 				if (font_size) lp->setFontSize(font_size);
 				if (tab_pos) lp->setTabPosition(tab_pos);
-        {
-          bool should_overlay_plots;
-          if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
-            lp->overlay(should_overlay_plots);
-        }
+				if (x_scale) lp->setTimeScale(x_scale);
+				{
+				bool should_overlay_plots;
+				if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
+					lp->overlay(should_overlay_plots);
+				}
 				const Value &monitors(element->getProperties().find("monitors"));
 				lp->setInvertedVisibility(ivis);
 				if (monitors != SymbolTable::Null) {
@@ -1719,32 +1723,23 @@ void ScreensWindow::selectFirst() {
 }
 
 void ScreensWindow::select(const std::string screen_name) {
-	std::cout << "selecting " << screen_name << "\n";
 	if (hasSelections()) return;
 	int n = palette_content->childCount();
 	if (!n) return;
 	for (int i=0; i<n; ++i) {
-		std::cout << "searching\n";
-
 		nanogui::Widget *cell = palette_content->childAt(i);
 		if (!cell->childCount()) continue;
 		ScreenSelectButton *btn = dynamic_cast<ScreenSelectButton*>(cell->childAt(0));
 		if (btn) {
 			if (btn->caption() != screen_name) {
-				std::cout << "skipping " << btn->caption() << "\n";
 				continue;
 			}
 			Selectable *s = dynamic_cast<Selectable*>(cell->childAt(0));
 			if (s) {
-				std::cout << "selectting item " << i << "\n";
-
 				s->select();
 				return;
 			}
-			else std::cout << "item " << i << "is not named\n";
 		}
-		else std::cout << "item " << i << "is not a button\n";
-
 	}
 }
 
@@ -3956,7 +3951,6 @@ int main(int argc, const char ** argv ) {
 					app->getScreensWindow()->selectFirst();
 				}
 				else {
-					std::cout << "attempting to select screen " << active << "\n";
 					app->getScreensWindow()->select(active.asString());
 				}
 			}
