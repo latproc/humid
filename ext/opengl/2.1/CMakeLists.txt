@@ -1,10 +1,6 @@
 
 set(exe_name "DruidOpenGL_2_1-Dep")
 
-if(${CMAKE_VERSION} VERSION_GREATER "3.10.0")
-    cmake_policy(SET CMP0072 NEW)
-endif()
-
 ##################################
 #       Gather Dependencies      #
 ##################################
