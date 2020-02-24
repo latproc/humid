@@ -21,7 +21,7 @@ class ResourceManager {
 	uint64_t last_release_time;
 	static std::map<int, ResourceManager*> resources;
 protected:
-	~ResourceManager();
+	virtual ~ResourceManager();
 	
 public:	
 	

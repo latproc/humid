@@ -31,7 +31,9 @@ ResourceManager *ResourceManager::Factory::create(int item_id, int refs) const {
     return new ResourceManager(item_id, refs);
 }
 
-void ResourceManager::use() { ++refs; }
+void ResourceManager::use() {
+	++refs;
+}
 
 int ResourceManager::release() { 
     assert(refs);
