@@ -33,7 +33,7 @@ public:
 		public:
 		~Factory();
 		virtual ResourceManager *create() const;
-		virtual ResourceManager *create(int item_id, int refs=0) const;
+		virtual ResourceManager *create(int item_id, int refs=1) const;
 	};
 
 	void use();
@@ -60,7 +60,7 @@ private:
 class TextureResourceManager : public ResourceManager {
 public:
 	TextureResourceManager();
-	TextureResourceManager(int texture_id, int init_refs = 0);
+	TextureResourceManager(int texture_id, int init_refs = 1);
 	void close(int texture_id);
 };
 

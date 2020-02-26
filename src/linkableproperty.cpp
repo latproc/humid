@@ -78,8 +78,6 @@ void LinkableProperty::setValue(const Value &v) {
 
 void LinkableProperty::apply() {
 	for (auto link : links) {
-    if (link)
-      std::cout << "updating link " << current << "\n";
 		link->update(current);
   }
 }

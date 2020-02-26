@@ -286,7 +286,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 
 void cleanupTextureCache() {
 	uint64_t now = microsecs();
-	if (texture_cache.size() < 12) return;
+	if (texture_cache.size() < 2) return;
 	std::map<uint64_t, Texture*> to_remove;
 	auto iter = texture_cache.begin();
 	while (iter != texture_cache.end()) {
