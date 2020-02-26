@@ -988,6 +988,13 @@ void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
 	}
 }
 
+static bool stringEndsWith(const std::string &src, const std::string ending) {
+	size_t l_src = src.length();
+	size_t l_end = ending.length();
+	if (l_src < l_end) return false;
+	return src.substr(src.end() - l_end - src.begin()) == ending;
+}
+
 void UserWindow::loadStructure( Structure *s) {
 	StructureClass *sc = findClass(s->getKind());
 	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
@@ -1008,12 +1015,20 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
-            LinkableProperty *lp = nullptr;
-            if (remote != SymbolTable::Null)
-                lp = gui->findLinkableProperty(remote.asString());
-            LinkableProperty *visibility = nullptr;
-            if (vis != SymbolTable::Null)
-                visibility = gui->findLinkableProperty(vis.asString());
+			LinkableProperty *lp = nullptr;
+			if (remote != SymbolTable::Null) {
+				std::string lp_name =remote.asString();
+				lp = gui->findLinkableProperty(lp_name);
+				if (!lp) {
+					if (stringEndsWith(lp_name, ".VALUE")) {
+						lp_name = lp_name.substr(0, lp_name.length()-6);
+						lp = gui->findLinkableProperty(lp_name);
+					}
+				}
+			}
+			LinkableProperty *visibility = nullptr;
+			if (vis != SymbolTable::Null)
+				visibility = gui->findLinkableProperty(vis.asString());
 
 			bool wrap = false;
 			{ 

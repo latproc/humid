@@ -25,6 +25,13 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
         modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
       }
     }
+
+LinkableProperty::~LinkableProperty() {
+	if (links.size()) {
+		std::cout << "deleting linkable property " << name << " with " << links.size() << " links\n";
+	}
+}
+
 const std::string &LinkableProperty::group() const { return group_name; }
 
 void LinkableProperty::setGroup(const std::string g) { group_name = g; }

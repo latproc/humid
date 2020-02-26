@@ -94,7 +94,10 @@ void EditorImageView::setImageName(const std::string new_name, bool reload) {
       mImageID = ResourceManager::manage(img);
       updateImageParameters();
       image_name = new_name;
-      ResourceManager::release(saved_img);
+      int refs = ResourceManager::release(saved_img);
+			if (refs == 0) {
+				EDITOR->gui()->freeImage(saved_img);
+			}
     }
 }
 

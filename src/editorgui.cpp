@@ -45,6 +45,7 @@ public:
 	GLTexture::handleType data;
 };
 std::map<std::string, Texture*> texture_cache;
+std::map<GLuint, std::string> loaded_textures;
 
 class EditorKeyboard {
 public:
@@ -198,6 +199,19 @@ bool isURL(const std::string name) {
 	return matches(name.c_str(), "^http://.*");
 }
 
+void EditorGUI::freeImage(GLuint image_id) {
+	auto found = loaded_textures.find(image_id);
+	if (found != loaded_textures.end()) {
+		std::string tex_name = (*found).second;
+		auto found_tex = texture_cache.find(tex_name);
+		if (found_tex != texture_cache.end()) {
+			Texture *tex = (*found_tex).second;
+			delete tex;
+			//std::cout << "remaining textures: " << texture_cache.size() << " (" << loaded_textures.size() << ")\n";
+		}
+	}
+}
+
 GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	GLuint blank_id = 0;
 	std::string blank_name = "images/blank";
@@ -258,7 +272,8 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			GLuint res = tex.texture();
 			if (res) {
 				texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
-				//ResourceManager::manage(res);
+				loaded_textures[res] = tex_name;
+				ResourceManager::manage(res);
 			}
 			return res;
 		}
@@ -301,7 +316,7 @@ void cleanupTextureCache() {
 			remove = to_remove.erase(remove);
 		}
 		else ++remove;
-		std::cout << "texture cache flushed. remaining: " << texture_cache.size() << "\n";
+		//std::cout << "texture cache flushed. remaining: " << texture_cache.size() << "\n";
 	}
 }
 /*

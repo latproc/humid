@@ -21,6 +21,7 @@ public:
 	LinkableProperty(const std::string group, int object_type,
 					const std::string &name, const std::string &addr_str,
 					const std::string &dtype, int dsize);
+	~LinkableProperty();
 	const std::string &group() const;
 	void setGroup(const std::string g);
 	const std::string &tagName() const;
@@ -45,6 +46,8 @@ public:
 	void save(std::ostream &out) const;
 	void apply();
 private:
+	LinkableProperty(const LinkableProperty &);
+	LinkableProperty &operator=(const LinkableProperty &);
 	std::string group_name;
 	int kind;
 	std::string tag_name;

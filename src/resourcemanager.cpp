@@ -15,12 +15,17 @@
 std::map<int, ResourceManager*> ResourceManager::resources;
 ResourceManager::Factory ResourceManager::default_factory;
 
-ResourceManager::~ResourceManager() { }
+ResourceManager::~ResourceManager() {
+}
 
-ResourceManager::ResourceManager() : item_id(0), refs(0), last_release_time(0) {}
+ResourceManager::ResourceManager() : item_id(0), refs(0), last_release_time(0) {
+}
 
 ResourceManager::ResourceManager(int resource, int init_refs) : item_id(resource), refs(init_refs) {
-    resources.insert(std::make_pair(resource, this));
+	if (resource) {
+		//assert(resources.find(resource) == resources.end());
+		resources[resource] = this;
+	}
 }
 	
 ResourceManager::Factory::~Factory() {}
@@ -72,8 +77,8 @@ int ResourceManager::handover(int resource, const ResourceManager::Factory &fact
         ResourceManager *manager = (*found).second;
         resources.erase(found);
         int refs = manager->uses();
+				factory.create(resource, refs);
         delete manager;
-        factory.create(resource, refs);
     }
     else
         factory.create(resource);

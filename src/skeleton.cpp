@@ -456,6 +456,9 @@ bool ClockworkClient::Connection::handleSubscriber() {
 		owner->handleClockworkMessage(this, t, cmd, message);
 		res = true;
 	}
+	else {
+		std::cout << "failed to decode command " << data << "\n";
+	}
 	free(data);
 	return res;
 }

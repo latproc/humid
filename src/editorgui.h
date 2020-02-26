@@ -76,6 +76,7 @@ public:
 	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
 
 	GLuint getImageId(const char *, bool reload = false);
+	void freeImage(GLuint image_id);
 	void update(ClockworkClient::Connection *connection) override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
