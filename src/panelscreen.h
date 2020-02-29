@@ -17,6 +17,7 @@ class PanelScreen {
 public:
     PanelScreen(const std::string sname);
     PanelScreen(const PanelScreen &orig);
+		virtual ~PanelScreen() {}
     PanelScreen &operator=(const PanelScreen &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const PanelScreen &other);

@@ -88,15 +88,19 @@ void EditorImageView::draw(NVGcontext *ctx) {
 }
 
 void EditorImageView::setImageName(const std::string new_name, bool reload) {
-    GLuint img = EDITOR->gui()->getImageId(new_name.c_str(), reload);
-    if (img && img != mImageID) {
-      GLuint saved_img = mImageID;
-      mImageID = ResourceManager::manage(img);
-      updateImageParameters();
-      image_name = new_name;
-      int refs = ResourceManager::release(saved_img);
-			if (refs == 0) {
-				EDITOR->gui()->freeImage(saved_img);
+		GLuint img = (new_name.length()) ? EDITOR->gui()->getImageId(new_name.c_str(), reload) : 0;
+		image_name = new_name;
+    if (img != mImageID) {
+			if (mImageID && ResourceManager::release(mImageID) == 0) {
+				EDITOR->gui()->freeImage(mImageID);
+			}
+			if (img) {
+				mImageID = ResourceManager::manage(img);
+				updateImageParameters();
+			}
+			else {
+				mImageID = img;
+				mImageSize = Vector2i(0, 0);
 			}
     }
 }

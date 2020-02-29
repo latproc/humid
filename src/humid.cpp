@@ -829,6 +829,10 @@ void UserWindow::clear() {
 	int idx = 0;
 	while (n--) {
 		NamedObject *no = dynamic_cast<NamedObject *>(window->childAt(idx));
+		EditorWidget *ew = dynamic_cast<EditorWidget*>(no);
+		if (ew && ew->getRemote()) {
+			ew->getRemote()->unlink(ew);
+		}
 		window->removeChild(idx);
 	}
 	window->addChild(drag_handle);
