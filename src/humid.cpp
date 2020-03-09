@@ -454,7 +454,7 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setChangeCallback([this](bool state) {
 		this->gui->getViewsWindow()->setVisible(state);
 		this->gui->getViewsWindow()->getWindow()->requestFocus();
- 	});
+	});
 
 	BoxLayout *bl = new BoxLayout(Orientation::Horizontal);
 	toolbar->setLayout(bl);
@@ -797,12 +797,12 @@ void UserWindow::setStructure( Structure *s) {
 	loadStructure(s);
 	current_structure = s;
 
-  window->addChild(drag_handle);
+	window->addChild(drag_handle);
 	if (drag_handle) {
 	  drag_handle->setPropertyMonitor(pm);
 	  drag_handle->decRef();
 	}
-  gui->performLayout();
+	gui->performLayout();
 }
 
 NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
@@ -866,7 +866,7 @@ CircularBuffer * UserWindow::addDataBuffer(const std::string name, CircularBuffe
 		CircularBuffer *buf = new CircularBuffer(len, dt);
 		data[name] = buf;
 		return buf;
-  }
+	}
 }
 
 // TBD remove this hack (see lineplot)
@@ -1061,7 +1061,7 @@ void UserWindow::loadStructure( Structure *s) {
 			const Value &x_scale_val(element->getProperties().find("x_scale"));
 			if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
 			if (kind == "LABEL") {
-                const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
+				const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
 				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
 												  (caption_v != SymbolTable::Null)?caption_v.asString(): "");
 				el->setName(element->getName());
@@ -1069,16 +1069,16 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( el, element->getProperties());
 				fixElementSize( el, element->getProperties());
 				if (connection != SymbolTable::Null) {
-                    el->setRemoteName(remote.asString());
+					el->setRemoteName(remote.asString());
 					el->setConnection(connection.asString());
 				}
 				if (font_size) el->setFontSize(font_size);
-                const Value &bg_colour(element->getProperties().find("bg_color"));
-                if (bg_colour != SymbolTable::Null)
-                    el->setBackgroundColor(colourFromProperty(element, "bg_color"));
-                const Value &text_colour(element->getProperties().find("text_color"));
-                if (text_colour != SymbolTable::Null)
-                    el->setTextColor(colourFromProperty(element, "text_color"));
+				const Value &bg_colour(element->getProperties().find("bg_color"));
+				if (bg_colour != SymbolTable::Null)
+					el->setBackgroundColor(colourFromProperty(element, "bg_color"));
+				const Value &text_colour(element->getProperties().find("text_color"));
+				if (text_colour != SymbolTable::Null)
+					el->setTextColor(colourFromProperty(element, "text_color"));
 				const Value &alignment_v(element->getProperties().find("alignment"));
 				if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
 				const Value &valignment_v(element->getProperties().find("valign"));
@@ -1113,7 +1113,7 @@ void UserWindow::loadStructure( Structure *s) {
 				el->setScale( img_scale );
 				if (tab_pos) el->setTabPosition(tab_pos);
 				el->setInvertedVisibility(ivis);
-        const Value &image_file_v( (lp) ? lp->value() : (element->getProperties().find("image_file")));
+				const Value &image_file_v( (lp) ? lp->value() : (element->getProperties().find("image_file")));
 				if (image_file_v != SymbolTable::Null) {
 					std::string ifn = image_file_v.asString();
 					el->setImageName(ifn);
@@ -1132,8 +1132,8 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( ep, element->getProperties());
 				fixElementSize( ep, element->getProperties());
 				if (connection != SymbolTable::Null) {
-          ep->setRemoteName(remote.asString());
-          ep->setConnection(connection.asString());
+					ep->setRemoteName(remote.asString());
+					ep->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
 				if (value_type != -1) ep->setValueType(value_type);				
@@ -1149,7 +1149,7 @@ void UserWindow::loadStructure( Structure *s) {
 			if (kind == "TEXT") {
 				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
 				textBox->setDefinition(element);
-        const Value &text_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("text"));
+				const Value &text_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("text"));
 				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 				const Value &alignment_v(element->getProperties().find("alignment"));
 				if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
@@ -1158,7 +1158,7 @@ void UserWindow::loadStructure( Structure *s) {
 				textBox->setEnabled(true);
 				textBox->setEditable(true);
 				if (connection != SymbolTable::Null) {
-          textBox->setRemoteName(remote.asString());
+					textBox->setRemoteName(remote.asString());
 					textBox->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
@@ -1214,7 +1214,7 @@ void UserWindow::loadStructure( Structure *s) {
 				fixElementPosition( lp, element->getProperties());
 				fixElementSize( lp, element->getProperties());
 				if (connection != SymbolTable::Null) {
-          			lp->setRemoteName(remote.asString());
+					lp->setRemoteName(remote.asString());
 					lp->setConnection(connection.asString());
 				}
 				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
@@ -1248,7 +1248,7 @@ void UserWindow::loadStructure( Structure *s) {
 				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
 				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 				if (connection != SymbolTable::Null) {
-          b->setRemoteName(remote.asString());
+					b->setRemoteName(remote.asString());
 					b->setConnection(connection.asString());
 				}
 				fixElementPosition( b, element->getProperties());
@@ -1697,10 +1697,12 @@ void ScreensWindow::update() {
 			b->setPosition(Vector2i(2,2));
 			b->setPassThrough(true);
 			b->setCallback( [app,b](){
-				app->getScreensWindow()->getWindow()->requestFocus();
-				app->getUserWindow()->clearSelections();
-				app->getScreensWindow()->clearSelections(b);
-				b->select();
+				if (!b->selected()) {
+					app->getScreensWindow()->getWindow()->requestFocus();
+					app->getUserWindow()->clearSelections();
+					app->getScreensWindow()->clearSelections(b);
+					b->select();
+				}
 			});
 		}
 	}
@@ -2841,6 +2843,12 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 			}
 		}
 	}
+	if (connection->getStartupState() == sDONE) {
+		if (connection->needsRefresh()) {
+			connection->setNeedsRefresh(false);
+			connection->setState(sINIT);
+		}
+	}
 
 	if (connection->getStartupState() == sDONE || connection->getStartupState() == sRELOAD) {
 		if (w_user) {
@@ -3066,7 +3074,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        this->setRemoteName(value);
+				this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableNumber(this)); }
@@ -3116,7 +3124,7 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 			"Remote object",
 			[&,this,properties](std::string value) {
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        this->setRemoteName(value);
+				this->setRemoteName(value);
 				if (remote) remote->unlink(this);
 				remote = lp;
 				if (lp) { lp->link(new LinkableText(this)); }
@@ -3150,7 +3158,7 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
 
 void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 	EditorWidget::loadProperties(properties);
-  EditorLabel *lbl = dynamic_cast<EditorLabel*>(this);
+	EditorLabel *lbl = dynamic_cast<EditorLabel*>(this);
 	nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
 	if (w) {
 		properties->addVariable<std::string> (
@@ -3169,25 +3177,25 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 			"Wrap Text",
 			[&](bool value) mutable{ wrap_text = value; },
 			[&]()->bool{ return wrap_text; });
-        properties->addVariable<nanogui::Color> (
-            "Text Colour",
-            [&,lbl](const nanogui::Color &value) mutable{ lbl->setTextColor(value); },
-            [&,lbl]()->const nanogui::Color &{ return lbl->textColor(); });
-        properties->addVariable<nanogui::Color> (
-            "Background Colour",
-            [&,lbl](const nanogui::Color &value) mutable{ lbl->setBackgroundColor(value); },
-            [&,lbl]()->const nanogui::Color &{ return lbl->backgroundColor(); });
-        properties->addGroup("Remote");
-        properties->addVariable<std::string> (
-                "Remote object",
-                [&,this,properties](std::string value) {
-                    LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-                    this->setRemoteName(value);
-                    if (remote) remote->unlink(this);
-                    remote = lp;
-                    if (lp) { lp->link(new LinkableText(this)); }
-                    //properties->refresh();
-			 },
+		properties->addVariable<nanogui::Color> (
+			"Text Colour",
+			[&,lbl](const nanogui::Color &value) mutable{ lbl->setTextColor(value); },
+			[&,lbl]()->const nanogui::Color &{ return lbl->textColor(); });
+		properties->addVariable<nanogui::Color> (
+			"Background Colour",
+			[&,lbl](const nanogui::Color &value) mutable{ lbl->setBackgroundColor(value); },
+			[&,lbl]()->const nanogui::Color &{ return lbl->backgroundColor(); });
+		properties->addGroup("Remote");
+		properties->addVariable<std::string> (
+			"Remote object",
+			[&,this,properties](std::string value) {
+				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+				this->setRemoteName(value);
+				if (remote) remote->unlink(this);
+				remote = lp;
+				if (lp) { lp->link(new LinkableText(this)); }
+				//properties->refresh();
+			},
 			[&]()->std::string{
 				if (remote) return remote->tagName();
 				if (getDefinition()) {
@@ -3196,12 +3204,12 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 						return rmt_v.asString();
 				} 
 				return "";
-			});
+		});
 		properties->addVariable<std::string> (
 			"Connection",
 			[&,this,properties](std::string value) {
 				if (remote) remote->setGroup(value); else setConnection(value);
-			 },
+			},
 			[&]()->std::string{ return remote ? remote->group() : getConnection(); });
 		properties->addVariable<std::string> (
 			"Visibility",
@@ -3210,8 +3218,8 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
 				if (visibility) visibility->unlink(this);
 				visibility = lp;
 				if (lp) { lp->link(new LinkableVisibility(this)); }
-			 },
-			[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+			},
+		[&]()->std::string{ return visibility ? visibility->tagName() : ""; });
 	}
 }
 

@@ -14,13 +14,14 @@
 
 class SelectableButton : public nanogui::Button, public Selectable, public UIItem {
 public:
-    SelectableButton(const SelectableButton &orig);
-    SelectableButton &operator=(const SelectableButton &other);
-    std::ostream &operator<<(std::ostream &out) const;
-    bool operator==(const SelectableButton &other);
-    
+	SelectableButton(const SelectableButton &orig);
+	SelectableButton &operator=(const SelectableButton &other);
+	std::ostream &operator<<(std::ostream &out) const;
+	bool operator==(const SelectableButton &other);
+
 	SelectableButton(const std::string kind, Palette *pal, nanogui::Widget *parent,
 			   const std::string &caption = "Untitled");
+	bool selected() { return mSelected; }
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 	virtual void draw(NVGcontext *ctx) override;

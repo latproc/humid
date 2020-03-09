@@ -127,6 +127,8 @@ public:
 		void refreshData() { startup = sINIT; }
 		STARTUP_STATES getStartupState() { return startup; }
 		void setState(STARTUP_STATES new_state) { startup = new_state; }
+		void setNeedsRefresh(bool which) { needs_refresh = which; }
+		bool needsRefresh() { return needs_refresh; }
 
 		bool Ready();
 
@@ -152,6 +154,7 @@ public:
 		uint64_t first_message_time;
 		long message_time_scale;
 		std::string local_commands;
+		bool needs_refresh;
 
 	};
 

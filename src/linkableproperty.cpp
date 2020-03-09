@@ -103,15 +103,18 @@ void LinkableProperty::link(LinkableObject *lo) {
 }
 
 void LinkableProperty::unlink(EditorObject *w) {
-    std::list<LinkableObject*>::iterator iter = links.begin();
-    while (iter != links.end()) {
-        LinkableObject *link = *iter;
-        if (link->linked() == w) {
-            iter = links.erase(iter);
-            delete link;
-        }
-        else iter++;
+  std::list<LinkableObject*>::iterator iter = links.begin();
+  int unlinked = 0;
+  while (iter != links.end()) {
+    LinkableObject *link = *iter;
+    if (link->linked() == w) {
+      iter = links.erase(iter);
+      delete link;
+      ++unlinked;
     }
+    else
+      ++iter;
+  }
 }
 
 void LinkableProperty::save(std::ostream &out) const {

@@ -20,9 +20,14 @@ Selectable::~Selectable() {
 
 bool Selectable::isSelected() { return mSelected; }
 void Selectable::select() {
-	mSelected = true;
-	if (palette) palette->select(this);
-	justSelected();
+  if (!mSelected) {
+    mSelected = true;
+    if (palette) palette->select(this);
+    justSelected();
+  }
+  else {
+    int x = 1; // already selected
+  }
 }
 void Selectable::deselect() {
 	mSelected = false;

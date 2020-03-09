@@ -181,8 +181,6 @@ int saved_debug = 0;
 ProgramState program_state = s_initialising;
 boost::mutex update_mutex;
 
-static bool need_refresh = false; // not fully implemented yet
-
 struct timeval start;
 
 class SetupDisconnectMonitor : public EventResponder {
@@ -195,9 +193,12 @@ public:
 class SetupConnectMonitor : public EventResponder {
 
 public:
+  SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-		need_refresh = true;
+    connection->setNeedsRefresh(true);
 	}
+private:
+  ClockworkClient::Connection *connection;
 };
 
 uint64_t get_diff_in_microsecs(struct timeval *now, struct timeval *then) {
@@ -299,7 +300,7 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
 		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
-		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds") {
+		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds"), needs_refresh(false) {
 	local_commands += "_" + connection_name;
 }
 
@@ -337,7 +338,7 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 			eCLOCKWORK, host.asString().c_str(), port);
 			sm->configureSetupConnection(host.asString().c_str(), port);
 		 SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor;
-		SetupConnectMonitor *connect_responder = new SetupConnectMonitor;
+		SetupConnectMonitor *connect_responder = new SetupConnectMonitor(conn);
 		sm->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
 		sm->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
 		sm->setupConnections();
