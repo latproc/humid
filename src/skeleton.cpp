@@ -455,6 +455,8 @@ bool ClockworkClient::Connection::handleSubscriber() {
 		if (mh.start_time == 0) mh.start_time = microsecs();
 		const unsigned long t = ( mh.start_time - first_message_time ) / message_time_scale;
 		owner->handleClockworkMessage(this, t, cmd, message);
+    delete message;
+    message = 0;
 		res = true;
 	}
 	else {
