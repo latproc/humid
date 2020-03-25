@@ -2868,7 +2868,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 					else if (connection->getStartupState() != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
 				}
 			}
-			else std::cout << "No active screen has been selected\n";
+			//else std::cout << "No active screen has been selected\n";
 			//if (changed)
 			//	w_user->update();
 		}
