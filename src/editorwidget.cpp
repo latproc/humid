@@ -111,11 +111,13 @@ bool EditorWidget::editorMouseButtonEvent(nanogui::Widget *widget, const nanogui
     if (EDITOR->isEditMode()) {
         if (down) {
             if (!mSelected && !(modifiers & GLFW_MOD_SHIFT) ) palette->clearSelections();
-            if (mSelected && modifiers & GLFW_MOD_SHIFT)
+            if (mSelected) {
+              if (modifiers & GLFW_MOD_SHIFT) {
                 deselect();
+              }
+            }
             else
                 select();
-
         }
         return false;
     }
