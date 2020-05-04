@@ -527,7 +527,7 @@ void ClockworkClient::idle() {
 							if (conn->getStartupState() == sSTARTUP) conn->refreshData();
 							while (loop_counter--) {
 								conn->handleCommand(this);
-								conn->handleSubscriber();
+								if (!conn->handleSubscriber()) break;
 							}
 						}
 					}
