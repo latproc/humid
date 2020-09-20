@@ -571,7 +571,11 @@ void UserWindowWin::draw(NVGcontext *ctx) {
 //    glOrtho(3.0 * aspect, 3.0 * aspect, -3.0, 3.0, 1.0, 50.0);
 //	glMatrixMode(GL_MODELVIEW);
 //    glLoadIdentity();
-//nvgScale(ctx, 0.9f, 0.9f);
+	float scale = 1.0f;
+	nvgScale(ctx, scale, scale);
+	float x_offset = this->width() * (1.0f-scale) / 2.0;
+	float y_offset = this->height() * (1.0f-scale) / 2.0;
+	nvgTranslate(ctx, x_offset, y_offset);
 	nanogui::Window::draw(ctx);
 	//nvgScale(ctx, 1.0f/0.9f, 1.0f/1.9f);
 	nvgRestore(ctx);
@@ -1259,6 +1263,10 @@ void UserWindow::loadStructure( Structure *s) {
 				b->setInvertedVisibility(ivis);
 				b->setWrap(wrap);
 				EditorGUI *gui = this->gui;
+				const Value &alignment_v(element->getProperties().find("alignment"));
+				if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v.asString());
+				const Value &valignment_v(element->getProperties().find("valign"));
+				if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v.asString());
 
 				{
 					const Value &caption_v = element->getProperties().find("caption");

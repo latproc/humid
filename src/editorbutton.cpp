@@ -205,13 +205,14 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
   if (prop == "Remote") {
     if (remote) {
       if (getDefinition()->getKind() == "INDICATOR")
-        remote->link(new LinkableIndicator(this));  }
+        remote->link(new LinkableIndicator(this));
     }
-    if (prop == "Alignment") alignment = std::atoi(value.c_str());
-    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-    if (prop == "Wrap Text") {
-      wrap_text = (value == "1" || value == "true" || value == "TRUE");
-    }
+  }
+  if (prop == "Alignment") alignment = std::atoi(value.c_str());
+  if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  if (prop == "Wrap Text") {
+    wrap_text = (value == "1" || value == "true" || value == "TRUE");
+  }
 }
 
 
@@ -377,15 +378,33 @@ void EditorButton::draw(NVGcontext *ctx) {
         label_x = textPos.x();
         align = NVG_ALIGN_CENTER;
       }
-      else
+      else {
         label_x = mPos.x();
+        align = NVG_ALIGN_LEFT;
+      }
     }
     int alignv = NVG_ALIGN_MIDDLE;
-    if (valign & NVG_ALIGN_LEFT)
+    if (valign & NVG_ALIGN_LEFT) {
       alignv = NVG_ALIGN_TOP;
-    else if (valign & NVG_ALIGN_RIGHT)
+      label_y = mPos.y();
+    }
+    else if (valign & NVG_ALIGN_RIGHT) {
       alignv = NVG_ALIGN_BOTTOM;
+      label_y = mPos.y() + mSize.y();
+      if (wrap_text) {
+        float bounds[4];
+        float res = nvgTextBounds(ctx, mPos.x(), label_y, text.c_str(), nullptr, bounds);
+        label_y -= (bounds[3] - bounds[1]);
+      }
+    }
+    else {
+      if (wrap_text) {
+        float bounds[4];
+        float res = nvgTextBounds(ctx, mPos.x(), label_y, text.c_str(), nullptr, bounds);
+        label_y -= (bounds[3] - bounds[1]) / 2.0;
+      }
 
+    }
 
     nvgTextAlign(ctx, align | alignv);
     if (shadow) {
@@ -393,14 +412,15 @@ void EditorButton::draw(NVGcontext *ctx) {
       if (!wrap_text)
         nvgText(ctx, label_x, label_y, text.c_str(), nullptr);
       else {
-        nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), text.c_str(), nullptr);
+        nvgTextBox(ctx, mPos.x(), label_y, mSize.x(), text.c_str(), nullptr);
       }
     }
     nvgFillColor(ctx, textColor);
-    if (!wrap_text)
+    if (!wrap_text) {
       nvgText(ctx, label_x, label_y + 1, text.c_str(), nullptr);
+    }
     else {
-      nvgTextBox(ctx, mPos.x(), mPos.y()+mSize.y()/2, mSize.x(), text.c_str(), nullptr);
+      nvgTextBox(ctx, mPos.x(), label_y, mSize.x(), text.c_str(), nullptr);
     }
     if (mSelected)
       drawSelectionBorder(ctx, mPos, mSize);
