@@ -1018,19 +1018,22 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
-			const Value &remote(element->getProperties().find("remote"));
 			const Value &vis(element->getProperties().find("visibility"));
 			const Value &connection(element->getProperties().find("connection"));
 			const Value &border(element->getProperties().find("border"));
 			const Value &font_size_val(element->getProperties().find("font_size"));
 			LinkableProperty *lp = nullptr;
+			Value remote_name(element->getProperties().find("remote"));
+			const Value &remote(remote_name == SymbolTable::Null || remote_name.asString() == "null" ? SymbolTable::Null : remote_name);
 			if (remote != SymbolTable::Null) {
 				std::string lp_name =remote.asString();
-				lp = gui->findLinkableProperty(lp_name);
-				if (!lp) {
-					if (stringEndsWith(lp_name, ".VALUE")) {
-						lp_name = lp_name.substr(0, lp_name.length()-6);
-						lp = gui->findLinkableProperty(lp_name);
+				if (lp_name != "null") {
+					lp = gui->findLinkableProperty(lp_name);
+					if (!lp) {
+						if (stringEndsWith(lp_name, ".VALUE")) {
+							lp_name = lp_name.substr(0, lp_name.length()-6);
+							lp = gui->findLinkableProperty(lp_name);
+						}
 					}
 				}
 			}
@@ -1093,9 +1096,9 @@ void UserWindow::loadStructure( Structure *s) {
 				if (tab_pos) el->setTabPosition(tab_pos);
 				if (lp)
 					lp->link(new LinkableText(el));
-				if (visibility) el->setVisibilityLink(visibility);
 				if (border != SymbolTable::Null) el->setBorder(border.iValue);
 				el->setInvertedVisibility(ivis);
+				if (visibility) el->setVisibilityLink(visibility);
 				el->setChanged(false);
 			}
 			if (kind == "IMAGE") {

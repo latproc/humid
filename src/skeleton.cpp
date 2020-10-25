@@ -525,8 +525,8 @@ void ClockworkClient::idle() {
 						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
 							int loop_counter = 400;
 							if (conn->getStartupState() == sSTARTUP) conn->refreshData();
+							conn->handleCommand(this);
 							while (loop_counter--) {
-								conn->handleCommand(this);
 								if (!conn->handleSubscriber()) break;
 							}
 						}
