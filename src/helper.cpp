@@ -115,17 +115,7 @@ Structure *findScreen(const std::string &seek) {
 		if (s->getName() == seek && s->getStructureDefinition()
 					&& (s->getStructureDefinition()->getName() == "SCREEN" || s->getStructureDefinition()->getBase() == "SCREEN") )
 				return s;
-		//else {
-			//std::cout << "Skipping " << s->getName() << " : " << s->getKind() << " looking for " << seek << "\n";
-		//}
 	}
-	/*
-	std::cout << "Screen " << seek << " not found\n";
-	std::cout << "structures:\n";
-	for (auto s : hm_structures) {
-		std::cout << s->getName() << " : " << s->getKind() << "\n";
-	}
-	*/
 	return 0;
 }
 
@@ -139,7 +129,6 @@ Structure * findStructureFromClass(std::string class_name) {
 				return s;
 		else if (!s->getStructureDefinition() && s->getKind() == class_name) {
 			s->setStructureDefinition(findClass(class_name));
-			std::cout << "Notice: structure " << s->getName() << " is now linked to class " << class_name << "\n";
 			return s;
 		}
 	}
@@ -152,7 +141,6 @@ int createScreens() {
 		if (sc->getBase() == "SCREEN") {
 			if (! findStructureFromClass(sc->getName())) {
 				sc->instantiate(nullptr);
-				std::cout << "Instantiated screen " << sc->getName() << "\n";
 				++res;
 			}
 		}
@@ -176,8 +164,8 @@ Structure *findStructure(const std::string &seek) {
 }
 
 Structure *createScreenStructure() {
-	std::string sc_name("Screen_");
-	sc_name += NamedObject::nextName(nullptr);
+	std::string sc_name("Screen");
+	sc_name = NamedObject::nextName(nullptr, sc_name);
 	StructureClass *sc = new StructureClass(sc_name, "SCREEN");
 	hm_classes.push_back(sc);
 	std::string scrn_name(NamedObject::nextName(nullptr));

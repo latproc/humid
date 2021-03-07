@@ -15,44 +15,28 @@ Dict NamedObject::global_objects;
 unsigned int NamedObject::user_object_sequence = 1;
 
 NamedObject::NamedObject(NamedObject *owner) : _named(false), parent(owner) {
-    nextName(this);
+    setName(nextName(this));
 }
 
 NamedObject::~NamedObject() {
 	if (!parent) {
-    auto found = global_objects[name];
-    if (found == this)
-      global_objects.erase( name );
+    auto found = global_objects.find(name);
+    if (found != global_objects.end()) {
+      assert((*found).second == this);
+      global_objects.erase( found );
+    }
     else
-      std::cout << "Error: global object " << name << " is not me\n";
+      std::cerr << "Error: global object " << name << " was never registered\n";
   }
   else parent->remove(name);
 }
 
 void addNamedObjectToMap(NamedObject *no, Dict &dict) {
   if (!no) return;
-  dict[no->getName()] = no;
-  /*
-  //Dict &dict( (no) ? no->siblings() : NamedObject::globals());
+
   auto found = dict.find(no->getName());
-  if (found != dict.end()) {
-    NamedObject *other = (*found).second;
-    if (!other || other == no) {
-      (*found).second = no;
-    }
-    else {
-      std::string name = no->getName();
-      while (name.substr(0,3) == "rn_") name = name.substr(3);
-      name = NamedObject::nextName(no, "rn");
-      std::cout << "Warning: named " << no->getName()
-        << " was already allocated to a different object; "
-        << " renamed this one to " << name << "\n";
-      no->setName(name);
-    }
-  }
-  else
-    dict[no->getName()] = no;
-    */
+  assert(found == dict.end() || (*found).second == no);
+  dict[no->getName()] = no;
 }
 
 NamedObject::NamedObject(NamedObject *owner, const char *msg) : _named(false), parent(owner), name(msg) {
@@ -72,8 +56,9 @@ NamedObject::NamedObject(NamedObject *owner, const std::string &msg) : _named(fa
 void NamedObject::add(const std::string &object_name, NamedObject *child) {
   addNamedObjectToMap(child, child_objects);
 }
+
 void NamedObject::remove( const std::string &object_name) {
-	child_objects.erase(name);
+	child_objects.erase(object_name);
 }
 
 std::string NamedObject::fullName() const {
@@ -115,32 +100,52 @@ NamedObject &NamedObject::operator=(const NamedObject &other) {
     return name == other.name;
 }*/
 
+std::string makeName(int id, const std::string &prefix) {
+  char buf[40];
+  if (prefix.length())
+    snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), id);
+  else
+    snprintf(buf, 40, "Untitled_%03d", id);
+  return buf;
+}
+
 std::string NamedObject::nextName(NamedObject *o, const std::string prefix) {
-	char buf[40];
-	if (prefix.length())
-		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), ++user_object_sequence);
-	else
-		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
-
-  Dict &dict( (o) ? o->siblings() : global_objects);
-
-  auto item = dict.find(buf);
+  Dict &dict( (o) ? o->locals() : global_objects);
+  std::string trial_name = makeName(++user_object_sequence, prefix);
+  auto item = dict.find(trial_name);
 	while ( item != dict.end()) {
-    if ((*item).second == o) return buf; // this name is already assigned to the object
-    if (prefix.length())
-  		snprintf(buf, 40, "%s_Untitled_%03d", prefix.c_str(), ++user_object_sequence);
-  	else
-  		snprintf(buf, 40, "Untitled_%03d", ++user_object_sequence);
-    item = dict.find(buf);
+    if ((*item).second == o) return trial_name; // this name is already assigned to the object
+    trial_name = makeName(++user_object_sequence, prefix);
+    item = dict.find(trial_name);
 	}
-  if (o)
-    addNamedObjectToMap(o, dict);
-	return buf;
+	return trial_name;
+}
+
+void NamedObject::forgetGlobal(const std::string &global_name) {
+  auto found = global_objects.find(global_name);
+  if (found != global_objects.end()) {
+    global_objects.erase(found);
+  }  
+}
+
+void NamedObject::setParent(NamedObject *o) {
+  assert(parent == nullptr);
+  auto found = global_objects.find(name);
+  if (found != global_objects.end()) {
+    global_objects.erase(found);
+  }
+  parent = o;
+  parent->add(name, this);
 }
 
 std::map<std::string, NamedObject*> &NamedObject::siblings() {
 	if (!parent) return global_objects;
+  assert(& parent->child_objects != &global_objects);
 	return parent->child_objects;
+}
+
+std::map<std::string, NamedObject*> &NamedObject::locals() {
+  return child_objects;
 }
 
 bool NamedObject::changeName(NamedObject *o, const std::string &oldname, const std::string &newname) {

@@ -46,7 +46,7 @@ void StructureClass::addPrivateProperty(const std::string &p) {
 }
 
 Structure *StructureClass::instantiate(Structure *parent) {
-	std::string s_name(NamedObject::nextName(nullptr));
+	std::string s_name(NamedObject::nextName(parent));
 	Structure *s = new Structure(parent, s_name, name);
 	s->getProperties().add(getProperties()); // copy default properties to the new structure
 	hm_structures.push_back(s);

@@ -26,11 +26,14 @@ public:
   	static std::string nextName(NamedObject*, const std::string prefix = "");
     static bool changeName(NamedObject *o, const std::string &oldname, const std::string &newname);
     std::map<std::string, NamedObject*> &siblings();
+    std::map<std::string, NamedObject*> &locals();
 
     void remove( const std::string &name);
     void add( const std::string &name, NamedObject *child);
 
     NamedObject *getParent() const { return parent; }
+    void setParent(NamedObject *parent);
+    static void forgetGlobal(const std::string &name);
     static std::map<std::string, NamedObject*> &globals() { return global_objects; }
     bool named() { return _named; }
 

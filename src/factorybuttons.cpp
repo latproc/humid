@@ -40,9 +40,10 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	assert(s);
 	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
 	int object_height = (s) ? s->getIntProperty("height", 60) : 60;
+	auto generated_name = NamedObject::nextName(parent);
 	Widget *result = 0;
 	if (sc->getName() == "BUTTON") {
-		EditorButton *b = new EditorButton(parent, window, NamedObject::nextName(parent), nullptr, caption());
+		EditorButton *b = new EditorButton(parent, window, generated_name, nullptr, caption());
 		b->setDefinition(s);
 		s->setName(b->getName());
 		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
@@ -51,7 +52,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = b;
 	}
 	if (sc->getName() == "INDICATOR") {
-		EditorButton *b = new EditorButton(parent, window, NamedObject::nextName(parent), nullptr, caption());
+		EditorButton *b = new EditorButton(parent, window, generated_name, nullptr, caption());
 		b->setDefinition(s);
 		s->setName(b->getName());
 		b->setBackgroundColor(Color(200, 200, 30, 200)); // TBD use structure value
@@ -59,7 +60,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = b;
 	}
 	else if (sc->getName() == "LABEL") {
-		EditorLabel *eb = new EditorLabel(parent, window, NamedObject::nextName(parent), nullptr, "untitled");
+		EditorLabel *eb = new EditorLabel(parent, window, generated_name, nullptr, "untitled");
 		eb->setDefinition(s);
 		eb->setName(eb->getName());
 		if (s) s->setName(eb->getName());
@@ -67,7 +68,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();
-		EditorTextBox *eb = new EditorTextBox(parent, window, NamedObject::nextName(parent), nullptr);
+		EditorTextBox *eb = new EditorTextBox(parent, window, generated_name, nullptr);
 		eb->setDefinition(s);
 		s->setName(eb->getName());
 		eb->setEditable(true);
@@ -95,7 +96,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank.png");
-		EditorImageView *iv = new EditorImageView(parent, window, NamedObject::nextName(parent), nullptr, img);
+		EditorImageView *iv = new EditorImageView(parent, window, generated_name, nullptr, img);
 		iv->setDefinition(s);
 		s->setName(iv->getName());
 		iv->setGridThreshold(20);
@@ -105,14 +106,14 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = iv;
 	}
 	else if (sc->getName() == "PLOT") {
-		EditorLinePlot *lp = new EditorLinePlot(parent, window, NamedObject::nextName(parent), nullptr);
+		EditorLinePlot *lp = new EditorLinePlot(parent, window, generated_name, nullptr);
 		lp->setDefinition(s);
 		s->setName(lp->getName());
 		lp->setBufferSize(gui->sampleBufferSize());
 		result = lp;
 	}
 	else if (sc->getName() == "PROGRESS") {
-		EditorProgressBar *ep = new EditorProgressBar(parent, window, NamedObject::nextName(parent), nullptr);
+		EditorProgressBar *ep = new EditorProgressBar(parent, window, generated_name, nullptr);
 		s->setName(ep->getName());
 		ep->setDefinition(s);
 		result = ep;

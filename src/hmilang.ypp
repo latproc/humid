@@ -30,13 +30,13 @@ struct HumidParserState {
 	Value current_value;
 	SymbolTable properties;
 	std::list<Parameter> current_parameters;
-  std::list<Parameter> current_locals;
-  std::list<std::string> current_name_list;
+	std::list<Parameter> current_locals;
+	std::list<std::string> current_name_list;
 	std::list<SymbolTable> property_stack;
 	std::list<Command*> command_list;
-	Structure *current_machine;
-	StructureClass *current_machineclass;
-	ClassExtension *current_base;
+	Structure *current_machine = nullptr;
+	StructureClass *current_machineclass = nullptr;
+	ClassExtension *current_base = nullptr;
 } ;
 HumidParserState hps;
 
@@ -130,7 +130,11 @@ definition_header '{' definition_body '}' {
       // etc
       if (hps.current_locals.size()) {
 				std::cout << hps.current_machineclass->getName() << " has " <<hps.current_locals.size() << " locals\n";
-				std::copy(hps.current_locals.begin(), hps.current_locals.end(),back_inserter(hps.current_machineclass->getLocals()));
+				for (auto local : hps.current_locals) {
+					hps.current_machineclass->getLocals().push_back(local);
+					NamedObject::forgetGlobal(local.val.sValue);
+				}
+				//std::copy(hps.current_locals.begin(), hps.current_locals.end(),back_inserter(hps.current_machineclass->getLocals()));
 				hps.current_locals.clear();
       }
       hm_classes.push_back(hps.current_machineclass);
