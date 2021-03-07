@@ -470,7 +470,6 @@ void ObjectWindow::rebuildWindow() {
 		groups.insert(item.second->group());
 	}
 	for (auto group : groups) {
-		std::cout << "creating object window tab: " << group << "\n";
 		createTab(group.c_str());
 		if (boost::filesystem::exists(group)) {// load a tag file if given
 			std::cout << "tag file found, loading: " << group << " from file\n";
@@ -954,18 +953,15 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 			if (base.length() && fname.find(base) == 0) {
 				fname = fname.substr(base.length()+1);
 				if (loaded_files.count(fname)) {
-					std::cout << "Skipping second load of " << fname << "\n";
 					continue; // already loaded this one-line
 				}
 				loaded_files.insert(fname);
 			}
 			if (exists(filename)) {
-				std::cout << "reading project file " << fname << "\n";
 				opened_file = 1;
 				yyin = fopen(filename, "r");
 				if (yyin)
 				{
-					std::cerr << "Processing file: " << filename << "\n";
 					yylineno = 1;
 					yycharno = 1;
 					yyfilename = fname.c_str();
@@ -1582,11 +1578,9 @@ class ScreenSelectButton : public SelectableButton {
 			const std::string &caption, ScreensWindow*sw)
 		: SelectableButton(kind, pal, parent, caption),  screens_window(sw) {
 			screen = findScreen(caption);
-			if (screen)
-				std::cout << "screen select button " << caption << " selects structure "
-				<< screen->getName() << ":" << screen->getKind() << "\n";
-			else
+			if (!screen) {
 				std::cout << "screen select button " << caption << " has no screen\n";
+			}
 		 }
 	virtual void justDeselected() override {
 		UserWindow *uw = screens_window->getUserWindow();
@@ -1715,7 +1709,6 @@ void ScreensWindow::update() {
 
 	for (auto item : hm_structures ) {
 		Structure *s = item;
-		std::cout << "checking if structure " << item << " (" << s->getKind() << ") is a screen\n";
 		StructureClass *sc = findClass(s->getKind());
 		int count = 0;
 		if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
@@ -2469,8 +2462,6 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					if (lp) {
 						lp->apply();
 						std::cout <<"\nWorking mode: setting screen to " << lp->value() << "\n\n";
-						//if (lp->value() != SymbolTable::Null)
-						//	startup = sRELOAD;
 					}
 				}
 
@@ -2674,7 +2665,6 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 
 		item.first->setPosition(pos);
 	}
-	//cout << "\n";
 	old_size = mSize;
 	if (w_user) {
 		w_user->getWindow()->setFixedSize(new_size);
@@ -2721,11 +2711,9 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 					if (v.asInteger(val)) {
 						if (dt == CircularBuffer::INT16) {
 							buf->addSample(now, (int16_t)(val & 0xffff));
-							//std::cout << "adding sample: " << name << " t: " << now << " " << (int16_t)(val & 0xffff) << " count: " << buf->length() << "\n";
 						}
 						else if (dt == CircularBuffer::INT32) {
 							buf->addSample(now, (int32_t)(val & 0xffffffff));
-							//std::cout << "adding sample: " << name << " t: " << now << " " << (int32_t)(val & 0xffffffff) << " count: " << buf->length() << "\n";
 						}
 						else
 							buf->addSample(now, val);
@@ -2733,15 +2721,11 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 					else if (v.asFloat(dval)) {
 						buf->addSample(now, dval);
 					}
-					//else
-					//	std::cout << "cannot interpret " << name << " value '" << v << "' as an integer or float\n";
 				}
 			}
 			++pos;
 		}
 	}
-	//else
-	//	std::cout << op << "\n";
 }
 
 void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {
@@ -2772,7 +2756,6 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					const char *p = name.sValue.c_str();
 					if (n>2 && p[0] == '"' && p[n-1] == '"')
 					{
-						std::cout << "removing quotes from " << name << "\n";
 						char buf[n];
 						memcpy(buf, p+1, n-2);
 						buf[n-2] = 0;
@@ -2893,15 +2876,11 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 						w_user->clearSelections();
 						w_user->setStructure(s);
 						std::cout << "Loaded active screen " << active << "\n";
-						//changed = true;
 						if (connection->getStartupState() == sRELOAD) connection->setState(sDONE);
 					}
 					else if (connection->getStartupState() != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
 				}
 			}
-			//else std::cout << "No active screen has been selected\n";
-			//if (changed)
-			//	w_user->update();
 		}
 	}
 
@@ -3756,7 +3735,6 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 	if (!s) {
 		s = new Structure(nullptr, name, "WINDOW");
 		st_structures.push_back(s);
-		std::cout << "added structure for window " << name << "\n";
 		EditorSettings::setDirty();
 	}
 	const nanogui::Vector2i &pos(widget->position());
@@ -3765,7 +3743,6 @@ bool updateSettingsStructure(const std::string name, nanogui::Widget *widget) {
 		properties.add("sx", pos.x());
 		properties.add("sy", pos.y());
 		skel->setShrunkPos(pos);
-		std::cout << "set shrunk position to " << pos.x() << "," << pos.y() << "\n";
 	}
 	else {
 		properties.add("x", pos.x());

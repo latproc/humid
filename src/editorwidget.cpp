@@ -462,7 +462,7 @@ void EditorWidget::updateStructure() {
     if (v != SymbolTable::Null) {
       if (found != property_map.end()) {
         if ( (*found).second.empty()) {
-          std::cout << s->getName() << " skipping update of widget property " << item << "\n";
+          //std::cout << s->getName() << " skipping update of widget property " << item << "\n";
           continue;
         }
         std::string mapped((*found).second.c_str());

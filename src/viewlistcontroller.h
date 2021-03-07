@@ -27,10 +27,10 @@ public:
 		items[name].visible = vis;
 	}
 	ViewOptions get(std::string name) {
-		// default is for views to be visible
+		// default is for views to be visible except for the patterns window
 		auto found = items.find(name);
 		if (found == items.end()) {
-			set(name, true);
+		    set(name, name != "Patterns");
 			return items[name];
 		}
 		return (*found).second;
