@@ -14,6 +14,11 @@
 std::list<Structure *>hm_structures;
 std::list<StructureClass *> hm_classes;
 
+StructureClass::StructureClass(const std::string class_name) 
+: NamedObject(nullptr, class_name), builtin(false) {}
+StructureClass::StructureClass(const std::string class_name, const std::string base_class)
+: NamedObject(nullptr, class_name), base(base_class), builtin(false) {};
+
 std::ostream &Structure::operator<<(std::ostream &out) const {
 	return out << name << " " << kind;
 }

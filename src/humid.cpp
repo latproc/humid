@@ -814,11 +814,31 @@ NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }
 void UserWindow::deleteSelections() {
 	if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
 	getWindow()->requestFocus();
+	std::set<Selectable *> to_delete;
 	for (auto sel : getSelected()) {
-		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
-		if (w) getWindow()->removeChild(w);
+		to_delete.insert(sel);
 	}
 	clearSelections();
+	gui->getPropertyWindow()->update();
+
+	StructureClass *screen_sc = structure()->getStructureDefinition();
+	for (auto sel : to_delete) {
+		nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(sel);
+		auto no = dynamic_cast<NamedObject*>(sel);
+		if (no) {
+			auto iter = screen_sc->getLocals().begin();
+			while (iter != screen_sc->getLocals().end()) {
+				auto & param = *iter;
+				if (param.val.sValue == no->getName()) {
+					iter = screen_sc->getLocals().erase(iter);
+				}
+				else {
+					iter++;
+				}
+			}
+		}
+		if (w) getWindow()->removeChild(w);
+	}
 }
 
 void UserWindow::clear() {

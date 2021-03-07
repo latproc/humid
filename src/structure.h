@@ -34,8 +34,8 @@ bool writePropertyDefaults(std::ostream &out, const SymbolTable &table);
 
 class StructureClass : public NamedObject {
 public:
-	StructureClass(const std::string class_name) : NamedObject(nullptr, class_name), builtin(false) {}
-	StructureClass(const std::string class_name, const std::string base_class) : NamedObject(nullptr, class_name), base(base_class), builtin(false) {};
+	StructureClass(const std::string class_name);
+	StructureClass(const std::string class_name, const std::string base_class);
 	std::map<std::string, Structure *> &getGlobalRefs() { return global_references; }
 	SymbolTable &getProperties() { return properties; }
 	void setProperties(const SymbolTable &other) { properties = other; }
@@ -43,7 +43,7 @@ public:
 
 	std::vector<Parameter> &getParameters() { return parameters; }
 	std::map<std::string, Value> &getOptions() { return options; }
-	std::vector<Parameter> &getLocals() { return locals; }
+	std::list<Parameter> &getLocals() { return locals; }
 	void setDefinitionLocation(const std::string fnam, int lineno) {
 		internal_properties.add("file_name", Value(fnam, Value::t_string));
 	}
@@ -72,7 +72,7 @@ protected:
 	SymbolTable internal_properties;
 	SymbolTable properties;
 	std::vector<Parameter> parameters;
-	std::vector<Parameter> locals;
+	std::list<Parameter> locals;
 	std::map<std::string, Value> options;
 	std::set<std::string> local_properties;
 	std::set<std::string> property_names;

@@ -10,9 +10,10 @@
 #include "selectablebutton.h"
 
 Selectable::Selectable(Palette *pal)
-: palette(pal), mSelected(false)//, widget(0), button(0)
+: palette(pal), mSelected(false)
 {
 }
+
 Selectable::~Selectable() {
 
 }
