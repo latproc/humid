@@ -16,6 +16,7 @@
 #include "draghandle.h"
 #include <iostream>
 #include <nanogui/entypo.h>
+#include "editorwidget.h"
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -44,7 +45,11 @@ bool DragHandle::mouseDragEvent(const Vector2i &p, const Vector2i & /* rel */,
 	if (y<parent()->theme()->mWindowHeaderHeight+1) y = parent()->theme()->mWindowHeaderHeight+1;
 	if (y>parent()->size().y()) y = parent()->size().y();
 	setPosition( Vector2i(x-size().x()/2,y-size().y()/2 ) );
-	if (property_monitor) property_monitor->update(this);
+	if (property_monitor) {
+		property_monitor->update(this);
+		auto ew = dynamic_cast<EditorWidget*>(target);
+		if (ew) ew->updateStructure();
+	}
 	if (mCallback)
 		mCallback(mValue);
 	return true;
