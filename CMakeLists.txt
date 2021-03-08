@@ -50,7 +50,7 @@ find_package(ZeroMQ REQUIRED)
 find_package(CURL REQUIRED)
 
 #set(BOOST_ROOT "/usr/local/")
-FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono REQUIRED )
+FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono date_time REQUIRED )
 
 set (CLOCKWORK_DIR /opt/latproc/iod/src)
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
@@ -118,7 +118,9 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/structureswindow.h src/themewindow.h src/propertywindow.h
 		  src/helper.h src/curl_helper.h src/screenswindow.h
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
-		  src/resourcemanager.h
+		  src/resourcemanager.h src/viewswindow.h src/listpanel.h
+		  src/toolbar.h src/propertyformhelper.h src/propertyformwindow.h
+		  src/startupwindow.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
@@ -215,7 +217,9 @@ endif ()
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
 		  src/curl_helper.cpp src/screenswindow.cpp
 		  src/linkableproperty.cpp src/anchor.cpp src/objectwindow.cpp src/patternswindow.cpp
-		  src/resourcemanager.cpp
+		  src/resourcemanager.cpp src/viewswindow.cpp src/listpanel.cpp
+		  src/toolbar.cpp src/propertyformhelper.cpp src/propertyformwindow.cpp
+		  src/userwindow.cpp src/startupwindow.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork  ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})

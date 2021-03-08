@@ -13,6 +13,7 @@
 #include "editorwidget.h"
 #include "editorlabel.h"
 #include "editor.h"
+#include "propertyformhelper.h"
 
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
@@ -186,5 +187,72 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     if (prop == "Wrap Text") {
       wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
+}
 
+
+void EditorLabel::loadProperties(PropertyFormHelper* properties) {
+  EditorWidget::loadProperties(properties);
+  EditorLabel *lbl = dynamic_cast<EditorLabel*>(this);
+  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+  if (w) {
+    properties->addVariable<std::string> (
+      "Caption",
+      [&](std::string value) mutable{ setCaption(value); },
+      [&]()->std::string{ return caption(); });
+    properties->addVariable<int> (
+      "Alignment",
+      [&](int value) mutable{ alignment = value; },
+      [&]()->int{ return alignment; });
+    properties->addVariable<int> (
+      "Vertical Alignment",
+      [&](int value) mutable{ valign = value; },
+      [&]()->int{ return valign; });
+    properties->addVariable<bool> (
+      "Wrap Text",
+      [&](bool value) mutable{ wrap_text = value; },
+      [&]()->bool{ return wrap_text; });
+    properties->addVariable<nanogui::Color> (
+      "Text Colour",
+      [&,lbl](const nanogui::Color &value) mutable{ lbl->setTextColor(value); },
+      [&,lbl]()->const nanogui::Color &{ return lbl->textColor(); });
+    properties->addVariable<nanogui::Color> (
+      "Background Colour",
+      [&,lbl](const nanogui::Color &value) mutable{ lbl->setBackgroundColor(value); },
+      [&,lbl]()->const nanogui::Color &{ return lbl->backgroundColor(); });
+    properties->addGroup("Remote");
+    properties->addVariable<std::string> (
+      "Remote object",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
+        if (remote) remote->unlink(this);
+        remote = lp;
+        if (lp) { lp->link(new LinkableText(this)); }
+        //properties->refresh();
+      },
+      [&]()->std::string{
+        if (remote) return remote->tagName();
+        if (getDefinition()) {
+          const Value &rmt_v = getDefinition()->getProperties().find("remote");
+          if (rmt_v != SymbolTable::Null)
+            return rmt_v.asString();
+        } 
+        return "";
+    });
+    properties->addVariable<std::string> (
+      "Connection",
+      [&,this,properties](std::string value) {
+        if (remote) remote->setGroup(value); else setConnection(value);
+      },
+      [&]()->std::string{ return remote ? remote->group() : getConnection(); });
+    properties->addVariable<std::string> (
+      "Visibility",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        if (visibility) visibility->unlink(this);
+        visibility = lp;
+        if (lp) { lp->link(new LinkableVisibility(this)); }
+      },
+    [&]()->std::string{ return visibility ? visibility->tagName() : ""; });
+  }
 }

@@ -13,6 +13,7 @@
 #include "editor.h"
 
 #include "editortextbox.h"
+#include "propertyformhelper.h"
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
     : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
@@ -426,5 +427,65 @@ void EditorTextBox::draw(NVGcontext* ctx) {
     drawElementBorder(ctx, mPos, mSize);
   }
 
+}
+
+void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
+  EditorWidget::loadProperties(properties);
+  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+  if (w) {
+    properties->addVariable<std::string> (
+      "Text",
+      [&](std::string value) { setProperty("Text", value); },
+      [&]()->std::string{ return getPropertyValue("Text").asString(); });
+
+    properties->addVariable<int> (
+      "Alignment",
+      [&](int value) { setAlignment((Alignment)value); },
+      [&]()->int{ return (int)alignment(); });
+    properties->addVariable<int> (
+      "Vertical Alignment",
+      [&](int value) mutable{ valign = value; },
+      [&]()->int{ return valign; });
+    properties->addVariable<bool> (
+      "Wrap Text",
+      [&](bool value) mutable{ wrap_text = value; },
+      [&]()->bool{ return wrap_text; });
+    properties->addGroup("Remote");
+    properties->addVariable<std::string> (
+      "Remote object",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
+        if (remote) remote->unlink(this);
+        remote = lp;
+        if (lp) { lp->link(new LinkableNumber(this)); }
+       },
+      [&]()->std::string{
+        if (remote) return remote->tagName();
+        if (getDefinition()) {
+          const Value &rmt_v = getDefinition()->getProperties().find("remote");
+          if (rmt_v != SymbolTable::Null)
+            return rmt_v.asString();
+        } 
+        return "";
+      });
+    properties->addVariable<std::string> (
+      "Connection",
+      [&,this,properties](std::string value) {
+        if (remote) remote->setGroup(value); else setConnection(value);
+       },
+      [&]()->std::string{ return remote ? remote->group() : getConnection(); });
+
+    properties->addVariable<std::string> (
+      "Visibility",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        if (visibility) visibility->unlink(this);
+        visibility = lp;
+        if (lp) { lp->link(new LinkableVisibility(this)); }
+       },
+      [&]()->std::string{ return visibility ? visibility->tagName() : ""; 
+    });
+  }
 }
 

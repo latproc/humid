@@ -10,6 +10,7 @@
 #include "editorimageview.h"
 #include "resourcemanager.h"
 #include "editorgui.h"
+#include "propertyformhelper.h"
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
@@ -149,6 +150,55 @@ void EditorImageView::setProperty(const std::string &prop, const std::string val
   }
   else if (prop == "Scale") {
     setScale(std::atof(value.c_str()));
+  }
+}
+
+
+void EditorImageView::loadProperties(PropertyFormHelper* properties) {
+  EditorWidget::loadProperties(properties);
+  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+  if (w) {
+    properties->addVariable<std::string> (
+      "Image File",
+      [&,properties](std::string value) mutable{ setImageName(value, true); fit(); },
+      [&,properties]()->std::string{ return imageName(); });
+    properties->addVariable<float> ("Scale",
+                  [&](float value) mutable{ setScale(value); center(); },
+                  [&]()->float { return scale();  });
+    properties->addGroup("Remote");
+    properties->addVariable<std::string> (
+      "Remote object",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        this->setRemoteName(value);
+        if (remote) remote->unlink(this);
+        remote = lp;
+        if (lp) { lp->link(new LinkableText(this)); }
+       },
+      [&]()->std::string{
+        if (remote) return remote->tagName();
+        if (getDefinition()) {
+          const Value &rmt_v = getDefinition()->getProperties().find("remote");
+          if (rmt_v != SymbolTable::Null)
+            return rmt_v.asString();
+        } 
+        return "";
+      });
+    properties->addVariable<std::string> (
+      "Connection",
+      [&,this,properties](std::string value) {
+        if (remote) remote->setGroup(value); else setConnection(value);
+       },
+      [&]()->std::string{ return remote ? remote->group() : getConnection(); });
+    properties->addVariable<std::string> (
+      "Visibility",
+      [&,this,properties](std::string value) {
+        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+        if (visibility) visibility->unlink(this);
+        visibility = lp;
+        if (lp) { lp->link(new LinkableVisibility(this)); }
+       },
+      [&]()->std::string{ return visibility ? visibility->tagName() : ""; });
   }
 }
 
