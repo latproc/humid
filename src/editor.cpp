@@ -107,7 +107,7 @@ void Editor::save() {
 	}
 
 	// collect a list of files to save to
-	std::map<NamedObject*, std::string> structure_files;
+	std::list<std::pair<NamedObject*, std::string>> structure_files;
 	for (auto s : hm_classes) {
 		assert(s);
 		std::string fname = s->getName();
@@ -120,7 +120,7 @@ void Editor::save() {
 			fname = filename.asString();
 
 		std::string file_path = base_path_str + "/" + fname;
-		structure_files[s] = file_path;
+		structure_files.push_back(make_pair(s,file_path));
 	}
 	for (auto s : hm_structures) {
 		if (s->getOwner()) {
@@ -140,7 +140,7 @@ void Editor::save() {
 
 		std::string file_path(base_v.asString());
 		file_path += "/" + fname;
-		structure_files[s] = file_path;
+		structure_files.push_back(make_pair(s,file_path));
 	}
 	// save to the files
 	std::set<StructureClass*>saved_classes;
@@ -162,7 +162,7 @@ void Editor::save() {
 			continue;
 		}
 		*/
-	  std::ofstream out;
+		std::ofstream out;
 		out.open(fn, std::ofstream::out | std::ofstream::app);
 		if (out.fail()) {
 			char buf[200];

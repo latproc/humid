@@ -52,16 +52,10 @@
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include "propertylist.h"
-#include "gltexture.h"
 #include "palette.h"
 #include "selectablebutton.h"
 #include "userwindow.h"
-#include "viewlistcontroller.h"
-#include "editorobject.h"
-#include "linkableobject.h"
 #include "editor.h"
-#include "editorwidget.h"
 #include "structureswindow.h"
 #include "objectwindow.h"
 #include "patternswindow.h"
