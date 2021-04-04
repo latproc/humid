@@ -123,8 +123,8 @@ bool Structure::getBoolProperty(const std::string name, bool default_value) {
 }
 
 bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
-	const char *begin_properties = "(";
-	const char *property_delim = ",";
+	const char *begin_properties = "(\n    ";
+	const char *property_delim = ",\n    ";
 	const char *delim = begin_properties;
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
