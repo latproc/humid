@@ -16,6 +16,7 @@
 #include "editorprogressbar.h"
 #include "propertyformhelper.h"
 #include "screenswindow.h"
+#include "widgetfactory.h"
 
 using namespace nanogui;
 
@@ -177,8 +178,6 @@ bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 	ObjectWindow *ow = EDITOR->gui()->getObjectWindow();
 	if (!focused() && enter && EDITOR->isEditMode() && ( (sw && sw->hasSelections()) || (ow && ow->hasSelections() )))
 		requestFocus();
-	//else if (focused() && !enter)
-	//		setFocused(false);
 
 	return res;
 }
@@ -395,7 +394,7 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 	return res;
 }
 
-void UserWindow::loadStructure( Structure *s) {
+void UserWindow::loadStructure(Structure *s) {
 	StructureClass *sc = findClass(s->getKind());
 	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
 		if (sc && !s->getStructureDefinition())
@@ -410,274 +409,26 @@ void UserWindow::loadStructure( Structure *s) {
 			}
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
-			const Value &vis(element->getProperties().find("visibility"));
-			const Value &connection(element->getProperties().find("connection"));
-			const Value &border(element->getProperties().find("border"));
-			const Value &font_size_val(element->getProperties().find("font_size"));
-			LinkableProperty *lp = nullptr;
-			Value remote_name(element->getProperties().find("remote"));
-			const Value &remote(remote_name == SymbolTable::Null || remote_name.asString() == "null" ? SymbolTable::Null : remote_name);
-			if (remote != SymbolTable::Null) {
-				std::string lp_name =remote.asString();
-				if (lp_name != "null") {
-					lp = gui->findLinkableProperty(lp_name);
-					if (!lp) {
-						if (stringEndsWith(lp_name, ".VALUE")) {
-							lp_name = lp_name.substr(0, lp_name.length()-6);
-							lp = gui->findLinkableProperty(lp_name);
-						}
-					}
-				}
-			}
-			LinkableProperty *visibility = nullptr;
-			if (vis != SymbolTable::Null)
-				visibility = gui->findLinkableProperty(vis.asString());
 
-			bool wrap = false;
-			{ 
-				const Value &wrap_v(element->getProperties().find("wrap"));
-				if (wrap_v != SymbolTable::Null) wrap_v.asBoolean(wrap);
-			}
+			WidgetParams params(s, window, element, gui);
 
-			bool ivis = false;
-			{ 
-				const Value &ivis_v(element->getProperties().find("inverted_visibility"));
-				if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
-			}
-			long font_size = 0;
-			if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
-			const Value &format_val(element->getProperties().find("format"));
-			const Value &value_type_val(element->getProperties().find("value_type"));
-			long value_type = -1;
-			if (value_type_val != SymbolTable::Null) value_type_val.asInteger(value_type);
-			const Value &scale_val(element->getProperties().find("value_scale"));
-			double value_scale = 1.0f;
-			if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
-			long tab_pos = 0;
-			const Value &tab_pos_val(element->getProperties().find("tab_pos"));
-			if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
-			double x_scale = 0;
-			const Value &x_scale_val(element->getProperties().find("x_scale"));
-			if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
 			if (kind == "LABEL") {
-				const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
-				EditorLabel *el = new EditorLabel(s, window, element->getName(), lp,
-												  (caption_v != SymbolTable::Null)?caption_v.asString(): "");
-				el->setName(element->getName());
-				el->setDefinition(element);
-				fixElementPosition( el, element->getProperties());
-				fixElementSize( el, element->getProperties());
-				if (connection != SymbolTable::Null) {
-					el->setRemoteName(remote.asString());
-					el->setConnection(connection.asString());
-				}
-				if (font_size) el->setFontSize(font_size);
-				const Value &bg_colour(element->getProperties().find("bg_color"));
-				if (bg_colour != SymbolTable::Null)
-					el->setBackgroundColor(colourFromProperty(element, "bg_color"));
-				const Value &text_colour(element->getProperties().find("text_color"));
-				if (text_colour != SymbolTable::Null)
-					el->setTextColor(colourFromProperty(element, "text_color"));
-				const Value &alignment_v(element->getProperties().find("alignment"));
-				if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
-				const Value &valignment_v(element->getProperties().find("valign"));
-				if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
-				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
-				if (value_type != -1) el->setValueType(value_type);				
-				if (value_scale != 1.0) el->setValueScale( value_scale );
-				if (tab_pos) el->setTabPosition(tab_pos);
-				if (lp)
-					lp->link(new LinkableText(el));
-				if (border != SymbolTable::Null) el->setBorder(border.iValue);
-				el->setInvertedVisibility(ivis);
-				if (visibility) el->setVisibilityLink(visibility);
-				el->setChanged(false);
+				createLabel(params);
 			}
 			if (kind == "IMAGE") {
-				EditorImageView *el = new EditorImageView(s, window, element->getName(), lp, 0);
-				el->setName(element->getName());
-				el->setDefinition(element);
-				if (connection != SymbolTable::Null) {
-					el->setConnection(connection.asString());
-				}
-				const Value &img_scale_val(element->getProperties().find("scale"));
-				double img_scale = 1.0f;
-				if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
-				fixElementPosition( el, element->getProperties());
-				fixElementSize( el, element->getProperties());
-				if (font_size) el->setFontSize(font_size);
-				if (format_val != SymbolTable::Null) el->setValueFormat(format_val.asString());
-				if (value_type != -1) el->setValueType(value_type);				
-				if (value_scale != 1.0) el->setValueScale( value_scale );
-				el->setScale( img_scale );
-				if (tab_pos) el->setTabPosition(tab_pos);
-				el->setInvertedVisibility(ivis);
-				const Value &image_file_v( (lp) ? lp->value() : (element->getProperties().find("image_file")));
-				if (image_file_v != SymbolTable::Null) {
-					std::string ifn = image_file_v.asString();
-					el->setImageName(ifn);
-					el->fit();
-				}
-				if (border != SymbolTable::Null) el->setBorder(border.iValue);
-				if (lp) {
-					lp->link(new LinkableText(el));
-				if (visibility) el->setVisibilityLink(visibility);
-				}
-				el->setChanged(false);
+				createImage(params);
 			}
 			if (kind == "PROGRESS") {
-				EditorProgressBar *ep = new EditorProgressBar(s, window, element->getName(), lp);
-				ep->setDefinition(element);
-				fixElementPosition( ep, element->getProperties());
-				fixElementSize( ep, element->getProperties());
-				if (connection != SymbolTable::Null) {
-					ep->setRemoteName(remote.asString());
-					ep->setConnection(connection.asString());
-				}
-				if (format_val != SymbolTable::Null) ep->setValueFormat(format_val.asString());
-				if (value_type != -1) ep->setValueType(value_type);				
-				if (value_scale != 1.0) ep->setValueScale( value_scale );
-				if (tab_pos) ep->setTabPosition(tab_pos);
-				if (border != SymbolTable::Null) ep->setBorder(border.iValue);
-				ep->setInvertedVisibility(ivis);
-				ep->setChanged(false);
-				if (lp)
-					lp->link(new LinkableNumber(ep));
-				if (visibility) ep->setVisibilityLink(visibility);
+				createProgress(params);
 			}
 			if (kind == "TEXT") {
-				EditorTextBox *textBox = new EditorTextBox(s, window, element->getName(), lp);
-				textBox->setDefinition(element);
-				const Value &text_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("text"));
-				if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
-				const Value &alignment_v(element->getProperties().find("alignment"));
-				if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
-				const Value &valignment_v(element->getProperties().find("valign"));
-				if (valignment_v != SymbolTable::Null) textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
-				textBox->setEnabled(true);
-				textBox->setEditable(true);
-				if (connection != SymbolTable::Null) {
-					textBox->setRemoteName(remote.asString());
-					textBox->setConnection(connection.asString());
-				}
-				if (format_val != SymbolTable::Null) textBox->setValueFormat(format_val.asString());
-				if (value_type != -1) textBox->setValueType(value_type);				
-				if (value_scale != 1.0) textBox->setValueScale( value_scale );
-				fixElementPosition( textBox, element->getProperties());
-				fixElementSize( textBox, element->getProperties());
-				if (font_size) textBox->setFontSize(font_size);
-				if (tab_pos) textBox->setTabPosition(tab_pos);
-				if (border != SymbolTable::Null) textBox->setBorder(border.iValue);
-				textBox->setName(element->getName());
-				if (lp)
-					textBox->setTooltip(remote.asString());
-				else
-					textBox->setTooltip(element->getName());
-				EditorGUI *gui = this->gui;
-				if (lp)
-					lp->link(new LinkableText(textBox));
-				if (visibility) textBox->setVisibilityLink(visibility);
-				textBox->setInvertedVisibility(ivis);
-				textBox->setChanged(false);
-				textBox->setCallback( [textBox, gui](const std::string &value)->bool{
-					if (!textBox->getRemote()) return true;
-					const std::string &conn = textBox->getRemote()->group();
-					char *rest = 0;
-					{
-						long val = strtol(value.c_str(),&rest,10);
-						if (*rest == 0) {
-							gui->queueMessage(conn,
-									gui->getIODSyncCommand(conn,
-									textBox->getRemote()->address_group(),
-									textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
-								[](std::string s){std::cout << s << "\n"; });
-							return true;
-						}
-					}
-					{
-						double val = strtod(value.c_str(),&rest);
-						if (*rest == 0)  {
-							gui->queueMessage(conn,
-								gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
-									textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
-							return true;
-						}
-					}
-					return false;
-				});
+				createText(params);
 			}
 			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
-				EditorLinePlot *lp = new EditorLinePlot(s, window, element->getName(), nullptr);
-				lp->setDefinition(element);
-				lp->setBufferSize(gui->sampleBufferSize());
-				fixElementPosition( lp, element->getProperties());
-				fixElementSize( lp, element->getProperties());
-				if (connection != SymbolTable::Null) {
-					lp->setRemoteName(remote.asString());
-					lp->setConnection(connection.asString());
-				}
-				if (format_val != SymbolTable::Null) lp->setValueFormat(format_val.asString());
-				if (value_type != -1) lp->setValueType(value_type);				
-				if (value_scale != 1.0) lp->setValueScale( value_scale );
-				if (font_size) lp->setFontSize(font_size);
-				if (tab_pos) lp->setTabPosition(tab_pos);
-				if (x_scale) lp->setTimeScale(x_scale);
-				{
-				bool should_overlay_plots;
-				if (element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
-					lp->overlay(should_overlay_plots);
-				}
-				const Value &monitors(element->getProperties().find("monitors"));
-				lp->setInvertedVisibility(ivis);
-				if (monitors != SymbolTable::Null) {
-					lp->setMonitors(this, monitors.asString());
-				}
-				lp->setChanged(false);
-				if (visibility) lp->setVisibilityLink(visibility);
+				createPlot(params);
 			}
 			else if (kind == "BUTTON" || kind == "INDICATOR") {
-				const Value &caption_v(element->getProperties().find("caption"));
-				EditorButton *b = new EditorButton(s, window, element->getName(), lp,
-												   (caption_v != SymbolTable::Null)?caption_v.asString(): element->getName());
-				if (kind == "INDICATOR") b->setEnabled(false); else b->setEnabled(true);
-				b->setDefinition(element);
-				b->setBackgroundColor(colourFromProperty(element, "bg_color"));
-				b->setTextColor(colourFromProperty(element, "text_colour"));
-				b->setOnColor(colourFromProperty(element, "bg_on_color"));
-				b->setOnTextColor(colourFromProperty(element, "on_text_colour"));
-				b->setFlags(element->getIntProperty("behaviour", nanogui::Button::NormalButton));
-				if (connection != SymbolTable::Null) {
-					b->setRemoteName(remote.asString());
-					b->setConnection(connection.asString());
-				}
-				fixElementPosition( b, element->getProperties());
-				fixElementSize( b, element->getProperties());
-				if (font_size) b->setFontSize(font_size);
-				if (tab_pos) b->setTabPosition(tab_pos);
-				if (border != SymbolTable::Null) b->setBorder(border.iValue);
-				b->setInvertedVisibility(ivis);
-				b->setWrap(wrap);
-				EditorGUI *gui = this->gui;
-				const Value &alignment_v(element->getProperties().find("alignment"));
-				if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v.asString());
-				const Value &valignment_v(element->getProperties().find("valign"));
-				if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v.asString());
-
-				{
-					const Value &caption_v = element->getProperties().find("caption");
-					if (caption_v != SymbolTable::Null) b->setCaption(caption_v.asString());
-				}
-				{
-					const Value &caption_v = element->getProperties().find("on_caption");
-					if (caption_v != SymbolTable::Null) b->setOnCaption(caption_v.asString());
-				}
-				{
-					const Value &cmd(element->getProperties().find("command"));
-					if (cmd != SymbolTable::Null && cmd.asString().length()) b->setCommand(cmd.asString());
-				}
-				b->setupButtonCallbacks(lp, gui);
-				if (visibility) b->setVisibilityLink(visibility);
-				b->setChanged(false);
+				createButton(params);
 			}
 		}
 	}
@@ -736,8 +487,6 @@ void UserWindow::getPropertyNames(std::list<std::string> &names) {
 	names.push_back("Screen Width");
 	names.push_back("Screen Height");
 	names.push_back("Screen Id");
-	//names.push_back("Window Width");
-	//names.push_back("Window Height");
 	names.push_back("File Name");
 }
 
