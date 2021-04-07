@@ -6,6 +6,7 @@
 #include <nanogui/entypo.h>
 #include <nanogui/layout.h>
 #include <nanogui/formhelper.h>
+#include <nanogui/messagedialog.h>
 
 #include <boost/filesystem.hpp>
 
@@ -15,8 +16,12 @@
 #include "screenswindow.h"
 #include "objectwindow.h"
 #include "viewswindow.h"
+#include "dialogwindow.h"
+#include "helper.h"
 
 extern std::list<std::string> source_files;
+
+static DialogWindow *dlog = nullptr;
 
 #ifndef ENTYPO_ICON_LAYOUT
 #define ENTYPO_ICON_LAYOUT                              0x0000268F
@@ -42,11 +47,25 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	});
 	tb = new ToolButton(toolbar, ENTYPO_ICON_NEW);
 	tb->setFlags(Button::NormalButton);
-	tb->setTooltip("New Project");
+	tb->setTooltip("Sample dialog");
 	tb->setFixedSize(Vector2i(32,32));
+	tb->setCallback([this] {
+		if (dlog) {
+			dlog->dispose();
+			dlog = nullptr;
+		}
+		else {
+			Editor *editor = EDITOR;
+			dlog = new DialogWindow(editor->gui(), mTheme);
+			auto s = findScreen("dialog");
+			if (s) { std::cout << "found dialog\n"; }
+			if (s) dlog->setStructure(s);
+			dlog->setVisible(true);
+		}
+	});
 
 	tb = new ToolButton(toolbar, ENTYPO_ICON_NOTE);
-	//tb->setFlags(Button::ToggleButton);
+	tb->setFlags(Button::NormalButton);
 	tb->setTooltip("Open Project");
 	tb->setFlags(Button::NormalButton);
 	tb->setCallback([this] {
@@ -106,9 +125,14 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	});
 
 	tb = new ToolButton(toolbar, ENTYPO_ICON_INSTALL);
+	tb->setFlags(Button::NormalButton);
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
-	tb->setChangeCallback([this](bool state) {
+	tb->setCallback([]{
+		if (dlog) {
+			dlog->dispose();
+			dlog = nullptr;
+		}
 	});
 
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
@@ -121,6 +145,7 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	});
 
 	tb = new ToolButton(toolbar, ENTYPO_ICON_LAYOUT);
+	tb->setFlags(Button::NormalButton);
 	tb->setTooltip("Create");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setChangeCallback([](bool state) { });
