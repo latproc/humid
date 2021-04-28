@@ -35,6 +35,9 @@ void addNamedObjectToMap(NamedObject *no, Dict &dict) {
   if (!no) return;
 
   auto found = dict.find(no->getName());
+  if (found != dict.end() && (*found).second != no) {
+    std::cerr << "object " << no->getName() << " already exists\n";
+  }
   assert(found == dict.end() || (*found).second == no);
   dict[no->getName()] = no;
 }
