@@ -1027,12 +1027,14 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 							if (obj->type == cJSON_Array) {
 								processModbusInitialisation(connection->getName(), obj);
 								w_objects->rebuildWindow();
-								w_user->setStructure(w_user->structure());
-								const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-								if (remote_screen != SymbolTable::Null) {
-									LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-									if (lp) {
-										lp->link(getUserWindow());
+								if (w_user && getState() == GUIWORKING) {
+									w_user->setStructure(w_user->structure());
+									const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+									if (remote_screen != SymbolTable::Null) {
+										LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+										if (lp) {
+											lp->link(getUserWindow());
+										}
 									}
 								}
 
@@ -1054,7 +1056,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 	}
 
 	if (connection->getStartupState() == sDONE || connection->getStartupState() == sRELOAD) {
-		if (w_user) {
+		if (w_user && getState() == GUIWORKING) {
 			//bool changed = false;
 			const Value &active(EditorGUI::systemSettings()->getProperties().find("active_screen"));
 			if (active != SymbolTable::Null) {
