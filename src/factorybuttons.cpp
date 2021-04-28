@@ -16,6 +16,7 @@
 #include "editorimageview.h"
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
+#include "editorframe.h"
 #include "editorgui.h"
 #include "factorybuttons.h"
 #include "structureswindow.h"
@@ -111,6 +112,12 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		s->setName(lp->getName());
 		lp->setBufferSize(gui->sampleBufferSize());
 		result = lp;
+	}
+	else if (sc->getName() == "FRAME") {
+		auto *fr = new EditorFrame(parent, window, generated_name, nullptr);
+		fr->setDefinition(s);
+		s->setName(fr->getName());
+		result = fr;
 	}
 	else if (sc->getName() == "PROGRESS") {
 		EditorProgressBar *ep = new EditorProgressBar(parent, window, generated_name, nullptr);

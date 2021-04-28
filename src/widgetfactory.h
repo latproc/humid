@@ -32,8 +32,9 @@ struct WidgetParams {
 	bool ivis;
 	double x_scale;
 	double value_scale;
+	nanogui::Vector2i offset = nanogui::Vector2i(0,0);
 
-	WidgetParams(Structure *structure, nanogui::Widget *w, Structure *elem, EditorGUI *editor_gui);
+	WidgetParams(Structure *structure, nanogui::Widget *w, Structure *elem, EditorGUI *editor_gui, const nanogui::Vector2i &offset);
 };
 
 void createLabel(WidgetParams &params);
@@ -42,4 +43,5 @@ void createProgress(WidgetParams &params);
 void createText(WidgetParams &params);
 void createPlot(WidgetParams &params);
 void createButton(WidgetParams &params);
+void createFrame(WidgetParams &params);
 

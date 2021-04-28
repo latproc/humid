@@ -100,20 +100,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
-		b = new StructureFactoryButton(gui, "RECT", this, cell, 0, "RECT", "");
-		b->setEnabled(true);
-		b->setFixedSize(Vector2i(button_width, 30));
-		b->setPosition(Vector2i(2,2));
-		s = new Structure(nullptr, "Start_Rect", "RECT");
-		starters["RECT"] = s;
-		sc = new StructureClass("RECT", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
-		s->getProperties().add("width",128);
-		s->getProperties().add("height",128);
-
-		cell = new Widget(palette_content);
-		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "LABEL", this, cell, 0, "LABEL", "");
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));
@@ -169,6 +155,19 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		s->getProperties().add("width",256);
 		s->getProperties().add("height",32);
 
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "FRAME", this, cell, 0, "FRAME", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure(nullptr, "Start_Frame", "FRAME");
+		starters["FRAME"] = s;
+		sc = new StructureClass("FRAME", "");
+		sc->setBuiltIn();
+		hm_classes.push_back(sc);
+		s->getProperties().add("width",128);
+		s->getProperties().add("height",128);
 	}
 
 }

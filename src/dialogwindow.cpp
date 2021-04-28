@@ -54,6 +54,27 @@ void DialogWindow::loadStructure(Structure *s) {
 		if (sc && !s->getStructureDefinition())
 			s->setStructureDefinition(sc);
 		int pnum = 0;
+		nanogui::Vector2i offset;
+		for (auto param : sc->getLocals()) {
+			++pnum;
+			Structure *element = param.machine;
+			if (!element) {
+				continue;
+			}
+			std::string kind = element->getKind();
+			if (kind == "FRAME") {
+				auto properties = element->getProperties();
+				Value vx = properties.find("pos_x");
+				Value vy = properties.find("pos_y");
+				long x, y;
+				if (vx.asInteger(x) && vy.asInteger(y)) {
+					std::cout << "set offset: " << x << "," << y << "\n";
+					offset = nanogui::Vector2i(x,y);
+				}
+				break;
+			}
+		}
+		pnum = 0;
 		for (auto param : sc->getLocals()) {
 			++pnum;
 			Structure *element = param.machine;
@@ -64,7 +85,7 @@ void DialogWindow::loadStructure(Structure *s) {
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
 
-			WidgetParams params(s, this, element, gui);
+			WidgetParams params(s, this, element, gui, offset);
 
 			if (kind == "LABEL") {
 				createLabel(params);

@@ -6,6 +6,7 @@
 #include "editortextbox.h"
 #include "editorlineplot.h"
 #include "editorbutton.h"
+#include "editorframe.h"
 #include <nanogui/button.h>
 #include "helper.h"
 
@@ -16,26 +17,34 @@ static bool stringEndsWith(const std::string &src, const std::string ending) {
 	return src.substr(src.end() - l_end - src.begin()) == ending;
 }
 
-
 void fixElementPosition(nanogui::Widget *w, const SymbolTable &properties);
 void fixElementSize(nanogui::Widget *w, const SymbolTable &properties);
 
-WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, EditorGUI *editor_gui) : 
+void setElementPosition(const WidgetParams &params, nanogui::Widget *w, const SymbolTable &properties) {
+	fixElementPosition(w, properties);
+	if (params.offset != nanogui::Vector2i(0,0)) {
+		auto pos = w->position();
+		w->setPosition(pos - params.offset);
+	}
+}
+
+WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
+	EditorGUI *editor_gui, const nanogui::Vector2i &offset_) :
 		s(structure), window(w), element(elem), gui(editor_gui),
 		format_val(element->getProperties().find("format")),
-		connection(element->getProperties().find("connection")), 
+		connection(element->getProperties().find("connection")),
 		vis(element->getProperties().find("visibility")),
 		scale_val(element->getProperties().find("value_scale")),
 		border(element->getProperties().find("border")),
-		kind(element->getKind())
+		kind(element->getKind()), offset(offset_)
 {
 	StructureClass *element_class = findClass(kind);
 	
 	const Value &font_size_val(element->getProperties().find("font_size"));
 	lp = nullptr;
 	const Value &remote_name(element->getProperties().find("remote"));
-	remote = remote_name == SymbolTable::Null || remote_name.asString() == "null" 
-		? SymbolTable::Null 
+	remote = remote_name == SymbolTable::Null || remote_name.asString() == "null"
+		? SymbolTable::Null
 		: remote_name;
 	if (remote != SymbolTable::Null) {
 		std::string lp_name = remote.asString();
@@ -54,13 +63,13 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
 		visibility = gui->findLinkableProperty(vis.asString());
 
 	wrap = false;
-	{ 
+	{
 		const Value &wrap_v(element->getProperties().find("wrap"));
 		if (wrap_v != SymbolTable::Null) wrap_v.asBoolean(wrap);
 	}
 
 	ivis = false;
-	{ 
+	{
 		const Value &ivis_v(element->getProperties().find("inverted_visibility"));
 		if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
 	}
@@ -81,18 +90,17 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
 	//const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
 }
 
-
 void createLabel(WidgetParams &params) {
-	const Value &caption_v( (params.lp) 
-		? params.lp->value() 
-		: (params.remote != SymbolTable::Null) 
-			? "" 
+	const Value &caption_v( (params.lp)
+		? params.lp->value()
+		: (params.remote != SymbolTable::Null)
+			? ""
 			: params.element->getProperties().find("caption"));
 	EditorLabel *el = new EditorLabel(params.s, params.window, params.element->getName(), params.lp,
 		(caption_v != SymbolTable::Null) ? caption_v.asString() : "");
 	el->setName(params.element->getName());
 	el->setDefinition(params.element);
-	fixElementPosition( el, params.element->getProperties());
+	setElementPosition(params, el, params.element->getProperties());
 	fixElementSize( el, params.element->getProperties());
 	if (params.connection != SymbolTable::Null) {
 		el->setRemoteName(params.remote.asString());
@@ -131,7 +139,7 @@ void createImage(WidgetParams &params) {
 	const Value &img_scale_val(params.element->getProperties().find("scale"));
 	double img_scale = 1.0f;
 	if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
-	fixElementPosition( el, params.element->getProperties());
+	setElementPosition(params, el, params.element->getProperties());
 	fixElementSize( el, params.element->getProperties());
 	if (params.font_size) el->setFontSize(params.font_size);
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
@@ -157,7 +165,7 @@ void createImage(WidgetParams &params) {
 void createProgress(WidgetParams &params) {
 	EditorProgressBar *ep = new EditorProgressBar(params.s, params.window, params.element->getName(), params.lp);
 	ep->setDefinition(params.element);
-	fixElementPosition( ep, params.element->getProperties());
+	setElementPosition(params, ep, params.element->getProperties());
 	fixElementSize( ep, params.element->getProperties());
 	if (params.connection != SymbolTable::Null) {
 		ep->setRemoteName(params.remote.asString());
@@ -193,7 +201,7 @@ void createText(WidgetParams &params) {
 	if (params.format_val != SymbolTable::Null) textBox->setValueFormat(params.format_val.asString());
 	if (params.value_type != -1) textBox->setValueType(params.value_type);				
 	if (params.value_scale != 1.0) textBox->setValueScale( params.value_scale );
-	fixElementPosition( textBox, params.element->getProperties());
+	setElementPosition(params, textBox, params.element->getProperties());
 	fixElementSize( textBox, params.element->getProperties());
 	if (params.font_size) textBox->setFontSize(params.font_size);
 	if (params.tab_pos) textBox->setTabPosition(params.tab_pos);
@@ -240,7 +248,7 @@ void createPlot(WidgetParams &params) {
 	EditorLinePlot *lp = new EditorLinePlot(params.s, params.window, params.element->getName(), nullptr);
 	lp->setDefinition(params.element);
 	lp->setBufferSize(params.gui->sampleBufferSize());
-	fixElementPosition( lp, params.element->getProperties());
+	setElementPosition(params, lp, params.element->getProperties());
 	fixElementSize( lp, params.element->getProperties());
 	if (params.connection != SymbolTable::Null) {
 		lp->setRemoteName(params.remote.asString());
@@ -281,7 +289,7 @@ void createButton(WidgetParams &params) {
 		b->setRemoteName(params.remote.asString());
 		b->setConnection(params.connection.asString());
 	}
-	fixElementPosition( b, params.element->getProperties());
+	setElementPosition(params, b, params.element->getProperties());
 	fixElementSize( b, params.element->getProperties());
 	if (params.font_size) b->setFontSize(params.font_size);
 	if (params.tab_pos) b->setTabPosition(params.tab_pos);
@@ -309,3 +317,28 @@ void createButton(WidgetParams &params) {
 	if (params.visibility) b->setVisibilityLink(params.visibility);
 	b->setChanged(false);
 }
+
+
+void createFrame(WidgetParams &params) {
+	auto ep = new EditorFrame(params.s, params.window, params.element->getName(), params.lp);
+	ep->setDefinition(params.element);
+	setElementPosition(params, ep, params.element->getProperties());
+	fixElementSize( ep, params.element->getProperties());
+	if (params.connection != SymbolTable::Null) {
+		ep->setRemoteName(params.remote.asString());
+		ep->setConnection(params.connection.asString());
+	}
+	if (params.format_val != SymbolTable::Null) ep->setValueFormat(params.format_val.asString());
+	if (params.value_type != -1) ep->setValueType(params.value_type);
+	if (params.value_scale != 1.0) ep->setValueScale( params.value_scale );
+	if (params.tab_pos) ep->setTabPosition(params.tab_pos);
+	if (params.border != SymbolTable::Null) ep->setBorder(params.border.iValue);
+	ep->setInvertedVisibility(params.ivis);
+	ep->setChanged(false);
+	if (params.lp)
+		params.lp->link(new LinkableNumber(ep));
+	if (params.visibility) ep->setVisibilityLink(params.visibility);
+}
+
+
+

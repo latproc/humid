@@ -410,7 +410,7 @@ void UserWindow::loadStructure(Structure *s) {
 			std::string kind = element->getKind();
 			StructureClass *element_class = findClass(kind);
 
-			WidgetParams params(s, window, element, gui);
+			WidgetParams params(s, window, element, gui, nanogui::Vector2i(0,0));
 
 			if (kind == "LABEL") {
 				createLabel(params);
@@ -426,6 +426,9 @@ void UserWindow::loadStructure(Structure *s) {
 			}
 			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
 				createPlot(params);
+			}
+			else if (kind == "FRAME") {
+				createFrame(params);
 			}
 			else if (kind == "BUTTON" || kind == "INDICATOR") {
 				createButton(params);
