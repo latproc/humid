@@ -68,7 +68,6 @@ void DialogWindow::loadStructure(Structure *s) {
 				Value vy = properties.find("pos_y");
 				long x, y;
 				if (vx.asInteger(x) && vy.asInteger(y)) {
-					std::cout << "set offset: " << x << "," << y << "\n";
 					offset = nanogui::Vector2i(x,y);
 				}
 				break;

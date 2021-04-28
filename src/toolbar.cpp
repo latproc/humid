@@ -58,8 +58,9 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 			Editor *editor = EDITOR;
 			dlog = new DialogWindow(editor->gui(), mTheme);
 			auto s = findScreen("dialog");
-			if (s) { std::cout << "found dialog\n"; }
-			if (s) dlog->setStructure(s);
+			if (s) {
+				dlog->setStructure(s);
+			}
 			dlog->setVisible(true);
 		}
 	});
