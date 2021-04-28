@@ -614,6 +614,9 @@ int main(int argc, const char ** argv ) {
 					psc->addLocal(p);
 				}
 			}
+			if (!project_settings->getStructureDefinition()) {
+				project_settings->setStructureDefinition(findClass("PROJECTSETTINGS"));
+			}
 
 
 			Value full_screen_v = EditorGUI::systemSettings()->getProperties().find("full_screen");
