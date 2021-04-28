@@ -275,6 +275,8 @@ void UserWindow::setStructure( Structure *s) {
 	}
 
 	clearSelections();
+	clear();
+
 	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
 	PropertyMonitor *pm  = nullptr;
 	if (drag_handle) {
@@ -282,10 +284,6 @@ void UserWindow::setStructure( Structure *s) {
 		window->removeChild(drag_handle);
 		pm = drag_handle->propertyMonitor();
 		drag_handle->setPropertyMonitor(0);
-	}
-	int n = window->childCount();
-	while (n--) {
-		window->removeChild(0);
 	}
 
 	loadStructure(s);
