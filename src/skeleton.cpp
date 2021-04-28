@@ -133,7 +133,6 @@ public:
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override {
 		nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
 		using namespace nanogui;
-		std::cout << caption() << " button" << "\n";
 		return Button::mouseButtonEvent(p, button, down, modifiers);
 	}
 
@@ -165,7 +164,6 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg) : Skeleto
 	ok_button->setSize(Vector2i(60, 20));
 	ok_button->setBackgroundColor(Color(140, 140, 140, 255));
 	ok_button->setCallback([this] {
-		std::cout << "test\n";
 		this->window->setVisible(false);
 	});
 	ok_button->setEnabled(true);
@@ -288,11 +286,9 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 		nanogui::Vector2i wp(p - window->position());
 
 		if (window->contains(p)) {
-			std::cout << "w " << wp.x() << "," << wp.y() << " " << button << " " << down << "\n";
 			return window->mouseButtonEvent(p, button, down, modifiers);
 		}
 		else {
-			std::cout << " " << p.x() << "," << p.y() << " " << button << " " << down << "\n";
 			return Screen::mouseButtonEvent(p, button, down, modifiers);
 		}
 	}
@@ -305,12 +301,12 @@ ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string c
 }
 
 void ClockworkClient::Connection::SetupInterface() {
-	std::cout << "-------- Skeleton Starting " << name << " Interface ---------\n";
-	std::cout << "connecting to clockwork on " << host_name << ":" << port << "\n";
+	std::cerr << "-------- Skeleton Starting " << name << " Interface ---------\n";
+	std::cerr << "connecting to clockwork on " << host_name << ":" << port << "\n";
 	g_iodcmd = MessagingInterface::create(host_name, port);
 	g_iodcmd->start();
 	iosh_cmd = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REP);
-	std::cout << name << " binding internally to " << local_commands << " for cmd interface\n";
+	std::cerr << name << " binding internally to " << local_commands << " for cmd interface\n";
 	iosh_cmd->bind(local_commands.c_str());
 }
 
@@ -319,12 +315,13 @@ zmq::socket_t *ClockworkClient::Connection::commandInterface() {
 }
 
 void ClockworkClient::Connection::setupCommandInterface() {
-	std::cout << name << " connecting to " << local_commands << " cmd interface\n";
+	std::cerr << name << " connecting to " << local_commands << " cmd interface\n";
 	cmd_interface = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
 	cmd_interface->connect(local_commands.c_str());
 }
 
 ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn) {
+	std::cerr << "Setting up clockwork connection\n";
 	const Value &chn = s_conn->getProperties().find("channel");
 	const Value &host = s_conn->getProperties().find("host");
 	long port = s_conn->getIntProperty("port", 5555);
@@ -366,6 +363,9 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 		}
 		return conn;
 	}
+	else {
+		std::cerr << "no channel for Clockwork connection\n";
+	}
 	return 0;
 }
 
@@ -386,9 +386,14 @@ bool ClockworkClient::setupConnections(Structure *project_settings) {
 				}
 			}
 		}
+		else {
+			std::cerr << "could not find a structure class for project settings\n";
+		}
 	}
-	else
+	else {
+		std::cerr << "setupConnections passed a null project settings\n";
 		return false;
+	}
 	return added > 0;
 }
 
@@ -409,7 +414,7 @@ zmq::socket_t* ClockworkClient::Connection::getCommandSocket() const {
 bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
 	if (command_state == WaitingCommand && !messages.empty()) {
 		std::string msg = messages.front().first;
-		std::cout << name << " sending " << msg << "\n";
+		std::cerr << name << " sending " << msg << "\n";
 		safeSend(*cmd_interface, msg.c_str(), msg.length());
 		command_state = WaitingResponse;
 	}
@@ -439,10 +444,10 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	}
 	if (first_message_time == 0) first_message_time = mh.start_time;
 
-	std::ostream &output(std::cout);
+	std::ostream &output(std::cerr);
 
 	if (DEBUG_BASIC)
-		std::cout << "received: "<<data<<" from connection: " << name << "\n";
+		std::cerr << "received: "<<data<<" from connection: " << name << "\n";
 
 	std::list<Value> *message = 0;
 
@@ -460,7 +465,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
 		res = true;
 	}
 	else {
-		std::cout << "failed to decode command " << data << "\n";
+		std::cerr << "failed to decode command " << data << "\n";
 	}
 	free(data);
 	return res;
@@ -488,7 +493,7 @@ void ClockworkClient::idle() {
 		uint64_t now = microsecs();
 		if (now - last_check_new_connections > 1000000) {// attempt any new connections every second
 			if (setupConnections(project_settings))
-				std::cout << "--- added connection\n";
+				std::cerr << "--- added connection\n";
 			last_check_new_connections = now;
 		}
 
@@ -504,7 +509,6 @@ void ClockworkClient::idle() {
 
 				SubscriptionManager *subscription_manager = conn->subscriptionManager();
 				if (!subscription_manager) continue;
-				//std::cout << conn->getName() << " state: " << subscription_manager->setupStatus() << "\n";
 
 				{
 					if (conn->Ready() && conn->update()) 
@@ -518,7 +522,7 @@ void ClockworkClient::idle() {
 					try {
 						if (!subscription_manager->checkConnections(items, 3, *conn->iosh_cmd)) {
 							if (debug) {
-								std::cout << conn->getName() << ": no connection to iod\n";
+								std::cerr << conn->getName() << ": no connection to iod\n";
 								reported_error = true;
 							}
 						}
@@ -652,74 +656,49 @@ bool setup_signals() {
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, bool which) {
-	//Connection *conn = findConnection(connection_name, connections);
-	//if (conn) {
-		int new_value = (which) ? 1 : 0;
-		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-		//conn->sendIODMessage(msg);
+	int new_value = (which) ? 1 : 0;
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
 
-		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-		std::string s(msg);
-		free(msg);
-		return s;
-	//}
-	//else return "";
+	if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
+	std::string s(msg);
+	free(msg);
+	return s;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, int new_value) {
-	//Connection *conn = findConnection(connection_name, connections);
-	//if (conn) {
-		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-		//conn->sendIODMessage(msg);
-		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-		std::string s(msg);
-		free(msg);
-		return s;
-	//}
-	//else
-	//	return "";
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	//conn->sendIODMessage(msg);
+	if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
+	std::string s(msg);
+	free(msg);
+	return s;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, unsigned int new_value) {
-	//Connection *conn = findConnection(connection_name, connections);
-	//if (conn) {
-		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-		//conn->sendIODMessage(msg);
-		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
-		std::string s(msg);
-		free(msg);
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	//conn->sendIODMessage(msg);
+	if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
+	std::string s(msg);
+	free(msg);
 
-		return s;
-	//}
-	//return "";
+	return s;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, float new_value) {
-	//Connection *conn = findConnection(connection_name, connections);
-	//if (conn) {
 		char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-		//conn->sendIODMessage(msg);
 
-		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 		std::string s(msg);
 		free(msg);
 		return s;
-	//}
-	//else
-	//	return "";
 }
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, const char *new_value) {
-	//Connection *conn = findConnection(connection_name, connections);
 	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//if (conn) {
-		//conn->sendIODMessage(msg);
 
-		if (DEBUG_BASIC) std::cout << "IOD command: " << msg << "\n";
+		if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 		std::string s(msg);
 		free(msg);
 		return s;
-	//}
-	//else return "";
 }
 
 char *ClockworkClient::Connection::sendIOD(const char *msg) {
@@ -731,12 +710,12 @@ char *ClockworkClient::Connection::sendIOD(const char *msg) {
 char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 	if (!Ready()) return 0;
 
-	std::cout << "sendIOD sending " << s << "\n";
+	std::cerr << "sendIOD sending " << s << "\n";
 
 	if (g_iodcmd)
 		return g_iodcmd->send(s.c_str());
 	else {
-		if (DEBUG_BASIC) std::cout << "IOD interface not ready\n";
+		if (DEBUG_BASIC) std::cerr << "IOD interface not ready\n";
 
 		return strdup("IOD interface not ready\n");
 	}
@@ -745,7 +724,7 @@ char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 char *ClockworkClient::sendIOD(const std::string & connection_name, int group, int addr, int new_value) {
 	Connection *conn = findConnection(connection_name, connections);
 	std::string s(getIODSyncCommand(connection_name, group, addr, new_value));
-	std::cout << "sendIOD sending " << s << "\n";
+	std::cerr << "sendIOD sending " << s << "\n";
 	if (conn)
 		return conn->sendIODMessage(s);
 	return 0;
