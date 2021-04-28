@@ -291,7 +291,7 @@ CircularBuffer *UserWindow::getDataBuffer(const std::string item) {
 bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 	if (widget) {
 		nanogui::Screen *screen = dynamic_cast<nanogui::Screen*>(widget);
-		{
+		if (item->getName() != "Structures") {
 			const Value &vw(item->getProperties().find("w"));
 			const Value &vh(item->getProperties().find("h"));
 			long w, h;

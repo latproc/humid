@@ -37,8 +37,8 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
-	window->setFixedSize(Vector2i(180,240));
-	window->setSize(Vector2i(180,240));
+	window->setFixedSize(Vector2i(180,340));
+	window->setSize(Vector2i(180,320));
 	window->setPosition(Vector2i(screen->width() - 200, 40));
 	window->setLayout(new GridLayout(Orientation::Vertical,1));
 	window->setTitle("Structures");
