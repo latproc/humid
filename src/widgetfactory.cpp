@@ -270,7 +270,7 @@ void createPlot(WidgetParams &params) {
 	if (monitors != SymbolTable::Null) {
 		lp->setMonitors(params.gui->getUserWindow(), monitors.asString());
 	}
-	params.lp->setChanged(false);
+	lp->setChanged(false);
 	if (params.visibility) lp->setVisibilityLink(params.visibility);
 }
 
