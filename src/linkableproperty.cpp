@@ -24,6 +24,7 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
         char *rest = 0;
         modbus_address = (int)strtol(address_str.c_str()+2,&rest, 10);
       }
+      std::cout << "created linkable property " << name << "\n";
     }
 
 LinkableProperty::~LinkableProperty() {
@@ -114,6 +115,15 @@ void LinkableProperty::unlink(EditorObject *w) {
     }
     else
       ++iter;
+  }
+}
+
+void LinkableProperty::clear() {
+  auto iter = links.begin();
+  while (iter != links.end()) {
+    LinkableObject *link = *iter;
+    iter = links.erase(iter);
+    delete link;
   }
 }
 

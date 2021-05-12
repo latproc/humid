@@ -25,6 +25,7 @@
 #include "editorsettings.h"
 #include "propertywindow.h"
 #include "themewindow.h"
+#include "dialogwindow.h"
 #include "cJSON.h"
 
 class StartupWindow;
@@ -64,6 +65,9 @@ public:
 	PatternsWindow *getPatternsWindow();
 	ScreensWindow *getScreensWindow();
 	ViewsWindow *getViewsWindow();
+	DialogWindow *getUserDialog();
+	void setUserDialog(const std::string &dialog_name);
+	void showDialog(bool show = true);
 	nanogui::Window *getActiveWindow();
 
 	nanogui::Window *getNamedWindow(const std::string name);
@@ -113,25 +117,27 @@ private:
 	ViewListController views;
 	std::list<PanelScreen*>user_screens;
 	nanogui::Vector2i old_size;
-	nanogui::Theme *theme;
+	nanogui::Theme *theme = nullptr;
 	GuiState state;
-	Editor *editor;
-	Toolbar *w_toolbar;
-	PropertyWindow *w_properties;
-	ObjectWindow *w_objects;
-	ThemeWindow *w_theme;
-	UserWindow *w_user;
-	PatternsWindow *w_patterns;
-	StructuresWindow *w_structures;
-	PatternsWindow *w_connections;
-	StartupWindow *w_startup;
-	ScreensWindow *w_screens;
+	Editor *editor = nullptr;
+	Toolbar *w_toolbar = nullptr;
+	PropertyWindow *w_properties = nullptr;
+	ObjectWindow *w_objects = nullptr;
+	ThemeWindow *w_theme = nullptr;
+	UserWindow *w_user = nullptr;
+	DialogWindow *w_dialog = nullptr;
+	PatternsWindow *w_patterns = nullptr;
+	StructuresWindow *w_structures = nullptr;
+	PatternsWindow *w_connections = nullptr;
+	StartupWindow *w_startup = nullptr;
+	ScreensWindow *w_screens = nullptr;
 	ViewsWindow *w_views;
 	using imagesDataType = std::vector<std::pair<GLTexture, GLTexture::handleType>>;
 	imagesDataType mImagesData;
 	bool needs_update;
 	unsigned int sample_buffer_size;
-	EditorProject *project;
+	EditorProject *project = nullptr;
+  std::string dialog_name;
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorGUI &m);

@@ -2,10 +2,10 @@
 
 #include <nanogui/screen.h>
 #include <nanogui/window.h>
-#include <nanogui/object.h>
-#include <nanogui/formhelper.h>
+#include <nanogui/theme.h>
 
-#include "editorgui.h"
+class EditorGUI;
+class Structure;
 
 class DialogWindow : public nanogui::Window {
 public:

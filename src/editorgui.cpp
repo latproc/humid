@@ -160,7 +160,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 				if (conn.empty() && EditorGUI::systemSettings()) {
 					sc = EditorGUI::systemSettings()->getStructureDefinition();
 					if (!sc) {
-						std::cout << "no class\n";
+						std::cout << "ERROR: no class defined for system settings\n";
 						return false;
 					}
 					std::map<std::string, Value>::iterator found = sc->getOptions().find(key_name);
@@ -612,15 +612,6 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 			case GUIEDITMODE:
 				editmode = true;
 				getUserWindow()->startEditMode();
-				if (false){
-					Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-					if (remote_screen != SymbolTable::Null) {
-						LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-						if (lp)
-							lp->apply();
-							if (w_screens && !w_screens->hasSelections()) w_screens->selectFirst();
-					}
-				}
 				// fall through
 			case GUIWORKING:
 				getUserWindow()->endEditMode();
@@ -653,6 +644,14 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 					if (lp) {
 						lp->apply();
 						std::cout <<"\nWorking mode: setting screen to " << lp->value() << "\n\n";
+					}
+				}
+				Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
+				if (remote_dialog!= SymbolTable::Null) {
+					LinkableProperty *lp = findLinkableProperty(remote_dialog.asString());
+					if (lp) {
+						lp->apply();
+						std::cout <<"\nWorking mode: setting dialog to " << lp->value() << "\n\n";
 					}
 				}
 
@@ -715,6 +714,37 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 	window->addChild(drag_handle);
 	drag_handle->setPropertyMonitor(pm);
 	drag_handle->decRef();
+}
+
+DialogWindow *EditorGUI::getUserDialog() {
+	return w_dialog;
+}
+
+void EditorGUI::setUserDialog(const std::string &name) {
+	if (name == dialog_name) { return; }
+	// TODO: check for visibility of the old dialog and deal with it.
+	dialog_name = name;
+}
+
+void EditorGUI::showDialog(bool show) {
+	Editor *editor = EDITOR;
+	std::cout << "request to " << (show ? "show" : "hide") << " dialog " << dialog_name << "\n";
+	if (show) {
+		if (!w_dialog) {
+			w_dialog = new DialogWindow(editor->gui(), mTheme);
+			w_dialog->setVisible(false);
+		}
+		auto s = findScreen(dialog_name);
+		if (s) {
+			w_dialog->setStructure(s);
+			w_dialog->setVisible(true);
+		}
+	}
+	else if (w_dialog) {
+		w_dialog->setVisible(false);
+		w_dialog->dispose();
+		w_dialog = nullptr;
+	}
 }
 
 bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -1036,6 +1066,47 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 											lp->link(getUserWindow());
 										}
 									}
+									const Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
+									if (remote_dialog != SymbolTable::Null) {
+										LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog.asString());
+										if (lp) {
+											class DialogNameTarget : public LinkTarget {
+												EditorGUI *m_gui;
+											public:
+												DialogNameTarget(EditorGUI *gui) : m_gui(gui) {}
+												void update(const Value &value) override {
+													m_gui->setUserDialog(value.asString());
+												}
+											};
+											lp->clear();
+											lp->link(new LinkableObject(new DialogNameTarget(EDITOR->gui())));
+										}
+									}
+
+									Value remote_dialog_visible(EditorGUI::systemSettings()->getProperties().find("remote_dialog_visibility"));
+									if (remote_dialog_visible != SymbolTable::Null) {
+										LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog_visible.asString());
+										if (lp) {
+											class DialogVisibilityTarget : public LinkTarget {
+												EditorGUI *m_gui;
+											public:
+												DialogVisibilityTarget(EditorGUI *gui) : m_gui(gui) {}
+												void update(const Value &value) override {
+													long visible;
+													if (value.asInteger(visible)) {
+														m_gui->showDialog(visible);
+													}
+													else {
+														std::cout << "could not parse " << value << " as an integer to show/hide dialog\n";
+													}
+												}
+											};
+											lp->clear();
+											lp->link(new LinkableObject(new DialogVisibilityTarget(EDITOR->gui())));
+										}
+									}
+
+
 								}
 
 							}

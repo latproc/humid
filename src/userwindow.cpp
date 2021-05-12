@@ -183,7 +183,7 @@ bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 }
 
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
-: Skeleton(screen, uww), LinkableObject(0), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
+: Skeleton(screen, uww), LinkableObject(), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
 	using namespace nanogui;
 	gui = screen;
 	window->setTheme(theme);
@@ -480,7 +480,7 @@ void UserWindowWin::update() {
 	// if the window contains a line plot, that object should be updated
 	for (auto child : children()) {
 		nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(child);
-		lp->update();
+		if (lp) lp->update();
 	}
 }
 
@@ -489,6 +489,7 @@ void UserWindow::getPropertyNames(std::list<std::string> &names) {
 	names.push_back("Screen Height");
 	names.push_back("Screen Id");
 	names.push_back("File Name");
+	names.push_back("Visibility");
 }
 
 void UserWindow::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
@@ -496,6 +497,7 @@ void UserWindow::loadPropertyToStructureMap(std::map<std::string, std::string> &
 	property_map["Screen Height"] = "screen_height";
 	property_map["Screen Id"] = "screen_id";
 	property_map["File Name"] = "file_name";
+	property_map["Visibility"] = "visibility";
 }
 
 
@@ -625,6 +627,20 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 								 w->setFixedHeight(value);
 								 },
 							 [uw]()->int{ return uw->getWindow()->height(); });
+  properties->addVariable<std::string> (
+    "Visibility",
+		[&,this,properties](std::string value) {
+			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+			// TODO support linking to a screen's visibility
+			// if (visibility) visibility->unlink(this);
+			// visibility = lp;
+			// if (lp) { lp->link(new LinkableVisibility(this)); }
+			},
+		[&]()->std::string{
+			// TODO return the visibility of the loaded screen
+			//return visibility ? visibility->tagName() : ""; 
+		return "";
+	});
 	label = "Screen Id";
 	properties->addVariable<int>(label,
 		[uw](int value) mutable {

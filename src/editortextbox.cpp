@@ -278,21 +278,36 @@ void EditorTextBox::draw(NVGcontext* ctx) {
         nvgFontSize(ctx, fontSize());
         nvgFontFace(ctx, "sans");
     }
-
+    int alignment = 0;
     switch (mAlignment) {
         case Alignment::Left:
-            nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
+            alignment = NVG_ALIGN_LEFT;
             drawPos.x() += xSpacing + spinArrowsWidth;
             break;
         case Alignment::Right:
-            nvgTextAlign(ctx, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
+            alignment = NVG_ALIGN_RIGHT;
             drawPos.x() += mSize.x() - unitWidth - xSpacing;
             break;
         case Alignment::Center:
-            nvgTextAlign(ctx, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+            alignment = NVG_ALIGN_CENTER;
             drawPos.x() += mSize.x() * 0.5f;
             break;
+        default:
+            alignment = NVG_ALIGN_LEFT;
+            break;
     }
+    switch (valign) {
+      case 0: alignment |= NVG_ALIGN_TOP;
+        break;
+      case 1: alignment |= NVG_ALIGN_MIDDLE;
+        break;
+      case 2: alignment |= NVG_ALIGN_BOTTOM;
+        break;
+      default:
+        alignment |= NVG_ALIGN_MIDDLE;
+        break;
+    }
+    nvgTextAlign(ctx, alignment);
 
     nvgFontSize(ctx, fontSize());
     nvgFillColor(ctx,

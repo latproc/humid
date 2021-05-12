@@ -21,15 +21,23 @@ class Structure;
 class EditorWidget;
 class EditorObject;
 
+class LinkTarget {
+public:
+	virtual void update(const Value &value) = 0;
+};
+
 class LinkableObject {
 public:
 	virtual ~LinkableObject() ;
-	LinkableObject(EditorObject *w);
+	LinkableObject();
+	explicit LinkableObject(EditorObject *w);
+	explicit LinkableObject(LinkTarget *target);
 	virtual void update(const Value &value);
 	EditorObject *linked() { return widget; }
     std::ostream &operator<<(std::ostream &out) const;
 protected:
-	EditorObject *widget;
+	EditorObject *widget = nullptr;
+	LinkTarget *target = nullptr;
 	std::string property;
 };
 

@@ -21,8 +21,6 @@
 
 extern std::list<std::string> source_files;
 
-static DialogWindow *dlog = nullptr;
-
 #ifndef ENTYPO_ICON_LAYOUT
 #define ENTYPO_ICON_LAYOUT                              0x0000268F
 #endif
@@ -50,18 +48,12 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setTooltip("Sample dialog");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setCallback([this] {
+		auto dlog = EDITOR->gui()->getUserDialog();
 		if (dlog) {
-			dlog->dispose();
-			dlog = nullptr;
+			EDITOR->gui()->showDialog(false);
 		}
 		else {
-			Editor *editor = EDITOR;
-			dlog = new DialogWindow(editor->gui(), mTheme);
-			auto s = findScreen("dialog");
-			if (s) {
-				dlog->setStructure(s);
-			}
-			dlog->setVisible(true);
+			EDITOR->gui()->showDialog();
 		}
 	});
 
@@ -129,12 +121,8 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	tb->setFlags(Button::NormalButton);
 	tb->setTooltip("Refresh");
 	tb->setFixedSize(Vector2i(32,32));
-	tb->setCallback([]{
-		if (dlog) {
-			dlog->dispose();
-			dlog = nullptr;
-		}
-	});
+	tb->setChangeCallback([](bool state) { });
+	tb->setCallback([]{ });
 
 	ToolButton *settings_button = new ToolButton(toolbar, ENTYPO_ICON_COG);
 	settings_button->setFixedSize(Vector2i(32,32));

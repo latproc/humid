@@ -644,18 +644,28 @@ int main(int argc, const char ** argv ) {
 
 			app->createWindows();
 
-			Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 			if (!EditorGUI::systemSettings()->getStructureDefinition()) {
 				EditorGUI::systemSettings()->setStructureDefinition(findClass("SYSTEM"));
 			}
 
+			Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 			if (remote_screen == SymbolTable::Null) {
 				EditorGUI::systemSettings()->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));
 				remote_screen = EditorGUI::systemSettings()->getProperties().find("remote_screen");
 			}
-			else {
+			{
 				LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
-				if (lp) lp->link(app->getUserWindow());
+				if (lp) {
+					lp->link(app->getUserWindow());
+				}
+			}
+			Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
+			if (remote_dialog != SymbolTable::Null) {
+				LinkableProperty *lp = app->findLinkableProperty(remote_dialog.asString());
+				if (lp) {
+					std::cout << "WARNING: should not do this\n";
+					//lp->link(app->getUserWindow());
+				}
 			}
 			app->setVisible(true);
 

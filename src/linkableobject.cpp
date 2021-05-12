@@ -30,17 +30,27 @@ std::ostream &operator<<(std::ostream &out, const LinkableObject &m) {
 }
 
 void LinkableObject::update(const Value &v) {
-  assert(false);
+  std::cout << "LinkableObject::update " << v << "\n";
+  if (target) {
+      target->update(v);
+  }
 }
 
 LinkableObject::~LinkableObject() {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(widget);
     if (w) w->decRef();
+    if (target) delete target;
 }
 
-LinkableObject::LinkableObject(EditorObject *ew) : widget(ew) {
+LinkableObject::LinkableObject() : widget(nullptr), target(nullptr) {
+}
+
+LinkableObject::LinkableObject(EditorObject *ew) : widget(ew), target(nullptr) {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(widget);
     if (w) w->incRef();
+}
+
+LinkableObject::LinkableObject(LinkTarget *t) : widget(nullptr), target(t) {
 }
 
 LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) {}

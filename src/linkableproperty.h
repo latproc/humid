@@ -43,6 +43,7 @@ public:
 	int address_group() const;
 	void link(LinkableObject *lo);
 	void unlink(EditorObject*w);
+	void clear();
 	void save(std::ostream &out) const;
 	void apply();
 private:
