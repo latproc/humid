@@ -24,6 +24,7 @@ class EditorObject;
 class LinkTarget {
 public:
 	virtual void update(const Value &value) = 0;
+	virtual ~LinkTarget() = default;
 };
 
 class LinkableObject {
