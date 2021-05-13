@@ -55,6 +55,7 @@ void DialogWindow::loadStructure(Structure *s) {
 			s->setStructureDefinition(sc);
 		int pnum = 0;
 		nanogui::Vector2i offset;
+		nanogui::Vector2i frame_size;
 		for (auto param : sc->getLocals()) {
 			++pnum;
 			Structure *element = param.machine;
@@ -66,9 +67,17 @@ void DialogWindow::loadStructure(Structure *s) {
 				auto properties = element->getProperties();
 				Value vx = properties.find("pos_x");
 				Value vy = properties.find("pos_y");
+				Value w = properties.find("width");
+				Value h = properties.find("height");
 				long x, y;
 				if (vx.asInteger(x) && vy.asInteger(y)) {
 					offset = nanogui::Vector2i(x,y);
+				}
+				if (w.asInteger(x) && h.asInteger(y)) {
+					frame_size = nanogui::Vector2i(x, y);
+					setFixedSize(frame_size);
+					setSize(frame_size);
+
 				}
 				break;
 			}
