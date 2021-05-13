@@ -13,9 +13,9 @@
 DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(screen), gui(screen) {
 	using namespace nanogui;
 	setTheme(theme);
-	setFixedSize(Vector2i(screen->width()/2, screen->height()/2));
+	setFixedSize(Vector2i(gui->width()/2, gui->height()/2));
 	setSize(Vector2i(180,240));
-	setPosition(Vector2i(screen->width()/4, screen->height()/4));
+	setPosition(Vector2i(gui->width()/4, gui->height()/4));
 	setTitle("Dialog");
 	setVisible(true);
 }
@@ -77,6 +77,8 @@ void DialogWindow::loadStructure(Structure *s) {
 					frame_size = nanogui::Vector2i(x, y);
 					setFixedSize(frame_size);
 					setSize(frame_size);
+					auto pos = nanogui::Vector2i((gui->width() - frame_size.x())/2, (gui->height() - frame_size.y())/2);
+					setPosition(pos);
 
 				}
 				break;
