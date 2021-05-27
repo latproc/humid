@@ -38,7 +38,10 @@ class ScreenSelectButton : public SelectableButton {
 		 }
 	virtual void justDeselected() override {
 		UserWindow *uw = screens_window->getUserWindow();
-		if (uw) uw->clear();
+		if (uw) {
+			uw->clearSelections();
+			uw->clear();
+		}
 	}
 	virtual void justSelected() override {
 		if (!getScreen()) setScreen(findScreen(caption()));
