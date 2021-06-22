@@ -23,7 +23,7 @@ PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : scre
 	properties = new PropertyFormHelper(screen);
 	//properties->setFixedSize(nanogui::Vector2i(120,28));
 	//item_proxy = new ItemProxy(properties, 0);
-	window = properties->addWindow(Eigen::Vector2i(30, 50), "Property List");
+	window = properties->addWindow(nanogui::Vector2i(30, 50), "Property List");
 	window->setTheme(theme);
 	window->setFixedSize(nanogui::Vector2i(260,560));
 

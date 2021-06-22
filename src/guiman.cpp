@@ -58,9 +58,9 @@ using std::cerr;
 using std::endl;
 using std::locale;
 using nanogui::Vector2i;
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using nanogui::Matrix3d;
 
 namespace po = boost::program_options;
 
@@ -317,9 +317,9 @@ public:
 		if ( !EDITOR->isEditMode() )
 			return true; // caller should continue to call the default handler for the object
 
-		Eigen::Vector2d pt(p.x(), p.y());
+		nanogui::Vector2d pt(p.x(), p.y());
 
-		Eigen::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
+		nanogui::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
 
 		double min = distances.row(0).x();
 
@@ -476,7 +476,7 @@ public:
 	static const bool kWINDOWED = false;
 
 public:
-	ClockworkExample() : nanogui::Screen(Eigen::Vector2i(1024, 768), "NanoGUI Test", kRESIZEABLE, kWINDOWED),
+	ClockworkExample() : nanogui::Screen(nanogui::Vector2i(1024, 768), "NanoGUI Test", kRESIZEABLE, kWINDOWED),
 			window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
 			iosh_cmd(0), cmd_interface(0), next_device_num(0), next_state_num(0),scale(1000),
 			window_stagger(this) {
@@ -543,7 +543,7 @@ public:
 		mainWindow = window;
 
 		FormHelper *properties = new FormHelper(this);
-		property_window = properties->addWindow(Eigen::Vector2i(10, 10), "Theme Properties");
+		property_window = properties->addWindow(nanogui::Vector2i(10, 10), "Theme Properties");
 		//window->setPosition(Vector2i(500,20));
 		window->setTheme(new nanogui::Theme(mNVGContext));
 		properties->addVariable("Standard Font Size", window->theme()->mStandardFontSize);
@@ -857,7 +857,7 @@ public:
 
 			Matrix4f mvp;
 			mvp.setIdentity();
-			mvp.topLeftCorner<3,3>() = Matrix3f(Eigen::AngleAxisf((float) glfwGetTime(),  Vector3f::UnitZ())) * 0.25f;
+			mvp.topLeftCorner<3,3>() = Matrix3f(nanogui::AngleAxisf((float) glfwGetTime(),  Vector3f::UnitZ())) * 0.25f;
 
 			mvp.row(0) *= (float) mSize.y() / (float) mSize.x();
 

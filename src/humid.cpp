@@ -67,6 +67,7 @@
 #include "propertyformhelper.h"
 #include "viewswindow.h"
 #include "startupwindow.h"
+#include "editorwidget.h"
 
 // settings file parser globals
 #define __MAIN__ 1
@@ -106,9 +107,9 @@ using std::endl;
 using std::locale;
 using nanogui::Vector2i;
 using nanogui::Vector2f;
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using nanogui::Matrix3d;
 
 namespace po = boost::program_options;
 
@@ -161,7 +162,7 @@ public:
 	}
 	void setAll() {
 		if (!item) return;
-		item->setPosition(Eigen::Vector2i(x,y));
+		item->setPosition(nanogui::Vector2i(x,y));
 		//tbd
 	}
 	void link(nanogui::Widget *w) {

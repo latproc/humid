@@ -137,9 +137,9 @@ bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui
         return true; // caller should continue to call the default handler for the object
     }
 
-    Eigen::Vector2d pt(p.x(), p.y());
+    nanogui::Vector2d pt(p.x(), p.y());
 
-    Eigen::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
+    nanogui::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
 
     double min = distances.row(0).x();
 
@@ -465,14 +465,14 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
     properties->addVariable<int> (
       "Horizontal Pos",
       [&,w](int value) mutable{
-        Eigen::Vector2i pos(value, w->position().y());
+        nanogui::Vector2i pos(value, w->position().y());
         w->setPosition(pos);
       },
       [&,w]()->int{ return w->position().x(); });
     properties->addVariable<int> (
       "Vertical Pos",
       [&,w](int value) mutable{
-        Eigen::Vector2i pos(w->position().x(), value);
+        nanogui::Vector2i pos(w->position().x(), value);
         w->setPosition(pos);
       },
       [&,w]()->int{ return w->position().y(); });

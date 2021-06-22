@@ -38,7 +38,7 @@ public:
 	void setTriggerValue(UserWindow *user_window, SampleTrigger::Event evt, int val);
 
 private:
-	Eigen::MatrixXd handle_coordinates;
+	nanogui::MatrixXd handle_coordinates;
 	std::string monitored_objects;
 	std::string start_trigger_name;
 	int start_trigger_value;

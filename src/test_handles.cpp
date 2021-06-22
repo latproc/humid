@@ -6,10 +6,10 @@
 #include <Eigen/Core> 
 #include <vector>
 
-using Eigen::Vector2i;
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+using nanogui::Vector2i;
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using nanogui::Matrix3d;
 
 #if 0
 class Vector2i {
@@ -162,8 +162,8 @@ using namespace std;
 int main(int argc, char *argv[]) {
 	const int ROWS = 5;
 	Vector2i pos;
-	Eigen::MatrixXd pts(ROWS,2);
-	pts = Eigen::MatrixXd::Random(ROWS,2);
+	nanogui::MatrixXd pts(ROWS,2);
+	pts = nanogui::MatrixXd::Random(ROWS,2);
 	std::cout << "pts:\n" << pts << "\n";
 	Vector2d pt; pt(0,0) = 0.5; pt(1,0) = 0.5;
 	std::cout << "rowwise sum:\n" << pts.rowwise().sum() << "\n";
@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
 	std::cout << "by hand:\n" << ((pts(0,0)-0.5)*(pts(0,0)-0.5) + (pts(0,1)-0.5)*(pts(0,1)-0.5)) << "\n";
 	std::cout << "by hand:\n" << ((pts(1,0)-0.5)*(pts(1,0)-0.5) + (pts(1,1)-0.5)*(pts(1,1)-0.5)) << "\n";
 
-	Eigen::VectorXd dist = (pts.rowwise() -= pt.transpose()).rowwise().squaredNorm();
+	nanogui::VectorXd dist = (pts.rowwise() -= pt.transpose()).rowwise().squaredNorm();
 	std::cout << "distances:\n" <<dist << "\n";
 	double min = dist.x();
 	int idx = 0;
@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
 		handles[i] = h;
 	}
 	pt = Vector2d(124, 114);
-	Eigen::VectorXd distances = (z.rowwise() - pt.transpose()).rowwise().squaredNorm();
+	nanogui::VectorXd distances = (z.rowwise() - pt.transpose()).rowwise().squaredNorm();
 	std::cout << "distances\n" << distances << "\n";
 	min = distances.row(0).x();
 	idx = 0;
@@ -206,7 +206,7 @@ int main(int argc, char *argv[]) {
 		std::cout << "smallest distance: " << min << " " << handles[idx].mode() << "\n";
 	
 /*	
-	Eigen::Matrix3d m = Matrix3d::Random();
+	nanogui::Matrix3d m = Matrix3d::Random();
 	cout << "Here is the matrix m:" << endl << m << endl;
 	cout << "Here is the sum of each row:" << endl << m.rowwise().sum() << endl;
 */

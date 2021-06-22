@@ -42,7 +42,7 @@ using std::endl;
 
 class ExampleApplication : public nanogui::Screen {
 public:
-    ExampleApplication() : nanogui::Screen(Eigen::Vector2i(1024, 768), "NanoGUI Test") {
+    ExampleApplication() : nanogui::Screen(nanogui::Vector2i(1024, 768), "NanoGUI Test") {
         using namespace nanogui;
 
         Window *window = new Window(this, "Button demo");
@@ -362,7 +362,7 @@ public:
 
         Matrix4f mvp;
         mvp.setIdentity();
-        mvp.topLeftCorner<3,3>() = Matrix3f(Eigen::AngleAxisf((float) glfwGetTime(),  Vector3f::UnitZ())) * 0.25f;
+        mvp.topLeftCorner<3,3>() = Matrix3f(nanogui::AngleAxisf((float) glfwGetTime(),  Vector3f::UnitZ())) * 0.25f;
 
         mvp.row(0) *= (float) mSize.y() / (float) mSize.x();
 

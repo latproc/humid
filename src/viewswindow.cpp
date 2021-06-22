@@ -14,7 +14,7 @@
 ViewsWindow::ViewsWindow(EditorGUI *screen, nanogui::Theme *theme) : gui(screen) {
 	using namespace nanogui;
 	properties = new FormHelper(screen);
-	window = properties->addWindow(Eigen::Vector2i(200, 50), "Views");
+	window = properties->addWindow(nanogui::Vector2i(200, 50), "Views");
 	window->setTheme(theme);
 	window->setVisible(false);
 }

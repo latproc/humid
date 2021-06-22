@@ -16,7 +16,7 @@ active at a time we can use a singleton ObjectHandles to hold the handles and in
 the position and size of an object.
 
 */
-using Eigen::Vector2i;
+using nanogui::Vector2i;
 
 class Handle {
 public:

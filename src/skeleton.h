@@ -158,7 +158,7 @@ public:
 
 	};
 
-	ClockworkClient(const Eigen::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
+	ClockworkClient(const nanogui::Vector2i &size, const std::string &caption, bool resizeable = true, bool fullscreen = false);
 
 	Connection *setupConnection(Structure *s_conn);
 	bool setupConnections(Structure *project_settings);

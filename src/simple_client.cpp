@@ -60,9 +60,9 @@ using std::cerr;
 using std::endl;
 using std::locale;
 using nanogui::Vector2i;
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using nanogui::Matrix3d;
 
 namespace po = boost::program_options;
 

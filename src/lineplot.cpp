@@ -438,7 +438,7 @@ bool LinePlot::scrollEvent(const Vector2i &p, const Vector2f &rel) {
 	if (data.size() == 0) return false;
 	nanogui::TimeSeries *ts = data.front();
 	if (ts->getData()->length() == 0) return false;
-	Eigen::Vector2i mp(p - position());
+	nanogui::Vector2i mp(p - position());
 
 	float prev_scale = x_scale;
 
@@ -472,7 +472,7 @@ bool LinePlot::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vecto
 	const char *sep = "";
 	for (auto ts : data){
 		if (ts->getData()->length() == 0) return Widget::mouseMotionEvent(p, rel, button, modifiers);;
-		Eigen::Vector2i mp(p - position());
+		nanogui::Vector2i mp(p - position());
 
 		float wid = width();
 		double offs = (float)mp.x() / wid;

@@ -10,7 +10,7 @@
 #include <nanogui/theme.h>
 #include "lineplot.h"
 
-using Eigen::Vector2i;
+using nanogui::Vector2i;
 
 #define TO_STRING( ID ) #ID
 
@@ -116,7 +116,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 			case Handle::RESIZE_TR:
 				{
 					nanogui::Widget *target = dh->getTarget();
-					Eigen::Vector2i dh_pos(dh->position() + dh->size()/2);
+					nanogui::Vector2i dh_pos(dh->position() + dh->size()/2);
 					Vector2i pos(target->position().x(), dh_pos.y());
 					Vector2i br(target->position() + target->size());
 					Vector2i size(dh_pos.x() - target->position().x(), br.y() - dh_pos.y());

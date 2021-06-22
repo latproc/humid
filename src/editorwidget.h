@@ -26,9 +26,16 @@
 #include "linkableproperty.h"
 #include "anchor.h"
 
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+namespace nanogui {
+using Vector2d = Eigen::Vector2d;
+using VectorXd = Eigen::VectorXd;
+using MatrixXd = Eigen::MatrixXd;
+using Matrix3d = Eigen::Matrix3d;
+}
+
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using nanogui::Matrix3d;
 
 class PropertyFormHelper;
 

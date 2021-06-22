@@ -58,9 +58,9 @@ using std::cerr;
 using std::endl;
 using std::locale;
 using nanogui::Vector2i;
-using Eigen::Vector2d;
-using Eigen::MatrixXd;
-using Eigen::Matrix3d;
+using nanogui::Vector2d;
+using nanogui::MatrixXd;
+using Einanoguigen::Matrix3d;
 
 namespace po = boost::program_options;
 
@@ -148,7 +148,7 @@ class WindowStagger {
 class ClockworkExample : public nanogui::Screen {
 
 public:
-	ClockworkExample() : nanogui::Screen(Eigen::Vector2i(1024, 768), "NanoGUI Test", true, false),
+	ClockworkExample() : nanogui::Screen(nanogui::Vector2i(1024, 768), "NanoGUI Test", true, false),
 			window(0), subscription_manager(0), disconnect_responder(0), connect_responder(0),
 			iosh_cmd(0), cmd_interface(0), next_device_num(0), next_state_num(0),scale(1000),
 			window_stagger(this) {

@@ -17,7 +17,7 @@
 ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme) :gui(screen) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);
-	window = properties->addWindow(Eigen::Vector2i(80, 50), "Theme Properties");
+	window = properties->addWindow(nanogui::Vector2i(80, 50), "Theme Properties");
 	window->setTheme(theme);
 	loadTheme(theme);
 	window->setVisible(false);
