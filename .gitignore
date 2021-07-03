@@ -50,6 +50,7 @@ Thumbs.db
 #project build files
 build/
 xcode/
+.build/
 
 #local cmake settings
 LocalCMakeLists.txt

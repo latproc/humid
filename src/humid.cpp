@@ -191,7 +191,7 @@ class ScreenProjectButton : public SelectableButton {
 };
 
 
-void loadProjectFiles(std::list<std::string> &files_and_directories) {
+bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 	using namespace boost::filesystem;
 
 	Structure *settings = EditorSettings::find("EditorSettings");
@@ -201,10 +201,15 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 
 	std::list<path> files;
 	{
+		std::list<std::string> errors;
 		std::list<std::string>::iterator fd_iter = files_and_directories.begin();
 		while (fd_iter != files_and_directories.end()) {
 			path fp = (*fd_iter++).c_str();
-			if (!exists(fp)) continue;
+			if (!exists(fp)) {
+				std::stringstream error;
+				error << "file/directory does not exist: " << fp.c_str();
+				errors.push_back(error.str());
+			}
 			if (is_regular_file(fp)) {
 				std::string ext = boost::filesystem::extension(fp);
 			 	if (ext == ".humid") files.push_back(fp);
@@ -218,6 +223,11 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 				}
 				collect_humid_files(fp, files);
 			}
+		}
+		if (!errors.empty()) {
+			std::cerr << "Errors during load; cannot continue\n";
+			for (const auto & error : errors) { std::cerr << error << "\n"; }
+			return false;
 		}
 	}
 
@@ -277,6 +287,8 @@ void loadProjectFiles(std::list<std::string> &files_and_directories) {
 		}
 		f_iter++;
 	}
+	return true;
+
 }
 
 
@@ -587,7 +599,9 @@ int main(int argc, const char ** argv ) {
 					if (found == s.length()-1) s.erase(found);
 					source_files.push_back(s);
 				}
-				loadProjectFiles(source_files);
+				if (!loadProjectFiles(source_files)) {
+					return EXIT_FAILURE;
+				}
 			}
 			StructureClass *system_class = findClass("SYSTEM");
 			if (!system_class) {
