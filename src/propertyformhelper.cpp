@@ -33,7 +33,8 @@ nanogui::Window *PropertyFormHelper::addWindow(const nanogui::Vector2i &pos,
 	mContent->setLayout(mLayout);
 	mWindow->setPosition(pos);
 	mWindow->setLayout(new nanogui::BoxLayout(nanogui::Orientation::Vertical) );
-	mWindow->setSize(mWindow->preferredSize(mScreen->nvgContext()));
+	mScreen->performLayout();
+	//mWindow->setSize(mWindow->preferredSize(mScreen->nvgContext()));
 	mWindow->setVisible(true);
 	return mWindow;
 }
@@ -51,7 +52,8 @@ void PropertyFormHelper::setWindow(nanogui::Window *wind) {
 	mLayout = new nanogui::AdvancedGridLayout({20, 0, 30, 0}, {});
 	mLayout->setMargin(1);
 	mContent->setLayout(mLayout);
-	mWindow->setSize(mWindow->preferredSize(mScreen->nvgContext()));
+	//mWindow->setSize(mWindow->preferredSize(mScreen->nvgContext()));
+	mScreen->performLayout();
 	mWindow->setVisible(true);
 }
 

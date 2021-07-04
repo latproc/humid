@@ -321,7 +321,6 @@ void ClockworkClient::Connection::setupCommandInterface() {
 }
 
 ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn) {
-	std::cerr << "Setting up clockwork connection\n";
 	const Value &chn = s_conn->getProperties().find("channel");
 	const Value &host = s_conn->getProperties().find("host");
 	long port = s_conn->getIntProperty("port", 5555);
