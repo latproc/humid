@@ -470,7 +470,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     else if (EDITOR->isEditMode()) {
       drawElementBorder(ctx, mPos, mSize);
     }
-  if (mImageID != 0 && mPushed) { nvgRestore(ctx); }
+  nvgRestore(ctx);
 }
 
 void EditorButton::loadProperties(PropertyFormHelper* properties) {
