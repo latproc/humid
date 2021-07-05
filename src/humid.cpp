@@ -628,9 +628,15 @@ int main(int argc, const char ** argv ) {
 					p.machine = conn;
 					psc->addLocal(p);
 				}
+				psc->getProperties().add("asset_path", Value(".", Value::t_string));
 			}
 			if (!project_settings->getStructureDefinition()) {
 				project_settings->setStructureDefinition(findClass("PROJECTSETTINGS"));
+			}
+			auto asset_path = project_settings->getStringProperty("asset_path");
+			if (asset_path.empty()) {
+				project_settings->getProperties().add("asset_path", Value(".", Value::t_string));
+				project_settings->setChanged(true);
 			}
 
 

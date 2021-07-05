@@ -119,7 +119,7 @@ public:
 protected:
 	std::list<Link>links;
 	std::string base;
-  std::string remote_name; // only used if there is no remote
+	std::string remote_name; // only used if there is no remote
 	std::string connection_name; // only used if there is no remote
 	nanogui::DragHandle *dh;
 	std::vector<Handle> handles;

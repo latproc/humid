@@ -24,7 +24,7 @@ nanogui::Window *PropertyFormHelper::addWindow(const nanogui::Vector2i &pos,
 	mWindow->setSize(Vector2i(320, 640));
 	nanogui::VScrollPanel *palette_scroller = new nanogui::VScrollPanel(mWindow);
 	palette_scroller->setSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
-	palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
+	//palette_scroller->setFixedSize(Vector2i(mWindow->width(), mWindow->height() - mWindow->theme()->mWindowHeaderHeight));
 	palette_scroller->setPosition( Vector2i(0, mWindow->theme()->mWindowHeaderHeight+1));
 	mContent = new nanogui::Widget(palette_scroller);
 	pfw->setContent(mContent);

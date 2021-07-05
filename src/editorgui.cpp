@@ -233,6 +233,8 @@ void EditorGUI::freeImage(GLuint image_id) {
 
 GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	GLuint blank_id = 0;
+	auto project_settings = findStructure("ProjectSettings");
+	std::string asset_path = project_settings->getStringProperty("asset_path", ".");
 	std::string blank_name = "images/blank";
 	std::string name(source);
 	/*

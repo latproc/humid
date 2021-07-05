@@ -26,6 +26,7 @@ public:
 
 	EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp,
             const std::string &caption = "Untitled", bool toggle = false, int icon = 0);
+	~EditorButton();
 
 	virtual nanogui::Widget *asWidget() override { return this; }
 	virtual void getPropertyNames(std::list<std::string> &names) override;
@@ -54,6 +55,12 @@ public:
 
 	virtual void draw(NVGcontext *ctx) override;
 
+	void setImageName(const std::string &name);
+	const std::string &imageName() { return image_name; }
+
+	void setImageAlpha(float alpha) { image_alpha = alpha; }
+	float imageAlpha() { return image_alpha; }
+
 	void setWrap(bool which) { wrap_text = which; }
 protected:
 	bool is_toggle;
@@ -61,10 +68,13 @@ protected:
 	nanogui::Color bg_on_color;
 	nanogui::Color on_text_colour;
 	std::string on_caption;
-	int alignment;
-	int valign;
-	bool wrap_text;
-	int shadow;
+	int alignment = 1;
+	int valign = 1;
+	bool wrap_text = false;
+	int shadow = 1;
+	std::string image_name;
+	int mImageID = 0;
+	float image_alpha = 1.0f;
 };
 
 #endif

@@ -17,6 +17,7 @@
 #include "editorgui.h"
 #include "structure.h"
 #include "propertyformhelper.h"
+#include "resourcemanager.h"
 
 std::string stripEscapes(const std::string &s);
 
@@ -90,6 +91,18 @@ EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string
     alignment = NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE;
 }
 
+EditorButton::~EditorButton() {
+  if (mImageID) ResourceManager::release(mImageID);
+}
+
+void EditorButton::setImageName(const std::string &image) {
+  if (mImageID) {
+    ResourceManager::release(mImageID);
+    mImageID = 0;
+  }
+  image_name = image;
+}
+
 bool EditorButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
 
     using namespace nanogui;
@@ -135,6 +148,8 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
     names.push_back("Vertical Alignment");
     names.push_back("Alignment");
     names.push_back("Wrap Text");
+    names.push_back("Image");
+    names.push_back("Image opacity");
 }
 
 void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
@@ -150,6 +165,9 @@ void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string>
   property_map["Alignment"] = "alignment";
   property_map["Vertical Alignment"] = "valign";
   property_map["Wrap Text"] = "wrap";
+  property_map["Image"] = "image";
+  property_map["Image opacity"] = "image_alpha";
+
 }
 
 Value EditorButton::getPropertyValue(const std::string &prop) {
@@ -159,6 +177,8 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
 
   if (prop == "Off text")
     return Value(caption(), Value::t_string);
+  if (prop == "Image")
+    return Value(image_name, Value::t_string);
   if (prop == "On text")
     return Value(on_caption, Value::t_string);
   if (prop == "Background colour") {
@@ -214,6 +234,10 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
   if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }
+  if (prop == "Image") { image_name = value; }
+  if (prop == "Image transparency") {
+    image_alpha = std::atof(value.c_str());
+  }
 }
 
 
@@ -232,36 +256,54 @@ void EditorButton::draw(NVGcontext *ctx) {
         gradBot = mTheme->mButtonGradientBotFocused;
     }
 
+    if (!mImageID && !image_name.empty()) {
+      std::cerr << "attempting to load " << image_name << "\n";
+      mImageID = nvgCreateImage(ctx, image_name.c_str(), 0);
+      if (mImageID) ResourceManager::manage(mImageID);
+    }
+
+    nvgSave(ctx);
+    if (mImageID != 0 && mPushed) {
+      nvgTranslate(ctx, 1, 2);
+    }
+
     nvgBeginPath(ctx);
 
     nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
                  mSize.y() - 2, mTheme->mButtonCornerRadius - 1);
 
-    if (mPushed) {
-      if (bg_on_color.w() != 0) {
-        nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
-        nvgFill(ctx);
-        gradTop.a = gradBot.a = 0.0f;
-      }  
-      else {
-        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
+    if (mImageID == 0) {
+      if (mPushed) {
+        if (bg_on_color.w() != 0) {
+          nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
+          nvgFill(ctx);
+          gradTop.a = gradBot.a = 0.0f;
+        }  
+        else {
+          nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
+          nvgFill(ctx);
+          double v = 1 - mBackgroundColor.w();
+          gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
+        }  
+      }
+      else if (mBackgroundColor.w() != 0) {
+        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
         nvgFill(ctx);
         double v = 1 - mBackgroundColor.w();
         gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
-      }  
-    }
-    else if (mBackgroundColor.w() != 0) {
-      nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
+      }
+
+      NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
+                                      mPos.y() + mSize.y(), gradTop, gradBot);
+
+      nvgFillPaint(ctx, bg);
       nvgFill(ctx);
-      double v = 1 - mBackgroundColor.w();
-      gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
     }
-
-    NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
-                                    mPos.y() + mSize.y(), gradTop, gradBot);
-
-    nvgFillPaint(ctx, bg);
-    nvgFill(ctx);
+    else {
+      NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x()-1, mSize.y()-2, 0, mImageID, image_alpha);
+      nvgFillPaint(ctx, img);
+      nvgFill(ctx);
+    }
 
     nvgBeginPath(ctx);
     nvgStrokeWidth(ctx, border);
@@ -428,11 +470,12 @@ void EditorButton::draw(NVGcontext *ctx) {
     else if (EDITOR->isEditMode()) {
       drawElementBorder(ctx, mPos, mSize);
     }
+  if (mImageID != 0 && mPushed) { nvgRestore(ctx); }
 }
 
 void EditorButton::loadProperties(PropertyFormHelper* properties) {
   EditorWidget::loadProperties(properties);
-  nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
+  EditorButton *btn = dynamic_cast<EditorButton*>(this);
   if (btn) {
     EditorGUI *gui = EDITOR->gui();
     properties->addVariable<nanogui::Color> (
@@ -455,10 +498,18 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
       "Off caption",
       [&](std::string value) mutable{ setCaption(value); },
       [&]()->std::string{ return caption(); });
-      properties->addVariable<std::string> (
+    properties->addVariable<std::string> (
       "On caption",
         [&](std::string value) mutable{ setOnCaption(value); },
         [&]()->std::string{ return onCaption(); });
+    properties->addVariable<std::string> (
+      "Image",
+        [&](std::string value) mutable{ setImageName(value); },
+        [&]()->std::string{ return imageName(); });
+    properties->addVariable<float> (
+      "Image opacity",
+        [&](float value) mutable{ setImageAlpha(value); },
+        [&]()->float{ return imageAlpha(); });
     properties->addVariable<int> (
       "Icon",
       [&](int value) mutable{ setIcon(value); },

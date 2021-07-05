@@ -13,7 +13,7 @@
 #include "propertyformhelper.h"
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
-: ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+: ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp) {
       if (mImageID) ResourceManager::manage(mImageID);
 }
 
@@ -52,7 +52,9 @@ void EditorImageView::draw(NVGcontext *ctx) {
     Widget::draw(ctx);
     nvgEndFrame(ctx); // Flush the NanoVG draw stack, not necessary to call nvgBeginFrame afterwards.
 
-    if (border) drawImageBorder(ctx);
+    if (border) {
+      drawImageBorder(ctx);
+    }
 
     // Calculate several variables that need to be send to OpenGL in order for the image to be
     // properly displayed inside the widget.

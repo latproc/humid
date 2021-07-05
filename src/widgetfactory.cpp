@@ -314,6 +314,7 @@ void createButton(WidgetParams &params) {
 		if (cmd != SymbolTable::Null && cmd.asString().length()) b->setCommand(cmd.asString());
 	}
 	b->setupButtonCallbacks(params.lp, params.gui);
+	b->setImageName(params.element->getProperties().find("image").asString());
 	if (params.visibility) b->setVisibilityLink(params.visibility);
 	b->setChanged(false);
 }
