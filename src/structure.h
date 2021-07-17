@@ -115,6 +115,8 @@ public:
 
 	virtual bool save(std::ostream &out);
 
+	static void loadBuiltins();
+
 protected:
 	Structure(const Structure &other);
 	SymbolTable internal_properties;

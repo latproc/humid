@@ -576,6 +576,7 @@ int main(int argc, const char ** argv ) {
 		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
 		structures[item->getName()] = item;
 	}
+	Structure::loadBuiltins();
 	Structure *es = EditorSettings::find("EditorSettings");
 	if (!es)
 		es = EditorSettings::create();

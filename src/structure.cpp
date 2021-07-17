@@ -12,6 +12,7 @@
 #include "helper.h"
 
 std::list<Structure *>hm_structures;
+std::list<Structure *>builtin_structures;
 std::list<StructureClass *> hm_classes;
 
 StructureClass::StructureClass(const std::string class_name) 
@@ -206,4 +207,8 @@ bool StructureClass::save(std::ostream &out) {
 		out << screen_type << " STRUCTURE {\n";
 	return false;
 #endif
+}
+
+void Structure::loadBuiltins() {
+	const std::string keypad = R"()";
 }

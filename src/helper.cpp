@@ -16,6 +16,8 @@
 #include "circularbuffer.h"
 
 extern std::list<Structure *>hm_structures;
+extern std::list<Structure *>builtin_structures;
+
 extern std::list<StructureClass *> hm_classes;
 
 static int screen_id = 0;
@@ -135,6 +137,19 @@ Structure * findStructureFromClass(std::string class_name) {
 	return 0;
 }
 
+Structure *findStructure(const std::string &seek, const std::list<Structure*> & library) {
+	for (auto item : hm_structures ) {
+		if (item->getName() == seek) return item;
+	}
+	return 0;
+}
+
+Structure *findStructure(const std::string &seek) {
+	auto found = findStructure(seek, hm_structures);
+	if (!found) found = findStructure(seek, builtin_structures);
+	return found;
+}
+
 int createScreens() {
 	int res = 0;
 	for (auto sc : hm_classes) {
@@ -146,21 +161,6 @@ int createScreens() {
 		}
 	}
 	return res;
-}
-
-
-Structure *findStructure(const std::string &seek) {
-	for (auto item : hm_structures ) {
-		Structure *s = item;
-		assert(s);
-		if (s->getName() == seek) return s;
-	}
-	std::cout << "Structure " << seek << " not found\n";
-	std::cout << "structures:\n";
-	for (auto s : hm_structures) {
-		std::cout << s->getName() << " : " << s->getKind() << "\n";
-	}
-	return 0;
 }
 
 Structure *createScreenStructure() {
