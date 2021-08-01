@@ -490,6 +490,7 @@ void UserWindow::getPropertyNames(std::list<std::string> &names) {
 	names.push_back("Screen Id");
 	names.push_back("File Name");
 	names.push_back("Visibility");
+	names.push_back("Channel");
 }
 
 void UserWindow::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
@@ -498,6 +499,7 @@ void UserWindow::loadPropertyToStructureMap(std::map<std::string, std::string> &
 	property_map["Screen Id"] = "screen_id";
 	property_map["File Name"] = "file_name";
 	property_map["Visibility"] = "visibility";
+	property_map["Channel"] = "channel";
 }
 
 
@@ -577,6 +579,23 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 								  if (!uw->structure()->getStructureDefinition()) return "Unknown";
 								 return uw->structure()->getStructureDefinition()->getName();
 							 });
+	}
+	{
+	std::string label("Channel");
+	properties->addVariable<std::string>(label,
+		[uw](std::string value) {
+			if (uw) {
+				Structure *s = uw->structure();
+				if (s) s->getProperties().add("channel", value);
+			}
+		},
+		[uw]()->std::string{
+			if (uw) {
+				Structure *s = uw->structure();
+				return s->getProperties().lookup("channel").asString();
+			}
+			return "";
+		});
 	}
 	{
 	std::string label("Class File");
@@ -668,6 +687,7 @@ Value UserWindow::getPropertyValue(const std::string &prop) {
 	Structure *current_screen = structure();
 	if (prop == "File Name" && current_screen)
 		return current_screen->getInternalProperties().find("file_name");
+	if (prop == "Channel") return current_screen->getProperties().lookup("channel");
 	return SymbolTable::Null;
 }
 
