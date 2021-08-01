@@ -297,9 +297,9 @@ void createButton(WidgetParams &params) {
 	b->setInvertedVisibility(params.ivis);
 	b->setWrap(params.wrap);
 	const Value &alignment_v(params.element->getProperties().find("alignment"));
-	if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v.asString());
+	if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v);
 	const Value &valignment_v(params.element->getProperties().find("valign"));
-	if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v.asString());
+	if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v);
 
 	{
 		const Value &caption_v = params.element->getProperties().find("caption");

@@ -21,6 +21,68 @@
 
 std::string stripEscapes(const std::string &s);
 
+namespace {
+
+  int intFromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
+    switch(align) { 
+      case EditorButton::HorizontalAlignment::Left: return NVG_ALIGN_LEFT;
+      case EditorButton::HorizontalAlignment::Centre: return NVG_ALIGN_CENTER;
+      case EditorButton::HorizontalAlignment::Right: return NVG_ALIGN_RIGHT;
+    }
+  }
+
+  std::string fromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
+    switch(align) { 
+      case EditorButton::HorizontalAlignment::Left: return "left";
+      case EditorButton::HorizontalAlignment::Centre: return "centre";
+      case EditorButton::HorizontalAlignment::Right: return "right";
+    }
+  }
+
+  EditorButton::HorizontalAlignment toHorizontalAlignment(int align) {
+    if (align & NVG_ALIGN_LEFT) { return EditorButton::HorizontalAlignment::Centre; }
+    if (align & NVG_ALIGN_RIGHT) { return EditorButton::HorizontalAlignment::Left; }
+    if (align & NVG_ALIGN_CENTER) { return EditorButton::HorizontalAlignment::Right; }
+    return EditorButton::HorizontalAlignment::Centre;
+  }
+
+  EditorButton::HorizontalAlignment toHorizontalAlignment(const std::string &align) {
+    if (align == "left") { return EditorButton::HorizontalAlignment::Left; }
+    if (align == "centre" || align == "center") { return EditorButton::HorizontalAlignment::Centre; }
+    if (align == "right") { return EditorButton::HorizontalAlignment::Right; }
+    return toHorizontalAlignment(std::atoi(align.c_str()));
+  }
+
+  int intFromVerticalAlignment(EditorButton::VerticalAlignment align) {
+    switch(align) { 
+      case EditorButton::VerticalAlignment::Top: return NVG_ALIGN_LEFT;
+      case EditorButton::VerticalAlignment::Centre: return NVG_ALIGN_CENTER;
+      case EditorButton::VerticalAlignment::Bottom: return NVG_ALIGN_RIGHT;
+    }
+  }
+
+  std::string fromVerticalAlignment(EditorButton::VerticalAlignment align) {
+    switch(align) { 
+      case EditorButton::VerticalAlignment::Top: return "top";
+      case EditorButton::VerticalAlignment::Centre: return "centre";
+      case EditorButton::VerticalAlignment::Bottom: return "bottom";
+    }
+  }
+
+  EditorButton::VerticalAlignment toVerticalAlignment(int align) {
+    if (align & NVG_ALIGN_LEFT) { return EditorButton::VerticalAlignment::Top; }
+    if (align & NVG_ALIGN_CENTER) { return EditorButton::VerticalAlignment::Centre; }
+    if (align & NVG_ALIGN_RIGHT) { return EditorButton::VerticalAlignment::Bottom; }
+    return EditorButton::VerticalAlignment::Centre;
+  }
+
+  EditorButton::VerticalAlignment toVerticalAlignment(const std::string & align) {
+    if (align == "top") { return EditorButton::VerticalAlignment::Top; }
+    if (align == "middle" || align == "centre" || align == "center") { return EditorButton::VerticalAlignment::Centre; }
+    if (align == "bottom") { return EditorButton::VerticalAlignment::Bottom; }
+    return toVerticalAlignment(std::atoi(align.c_str()));
+  }
+}
 void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
   if (!getDefinition()) return;
   std::string conn("");
@@ -84,11 +146,12 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
 
 EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption, bool toggle, int icon)
 	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), 
-    alignment(1), valign(1), wrap_text(false), shadow(1) {
+    alignment(HorizontalAlignment::Centre), valign(VerticalAlignment::Centre), wrap_text(false), shadow(1) {
     setPushed(false);
     bg_on_color = nanogui::Color(0.3f, 0.3f, 0.3f, 0.0f);
     on_text_colour = mTextColor;
-    alignment = NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE;
+    alignment = HorizontalAlignment::Left;
+    valign = VerticalAlignment::Centre;
 }
 
 EditorButton::~EditorButton() {
@@ -100,7 +163,12 @@ void EditorButton::setImageName(const std::string &image) {
     ResourceManager::release(mImageID);
     mImageID = 0;
   }
-  image_name = image;
+  image_name = image.empty() || image == "null" ? SymbolTable::Null : image;
+  getDefinition()->getProperties().add("image", image_name);
+}
+
+std::string EditorButton::imageName() const {
+   return image_name == SymbolTable::Null ? "" : image_name.asString();
 }
 
 bool EditorButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -177,8 +245,9 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
 
   if (prop == "Off text")
     return Value(caption(), Value::t_string);
-  if (prop == "Image")
-    return Value(image_name, Value::t_string);
+  if (prop == "Image") {
+    return image_name;
+  }
   if (prop == "On text")
     return Value(on_caption, Value::t_string);
   if (prop == "Background colour") {
@@ -215,8 +284,8 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "Behaviour") {
     return flags();
   }
-  if (prop == "Alignment") return alignment;
-  if (prop == "Vertical Alignment") return valign;
+  if (prop == "Alignment") return fromHorizontalAlignment(alignment);
+  if (prop == "Vertical Alignment") return fromVerticalAlignment(valign);
   if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   return SymbolTable::Null;
 }
@@ -229,17 +298,22 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         remote->link(new LinkableIndicator(this));
     }
   }
-  if (prop == "Alignment") alignment = std::atoi(value.c_str());
-  if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  if (prop == "Alignment") {
+    alignment = toHorizontalAlignment(value);
+    // horizontal alignments had incorrect numeric values. The following
+    // ensures the symbolic name is saved instead of a bare integer.
+    // for a time(?), reading toHorizintalAlignment(int) supports the old value
+    getDefinition()->getProperties().add("alignment", fromHorizontalAlignment(alignment));
+  }
+  if (prop == "Vertical Alignment") valign = toVerticalAlignment(value);
   if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }
-  if (prop == "Image") { image_name = value; }
+  if (prop == "Image") { setImageName(value); }
   if (prop == "Image transparency") {
     image_alpha = std::atof(value.c_str());
   }
 }
-
 
 void EditorButton::draw(NVGcontext *ctx) {
     using namespace nanogui;
@@ -256,9 +330,9 @@ void EditorButton::draw(NVGcontext *ctx) {
         gradBot = mTheme->mButtonGradientBotFocused;
     }
 
-    if (!mImageID && !image_name.empty()) {
-      std::cerr << "attempting to load " << image_name << "\n";
-      mImageID = nvgCreateImage(ctx, image_name.c_str(), 0);
+    if (image_name != SymbolTable::Null && !mImageID) {
+      std::cerr << "attempting to load image " << image_name << "\n";
+      mImageID = nvgCreateImage(ctx, image_name.asString().c_str(), 0);
       if (mImageID) ResourceManager::manage(mImageID);
     }
 
@@ -335,9 +409,6 @@ void EditorButton::draw(NVGcontext *ctx) {
     Vector2f center = mPos.cast<float>() + mSize.cast<float>() * 0.5f;
     Vector2f textPos(center.x() - tw * 0.5f, center.y() - 1);
 
-    //if (!mEnabled)
-    //    textColor = mTheme->mDisabledTextColor;
-
     if (mIcon) {
         auto icon = utf8(mIcon);
 
@@ -390,48 +461,29 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     // we are using two separate alignments: 1,2,4 so we 
     // convert the default alignment from nanogui here
-    if (alignment == (NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE) ) {
-      alignment = 1;
-      valign = NVG_ALIGN_CENTER;
-    }
+    int align = intFromHorizontalAlignment(alignment);
+
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
-    nvgTextAlign(ctx, alignment);
+    nvgTextAlign(ctx, align);
     int label_x = textPos.x();
     int label_y = textPos.y();
-    int align = NVG_ALIGN_LEFT;
 
-    if (alignment & 2) {
-      label_x = mPos.x() + mSize.x()-5;
-      align = NVG_ALIGN_RIGHT;
+    if (alignment == HorizontalAlignment::Right) {
+      label_x = mPos.x() + mSize.x()-5; 
     }
-    else if (alignment & 1) {
-      label_x = mPos.x() + mSize.x()/2;
-      align = NVG_ALIGN_CENTER;
+    else if (alignment == HorizontalAlignment::Centre) {
+      label_x = wrap_text ? textPos.x() : mPos.x() + mSize.x()/2;
     }
     else
       label_x = mPos.x();
     
-    if (wrap_text) {
-      if (alignment & NVG_ALIGN_RIGHT) {
-        label_x = mPos.x() + mSize.x()-5;
-        align = NVG_ALIGN_RIGHT;
-      }
-      else if (alignment & NVG_ALIGN_CENTER) {
-        label_x = textPos.x();
-        align = NVG_ALIGN_CENTER;
-      }
-      else {
-        label_x = mPos.x();
-        align = NVG_ALIGN_LEFT;
-      }
-    }
-    int alignv = NVG_ALIGN_MIDDLE;
-    if (valign & NVG_ALIGN_LEFT) {
-      alignv = NVG_ALIGN_TOP;
+    int alignv = 0;
+    if (valign == VerticalAlignment::Top) {
       label_y = mPos.y();
+      alignv = NVG_ALIGN_TOP;
     }
-    else if (valign & NVG_ALIGN_RIGHT) {
+    else if (valign == VerticalAlignment::Bottom) {
       alignv = NVG_ALIGN_BOTTOM;
       label_y = mPos.y() + mSize.y();
       if (wrap_text) {
@@ -441,6 +493,7 @@ void EditorButton::draw(NVGcontext *ctx) {
       }
     }
     else {
+      alignv = NVG_ALIGN_CENTER;
       if (wrap_text) {
         float bounds[4];
         float res = nvgTextBounds(ctx, mPos.x(), label_y, text.c_str(), nullptr, bounds);
@@ -514,14 +567,10 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
       "Icon",
       [&](int value) mutable{ setIcon(value); },
       [&]()->int{ return icon(); });
-    properties->addVariable<int> (
-      "Alignment",
-      [&](int value) mutable{ alignment = value; },
-      [&]()->int{ return alignment; });
-    properties->addVariable<int> (
-      "Vertical Alignment",
-      [&](int value) mutable{ valign = value; },
-      [&]()->int{ return valign; });
+    properties->addVariable<HorizontalAlignment> (
+      "Alignment",alignment, true)->setItems({"Left","Centre","Right"});
+    properties->addVariable<VerticalAlignment> (
+      "Vertical Alignment", valign, true)->setItems({"Top", "Centre", "Bottom"});
     properties->addVariable<bool> (
       "Wrap Text",
       [&](bool value) mutable{ wrap_text = value; },

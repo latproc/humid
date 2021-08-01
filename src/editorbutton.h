@@ -24,6 +24,9 @@ class EditorButton : public nanogui::Button, public EditorWidget {
 
 public:
 
+	enum class HorizontalAlignment {Left, Centre, Right};
+	enum class VerticalAlignment { Top, Centre, Bottom};
+
 	EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp,
             const std::string &caption = "Untitled", bool toggle = false, int icon = 0);
 	~EditorButton();
@@ -56,7 +59,7 @@ public:
 	virtual void draw(NVGcontext *ctx) override;
 
 	void setImageName(const std::string &name);
-	const std::string &imageName() { return image_name; }
+	std::string imageName() const;
 
 	void setImageAlpha(float alpha) { image_alpha = alpha; }
 	float imageAlpha() { return image_alpha; }
@@ -68,11 +71,11 @@ protected:
 	nanogui::Color bg_on_color;
 	nanogui::Color on_text_colour;
 	std::string on_caption;
-	int alignment = 1;
-	int valign = 1;
+	HorizontalAlignment alignment = HorizontalAlignment::Centre;
+	VerticalAlignment valign = VerticalAlignment::Centre;
 	bool wrap_text = false;
 	int shadow = 1;
-	std::string image_name;
+	Value image_name;
 	int mImageID = 0;
 	float image_alpha = 1.0f;
 };

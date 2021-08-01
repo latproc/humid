@@ -40,9 +40,6 @@ public:
 	void refresh();
 
 protected:
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
 	std::string image_name;
 	bool need_redraw;
 };

@@ -640,7 +640,6 @@ int main(int argc, const char ** argv ) {
 				project_settings->setChanged(true);
 			}
 
-
 			Value full_screen_v = EditorGUI::systemSettings()->getProperties().find("full_screen");
 			long full_screen = 1;
 			full_screen_v.asInteger(full_screen);

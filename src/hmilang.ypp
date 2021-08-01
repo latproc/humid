@@ -385,7 +385,14 @@ property
 property:
 SYMBOL PROPSEP value
 {
-	hps.properties.add($1, *$3);
+	bool value;
+	if ($3->kind == Value::t_symbol && $3->asBoolean(value)) {
+		hps.properties.add($1, value);
+	}
+	else {
+		if ($3->kind == Value::t_symbol) std::cout << $1 << ": " << (*$3) << " (" << (*$3).kind << ")\n"; 
+		hps.properties.add($1, *$3);
+	}
 	delete $3;
 }
 | SYMBOL {
