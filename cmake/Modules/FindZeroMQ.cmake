@@ -27,6 +27,8 @@ set(ZeroMQ_NAMES ${ZeroMQ_NAMES} zmq libzmq)
 find_library(ZeroMQ_LIBRARY NAMES ${ZeroMQ_NAMES} )
 
 #include(${CMAKE_CURRENT_LIST_DIR}/FindPackageHandleStandardArgs.cmake)
+message("modules path: " ${CMAKE_MODULES_PATH})
+include(FindPackageHandleStandardArgs)
 FIND_PACKAGE_HANDLE_STANDARD_ARGS(ZeroMQ DEFAULT_MSG ZeroMQ_LIBRARY ZeroMQ_INCLUDE_DIR)
 
 if(ZeroMQ_FOUND)
