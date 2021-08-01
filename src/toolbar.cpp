@@ -45,11 +45,11 @@ Toolbar::Toolbar(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(scr
 	});
 	tb = new ToolButton(toolbar, ENTYPO_ICON_NEW);
 	tb->setFlags(Button::NormalButton);
-	tb->setTooltip("Sample dialog");
+	tb->setTooltip("Sample keypad");
 	tb->setFixedSize(Vector2i(32,32));
 	tb->setCallback([this] {
-		auto dlog = EDITOR->gui()->getUserDialog();
-		if (dlog) {
+		auto keypad = EDITOR->gui()->getUserDialog();
+		if (keypad) {
 			EDITOR->gui()->showDialog(false);
 		}
 		else {

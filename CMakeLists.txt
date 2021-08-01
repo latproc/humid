@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project("Humid")
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+
 if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 	message("Including local CMake settings")
 	include("${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
@@ -15,8 +17,9 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
+set(CMAKE_CXX_STANDARD 14)
 if (APPLE)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
+	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
 	INCLUDE_DIRECTORIES(${NANO_GUI_BUILD_DIR}/include)
 	INCLUDE_DIRECTORIES("/usr/local/include")
 endif()
@@ -121,7 +124,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/resourcemanager.h src/viewswindow.h src/listpanel.h
 		  src/toolbar.h src/propertyformhelper.h src/propertyformwindow.h
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
-		  src/editorframe.h
+		  src/editorframe.h src/keypad.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
@@ -148,7 +151,7 @@ endif ()
 	# Create custom command for bison/yacc (note the DEPENDS)
 	 ADD_CUSTOM_COMMAND(
 	   COMMAND ${BISON_EXECUTABLE}
-	   ARGS -y
+	   ARGS
 			-o ${CMAKE_BINARY_DIR}/hmilang.tab.cpp
 			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
@@ -222,7 +225,7 @@ endif ()
 		  src/toolbar.cpp src/propertyformhelper.cpp src/propertyformwindow.cpp
 		  src/userwindow.cpp src/startupwindow.cpp
 		  src/widgetfactory.cpp src/dialogwindow.cpp
-		  src/editorframe.cpp
+		  src/editorframe.cpp src/keypad.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork  ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
