@@ -42,9 +42,6 @@ public:
     void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
     void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
 
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
 protected:
     nanogui::Color mBackgroundColor;
     nanogui::Color mTextColor;

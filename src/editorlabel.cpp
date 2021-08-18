@@ -18,7 +18,7 @@
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
-: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2), mBackgroundColor(nanogui::Color(0,0)), mTextColor(nanogui::Color(0,0)),
+: Label(parent, caption), EditorWidget(owner, "LABEL", nam, this, lp), mBackgroundColor(nanogui::Color(0,0)), mTextColor(nanogui::Color(0,0)),
   alignment(1), valign(1), wrap_text(true) {
 }
 

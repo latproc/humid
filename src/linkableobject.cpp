@@ -30,7 +30,6 @@ std::ostream &operator<<(std::ostream &out, const LinkableObject &m) {
 }
 
 void LinkableObject::update(const Value &v) {
-  std::cout << "LinkableObject::update " << v << "\n";
   if (target) {
       target->update(v);
   }

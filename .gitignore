@@ -59,5 +59,6 @@ LocalCMakeLists.txt
 .vscode/
 .project
 .cproject
+.cache
 junk/
 examples/

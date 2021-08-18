@@ -98,9 +98,7 @@ EditorGUI::EditorGUI(int width, int height, bool full_screen)
 
 Structure *EditorGUI::getSettings() {
     Structure *es = EditorSettings::find("EditorSettings");
-    if (es) return es;
-		else
-        return EditorSettings::create();
+    return (es) ? es : EditorSettings::create();
 }
 
 void EditorGUI::addLinkableProperty(const std::string name, LinkableProperty*lp) {
@@ -947,6 +945,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 			++pos;
 		}
 	}
+	else { std::cout << "unhandled: " << op << "\n"; }
 }
 
 void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {

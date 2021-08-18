@@ -40,8 +40,6 @@ public:
 
 	virtual bool focusEvent(bool focused) override;
 	virtual void draw(NVGcontext *ctx) override;
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
 	int valign;
 	bool wrap_text;

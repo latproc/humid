@@ -16,8 +16,7 @@
 #include "propertyformhelper.h"
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2),
-      valign(0), wrap_text(false) {
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(0), wrap_text(false) {
 }
 
 bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

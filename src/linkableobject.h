@@ -44,7 +44,6 @@ protected:
 
 std::ostream &operator<<(std::ostream &out, const LinkableObject &m);
 
-
 class LinkableText : public LinkableObject {
 	public:
 		LinkableText(EditorObject *w);

@@ -107,11 +107,13 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
             [](std::string s){std::cout << " Response: " << s << "\n"; });
       }
       else if (flags() & nanogui::Button::RemoteButton) {
+        // a remote button is reset remotely
         std::string msgon = gui->getIODSyncCommand(conn, 0, address(), pushed() ? 1 : 0);
             gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
       }
       if (flags() & nanogui::Button::NormalButton && !(flags() & nanogui::Button::RemoteButton)) {
         if (getRemote()) {
+            // a normal button is pressed and released
             std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
             gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
             std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);

@@ -40,9 +40,5 @@ public:
 	virtual void setProperty(const std::string &prop, const std::string value) override;
 
 	virtual void draw(NVGcontext *ctx) override;
-
-	nanogui::DragHandle *dh;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
 };
 

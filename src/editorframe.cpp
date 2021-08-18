@@ -17,7 +17,7 @@
 #include "propertyformhelper.h"
 
 EditorFrame::EditorFrame(NamedObject *owner, nanogui::Widget *parent, const std::string nam, LinkableProperty *lp)
-	: nanogui::Widget(parent), EditorWidget(owner, "FRAME", nam, this, lp), dh(0), handles(9), handle_coordinates(9,2) {
+	: nanogui::Widget(parent), EditorWidget(owner, "FRAME", nam, this, lp) {
 	}
 
 bool EditorFrame::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
