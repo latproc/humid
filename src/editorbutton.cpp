@@ -484,27 +484,35 @@ void EditorButton::draw(NVGcontext *ctx) {
     if (valign == VerticalAlignment::Top) {
       label_y = mPos.y();
       alignv = NVG_ALIGN_TOP;
+      nvgTextAlign(ctx, align | alignv);
     }
     else if (valign == VerticalAlignment::Bottom) {
       alignv = NVG_ALIGN_BOTTOM;
-      label_y = mPos.y() + mSize.y();
+      nvgTextAlign(ctx, align | alignv);
       if (wrap_text) {
         float bounds[4];
-        float res = nvgTextBounds(ctx, mPos.x(), label_y, text.c_str(), nullptr, bounds);
-        label_y -= (bounds[3] - bounds[1]);
+        nvgTextBoxBounds(ctx, mPos.x(), mPos.y(), mSize.x(), text.c_str(), nullptr, bounds);
+        label_y = mPos.y() + mSize.y() - (bounds[3] - bounds[1]) / 2.0f;
+      }
+      else {
+        label_y = mPos.y() + mSize.y();
       }
     }
     else {
       alignv = NVG_ALIGN_CENTER;
+      nvgTextAlign(ctx, align | alignv);
       if (wrap_text) {
         float bounds[4];
-        float res = nvgTextBounds(ctx, mPos.x(), label_y, text.c_str(), nullptr, bounds);
-        label_y -= (bounds[3] - bounds[1]) / 2.0;
+        nvgTextBoxBounds(ctx, 0, label_y, mSize.x(), text.c_str(), nullptr, bounds);
+        // Vertical centre alignment seems to need some adjustment
+        auto h = bounds[3] - bounds[1];
+        label_y = mPos.y() + mSize.y()/2.0 + (1.5*fontSize - h)/2;
       }
-
+      else {
+        label_y += fontSize / 4;
+      }
     }
 
-    nvgTextAlign(ctx, align | alignv);
     if (shadow) {
       nvgFillColor(ctx, mTheme->mTextColorShadow);
       if (!wrap_text)
