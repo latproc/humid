@@ -275,6 +275,11 @@ int dataTypeFromModbus(int val, int len) {
 #endif
 }
 
+std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s) {
+	out << context << s.x()<<"," << s.y();
+	return out;
+}
+
 void getPropertyNames(std::list<std::string> &names) {
   names.push_back("Border");
   names.push_back("Connection");

@@ -20,7 +20,7 @@
 
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;
-	properties = new PropertyFormHelper(screen);
+	properties = new PropertyFormHelper(screen, new Vector2i(150, 30));
 	window = properties->addWindow(nanogui::Vector2i(30, 70), "Property List");
 	window->setTheme(theme);
 

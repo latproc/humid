@@ -4,10 +4,9 @@
 #include <nanogui/common.h>
 #include <nanogui/formhelper.h>
 
-
 class PropertyFormHelper : public nanogui::FormHelper {
 public:
-	PropertyFormHelper(nanogui::Screen *screen) ;
+	PropertyFormHelper(nanogui::Screen *screen, nanogui::Vector2i *fixed_size = nullptr) ;
 
 	void clear();
 	nanogui::Window *addWindow(const nanogui::Vector2i &pos,
@@ -17,5 +16,6 @@ public:
 
 	nanogui::Widget *content() override;
 private:
-	nanogui::Widget *mContent;
+	nanogui::Widget *mContent = nullptr;
+	nanogui::Vector2i *mItemSize = nullptr;
 };

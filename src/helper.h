@@ -42,5 +42,6 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop);
 int dataTypeFromModbus(int val);
 void getPropertyNames(std::list<std::string> &names);
 void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
+std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s);
 
 #endif
