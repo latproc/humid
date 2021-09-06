@@ -139,22 +139,23 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
   EditorWidget::setProperty(prop, value);
   if (prop == "Remote") {
     if (remote) {
-        remote->link(new LinkableText(this));  }
+        remote->link(new LinkableText(this));
     }
-    if (prop == "Text") {
-      setValue(value);
-    }
-    else if (prop == "Font Size") {
-      int fs = std::atoi(value.c_str());
-      setFontSize(fs);
-    }
-    else if (prop == "Alignment") {
-      setAlignment((Alignment)std::atoi(value.c_str()));
-    }
-    else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-    else if (prop == "Wrap Text") {
-      wrap_text = (value == "1" || value == "true" || value == "TRUE");
-    }
+  }
+  else if (prop == "Text") {
+    setValue(value);
+  }
+  else if (prop == "Font Size") {
+    int fs = std::atoi(value.c_str());
+    setFontSize(fs);
+  }
+  else if (prop == "Alignment") {
+    setAlignment((Alignment)std::atoi(value.c_str()));
+  }
+  else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  else if (prop == "Wrap Text") {
+    wrap_text = (value == "1" || value == "true" || value == "TRUE");
+  }
 }
 
 

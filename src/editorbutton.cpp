@@ -18,8 +18,12 @@
 #include "structure.h"
 #include "propertyformhelper.h"
 #include "resourcemanager.h"
+#include "helper.h"
 
 std::string stripEscapes(const std::string &s);
+
+static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
+static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
 
 namespace {
 
@@ -223,21 +227,23 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
 }
 
 void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  EditorWidget::loadPropertyToStructureMap(property_map);
-  property_map["Off text"] = "caption";
-  property_map["On text"] = "on_caption";
-  property_map["Background colour"] = "bg_color";
-  property_map["Background on colour"] = "bg_on_color";
-  property_map["Text colour"] = "text_colour";
-  property_map["Text on colour"] = "on_text_colour";
-  property_map["Behaviour"] = "behaviour";
-  property_map["Command"] = "command";
-  property_map["Alignment"] = "alignment";
-  property_map["Vertical Alignment"] = "valign";
-  property_map["Wrap Text"] = "wrap";
-  property_map["Image"] = "image";
-  property_map["Image opacity"] = "image_alpha";
-
+  if (standard_property_map.size() == 0) {
+    EditorWidget::loadPropertyToStructureMap(standard_property_map);
+    standard_property_map["Off text"] = "caption";
+    standard_property_map["On text"] = "on_caption";
+    standard_property_map["Background colour"] = "bg_color";
+    standard_property_map["Background on colour"] = "bg_on_color";
+    standard_property_map["Text colour"] = "text_colour";
+    standard_property_map["Text on colour"] = "on_text_colour";
+    standard_property_map["Behaviour"] = "behaviour";
+    standard_property_map["Command"] = "command";
+    standard_property_map["Alignment"] = "alignment";
+    standard_property_map["Vertical Alignment"] = "valign";
+    standard_property_map["Wrap Text"] = "wrap";
+    standard_property_map["Image"] = "image";
+    standard_property_map["Image opacity"] = "image_alpha";
+  }
+  property_map = standard_property_map;
 }
 
 Value EditorButton::getPropertyValue(const std::string &prop) {
@@ -658,4 +664,16 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
        },
       [&]()->std::string{ return visibility ? visibility->tagName() : ""; });
   }
+}
+
+std::map<std::string, std::string> *EditorButton::property_map() {
+  if (standard_property_map.empty()) { ::loadPropertyToStructureMap(standard_property_map); }
+  return &standard_property_map;
+}
+
+std::map<std::string, std::string> *EditorButton::reverse_property_map() {
+  if (inverted_property_map.empty()) {
+    invert_map(*property_map(), inverted_property_map);
+  }
+  return &inverted_property_map;
 }

@@ -614,7 +614,7 @@ int main(int argc, const char ** argv ) {
 				EditorGUI::systemSettings(system_class->instantiate(nullptr, "System"));
 			}
 
-			// if necessary create a project settings structure to store the 
+			// if necessary create a project settings structure to store the
 			// nominated connection details
 			Structure *project_settings = findStructure("ProjectSettings");
 			if (!project_settings) {

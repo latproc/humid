@@ -27,6 +27,17 @@ public:
 	virtual ~LinkTarget() = default;
 };
 
+class PropertyLinkTarget : public LinkTarget {
+public:
+	PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value);
+	void update(const Value &value);
+	virtual ~PropertyLinkTarget();
+private:
+    EditorWidget *widget = nullptr;
+	std::string property_name;
+	Value default_value;
+};
+
 class LinkableObject {
 public:
 	virtual ~LinkableObject() ;

@@ -5,8 +5,7 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#ifndef __LinkableProperty_h__
-#define __LinkableProperty_h__
+#pragma once
 
 #include <ostream>
 #include <string>
@@ -15,6 +14,7 @@
 #include "editorobject.h"
 #include "circularbuffer.h"
 #include "parameter.h"
+#include "linkableobject.h"
 
 class LinkableProperty : public EditorObject {
 public:
@@ -76,4 +76,3 @@ protected:
 	*/
 };
 
-#endif

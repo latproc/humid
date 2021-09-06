@@ -443,8 +443,6 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	}
 	if (first_message_time == 0) first_message_time = mh.start_time;
 
-	std::ostream &output(std::cerr);
-
 	if (DEBUG_BASIC)
 		std::cerr << "received: "<<data<<" from connection: " << name << "\n";
 

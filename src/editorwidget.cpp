@@ -30,6 +30,8 @@
 #include "objectwindow.h"
 
 extern Handle::Mode all_handles[];
+static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
+static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
@@ -571,4 +573,16 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
       [&,w](bool value) mutable{ inverted_visibility = value; },
       [&,w]()->bool{ return inverted_visibility; });
   }
+}
+
+std::map<std::string, std::string> *EditorWidget::property_map() {
+  if (standard_property_map.empty()) { ::loadPropertyToStructureMap(standard_property_map); }
+  return &standard_property_map;
+}
+
+std::map<std::string, std::string> *EditorWidget::reverse_property_map() {
+  if (inverted_property_map.empty()) {
+    invert_map(*property_map(), inverted_property_map);
+  }
+  return &inverted_property_map;
 }

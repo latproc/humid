@@ -179,7 +179,7 @@ WHERE               return WHERE;
 WITH                return WITH;
 WITHIN              return WITHIN;
 
-[A-Za-z][A-Za-z0-9_.]*       {
+[$]{0,1}[A-Za-z][A-Za-z0-9_.]*       {
 	yylval.sVal = strdup(yytext);
 	return SYMBOL;
 }

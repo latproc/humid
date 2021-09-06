@@ -87,6 +87,8 @@ public:
 	Structure *getDefinition();
 	virtual void updateStructure(); // update the structure properties to reflect the object
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
+	virtual std::map<std::string, std::string> *property_map();
+	virtual std::map<std::string, std::string> *reverse_property_map();
 
 	float valueScale();
 	void setValueScale(float s);

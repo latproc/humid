@@ -38,6 +38,7 @@
 #include "selectablebutton.h"
 #include "startupwindow.h"
 #include "userwindowwin.h"
+#include "linkmanager.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -896,7 +897,9 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 	std::lock_guard<std::recursive_mutex>  lock(linkables_mutex);
 	std::map<std::string, LinkableProperty*>::iterator found = linkables.find(name);
-	if (found == linkables.end()) return 0;
+	if (found == linkables.end()) {
+		return LinkManager::instance().links(name);
+	}
 	return (*found).second;
 }
 
@@ -923,8 +926,9 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 				}
 			}
 			else if (pos == 4) {
-				if (lp)
+				if (lp) {
 					lp->setValue(v);
+				}
 				if (buf) {
 					CircularBuffer::DataType dt = buf->getDataType();
 					if (v.asInteger(val)) {

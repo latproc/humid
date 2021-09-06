@@ -124,7 +124,8 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/resourcemanager.h src/viewswindow.h src/listpanel.h
 		  src/toolbar.h src/propertyformhelper.h src/propertyformwindow.h
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
-		  src/editorframe.h src/keypad.h
+		  src/editorframe.h src/keypad.h src/valuehelper.h
+		  src/linkmanager.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
@@ -225,7 +226,8 @@ endif ()
 		  src/toolbar.cpp src/propertyformhelper.cpp src/propertyformwindow.cpp
 		  src/userwindow.cpp src/startupwindow.cpp
 		  src/widgetfactory.cpp src/dialogwindow.cpp
-		  src/editorframe.cpp src/keypad.cpp
+		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
+		  src/linkmanager.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork  ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
@@ -235,7 +237,7 @@ endif ()
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
-  		src/namedobject.cpp src/anchor.cpp
+  		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp
 	)
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 

@@ -120,7 +120,7 @@ nanogui::Widget *ObjectWindow::createTab(const std::string tags) {
 		current_layer = container;
 		VScrollPanel *palette_scroller = new VScrollPanel(container);
 		palette_scroller->setPosition( Vector2i(1,search_height+5));
-		palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height));
+		palette_scroller->setFixedSize(Vector2i(window->width() - 10, window->height() - window->theme()->mWindowHeaderHeight - search_height - 36));
 		palette_content = new Widget(palette_scroller);
 		palette_content->setFixedSize(Vector2i(window->width() - 15, window->height() - window->theme()->mWindowHeaderHeight-5 - search_height));
 		return palette_content;

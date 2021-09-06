@@ -13,6 +13,8 @@
 #include <boost/foreach.hpp>
 #include <symboltable.h>
 #include <Logger.h>
+#include "valuehelper.h"
+#include "linkmanager.h"
 
 #define COMPILER_MAIN
 #include "hmilang.h"
@@ -37,6 +39,7 @@ struct HumidParserState {
 	Structure *current_machine = nullptr;
 	StructureClass *current_machineclass = nullptr;
 	ClassExtension *current_base = nullptr;
+	std::map<std::string, std::string> current_pending_links; // remote, property_name
 } ;
 HumidParserState hps;
 
@@ -279,6 +282,7 @@ instantiation ';'
 instantiation:
 SYMBOL SYMBOL parameters
 {
+	std::cout << "add widget 1: " << $1 << "(" << $2<< ")\n";
 	hps.current_machine = new Structure(nullptr, $1, $2);
 	std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machine->parameters));
 	hps.current_parameters.clear();
@@ -295,6 +299,7 @@ SYMBOL SYMBOL parameters
 }
 | SYMBOL SYMBOL property_block parameters
 {
+	std::cout << "add widget 2: " << $1 << "(" << $2<< ")\n";
 	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
 	//__FILE__, __LINE__, properties,
 	//MachineInstance::MACHINE_INSTANCE));
@@ -307,9 +312,17 @@ SYMBOL SYMBOL parameters
 	hps.property_stack.pop_back();
 	hps.current_machine->setProperties(hps.properties);
 	hps.properties.clear();
+	for (auto & link : hps.current_pending_links) {
+		std::cout << "found linked property on " << hps.current_machineclass->getName()
+			  << " (" << (hps.current_machine ? hps.current_machine->getName() : "") << ") "
+			 << ": " << link.first << ":" << link.second << "\n";
+		LinkManager::instance().add_pending(link.first, hps.current_machineclass->getName(), hps.current_machine->getName(), link.second);
+	}
+	hps.current_pending_links.clear();
 }
 | SYMBOL SYMBOL '<' pattern_list '>' property_block parameters
 {
+	std::cout << "add widget: " << $1 << "(" << $2<< ")\n";
 	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
 	//__FILE__, __LINE__, properties,
 	//MachineInstance::MACHINE_INSTANCE));
@@ -322,6 +335,13 @@ SYMBOL SYMBOL parameters
 	hps.property_stack.pop_back();
 	hps.current_machine->setProperties(hps.properties);
 	hps.properties.clear();
+	for (auto & link : hps.current_pending_links) {
+		std::cout << "found linked property on " << hps.current_machineclass->getName()
+			  << " (" << (hps.current_machine ? hps.current_machine->getName() : "") << ") "
+			 << ": " << link.first << ":" << link.second << "\n";
+		LinkManager::instance().add_pending(link.first, hps.current_machineclass->getName(), hps.current_machine->getName(), link.second);
+	}
+	hps.current_pending_links.clear();
 }
 ;
 
@@ -385,6 +405,15 @@ property
 property:
 SYMBOL PROPSEP value
 {
+	if ((*$3).kind == Value::t_symbol) {
+		if ((*$3).sValue[0] == '$') {
+			Value default_value = defaultForType( typeForProperty($1));
+			std::string remote_name = (*$3).sValue.substr(1);
+			hps.current_pending_links[remote_name] = $1; // TODO, allow more than one link to a property.. multimap
+			delete $3;
+			$3 = new Value(default_value);
+		}
+	}
 	bool value;
 	if ($3->kind == Value::t_symbol && $3->asBoolean(value)) {
 		hps.properties.add($1, value);

@@ -20,7 +20,18 @@
 #include "editortextbox.h"
 
 extern std::string shortName(const std::string s);
+PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
+	: widget(widget), property_name(property), default_value(default_value) {
+		
+}
 
+void PropertyLinkTarget::update(const Value &value) {
+    if (widget) {
+        widget->setPropertyValue(property_name, value);
+    }
+}
+
+PropertyLinkTarget::~PropertyLinkTarget() = default;
 
 std::ostream &LinkableObject::operator<<(std::ostream &out) const {
     return out;

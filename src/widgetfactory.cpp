@@ -9,6 +9,8 @@
 #include "editorframe.h"
 #include <nanogui/button.h>
 #include "helper.h"
+#include "linkmanager.h"
+#include "valuehelper.h"
 
 static bool stringEndsWith(const std::string &src, const std::string ending) {
 	size_t l_src = src.length();
@@ -316,6 +318,26 @@ void createButton(WidgetParams &params) {
 	b->setupButtonCallbacks(params.lp, params.gui);
 	b->setImageName(params.element->getProperties().find("image").asString());
 	if (params.visibility) b->setVisibilityLink(params.visibility);
+	
+	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), b->getName());
+	if (remote_links) {
+		std::cout << "have pending links\n";
+		auto property_id_to_name = b->reverse_property_map();
+		for (auto & link_info : *remote_links) {
+			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
+			if (linkable_property) {
+				auto found_property = property_id_to_name->find(link_info.property_name);
+				if (found_property != property_id_to_name->end()) {
+					std::cout << " linking " << b->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
+					linkable_property->link(new LinkableObject(new PropertyLinkTarget(b, (*found_property).second, defaultForProperty(link_info.property_name))));
+				}
+			}
+			else {
+				std::cout << "no linkable property for " << link_info.remote_name << "\n";
+			}
+		}
+	}
+
 	b->setChanged(false);
 }
 

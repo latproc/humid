@@ -317,3 +317,9 @@ void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map
   property_map["Width"] = "width";
 }
 
+void invert_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed) {
+	reversed.clear();
+	for (auto & item : normal) {
+		reversed.insert({item.second, item.first});
+	}
+}
