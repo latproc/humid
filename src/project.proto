@@ -1,0 +1,25 @@
+syntax="proto3";
+message Project {
+  optional Header header = 1;
+  optional Dictionary dict = 2;
+  repeated Structure structures = 3;
+}
+message Header {
+  optional int32 version = 1;
+}
+message Types {
+  optional int32 type_id =1;
+}
+message Property {
+  optional string name = 1;
+  optional int32 type_id = 2;
+}
+message Dictionary {
+  optional int32 type_id = 1;
+  repeated Property properties = 2;
+}
+
+message Structure {
+  optional int32 type_id = 1;
+  repeated Property properties = 2;
+}

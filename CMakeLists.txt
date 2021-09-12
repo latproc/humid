@@ -203,6 +203,31 @@ endif ()
 	SET_SOURCE_FILES_PROPERTIES(${settings_lex_output} GENERATED)
 	SET_SOURCE_FILES_PROPERTIES(${settings_yacc_output} GENERATED)
 
+	#	ADD_CUSTOM_COMMAND(
+	#			COMMAND protoc
+	#			ARGS
+	#				--proto_path=${CMAKE_CURRENT_SOURCE_DIR}/src
+	#				project.proto
+	#				--cpp_out=${CMAKE_CURRENT_SOURCE_DIR}/src
+	#			DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/project.proto
+	#			OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.cc
+	#			OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.h
+	#	)
+
+find_package(Protobuf)
+if (Protobuf_INCLUDE_DIRS)
+	include_directories(${Protobuf_INCLUDE_DIRS})
+	include_directories(${CMAKE_CURRENT_BINARY_DIR})
+	protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS src/project.proto)
+	#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS EXPORT_MACRO DLL_EXPORT src/project.proto)
+	#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS DESCRIPTORS PROTO_DESCS src/project.proto)
+	add_executable(check_project src/check_project.cpp ${PROTO_SRCS} ${PROTO_HDRS})
+	target_link_libraries(check_project ${Protobuf_LIBRARIES})
+
+	SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.h GENERATED)
+	SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.cc GENERATED)
+endif()
+
   add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
 		  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp
 		  src/lineplot.cpp src/circularbuffer.cpp src/propertylist.cpp
