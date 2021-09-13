@@ -25,6 +25,18 @@ std::string stripEscapes(const std::string &s);
 static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
 static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
 
+std::map<std::string, std::string> *EditorButton::property_map() {
+  if (standard_property_map.empty()) { loadPropertyToStructureMap(standard_property_map); }
+  return &standard_property_map;
+}
+
+std::map<std::string, std::string> *EditorButton::reverse_property_map() {
+  if (inverted_property_map.empty()) {
+    invert_map(*property_map(), inverted_property_map);
+  }
+  return &inverted_property_map;
+}
+
 namespace {
 
   int intFromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
@@ -227,7 +239,7 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
 }
 
 void EditorButton::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  if (standard_property_map.size() == 0) {
+  if (standard_property_map.empty()) {
     EditorWidget::loadPropertyToStructureMap(standard_property_map);
     standard_property_map["Off text"] = "caption";
     standard_property_map["On text"] = "on_caption";
@@ -321,6 +333,23 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
   if (prop == "Image transparency") {
     image_alpha = std::atof(value.c_str());
   }
+  if (prop == "Background colour") {
+    getDefinition()->getProperties().add("bg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+  }
+  if (prop == "Background on colour") {
+    getDefinition()->getProperties().add("bg_on_color", value);
+    setOnColor(colourFromProperty(getDefinition(), "bg_on_color"));
+  }
+  if (prop == "Text colour") {
+    getDefinition()->getProperties().add("text_colour", value);
+    setTextColor(colourFromProperty(getDefinition(), "text_colour"));
+  }
+  if (prop == "Text on colour") {
+    getDefinition()->getProperties().add("on_text_colour", value);
+    setOnTextColor(colourFromProperty(getDefinition(), "on_text_colour"));
+  }
+
 }
 
 void EditorButton::draw(NVGcontext *ctx) {
@@ -666,14 +695,3 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
   }
 }
 
-std::map<std::string, std::string> *EditorButton::property_map() {
-  if (standard_property_map.empty()) { ::loadPropertyToStructureMap(standard_property_map); }
-  return &standard_property_map;
-}
-
-std::map<std::string, std::string> *EditorButton::reverse_property_map() {
-  if (inverted_property_map.empty()) {
-    invert_map(*property_map(), inverted_property_map);
-  }
-  return &inverted_property_map;
-}

@@ -43,7 +43,7 @@ public:
             auto & class_pending_properties = (*found_class).second;
             auto found_widget = class_pending_properties.find(widget_name);
             if (found_widget != class_pending_properties.end()) {
-                auto property_list = (*found_widget).second;
+                auto & property_list = (*found_widget).second;
                 property_list.push_back({remote, property});
             }
             else {
@@ -52,6 +52,7 @@ public:
             }
         }
         else {
+            std::cout << "adding first pending link for " << class_name << "\n";
             pending_links[class_name] = std::map<std::string, std::list<LinkInfo> >();
             pending_links[class_name][widget_name] = std::list<LinkInfo>();
             pending_links[class_name][widget_name].push_back({remote, property});

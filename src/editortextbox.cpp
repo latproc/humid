@@ -14,6 +14,22 @@
 
 #include "editortextbox.h"
 #include "propertyformhelper.h"
+#include "helper.h"
+
+static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
+static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
+
+std::map<std::string, std::string> *EditorTextBox::property_map() {
+  if (standard_property_map.empty()) { loadPropertyToStructureMap(standard_property_map); }
+  return &standard_property_map;
+}
+
+std::map<std::string, std::string> *EditorTextBox::reverse_property_map() {
+  if (inverted_property_map.empty()) {
+    invert_map(*property_map(), inverted_property_map);
+  }
+  return &inverted_property_map;
+}
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
     : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(0), wrap_text(false) {
@@ -56,12 +72,15 @@ void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
 }
 
 void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  EditorWidget::loadPropertyToStructureMap(property_map);
-  property_map["Text"] = "text";
-  property_map["Font Size"] = "font_size";
-  property_map["Alignment"] = "alignment";
-  property_map["Vertical Alignment"] = "valign";
-  property_map["Wrap Text"] = "wrap";
+  if (standard_property_map.empty()) {
+    EditorWidget::loadPropertyToStructureMap(standard_property_map);
+    standard_property_map["Text"] = "text";
+    standard_property_map["Font Size"] = "font_size";
+    standard_property_map["Alignment"] = "alignment";
+    standard_property_map["Vertical Alignment"] = "valign";
+    standard_property_map["Wrap Text"] = "wrap";
+  }
+  property_map = standard_property_map;
 }
 
 Value EditorTextBox::getPropertyValue(const std::string &prop) {

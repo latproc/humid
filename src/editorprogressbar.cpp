@@ -15,6 +15,22 @@
 #include "editorwidget.h"
 #include "editorprogressbar.h"
 #include "propertyformhelper.h"
+#include "helper.h"
+
+static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
+static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
+
+std::map<std::string, std::string> *EditorProgressBar::property_map() {
+  if (standard_property_map.empty()) { loadPropertyToStructureMap(standard_property_map); }
+  return &standard_property_map;
+}
+
+std::map<std::string, std::string> *EditorProgressBar::reverse_property_map() {
+  if (inverted_property_map.empty()) {
+    invert_map(*property_map(), inverted_property_map);
+  }
+  return &inverted_property_map;
+}
 
 EditorProgressBar::EditorProgressBar(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp)
 	: ProgressBar(parent), EditorWidget(owner, "PROGRESS", nam, this, lp) {
@@ -55,7 +71,10 @@ void EditorProgressBar::draw(NVGcontext *ctx) {
 }
 
 void EditorProgressBar::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-	EditorWidget::loadPropertyToStructureMap(property_map);
+  if (standard_property_map.empty()) {
+	  EditorWidget::loadPropertyToStructureMap(standard_property_map);
+  }
+  property_map = standard_property_map;
 }
 
 void EditorProgressBar::getPropertyNames(std::list<std::string> &names) {

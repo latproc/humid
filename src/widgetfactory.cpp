@@ -128,6 +128,25 @@ void createLabel(WidgetParams &params) {
 	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
 	el->setInvertedVisibility(params.ivis);
 	if (params.visibility) el->setVisibilityLink(params.visibility);
+
+	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), el->getName());
+	if (remote_links) {
+		auto property_id_to_name = el->reverse_property_map();
+		for (auto & link_info : *remote_links) {
+			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
+			if (linkable_property) {
+				auto found_property = property_id_to_name->find(link_info.property_name);
+				if (found_property != property_id_to_name->end()) {
+					std::cout << " linking " << el->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
+					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
+				}
+			}
+			else {
+				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << el->getName() << "\n";
+			}
+		}
+	}
+
 	el->setChanged(false);
 }
 
@@ -160,6 +179,24 @@ void createImage(WidgetParams &params) {
 	if (params.lp) {
 		params.lp->link(new LinkableText(el));
 	if (params.visibility) el->setVisibilityLink(params.visibility);
+	}
+	
+	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), el->getName());
+	if (remote_links) {
+		auto property_id_to_name = el->reverse_property_map();
+		for (auto & link_info : *remote_links) {
+			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
+			if (linkable_property) {
+				auto found_property = property_id_to_name->find(link_info.property_name);
+				if (found_property != property_id_to_name->end()) {
+					std::cout << " linking " << el->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
+					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
+				}
+			}
+			else {
+				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << el->getName() << "\n";
+			}
+		}
 	}
 	el->setChanged(false);
 }
@@ -244,6 +281,25 @@ void createText(WidgetParams &params) {
 		}
 		return false;
 	});
+	
+	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), textBox->getName());
+	if (remote_links) {
+		auto property_id_to_name = textBox->reverse_property_map();
+		for (auto & link_info : *remote_links) {
+			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
+			if (linkable_property) {
+				auto found_property = property_id_to_name->find(link_info.property_name);
+				if (found_property != property_id_to_name->end()) {
+					std::cout << " linking " << textBox->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
+					linkable_property->link(new LinkableObject(new PropertyLinkTarget(textBox, (*found_property).second, defaultForProperty(link_info.property_name))));
+				}
+			}
+			else {
+				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << textBox->getName() << "\n";
+			}
+		}
+	}
+
 }
 
 void createPlot(WidgetParams &params) {
@@ -321,7 +377,6 @@ void createButton(WidgetParams &params) {
 	
 	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), b->getName());
 	if (remote_links) {
-		std::cout << "have pending links\n";
 		auto property_id_to_name = b->reverse_property_map();
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
@@ -333,7 +388,7 @@ void createButton(WidgetParams &params) {
 				}
 			}
 			else {
-				std::cout << "no linkable property for " << link_info.remote_name << "\n";
+				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << b->getName() << "\n";
 			}
 		}
 	}
