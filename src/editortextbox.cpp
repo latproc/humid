@@ -63,7 +63,6 @@ bool EditorTextBox::mouseEnterEvent(const Vector2i &p, bool enter) {
 
 void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
 	EditorWidget::getPropertyNames(names);
-	names.push_back("Number format");
   names.push_back("Text");
   names.push_back("Font Size");
   names.push_back("Alignment");
@@ -87,8 +86,7 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
   Value res = EditorWidget::getPropertyValue(prop);
   if (res != SymbolTable::Null)
     return res;
-  if (prop == "Text")
-    return Value(value(), Value::t_string);
+  if (prop == "Text") return Value(value(), Value::t_string);
   else if (prop == "Font Size") return fontSize();
   else if (prop == "Alignment") return (int)alignment();
   else if (prop == "Vertical Alignment") return valign;

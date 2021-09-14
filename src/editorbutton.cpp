@@ -263,13 +263,15 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (res != SymbolTable::Null)
     return res;
 
-  if (prop == "Off text")
+  if (prop == "Off text") {
     return Value(caption(), Value::t_string);
+  }
   if (prop == "Image") {
     return image_name;
   }
-  if (prop == "On text")
+  if (prop == "On text") {
     return Value(on_caption, Value::t_string);
+  }
   if (prop == "Background colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
@@ -318,38 +320,44 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         remote->link(new LinkableIndicator(this));
     }
   }
-  if (prop == "Alignment") {
+  else if (prop == "On Text") {
+    on_caption = value;
+  }
+  else if (prop == "Off Text") {
+    setCaption(value);
+
+  }
+  else if (prop == "Background colour") {
+    getDefinition()->getProperties().add("bg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+  }
+  else if (prop == "Background on colour") {
+    getDefinition()->getProperties().add("bg_on_color", value);
+    setOnColor(colourFromProperty(getDefinition(), "bg_on_color"));
+  }
+  else if (prop == "Text colour") {
+    getDefinition()->getProperties().add("text_colour", value);
+    setTextColor(colourFromProperty(getDefinition(), "text_colour"));
+  }
+  else if (prop == "Text on colour") {
+    getDefinition()->getProperties().add("on_text_colour", value);
+    setOnTextColor(colourFromProperty(getDefinition(), "on_text_colour"));
+  }
+  else if (prop == "Alignment") {
     alignment = toHorizontalAlignment(value);
     // horizontal alignments had incorrect numeric values. The following
     // ensures the symbolic name is saved instead of a bare integer.
     // for a time(?), reading toHorizintalAlignment(int) supports the old value
     getDefinition()->getProperties().add("alignment", fromHorizontalAlignment(alignment));
   }
-  if (prop == "Vertical Alignment") valign = toVerticalAlignment(value);
-  if (prop == "Wrap Text") {
+  else if (prop == "Vertical Alignment") valign = toVerticalAlignment(value);
+  else if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }
-  if (prop == "Image") { setImageName(value); }
-  if (prop == "Image transparency") {
+  else if (prop == "Image") { setImageName(value); }
+  else if (prop == "Image transparency") {
     image_alpha = std::atof(value.c_str());
   }
-  if (prop == "Background colour") {
-    getDefinition()->getProperties().add("bg_color", value);
-    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
-  }
-  if (prop == "Background on colour") {
-    getDefinition()->getProperties().add("bg_on_color", value);
-    setOnColor(colourFromProperty(getDefinition(), "bg_on_color"));
-  }
-  if (prop == "Text colour") {
-    getDefinition()->getProperties().add("text_colour", value);
-    setTextColor(colourFromProperty(getDefinition(), "text_colour"));
-  }
-  if (prop == "Text on colour") {
-    getDefinition()->getProperties().add("on_text_colour", value);
-    setOnTextColor(colourFromProperty(getDefinition(), "on_text_colour"));
-  }
-
 }
 
 void EditorButton::draw(NVGcontext *ctx) {
@@ -368,9 +376,13 @@ void EditorButton::draw(NVGcontext *ctx) {
     }
 
     if (image_name != SymbolTable::Null && !mImageID) {
-      std::cerr << "attempting to load image " << image_name << "\n";
       mImageID = nvgCreateImage(ctx, image_name.asString().c_str(), 0);
-      if (mImageID) ResourceManager::manage(mImageID);
+      if (mImageID) {
+        ResourceManager::manage(mImageID);
+      }
+      else {
+        std::cerr << "failed to load image " << image_name << "\n";
+      }
     }
 
     nvgSave(ctx);

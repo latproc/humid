@@ -59,7 +59,8 @@ public:
         }
     }
 
-    std::list<LinkInfo> *remote_links(const std::string & class_name, const std::string & widget_name) {
+    Links *remote_links(const std::string & class_name, const std::string & widget_name) {
+        if (class_name.empty() || widget_name.empty()) { return nullptr; }
         auto found_class = pending_links.find(class_name);
         if (found_class != pending_links.end()) {
             auto & class_pending_properties = (*found_class).second;

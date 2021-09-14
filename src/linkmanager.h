@@ -10,6 +10,7 @@ public:
         std::string remote_name;
         std::string property_name;
     };
+    using Links = std::list<LinkInfo>;
 
     static LinkManager &instance();
     void remove();
@@ -19,7 +20,7 @@ public:
     LinkableProperty *links(const std::string &property) const;
  
     void add_pending(const std::string &remote_name, const std::string & class_name, const std::string & widget_name, const std::string & property);
-    std::list<LinkInfo> *remote_links(const std::string & class_name, const std::string & widget_name);
+    Links *remote_links(const std::string & class_name, const std::string & widget_name);
 
 private:
     LinkManager();
