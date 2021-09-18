@@ -2,6 +2,9 @@
 #include "linkableproperty.h"
 #include <map>
 #include <list>
+#include "editor.h"
+#include "editorwidget.h"
+#include "valuehelper.h"
 
 LinkManager * LinkManager::_instance = nullptr;
 
@@ -37,7 +40,6 @@ public:
     }
 
     void add_pending(const std::string &remote, const std::string class_name, const std::string & widget_name, const std::string &property) {
-        std::cout << "add pending " << remote << "->" << property << "\n";
         auto found_class = pending_links.find(class_name);
         if (found_class != pending_links.end()) {
             auto & class_pending_properties = (*found_class).second;
@@ -52,7 +54,6 @@ public:
             }
         }
         else {
-            std::cout << "adding first pending link for " << class_name << "\n";
             pending_links[class_name] = std::map<std::string, std::list<LinkInfo> >();
             pending_links[class_name][widget_name] = std::list<LinkInfo>();
             pending_links[class_name][widget_name].push_back({remote, property});
@@ -71,10 +72,14 @@ public:
         }
         return nullptr;
     }
-
 };
 
 LinkManager::LinkManager() : impl{new Impl} {
+}
+
+LinkManager::~LinkManager() {
+    delete impl;
+    _instance = nullptr;
 }
 
 LinkManager & LinkManager::instance() {

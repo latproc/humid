@@ -180,7 +180,6 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
 	boost::algorithm::split(tokens, match, boost::is_any_of(", "));
 
 	int n = tokens.size();
-	std::cout << "filtering " << gui->getLinkableProperties().size() << " on " << n << " tokens: ";
 	for (auto s : tokens) std::cout << s << " ";
 	std::cout << "\n";
 

@@ -21,6 +21,7 @@ DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme) : nanogui::
 }
 
 void DialogWindow::clear() {
+	StructureClass *sc = current_structure ? findClass(current_structure->getKind()) : nullptr;
 	int n = childCount();
 	int idx = 0;
 	while (n--) {
@@ -29,6 +30,7 @@ void DialogWindow::clear() {
 		if (ew && ew->getRemote()) {
 			ew->getRemote()->unlink(ew);
 		}
+		if (ew && sc) { LinkableObject::unlink(sc->getName(), ew); }
 		removeChild(idx);
 	}
 }

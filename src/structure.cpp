@@ -219,7 +219,6 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const s
 		auto item = *i++;
 		if (item.second != SymbolTable::Null && item.second.asString() != "") {
 			if (link_map) {
-				std::cout << "looking up " << item.first << " in the link map\n";
 				auto remote_name = link_map->find(item.first);
 				if (remote_name != link_map->end()) {
 					out << delim << item.first << ": $" << Value( (*remote_name).second, Value::t_symbol);

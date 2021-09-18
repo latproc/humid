@@ -32,8 +32,9 @@ public:
 	PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value);
 	void update(const Value &value);
 	virtual ~PropertyLinkTarget();
+	EditorWidget *widget() { return widget_; }
 private:
-    EditorWidget *widget = nullptr;
+    EditorWidget *widget_ = nullptr;
 	std::string property_name;
 	Value default_value;
 };
@@ -45,8 +46,9 @@ public:
 	explicit LinkableObject(EditorObject *w);
 	explicit LinkableObject(LinkTarget *target);
 	virtual void update(const Value &value);
-	EditorObject *linked() { return widget; }
+	EditorObject *linked();
     std::ostream &operator<<(std::ostream &out) const;
+	static void unlink(const std::string &class_name, EditorWidget *);
 protected:
 	EditorObject *widget = nullptr;
 	LinkTarget *target = nullptr;

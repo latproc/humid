@@ -137,7 +137,6 @@ void createLabel(WidgetParams &params) {
 			if (linkable_property) {
 				auto found_property = property_id_to_name->find(link_info.property_name);
 				if (found_property != property_id_to_name->end()) {
-					std::cout << " linking " << el->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -189,7 +188,6 @@ void createImage(WidgetParams &params) {
 			if (linkable_property) {
 				auto found_property = property_id_to_name->find(link_info.property_name);
 				if (found_property != property_id_to_name->end()) {
-					std::cout << " linking " << el->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -290,7 +288,6 @@ void createText(WidgetParams &params) {
 			if (linkable_property) {
 				auto found_property = property_id_to_name->find(link_info.property_name);
 				if (found_property != property_id_to_name->end()) {
-					std::cout << " linking " << textBox->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(textBox, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -383,7 +380,6 @@ void createButton(WidgetParams &params) {
 			if (linkable_property) {
 				auto found_property = property_id_to_name->find(link_info.property_name);
 				if (found_property != property_id_to_name->end()) {
-					std::cout << " linking " << b->getName() << "." << (*found_property).second << " to " << link_info.remote_name << "\n";
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(b, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}

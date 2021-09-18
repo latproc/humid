@@ -337,6 +337,7 @@ void UserWindow::clear() {
 	PropertyMonitor *pm = drag_handle->propertyMonitor();
 	drag_handle->setPropertyMonitor(0);
 
+	auto sc = structure() ? structure()->getStructureDefinition() : nullptr;
 	int n = window->childCount();
 	int idx = 0;
 	while (n--) {
@@ -345,6 +346,7 @@ void UserWindow::clear() {
 		if (ew && ew->getRemote()) {
 			ew->getRemote()->unlink(ew);
 		}
+		if (ew && sc) { LinkableObject::unlink(sc->getName(), ew); }
 		window->removeChild(idx);
 	}
 	window->addChild(drag_handle);
@@ -592,7 +594,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 		[uw]()->std::string{
 			if (uw) {
 				Structure *s = uw->structure();
-				return s->getProperties().lookup("channel").asString();
+				return s ? s->getProperties().lookup("channel").asString() : "";
 			}
 			return "";
 		});

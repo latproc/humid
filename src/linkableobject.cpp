@@ -21,13 +21,13 @@
 
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
-	: widget(widget), property_name(property), default_value(default_value) {
+	: widget_(widget), property_name(property), default_value(default_value) {
 		
 }
 
 void PropertyLinkTarget::update(const Value &value) {
-    if (widget) {
-        widget->setPropertyValue(property_name, value);
+    if (widget_) {
+        widget_->setPropertyValue(property_name, value);
     }
 }
 
@@ -61,6 +61,29 @@ LinkableObject::LinkableObject(EditorObject *ew) : widget(ew), target(nullptr) {
 }
 
 LinkableObject::LinkableObject(LinkTarget *t) : widget(nullptr), target(t) {
+}
+
+EditorObject *LinkableObject::linked() {
+    if (widget) { return widget; }
+    if (target) {
+        PropertyLinkTarget *plt = dynamic_cast<PropertyLinkTarget*>(target);
+        if (plt) { return plt->widget(); }
+    }
+    return nullptr;
+}
+
+void LinkableObject::unlink(const std::string & class_name, EditorWidget * widget) {
+    auto link = LinkManager::instance().remote_links(class_name, widget->getName());
+    if (link) {
+        auto property_id_to_name = widget->reverse_property_map();
+        for (auto & link_info : *link) {
+            auto linkable_property = EDITOR->gui()->findLinkableProperty(link_info.remote_name);
+            if (linkable_property) {
+                linkable_property->unlink(widget);
+            }
+        }
+    }
+
 }
 
 LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) {}
