@@ -33,6 +33,10 @@ const char *st_yyfilename = 0;
 
 const char *program_name;
 
+StructureClass *findClass(const std::string &name) {
+    return nullptr;
+}
+
 static void listDirectory( const std::string pathToCheck, std::list<std::string> &file_list)
 {
     boost::filesystem::path dir(pathToCheck.c_str());

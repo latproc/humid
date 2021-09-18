@@ -100,6 +100,7 @@ void EditorWidget::removeLink(Anchor *src, Anchor *dest) {
       ++iter;
   }
 }
+
 void EditorWidget::updateLinks() {
   std::list<Link>::iterator iter = links.begin();
   while (iter != links.end()) {

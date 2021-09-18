@@ -7,18 +7,97 @@
 
 #include <nanogui/screen.h>
 #include <nanogui/window.h>
+#include <map>
+#include <string>
 
 #include "structure.h"
 #include "helper.h"
+#include "linkmanager.h"
 
 std::list<Structure *>hm_structures;
 std::list<Structure *>builtin_structures;
 std::list<StructureClass *> hm_classes;
 
+static void invert_property_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed) {
+	reversed.clear();
+	for (auto & item : normal) {
+		reversed.insert({item.second, item.first});
+	}
+}
+
+static void prepare_class_properties(const std::string & class_name, std::map<std::string, std::string> &properties) {
+	properties["Border"] = "border";
+	properties["Connection"] = "connection";
+	properties["Font Size"] = "font_size";
+	properties["Format"] = "format";
+	properties["Height"] = "height";
+	properties["Horizontal Pos"] = "pos_x";
+	properties["Inverted Visibility"] = "inverted_visibility";
+	properties["Remote"] = "remote";
+	properties["Structure"] = ""; // not to be copied
+	properties["Tab Position"] = "tab_position";
+	properties["Value Scale"] = "value_scale";
+	properties["Value Type"] = "value_type";
+	properties["Vertical Pos"] = "pos_y";
+	properties["Visibility"] = "visibility";
+	properties["Width"] = "width";
+	if (class_name == "BUTTON" || class_name == "INDICATOR") {
+		properties["Off text"] = "caption";
+		properties["On text"] = "on_caption";
+		properties["Background colour"] = "bg_color";
+		properties["Background on colour"] = "bg_on_color";
+		properties["Text colour"] = "text_colour";
+		properties["Text on colour"] = "on_text_colour";
+		properties["Behaviour"] = "behaviour";
+		properties["Command"] = "command";
+		properties["Alignment"] = "alignment";
+		properties["Vertical Alignment"] = "valign";
+		properties["Wrap Text"] = "wrap";
+		properties["Image"] = "image";
+		properties["Image opacity"] = "image_alpha";
+	}
+	else if (class_name == "TEXT") {
+		properties["Text"] = "text";
+		properties["Font Size"] = "font_size";
+		properties["Alignment"] = "alignment";
+		properties["Vertical Alignment"] = "valign";
+		properties["Wrap Text"] = "wrap";
+	}
+	else if (class_name == "LABEL") {
+		properties["Caption"] = "caption";
+		properties["Font Size"] = "font_size";
+		properties["Text Color"] = "text_color";
+		properties["Alignment"] = "alignment";
+		properties["Vertical Alignment"] = "valign";
+		properties["Wrap Text"] = "wrap";
+		properties["Background Colour"] = "bg_color";
+	}
+	else if (class_name == "PLOT") {
+		properties["X scale"] = "x_scale";
+		properties["X offset"] = "x_offset";
+		properties["Grid Intensity"] = "grid_intensity";
+		properties["Display Grid"] = "display_grid";
+		properties["Overlay plots"] = "overlay_plots";
+	}
+	else if (class_name == "IMAGE") {
+		properties["Image File"] = "image_file";
+		properties["Scale"] = "scale";
+	}
+	else {
+		std::cerr << "Unexpected class name " << class_name << " in prepare_class_properties\n"; 
+	}
+}
+
 StructureClass::StructureClass(const std::string class_name) 
-: NamedObject(nullptr, class_name), builtin(false) {}
+: NamedObject(nullptr, class_name), builtin(false) {
+	prepare_class_properties(class_name, m_property_map);
+	invert_property_map(m_property_map, m_reverse_map);
+}
 StructureClass::StructureClass(const std::string class_name, const std::string base_class)
-: NamedObject(nullptr, class_name), base(base_class), builtin(false) {};
+: NamedObject(nullptr, class_name), base(base_class), builtin(false) {
+	prepare_class_properties(class_name, m_property_map);
+	invert_property_map(m_property_map, m_reverse_map);
+};
 
 std::ostream &Structure::operator<<(std::ostream &out) const {
 	return out << name << " " << kind;
@@ -123,7 +202,15 @@ bool Structure::getBoolProperty(const std::string name, bool default_value) {
 	return default_value;
 }
 
-bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
+const std::map<std::string, std::string> &StructureClass::property_map() const {
+	return m_property_map;
+}
+const std::map<std::string, std::string> &StructureClass::reverse_property_map() const {
+	return m_reverse_map;
+}
+
+
+bool writePropertyList(std::ostream &out, const SymbolTable &properties, const std::map<std::string, std::string> * link_map) {
 	const char *begin_properties = "(\n    ";
 	const char *property_delim = ",\n    ";
 	const char *delim = begin_properties;
@@ -131,6 +218,15 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 	while (i != properties.end()) {
 		auto item = *i++;
 		if (item.second != SymbolTable::Null && item.second.asString() != "") {
+			if (link_map) {
+				std::cout << "looking up " << item.first << " in the link map\n";
+				auto remote_name = link_map->find(item.first);
+				if (remote_name != link_map->end()) {
+					out << delim << item.first << ": $" << Value( (*remote_name).second, Value::t_symbol);
+					delim = property_delim;
+					continue;
+				}
+			}
 			if (item.second.kind == Value::t_string)
 				out << delim << item.first << ": " << item.second; // quotes are automatically added to string values
 			else
@@ -138,7 +234,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties) {
 			delim = property_delim;
 		}
 	}
-	if (delim == property_delim) out << ")"; // only output the ')' if there were properties
+	if (delim == property_delim) out << "\n  )"; // only output the ')' if there were properties
 	return true;
 }
 
@@ -156,7 +252,7 @@ bool writeOptions(std::ostream &out,const std::map<std::string, Value> &options)
 	return true;
 }
 
-bool Structure::save(std::ostream &out) {
+bool Structure::save(std::ostream &out, const std::string &structure_name) {
 	out << name << " " << kind;
 #if 0
 	if (class_definition) {
@@ -164,7 +260,28 @@ bool Structure::save(std::ostream &out) {
 	}
 	else
 #endif
-	bool res = writePropertyList(out, properties);
+	//std::string structure_name = getStructureDefinition() ? getStructureDefinition()->getName() : "";
+	//std::string structure_name = owner ? owner->getName() : "";
+	std::map<std::string, std::string> link_map;
+	std::cout << "looking for links for '" << structure_name << "':" << getName() << " (" << kind << ")" << "\n";
+	auto links = LinkManager::instance().remote_links(structure_name, getName());
+	if (links) {
+		std::cout << "have " << links->size() << " links for " << getName() << " when writing property list" << "\n";
+		if (links) {
+			auto structure_class = findClass(kind);
+			if (structure_class) {
+				auto & reverse_map = structure_class->reverse_property_map();
+				for (auto & link : *links) {
+					auto prop = reverse_map.find(link.property_name);
+					if (prop != reverse_map.end()) {
+						std::cout << (*prop).first << " --> " << link.remote_name << "\n";
+						link_map[(*prop).first] = link.remote_name;
+					}
+				}
+			}
+		}
+	}
+	bool res = writePropertyList(out, properties, &link_map);
 	out << ";\n";
 	return res;
 }
@@ -180,7 +297,7 @@ bool StructureClass::save(std::ostream &out) {
 	for (auto local : locals) {
 		out << "  ";
 		Structure *s = local.machine;
-		s->save(out);
+		s->save(out, getName());
 	}
 	out << "}\n";
 	return true;

@@ -19,6 +19,7 @@ NamedObject::NamedObject(NamedObject *owner) : _named(false), parent(owner) {
 }
 
 NamedObject::~NamedObject() {
+  std::cout << "removing " << name << "\n";
 	if (!parent) {
     auto found = global_objects.find(name);
     if (found != global_objects.end()) {

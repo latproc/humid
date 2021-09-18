@@ -73,10 +73,10 @@ void EditorSettings::flush() {
     std::ofstream settings_file(fname);
     Structure *s = EditorSettings::find("EditorSettings");
     assert(s);
-    s->save(settings_file);
+    s->save(settings_file, "");
     for (auto w : widgets) {
         s = find(w.first);
-        if (s) s->save(settings_file);
+        if (s) s->save(settings_file, "");
     }
     settings_file.close();
 }

@@ -16,6 +16,7 @@
 #include "editorobject.h"
 #include "linkableobject.h"
 #include "linkableproperty.h"
+#include "linkmanager.h"
 
 class Structure;
 
@@ -29,7 +30,7 @@ private:
 	std::vector<Parameter> parameters;
 };
 
-bool writePropertyList(std::ostream &out, const SymbolTable &table);
+bool writePropertyList(std::ostream &out, const SymbolTable &table, const std::map<std::string, std::string> * links = nullptr);
 bool writePropertyDefaults(std::ostream &out, const SymbolTable &table);
 
 class StructureClass : public NamedObject {
@@ -37,6 +38,9 @@ public:
 	StructureClass(const std::string class_name);
 	StructureClass(const std::string class_name, const std::string base_class);
 	std::map<std::string, Structure *> &getGlobalRefs() { return global_references; }
+
+	const std::map<std::string, std::string> &property_map() const;
+	const std::map<std::string, std::string> &reverse_property_map() const;
 	SymbolTable &getProperties() { return properties; }
 	void setProperties(const SymbolTable &other) { properties = other; }
 	SymbolTable &getInternalProperties() { return internal_properties; }
@@ -68,6 +72,8 @@ public:
 
 protected:
 	std::map<std::string, Structure *>global_references;
+	std::map<std::string, std::string> m_property_map;
+	std::map<std::string, std::string> m_reverse_map;
 	std::string base;
 	SymbolTable internal_properties;
 	SymbolTable properties;
@@ -113,7 +119,7 @@ public:
 	void setOwner(Structure *other) { owner = other; }
 	Structure *getOwner() { return owner; }
 
-	virtual bool save(std::ostream &out);
+	virtual bool save(std::ostream &out, const std::string &owner_context);
 
 	static void loadBuiltins();
 

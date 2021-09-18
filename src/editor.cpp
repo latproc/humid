@@ -176,7 +176,7 @@ void Editor::save() {
 			snprintf(buf, 200, "error when writing structure class to %s", fn.c_str());
 		}
 		if (s) std::cout << "attempting to write structure instance " << s->getName() << "\n";
-		if (s && !s->save(out)) {
+		if (s && !s->save(out,s->getName())) {
 			char buf[200];
 			snprintf(buf, 200, "Error writing %s to %s", s->getName().c_str(), fn.c_str());
 			std::cerr << buf << "\n";

@@ -63,8 +63,8 @@ Value::Kind typeForProperty(const std::string &property) {
 Value defaultForProperty(const std::string &property) {
 	if (property == "alignment") { return 1; }
 	if (property == "behaviour") { return 1; }
-	if (property == "bg_color") { return "0.7,0.7,0.7"; }
-	if (property == "bg_on_color") { return "1.0,1.0,1.0"; }
+	if (property == "bg_color") { return "0.7,0.7,0.7,1.0"; }
+	if (property == "bg_on_color") { return "1.0,1.0,1.0,1.0"; }
 	if (property == "border") { return "0.2,0.2,0.2"; }
 	if (property == "caption") { return ""; }
 	if (property == "channel") { return {}; }
@@ -92,8 +92,8 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "screen_width") { return 800; }
 	if (property == "tab_position") { return 0; }
 	if (property == "text") { return ""; }
-	if (property == "text_color") { return "0.2,0.2,0.2"; }
-	if (property == "text_colour") { return "0.2,0.2,0.2"; }
+	if (property == "text_color") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "valign") { return 1; }
 	if (property == "value_scale") { return 1.0; }
 	if (property == "value_type") { return -1; }
