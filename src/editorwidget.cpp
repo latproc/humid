@@ -342,7 +342,6 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
   if (prop == "Inverted Visibility" && !value.empty()) {
     inverted_visibility = (value == "1" || value == "true" || value == "TRUE");    
   }
-
 }
 
 Value EditorWidget::getPropertyValue(const std::string &prop) {

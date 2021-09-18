@@ -339,6 +339,17 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
   else if (prop == "Image transparency") {
     image_alpha = std::atof(value.c_str());
   }
+  if (prop == "Enabled" && getDefinition()->getKind() != "INDICATOR") {
+    mEnabled = (value == "1" || value == "true" || value == "TRUE");   
+    if (!mEnabled) {
+      setBackgroundColor(nanogui::Color(0.7f, 0.7f, 0.7f, 1.0f));
+      setTextColor(nanogui::Color(0.8f, 0.8f, 0.8f, 1.0f));
+    }
+    else {
+      setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+      setTextColor(colourFromProperty(getDefinition(), "text_colour"));
+    }
+  }
 }
 
 void EditorButton::draw(NVGcontext *ctx) {

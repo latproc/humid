@@ -47,6 +47,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["On text"] = "on_caption";
 		properties["Background colour"] = "bg_color";
 		properties["Background on colour"] = "bg_on_color";
+		properties["Enabled"] = "enabled";
 		properties["Text colour"] = "text_colour";
 		properties["Text on colour"] = "on_text_colour";
 		properties["Behaviour"] = "behaviour";
