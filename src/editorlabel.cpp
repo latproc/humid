@@ -16,19 +16,16 @@
 #include "propertyformhelper.h"
 #include "helper.h"
 
-static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
-static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
-
-std::map<std::string, std::string> *EditorLabel::property_map() {
-  if (standard_property_map.empty()) { loadPropertyToStructureMap(standard_property_map); }
-  return &standard_property_map;
+const std::map<std::string, std::string> & EditorLabel::property_map() const {
+  auto structure_class = findClass("LABEL");
+  assert(structure_class);
+  return structure_class->property_map();
 }
 
-std::map<std::string, std::string> *EditorLabel::reverse_property_map() {
-  if (inverted_property_map.empty()) {
-    invert_map(*property_map(), inverted_property_map);
-  }
-  return &inverted_property_map;
+const std::map<std::string, std::string> & EditorLabel::reverse_property_map() const {
+  auto structure_class = findClass("LABEL");
+  assert(structure_class);
+  return structure_class->reverse_property_map();
 }
 
 EditorLabel::EditorLabel(NamedObject *owner, Widget *parent, const std::string nam,
@@ -139,18 +136,8 @@ void EditorLabel::draw(NVGcontext *ctx) {
     }
 }
 
-void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  if (standard_property_map.empty()) {
-    EditorWidget::loadPropertyToStructureMap(standard_property_map);
-    standard_property_map["Caption"] = "caption";
-    standard_property_map["Font Size"] = "font_size";
-    standard_property_map["Text Color"] = "text_color";
-    standard_property_map["Alignment"] = "alignment";
-    standard_property_map["Vertical Alignment"] = "valign";
-    standard_property_map["Wrap Text"] = "wrap";
-    standard_property_map["Background Colour"] = "bg_color";
-  }
-  property_map = standard_property_map;
+void EditorLabel::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
+  properties = property_map();
 }
 
 void EditorLabel::getPropertyNames(std::list<std::string> &names) {

@@ -41,6 +41,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	properties["Vertical Pos"] = "pos_y";
 	properties["Visibility"] = "visibility";
 	properties["Width"] = "width";
+	if (class_name == "WIDGET") { return; }
 	if (class_name == "BUTTON" || class_name == "INDICATOR") {
 		properties["Off text"] = "caption";
 		properties["On text"] = "on_caption";

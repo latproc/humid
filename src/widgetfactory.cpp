@@ -135,8 +135,8 @@ void createLabel(WidgetParams &params) {
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
-				auto found_property = property_id_to_name->find(link_info.property_name);
-				if (found_property != property_id_to_name->end()) {
+				auto found_property = property_id_to_name.find(link_info.property_name);
+				if (found_property != property_id_to_name.end()) {
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -186,8 +186,8 @@ void createImage(WidgetParams &params) {
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
-				auto found_property = property_id_to_name->find(link_info.property_name);
-				if (found_property != property_id_to_name->end()) {
+				auto found_property = property_id_to_name.find(link_info.property_name);
+				if (found_property != property_id_to_name.end()) {
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -286,8 +286,8 @@ void createText(WidgetParams &params) {
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
-				auto found_property = property_id_to_name->find(link_info.property_name);
-				if (found_property != property_id_to_name->end()) {
+				auto found_property = property_id_to_name.find(link_info.property_name);
+				if (found_property != property_id_to_name.end()) {
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(textBox, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}
@@ -296,7 +296,6 @@ void createText(WidgetParams &params) {
 			}
 		}
 	}
-
 }
 
 void createPlot(WidgetParams &params) {
@@ -378,8 +377,8 @@ void createButton(WidgetParams &params) {
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
-				auto found_property = property_id_to_name->find(link_info.property_name);
-				if (found_property != property_id_to_name->end()) {
+				auto found_property = property_id_to_name.find(link_info.property_name);
+				if (found_property != property_id_to_name.end()) {
 					linkable_property->link(new LinkableObject(new PropertyLinkTarget(b, (*found_property).second, defaultForProperty(link_info.property_name))));
 				}
 			}

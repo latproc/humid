@@ -71,7 +71,7 @@ public:
 	void updateHandles(nanogui::Widget *w);
 
 	virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
-  virtual void drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
+	virtual void drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
 
 	std::string baseName() const;
 
@@ -87,8 +87,8 @@ public:
 	Structure *getDefinition();
 	virtual void updateStructure(); // update the structure properties to reflect the object
 	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
-	virtual std::map<std::string, std::string> *property_map();
-	virtual std::map<std::string, std::string> *reverse_property_map();
+	virtual const std::map<std::string, std::string> & property_map() const;
+	virtual const std::map<std::string, std::string> & reverse_property_map() const;
 
 	float valueScale();
 	void setValueScale(float s);
@@ -105,8 +105,8 @@ public:
 	void setInvertedVisibility(bool which) { inverted_visibility = which; }
 	bool invertedVisibility() { return inverted_visibility; }
 
-  void setRemoteName(const std::string rn) { remote_name = rn; }
-  std::string getRemoteName() { return remote_name; }
+	void setRemoteName(const std::string rn) { remote_name = rn; }
+	std::string getRemoteName() { return remote_name; }
 	void setConnection(const std::string c) { connection_name = c; }
 	std::string getConnection() { return connection_name; }
 

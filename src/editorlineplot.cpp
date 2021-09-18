@@ -63,13 +63,20 @@ void EditorLinePlot::draw(NVGcontext *ctx) {
     }
 }
 
-void EditorLinePlot::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  EditorWidget::loadPropertyToStructureMap(property_map);
-  property_map["X scale"] = "x_scale";
-  property_map["X offset"] = "x_offset";
-  property_map["Grid Intensity"] = "grid_intensity";
-  property_map["Display Grid"] = "display_grid";
-  property_map["Overlay plots"] = "overlay_plots";
+const std::map<std::string, std::string> & EditorLinePlot::property_map() const {
+  auto structure_class = findClass("PLOT");
+  assert(structure_class);
+  return structure_class->property_map();
+}
+
+const std::map<std::string, std::string> & EditorLinePlot::reverse_property_map() const {
+  auto structure_class = findClass("PLOT");
+  assert(structure_class);
+  return structure_class->reverse_property_map();
+}
+
+void EditorLinePlot::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
+  properties = property_map();
 }
 
 void EditorLinePlot::getPropertyNames(std::list<std::string> &names) {

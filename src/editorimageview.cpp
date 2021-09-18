@@ -13,19 +13,16 @@
 #include "propertyformhelper.h"
 #include "helper.h"
 
-static std::map<std::string, std::string> standard_property_map; // friendly name -> symbol
-static std::map<std::string, std::string> inverted_property_map; // symbol -> friendly name
-
-std::map<std::string, std::string> *EditorImageView::property_map() {
-  if (standard_property_map.empty()) { loadPropertyToStructureMap(standard_property_map); }
-  return &standard_property_map;
+const std::map<std::string, std::string> & EditorImageView::property_map() const {
+  auto structure_class = findClass("IMAGE");
+  assert(structure_class);
+  return structure_class->property_map();
 }
 
-std::map<std::string, std::string> *EditorImageView::reverse_property_map() {
-  if (inverted_property_map.empty()) {
-    invert_map(*property_map(), inverted_property_map);
-  }
-  return &inverted_property_map;
+const std::map<std::string, std::string> & EditorImageView::reverse_property_map() const {
+  auto structure_class = findClass("IMAGE");
+  assert(structure_class);
+  return structure_class->reverse_property_map();
 }
 
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
@@ -136,13 +133,8 @@ void EditorImageView::getPropertyNames(std::list<std::string> &names) {
     names.push_back("Scale");
 }
 
-void EditorImageView::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  if (standard_property_map.empty()) {
-    EditorWidget::loadPropertyToStructureMap(standard_property_map);
-    standard_property_map["Image File"] = "image_file";
-    standard_property_map["Scale"] = "scale";
-  }
-  property_map = standard_property_map;
+void EditorImageView::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
+  properties = property_map();
 }
 
 Value EditorImageView::getPropertyValue(const std::string &prop) {
