@@ -41,9 +41,9 @@ std::ostream &operator<<(std::ostream &out, const LinkableObject &m) {
 }
 
 void LinkableObject::update(const Value &v) {
-  if (target) {
-      target->update(v);
-  }
+    if (target) {
+        target->update(v);
+    }
 }
 
 LinkableObject::~LinkableObject() {

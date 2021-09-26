@@ -112,9 +112,9 @@ void createLabel(WidgetParams &params) {
 	const Value &bg_colour(params.element->getProperties().find("bg_color"));
 	if (bg_colour != SymbolTable::Null)
 		el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-	const Value &text_colour(params.element->getProperties().find("text_color"));
+	const Value &text_colour(params.element->getProperties().find("text_colour"));
 	if (text_colour != SymbolTable::Null)
-		el->setTextColor(colourFromProperty(params.element, "text_color"));
+		el->setTextColor(colourFromProperty(params.element, "text_colour"));
 	const Value &alignment_v(params.element->getProperties().find("alignment"));
 	if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
 	const Value &valignment_v(params.element->getProperties().find("valign"));
@@ -133,6 +133,7 @@ void createLabel(WidgetParams &params) {
 	if (remote_links) {
 		auto property_id_to_name = el->reverse_property_map();
 		for (auto & link_info : *remote_links) {
+			std::cout  << "label property " << link_info.property_name << " " << link_info.remote_name << "\n";
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
 				auto found_property = property_id_to_name.find(link_info.property_name);
@@ -337,7 +338,7 @@ void createButton(WidgetParams &params) {
 	b->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
 	b->setTextColor(colourFromProperty(params.element, "text_colour"));
 	b->setOnColor(colourFromProperty(params.element, "bg_on_color"));
-	b->setOnTextColor(colourFromProperty(params.element, "on_text_colour"));
+	b->setOnTextColor(colourFromProperty(params.element, "text_on_colour"));
 	b->setFlags(params.element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 	if (params.connection != SymbolTable::Null) {
 		b->setRemoteName(params.remote.asString());

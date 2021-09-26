@@ -72,8 +72,7 @@ void LinkableProperty::setAddressStr(int grp, int addr) {
 
 void LinkableProperty::setValue(const Value &v) {
 	current = v;
-	for (auto link : links)
-		link->update(v);
+	for (auto link : links) link->update(v);
 }
 
 void LinkableProperty::apply() {

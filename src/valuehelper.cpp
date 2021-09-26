@@ -36,7 +36,7 @@ Value::Kind typeForProperty(const std::string &property) {
 	if (property == "image_file") { return Value::t_string; }
 	if (property == "inverted_visibility") { return Value::t_bool; }
 	if (property == "on_caption") { return Value::t_string; }
-	if (property == "on_text_colour") { return Value::t_string; }
+	if (property == "text_on_colour") { return Value::t_string; }
 	if (property == "overlay_plots") { return Value::t_bool; }
 	if (property == "pos_x") { return Value::t_integer; }
 	if (property == "pos_y") { return Value::t_integer; }
@@ -47,7 +47,7 @@ Value::Kind typeForProperty(const std::string &property) {
 	if (property == "screen_width") { return Value::t_integer; }
 	if (property == "tab_position") { return Value::t_integer; }
 	if (property == "text") { return Value::t_string; }
-	if (property == "text_color") { return Value::t_string; }
+	if (property == "text_colour") { return Value::t_string; }
 	if (property == "text_colour") { return Value::t_string; }
 	if (property == "valign") { return Value::t_integer; }
 	if (property == "value_scale") { return Value::t_integer; }
@@ -65,7 +65,7 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "behaviour") { return 1; }
 	if (property == "bg_color") { return "0.7,0.7,0.7,1.0"; }
 	if (property == "bg_on_color") { return "1.0,1.0,1.0,1.0"; }
-	if (property == "border") { return "0.2,0.2,0.2"; }
+	if (property == "border") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "caption") { return ""; }
 	if (property == "channel") { return {}; }
 	if (property == "command") { return {}; }
@@ -81,7 +81,6 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "image_file") { return {}; }
 	if (property == "inverted_visibility") { return false; }
 	if (property == "on_caption") { return ""; }
-	if (property == "on_text_colour") { return "0.2,0.2,0.2"; }
 	if (property == "overlay_plots") { return true; }
 	if (property == "pos_x") { return 0; }
 	if (property == "pos_y") { return 0; }
@@ -92,8 +91,9 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "screen_width") { return 800; }
 	if (property == "tab_position") { return 0; }
 	if (property == "text") { return ""; }
-	if (property == "text_color") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "text_on_colour") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "valign") { return 1; }
 	if (property == "value_scale") { return 1.0; }
 	if (property == "value_type") { return -1; }

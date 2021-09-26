@@ -164,7 +164,7 @@ EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string
     alignment(HorizontalAlignment::Centre), valign(VerticalAlignment::Centre), wrap_text(false), shadow(1) {
     setPushed(false);
     bg_on_color = nanogui::Color(0.3f, 0.3f, 0.3f, 0.0f);
-    on_text_colour = mTextColor;
+    text_on_colour = mTextColor;
     alignment = HorizontalAlignment::Left;
     valign = VerticalAlignment::Centre;
 }
@@ -222,7 +222,7 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
 		names.push_back("Off text");
     names.push_back("On text");
-    names.push_back("Background colour");
+    names.push_back("Background Colour");
     names.push_back("Background on colour");
     names.push_back("Text colour");
     names.push_back("Text on colour");
@@ -253,7 +253,7 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "On text") {
     return Value(on_caption, Value::t_string);
   }
-  if (prop == "Background colour") {
+  if (prop == "Background Colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
     char buf[50];
@@ -278,7 +278,7 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "Text on colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", on_text_colour.r(), on_text_colour.g(), on_text_colour.b(), on_text_colour.w());
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", text_on_colour.r(), text_on_colour.g(), text_on_colour.b(), text_on_colour.w());
     return Value(buf, Value::t_string);
   }
   if (prop == "Command") {
@@ -308,7 +308,7 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     setCaption(value);
 
   }
-  else if (prop == "Background colour") {
+  else if (prop == "Background Colour") {
     getDefinition()->getProperties().add("bg_color", value);
     setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
   }
@@ -321,8 +321,8 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     setTextColor(colourFromProperty(getDefinition(), "text_colour"));
   }
   else if (prop == "Text on colour") {
-    getDefinition()->getProperties().add("on_text_colour", value);
-    setOnTextColor(colourFromProperty(getDefinition(), "on_text_colour"));
+    getDefinition()->getProperties().add("text_on_colour", value);
+    setOnTextColor(colourFromProperty(getDefinition(), "text_on_colour"));
   }
   else if (prop == "Alignment") {
     alignment = toHorizontalAlignment(value);
@@ -442,7 +442,7 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     std::string text = mCaption;
     if (mPushed) {
-      if (on_text_colour.w() != 0) textColor = on_text_colour;
+      if (text_on_colour.w() != 0) textColor = text_on_colour;
       if (!on_caption.empty()) text = on_caption;
     }
     float tw = nvgTextBounds(ctx, 0,0, text.c_str(), nullptr, nullptr);

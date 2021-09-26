@@ -65,7 +65,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
     Widget::draw(ctx);
     NVGcolor textColor = mTextColor.w() == 0 ? mColor : mTextColor;
 
-  if (mBackgroundColor != nanogui::Color(0,0)) {
+    if (mBackgroundColor != nanogui::Color(0,0)) {
       nvgBeginPath(ctx);
       nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
       nvgFillColor(ctx, nanogui::Color(mBackgroundColor));
@@ -144,7 +144,7 @@ void EditorLabel::getPropertyNames(std::list<std::string> &names) {
   EditorWidget::getPropertyNames(names);
   names.push_back("Caption");
   names.push_back("Font Size");
-  names.push_back("Text Color");
+  names.push_back("Text Colour");
   names.push_back("Vertical Alignment");
   names.push_back("Alignment");
   names.push_back("Wrap Text");
@@ -157,7 +157,7 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
     return res;
   if (prop == "Caption") return Value(caption(), Value::t_string);
   if (prop == "Font Size") return fontSize();
-  if (prop == "Text Color") {
+  if (prop == "Text Colour") {
       nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
       nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(this);
       char buf[50];
@@ -179,20 +179,29 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
 
 void EditorLabel::setProperty(const std::string &prop, const std::string value) {
   EditorWidget::setProperty(prop, value);
-    if (prop == "Remote") {
-      if (remote) {
-        remote->link(new LinkableText(this));
-      }
+  if (prop == "Remote") {
+    if (remote) {
+      remote->link(new LinkableText(this));
     }
-    if (prop == "Font Size") {
-      int fs = std::atoi(value.c_str());
-      setFontSize(fs);
-    }
-    if (prop == "Alignment") alignment = std::atoi(value.c_str());
-    if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-    if (prop == "Wrap Text") {
-      wrap_text = (value == "1" || value == "true" || value == "TRUE");
-    }
+  }
+  if (prop == "Font Size") {
+    int fs = std::atoi(value.c_str());
+    setFontSize(fs);
+  }
+  if (prop == "Alignment") alignment = std::atoi(value.c_str());
+  if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  if (prop == "Wrap Text") {
+    wrap_text = (value == "1" || value == "true" || value == "TRUE");
+  }
+  if (prop == "Text colour") {
+    getDefinition()->getProperties().add("text_colour", value);
+    setTextColor(colourFromProperty(getDefinition(), "text_colour"));
+  }
+  if (prop == "Background Colour") {
+    std::cout << " label " << name << " setting Background Colour to " << value << "\n";
+    getDefinition()->getProperties().add("bg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+  }
 }
 
 

@@ -46,11 +46,16 @@ Thumbs.db
 ._*
 *.lyx?
 .~*
+# Language-server/editor support
+tags
 
 #project build files
 build/
 xcode/
 .build/
+
+#external projects
+ext/
 
 #local cmake settings
 LocalCMakeLists.txt

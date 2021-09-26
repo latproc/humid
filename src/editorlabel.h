@@ -40,7 +40,7 @@ public:
     const nanogui::Color &backgroundColor() { return mBackgroundColor; }
     const nanogui::Color &textColor() { return mTextColor; }
 
-    /// Sets the background color of this Button.
+    /// Sets the background color of this Label.
     void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
     void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
 

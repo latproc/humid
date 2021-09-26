@@ -53,8 +53,8 @@ public:
 
 	void setOnColor(nanogui::Color c) { bg_on_color = c; }
 	nanogui::Color &onColor() { return bg_on_color; }
-	void setOnTextColor(nanogui::Color c) { on_text_colour = c; }
-	nanogui::Color &onTextColor() { return on_text_colour; }
+	void setOnTextColor(nanogui::Color c) { text_on_colour = c; }
+	nanogui::Color &onTextColor() { return text_on_colour; }
 
 	void setOnCaption(const std::string c) { on_caption = c; }
 	const std::string &onCaption() { return on_caption; }
@@ -72,7 +72,7 @@ protected:
 	bool is_toggle;
 	std::string command_str;
 	nanogui::Color bg_on_color;
-	nanogui::Color on_text_colour;
+	nanogui::Color text_on_colour;
 	std::string on_caption;
 	HorizontalAlignment alignment = HorizontalAlignment::Centre;
 	VerticalAlignment valign = VerticalAlignment::Centre;

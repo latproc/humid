@@ -45,11 +45,11 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	if (class_name == "BUTTON" || class_name == "INDICATOR") {
 		properties["Off text"] = "caption";
 		properties["On text"] = "on_caption";
-		properties["Background colour"] = "bg_color";
+		properties["Background Colour"] = "bg_color";
 		properties["Background on colour"] = "bg_on_color";
 		properties["Enabled"] = "enabled";
 		properties["Text colour"] = "text_colour";
-		properties["Text on colour"] = "on_text_colour";
+		properties["Text on colour"] = "text_on_colour";
 		properties["Behaviour"] = "behaviour";
 		properties["Command"] = "command";
 		properties["Alignment"] = "alignment";
@@ -68,7 +68,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	else if (class_name == "LABEL") {
 		properties["Caption"] = "caption";
 		properties["Font Size"] = "font_size";
-		properties["Text Color"] = "text_color";
+		properties["Text Colour"] = "text_colour";
 		properties["Alignment"] = "alignment";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
@@ -255,16 +255,7 @@ bool writeOptions(std::ostream &out,const std::map<std::string, Value> &options)
 
 bool Structure::save(std::ostream &out, const std::string &structure_name) {
 	out << name << " " << kind;
-#if 0
-	if (class_definition) {
-		// only emit properties that differ from the class values
-	}
-	else
-#endif
-	//std::string structure_name = getStructureDefinition() ? getStructureDefinition()->getName() : "";
-	//std::string structure_name = owner ? owner->getName() : "";
 	std::map<std::string, std::string> link_map;
-	std::cout << "looking for links for '" << structure_name << "':" << getName() << " (" << kind << ")" << "\n";
 	auto links = LinkManager::instance().remote_links(structure_name, getName());
 	if (links) {
 		std::cout << "have " << links->size() << " links for " << getName() << " when writing property list" << "\n";
@@ -289,7 +280,6 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 
 bool StructureClass::save(std::ostream &out) {
 	using namespace nanogui;
-	//if (locals.empty() && properties.begin() == properties.end()) return true;
 	out << getName() << " STRUCTURE";
 	writePropertyList(out, properties);
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
