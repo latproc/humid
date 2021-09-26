@@ -254,6 +254,17 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 			for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
 			return nanogui::Color(fields[0], fields[1], fields[2], fields[3]);
 		}
+		else if (tokens.size() == 3) {
+			std::vector<float>fields(3);
+			for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
+			return nanogui::Color(fields[0], fields[1], fields[2], 1.0f);
+		}
+		else {
+			std::cerr << "unrecognised colour: " << bg_colour << "\n";
+		}
+	}
+	else {
+		std::cerr << "No property " << prop << " on element " << element->getName() << "\n";
 	}
 	return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
 }
