@@ -64,7 +64,9 @@ void Editor::refresh(bool ) {
 			theme->incRef();
 			mainWindow->setTheme(new nanogui::Theme(screen->nvgContext()));
 			mainWindow->setTheme(theme);
-			theme->mWindowHeaderHeight = 0;
+			if (screen->size().y() == mainWindow->size().y()) {
+				theme->mWindowHeaderHeight = 0;
+			}
 			theme->decRef();
 		}
 

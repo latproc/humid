@@ -243,6 +243,9 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 	window(0),
 	window_stagger(this) {
 		gettimeofday(&start, 0);
+		int w,h;
+		glfwGetWindowSize(mGLFWWindow, &w, &h);
+		std::cout << "created window of size: " << size.x() << "," << size.y() << " actual: " << w << "," << h <<"\n";
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {

@@ -75,7 +75,7 @@ public:
 	const std::string& keyName(int key) {
 		assert(key_names.size() > 1);
 		auto found = key_names.find(key);
-		if (found != key_names.end()) 
+		if (found != key_names.end())
 			return (*found).second;
 		return unknown_key;
 	}
@@ -138,7 +138,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 				key_name = buf;
 				function_key = true;
 			}
-			if (key == GLFW_KEY_KP_ENTER 
+			if (key == GLFW_KEY_KP_ENTER
 				  && nanogui::Screen::keyboardEvent(GLFW_KEY_ENTER, scancode, action, modifiers)) return true;
 			else if (!function_key && nanogui::Screen::keyboardEvent(key, scancode, action, modifiers)) return true;
 
@@ -167,7 +167,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 					if (found != sc->getOptions().end())
 						conn = (*found).second.asString();
 				}
-				if (conn.length()) {				
+				if (conn.length()) {
 					std::cout << "found key mapping: " << conn << "\n";
 					size_t dpos = conn.find(':');
 					if (dpos != std::string::npos) {
@@ -510,7 +510,9 @@ void EditorGUI::createWindows() {
 		uwTheme = ThemeManager::instance().createTheme();
 		ThemeManager::instance().addTheme("MainTheme", uwTheme);
 	}
-	uwTheme->mWindowHeaderHeight = 0;
+	if (size().y() == uww->size().y()) {
+	    uwTheme->mWindowHeaderHeight = 0;
+	}
 	w_user = new UserWindow(this, uwTheme, uww);
 	w_theme = new ThemeWindow(this, theme, uwTheme);
 	w_properties = new PropertyWindow(this, theme);
@@ -533,7 +535,7 @@ void EditorGUI::createWindows() {
 	window->setTheme(theme);
 	*/
 
-	EditorSettings::applySettings("MainWindow", this);
+	//EditorSettings::applySettings("MainWindow", this);
 	EditorSettings::applySettings("ThemeSettings", w_theme->getWindow());
 	EditorSettings::applySettings("Properties", w_properties->getWindow());
 	EditorSettings::applySettings("Structures", w_structures->getWindow());
@@ -544,7 +546,7 @@ void EditorGUI::createWindows() {
 	// delayed adding windows to the view manager window until the visibility settings are loaded.
 	w_views->addWindows();
 
-	EditorSettings::add("MainWindow", this);
+	//EditorSettings::add("MainWindow", this);
 	EditorSettings::add("ThemeSettings", w_theme->getWindow());
 	EditorSettings::add("Properties", w_properties->getWindow());
 	EditorSettings::add("Structures", w_structures->getWindow());
@@ -585,7 +587,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				if (hm_structures.size()>1) { // files were specified on the commandline
 					getStartupWindow()->setVisible(false);
 					getScreensWindow()->update();
-					
+
 					Structure *settings = EditorSettings::find("EditorSettings");
 					assert(settings);
 					const Value &project_base_v(settings->getProperties().find("project_base"));
@@ -839,16 +841,6 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 	if (old_size == new_size) {
 		return false;
 	}
-
-/*
-	int width = 1024, height = 768;
-	if (glfwWindow()) {
-		glfwGetFramebufferSize(glfwWindow(), &width, &height);
-		glViewport(0, 0, width, height);
-		//glViewport(0, 0, 2880, 1800);
-	}
-	*/
-
 	nanogui::Window * windows[] = {
 		this->getStructuresWindow()->getWindow(),
 		this->getPropertyWindow()->getWindow(),
@@ -893,8 +885,8 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 	}
 	old_size = mSize;
 	if (w_user) {
-		w_user->getWindow()->setFixedSize(new_size);
-		w_user->getWindow()->setPosition(nanogui::Vector2i(0,0));
+		//w_user->getWindow()->setFixedSize(new_size);
+		//w_user->getWindow()->setPosition(nanogui::Vector2i(0,0));
 		performLayout();
 	}
 	return true;
@@ -1169,7 +1161,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 	while (iter != texture_cache.end()) {
 		const std::pair<std::string, GLTexture *> &item = *iter;
 		if (item.second && item.second->texture()) {
-			if 
+			if
 		}
 	}
 */

@@ -313,12 +313,12 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 			if (vw.asInteger(w) && vh.asInteger(h)) {
 				if (screen) {
 					screen->setSize(nanogui::Vector2i(w, h));
-					//std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
+					std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
 				}
 				else {
 					widget->setSize(nanogui::Vector2i(w, h));
 					widget->setFixedSize(nanogui::Vector2i(w, h));
-					//std::cout << item->getName() << " size: " << w << "," << h << "\n";
+					std::cout << item->getName() << " size: " << w << "," << h << "\n";
 				}
 			}
 		}
@@ -599,8 +599,8 @@ int main(int argc, const char ** argv ) {
 			long height = mode->height;
 			std::cout << "intial videomode: " << width << "x" << height << "\n";
 			{
-				const Value width_v = EditorGUI::systemSettings()->getProperties().find("w");
-				const Value height_v = EditorGUI::systemSettings()->getProperties().find("h");
+				const Value width_v = EditorGUI::systemSettings()->getProperties().find("main_window_width");
+				const Value height_v = EditorGUI::systemSettings()->getProperties().find("main_window_height");
 				width_v.asInteger(width);
 				height_v.asInteger(height);
 			}

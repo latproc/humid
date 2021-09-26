@@ -185,17 +185,34 @@ bool UserWindowWin::mouseEnterEvent(const Vector2i &p, bool enter) {
 UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *uww)
 : Skeleton(screen, uww), LinkableObject(), gui(screen), current_layer(0), mDefaultSize(1024,768), current_structure(0) {
 	using namespace nanogui;
-	gui = screen;
 	window->setTheme(theme);
 	GLFWmonitor* primary = glfwGetPrimaryMonitor();
 	const GLFWvidmode* mode = glfwGetVideoMode(primary);
-	mDefaultSize.x() = mode->width;
-	mDefaultSize.y() = mode->height;
+	long width = screen->size().x();
+	long height = screen->size().y();
+	{
+		const Value width_v = EditorGUI::systemSettings()->getProperties().find("panel_width");
+		const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
+		width_v.asInteger(width);
+		height_v.asInteger(height);
+	}
+
+	mDefaultSize.x() = width;
+	mDefaultSize.y() = height;
 	window->setFixedSize(mDefaultSize);
 	window->setSize(mDefaultSize);
 	window->setVisible(false);
-	window->setTitle("");
-	window->setPosition(nanogui::Vector2i(0,0));
+	window->setTitle("Panel Window");
+	long window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
+	long window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
+	{
+		const Value x_v = EditorGUI::systemSettings()->getProperties().find("panel_left");
+		const Value y_v = EditorGUI::systemSettings()->getProperties().find("panel_top");
+		x_v.asInteger(window_x);
+		y_v.asInteger(window_y);
+	}
+
+	window->setPosition(nanogui::Vector2i(window_x, window_y));
 	push(window);
 }
 
