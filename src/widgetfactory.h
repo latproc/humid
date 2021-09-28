@@ -1,6 +1,7 @@
 #pragma once
 
 #include <nanogui/widget.h>
+#include <nanogui/theme.h>
 #include "editorgui.h"
 
 #include "structure.h"
@@ -33,7 +34,7 @@ struct WidgetParams {
 	double x_scale;
 	double value_scale;
 	nanogui::Vector2i offset = nanogui::Vector2i(0,0);
-
+	nanogui::ref<nanogui::Theme> theme;
 	WidgetParams(Structure *structure, nanogui::Widget *w, Structure *elem, EditorGUI *editor_gui, const nanogui::Vector2i &offset);
 };
 

@@ -18,6 +18,16 @@ std::list<Structure *>hm_structures;
 std::list<Structure *>builtin_structures;
 std::list<StructureClass *> hm_classes;
 
+std::list<Structure *> Structure::findStructureClasses(const std::string &class_name) {
+	std::list<Structure *> result;
+	for (auto structure : hm_structures) {
+		if (structure->getKind() == class_name) {
+			result.push_back(structure);
+		}
+	}
+	return result;
+}
+
 static void invert_property_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed) {
 	reversed.clear();
 	for (auto & item : normal) {
@@ -36,6 +46,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	properties["Remote"] = "remote";
 	properties["Structure"] = ""; // not to be copied
 	properties["Tab Position"] = "tab_position";
+	properties["Theme"] = "";
 	properties["Value Scale"] = "value_scale";
 	properties["Value Type"] = "value_type";
 	properties["Vertical Pos"] = "pos_y";

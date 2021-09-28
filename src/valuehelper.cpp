@@ -49,6 +49,7 @@ Value::Kind typeForProperty(const std::string &property) {
 	if (property == "text") { return Value::t_string; }
 	if (property == "text_colour") { return Value::t_string; }
 	if (property == "text_colour") { return Value::t_string; }
+	if (property == "theme") { return Value::t_string; }
 	if (property == "valign") { return Value::t_integer; }
 	if (property == "value_scale") { return Value::t_integer; }
 	if (property == "value_type") { return Value::t_integer; }
@@ -94,6 +95,7 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
 	if (property == "text_on_colour") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "theme") { return ""; }
 	if (property == "valign") { return 1; }
 	if (property == "value_scale") { return 1.0; }
 	if (property == "value_type") { return -1; }

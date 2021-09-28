@@ -32,6 +32,7 @@
 #include "editorproject.h"
 #include "editorsettings.h"
 #include "editorgui.h"
+#include "thememanager.h"
 
 #include <libgen.h>
 #include <zmq.hpp>
@@ -448,58 +449,6 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	}
 }
 
-
-void setupTheme(nanogui::Theme *theme) {
-	using namespace nanogui;
-	theme->mStandardFontSize                 = 20;
-	theme->mButtonFontSize                   = 20;
-	theme->mTextBoxFontSize                  = -1;
-	theme->mWindowCornerRadius               = 2;
-	theme->mWindowHeaderHeight               = 30;
-	theme->mWindowDropShadowSize             = 10;
-	theme->mButtonCornerRadius               = 2;
-	theme->mTabBorderWidth                   = 0.75f;
-	theme->mTabInnerMargin                   = 5;
-	theme->mTabMinButtonWidth                = 20;
-	theme->mTabMaxButtonWidth                = 160;
-	theme->mTabControlWidth                  = 20;
-	theme->mTabButtonHorizontalPadding       = 10;
-	theme->mTabButtonVerticalPadding         = 2;
-
-	theme->mDropShadow                       = Color(0, 128);
-	theme->mTransparent                      = Color(0, 0);
-	theme->mBorderDark                       = Color(29, 255);
-	theme->mBorderLight                      = Color(92, 255);
-	theme->mBorderMedium                     = Color(35, 255);
-	theme->mTextColor                        = Color(0, 160);
-	theme->mDisabledTextColor                = Color(100, 80);
-	theme->mTextColorShadow                  = Color(100, 160);
-	theme->mIconColor                        = theme->mTextColor;
-
-	theme->mButtonGradientTopFocused         = Color(255, 255);
-	theme->mButtonGradientBotFocused         = Color(240, 255);
-	theme->mButtonGradientTopUnfocused       = Color(240, 255);
-	theme->mButtonGradientBotUnfocused       = Color(235, 255);
-	theme->mButtonGradientTopPushed          = Color(180, 255);
-	theme->mButtonGradientBotPushed          = Color(196, 255);
-
-	/* Window-related */
-	theme->mWindowFillUnfocused              = Color(220, 230);
-	theme->mWindowFillFocused                = Color(225, 230);
-	theme->mWindowTitleUnfocused             = theme->mDisabledTextColor;
-	theme->mWindowTitleFocused               = theme->mTextColor;
-
-	theme->mWindowHeaderGradientTop          = theme->mButtonGradientTopUnfocused;
-	theme->mWindowHeaderGradientBot          = theme->mButtonGradientBotUnfocused;
-	theme->mWindowHeaderSepTop               = theme->mBorderLight;
-	theme->mWindowHeaderSepBot               = theme->mBorderDark;
-
-	theme->mWindowPopup                      = Color(255, 255);
-	theme->mWindowPopupTransparent           = Color(255, 0);
-}
-
-
-
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
@@ -659,9 +608,12 @@ int main(int argc, const char ** argv ) {
 			nanogui::ref<EditorGUI> app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);
-			nanogui::Theme *myTheme = new nanogui::Theme(app->nvgContext());
-			setupTheme(myTheme);
-			app->setTheme(myTheme);
+			ThemeManager::instance().setContext(app->nvgContext());
+			app->setTheme(ThemeManager::instance().createTheme());
+
+			for (auto settings : Structure::findStructureClasses("THEME")) {
+				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
+			}
 
 			app->createWindows();
 

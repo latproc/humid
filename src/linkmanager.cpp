@@ -40,7 +40,6 @@ public:
     }
 
     void add_pending(const std::string &remote, const std::string class_name, const std::string & widget_name, const std::string &property) {
-        std::cout << "link: " << remote << " " << class_name << " " << widget_name << " " << property << "\n";
         auto found_class = pending_links.find(class_name);
         if (found_class != pending_links.end()) {
             auto & class_pending_properties = (*found_class).second;

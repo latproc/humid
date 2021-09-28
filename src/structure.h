@@ -123,6 +123,8 @@ public:
 
 	static void loadBuiltins();
 
+	static std::list<Structure *> findStructureClasses(const std::string &class_name);
+
 protected:
 	Structure(const Structure &other);
 	SymbolTable internal_properties;

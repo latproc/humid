@@ -15,6 +15,7 @@
 #include <Logger.h>
 #include "valuehelper.h"
 #include "linkmanager.h"
+#include "thememanager.h"
 
 #define COMPILER_MAIN
 #include "hmilang.h"
@@ -299,7 +300,7 @@ SYMBOL SYMBOL parameters
 }
 | SYMBOL SYMBOL property_block parameters
 {
-	std::cout << "add widget 2: " << $1 << "(" << $2<< ")\n";
+	std::cout << "add structure 2: " << $1 << "(" << $2<< ")\n";
 	//deferred_instantiations.push_back(new MachineDetails($1, $2, current_parameters.end,
 	//__FILE__, __LINE__, properties,
 	//MachineInstance::MACHINE_INSTANCE));

@@ -90,6 +90,10 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 	const Value &x_scale_val(element->getProperties().find("x_scale"));
 	if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
 	//const Value &caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
+
+	const Value &theme_name(element->getProperties().find("theme"));
+	if (theme_name != SymbolTable::Null) {
+	}
 }
 
 void createLabel(WidgetParams &params) {
@@ -133,7 +137,6 @@ void createLabel(WidgetParams &params) {
 	if (remote_links) {
 		auto property_id_to_name = el->reverse_property_map();
 		for (auto & link_info : *remote_links) {
-			std::cout  << "label property " << link_info.property_name << " " << link_info.remote_name << "\n";
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
 			if (linkable_property) {
 				auto found_property = property_id_to_name.find(link_info.property_name);
