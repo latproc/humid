@@ -47,7 +47,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		EditorButton *b = new EditorButton(parent, window, generated_name, nullptr, caption());
 		b->setDefinition(s);
 		s->setName(b->getName());
-		b->setBackgroundColor(Color(200, 30, 30, 255)); // TBD use structure value
+		b->setBackgroundColor(Color(200, 30, 30, 200)); // TBD use structure value
 		b->setupButtonCallbacks(b->getRemote(), EDITOR->gui());
 
 		result = b;
@@ -179,6 +179,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 					properties, tag_name.substr(p+5), false);
 				b->setSize(Vector2i(object_width, object_height));
 				b->setDefinition(s);
+				b->setFlags(0);
 				LinkableProperty *lp = gui->findLinkableProperty(tag_name);
 				if (lp) b->setRemote(lp);
 				b->setupButtonCallbacks(lp, gui);
@@ -191,6 +192,7 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 				assert(s);
 				EditorButton *b = new EditorButton(parent, container, NamedObject::nextName(parent), properties);
 				b->setSize(Vector2i(object_width, object_height));
+				b->setDefinition(s);
 				b->setFlags(Button::ToggleButton);
 				LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 				if (lp) lp->link(new LinkableIndicator(b));

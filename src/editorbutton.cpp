@@ -163,10 +163,8 @@ EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string
 	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), 
     alignment(HorizontalAlignment::Centre), valign(VerticalAlignment::Centre), wrap_text(false), shadow(1) {
     setPushed(false);
-    bg_on_color = nanogui::Color(0.3f, 0.3f, 0.3f, 0.0f);
+    bg_on_color = mBackgroundColor;
     text_on_colour = mTextColor;
-    alignment = HorizontalAlignment::Left;
-    valign = VerticalAlignment::Centre;
 }
 
 EditorButton::~EditorButton() {
@@ -356,13 +354,13 @@ void EditorButton::draw(NVGcontext *ctx) {
     using namespace nanogui;
 
     Widget::draw(ctx);
-    NVGcolor gradTop = mTheme->mButtonGradientTopFocused;
-    NVGcolor gradBot = mTheme->mButtonGradientBotFocused;
+    NVGcolor gradTop = mTheme->mButtonGradientTopUnfocused;
+    NVGcolor gradBot = mTheme->mButtonGradientBotUnfocused;
 
     if (mPushed) {
         gradTop = mTheme->mButtonGradientTopPushed;
         gradBot = mTheme->mButtonGradientBotPushed;
-    } else {
+    } else if (mMouseFocus && mEnabled) {
         gradTop = mTheme->mButtonGradientTopFocused;
         gradBot = mTheme->mButtonGradientBotFocused;
     }
@@ -394,18 +392,18 @@ void EditorButton::draw(NVGcontext *ctx) {
           nvgFill(ctx);
           gradTop.a = gradBot.a = 0.0f;
         }  
-        else {
+        else if (mBackgroundColor.w() != 0) {
           nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
           nvgFill(ctx);
           double v = 1 - mBackgroundColor.w();
-          gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
+          gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
         }  
       }
       else if (mBackgroundColor.w() != 0) {
         nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
         nvgFill(ctx);
         double v = 1 - mBackgroundColor.w();
-        gradTop.a = gradBot.a = mEnabled ? v : v; // * .5f + .5f;
+        gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
       }
 
       NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),

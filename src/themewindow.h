@@ -21,7 +21,7 @@ class PropertyFormHelper;
 
 class ThemeWindow : public nanogui::Object {
 public:
-	ThemeWindow(EditorGUI *screen, nanogui::Theme *theme);
+	ThemeWindow(EditorGUI *screen, nanogui::Theme *editor_theme, nanogui::Theme *main_theme);
 	void setVisible(bool which) { window->setVisible(which); }
 	nanogui::Window *getWindow()  { return window; }
 	void loadTheme(nanogui::Theme*);
@@ -29,6 +29,7 @@ private:
 	EditorGUI *gui;
 	nanogui::Window *window;
 	PropertyFormHelper *properties;
+	nanogui::Theme *main_theme;
 };
 
 #endif

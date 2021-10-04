@@ -609,10 +609,16 @@ int main(int argc, const char ** argv ) {
 					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);
 			ThemeManager::instance().setContext(app->nvgContext());
-			app->setTheme(ThemeManager::instance().createTheme());
-
 			for (auto settings : Structure::findStructureClasses("THEME")) {
 				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
+			}
+			if (auto main_theme = ThemeManager::instance().findTheme("EditorTheme")) {
+				app->setTheme(main_theme);
+			}
+			else {
+				main_theme = ThemeManager::instance().createTheme();
+				ThemeManager::instance().addTheme("EditorTheme", main_theme);
+				app->setTheme(main_theme);
 			}
 
 			app->createWindows();

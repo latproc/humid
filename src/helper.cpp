@@ -14,6 +14,7 @@
 #include "editor.h"
 #include "screenswindow.h"
 #include "circularbuffer.h"
+#include "valuehelper.h"
 
 extern std::list<Structure *>hm_structures;
 extern std::list<Structure *>builtin_structures;
@@ -244,10 +245,13 @@ nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
 }
 
 nanogui::Color colourFromProperty(Structure *element, const char *prop) {
-	const Value &bg_colour(element->getProperties().find(prop));
-	if (bg_colour != SymbolTable::Null) {
+	Value &colour(element->getProperties().find(prop));
+	if (colour == SymbolTable::Null) {
+		colour = defaultForProperty(prop);
+	}
+	if (colour != SymbolTable::Null) {
 		std::vector<std::string> tokens;
-		std::string colour_str = bg_colour.asString();
+		std::string colour_str = colour.asString();
 		boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
 		if (tokens.size() == 4) {
 			std::vector<float>fields(4);
@@ -260,7 +264,7 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 			return nanogui::Color(fields[0], fields[1], fields[2], 1.0f);
 		}
 		else {
-			std::cerr << "unrecognised colour: " << bg_colour << "\n";
+			std::cerr << "unrecognised colour: " << colour << "\n";
 		}
 	}
 	else {

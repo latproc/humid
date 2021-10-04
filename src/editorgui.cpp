@@ -39,6 +39,7 @@
 #include "startupwindow.h"
 #include "userwindowwin.h"
 #include "linkmanager.h"
+#include "thememanager.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -502,11 +503,15 @@ void EditorGUI::createWindows() {
 
 	UserWindowWin *uww = new UserWindowWin(this, "Untitled");
 	user_screens.push_back(uww);
-	nanogui::Theme *uwTheme = new nanogui::Theme(nvgContext());
-	setupTheme(uwTheme);
+	// The user window uses the main theme
+	auto uwTheme = ThemeManager::instance().findTheme("MainTheme");
+	if (!uwTheme) {
+		uwTheme = ThemeManager::instance().createTheme();
+		ThemeManager::instance().addTheme("MainTheme", uwTheme);
+	}
 	uwTheme->mWindowHeaderHeight = 0;
 	w_user = new UserWindow(this, uwTheme, uww);
-	w_theme = new ThemeWindow(this, theme);
+	w_theme = new ThemeWindow(this, theme, uwTheme);
 	w_properties = new PropertyWindow(this, theme);
 	w_toolbar = new Toolbar(this, theme);
 	w_startup = new StartupWindow(this, theme);

@@ -14,12 +14,12 @@
 #include "editorgui.h"
 #include "propertyformhelper.h"
 
-ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme) :gui(screen) {
+ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme, nanogui::Theme *user_theme) : gui(screen), main_theme(user_theme) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);
 	window = properties->addWindow(nanogui::Vector2i(80, 50), "Theme Properties");
 	window->setTheme(theme);
-	loadTheme(theme);
+	loadTheme(user_theme);
 	window->setVisible(false);
 }
 
