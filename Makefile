@@ -25,3 +25,7 @@ xcode:
 #	[ -d "xcode/Debug" ] || mkdir xcode/Debug
 #	cd xcode/Debug && cmake -G Xcode -DCMAKE_BUILD_TYPE=Debug ../.. && open humid.xcodeproj
 
+test:
+	[ -d ".test" ] || mkdir .test
+	cd .test && cmake -DCMAKE_BUILD_TYPE=Debug -DRUN_TESTS=ON .. && make $(JOBS) && make test
+

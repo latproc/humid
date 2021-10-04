@@ -16,13 +16,14 @@
 #include "circularbuffer.h"
 #include "valuehelper.h"
 
+#ifndef TESTING
 extern std::list<Structure *>hm_structures;
 extern std::list<Structure *>builtin_structures;
 
 extern std::list<StructureClass *> hm_classes;
 
 static int screen_id = 0;
-
+#endif
 
 std::string stripEscapes(const std::string &s) {
 	size_t n = s.length()+1;
@@ -86,6 +87,8 @@ std::string extn(const std::string s) {
 	if (pos != std::string::npos) return s.substr(pos+1);
 	return s;
 }
+
+#ifndef TESTING
 
 StructureClass *findClass(const std::string &name) {
 		StructureClass *sc = nullptr;
@@ -240,6 +243,77 @@ void backup_humid_files(boost::filesystem::path base) {
 		}
 }
 
+#endif
+
+
+static int val(char hex) {
+	int res = 0;
+	if (hex >= 'a') hex -= 32;
+	if (hex >= 'A') {
+		res = 10 + hex - 'A';
+		if (res >= 16) res = 0;
+	}
+	else if (hex >= '0') {
+		res = hex - '0';
+		if (res >= 10) res = 0;
+	}
+	return res;
+}
+
+nanogui::Color colourFromString(const std::string &colour) {
+	struct Colour { int r, g, b, a; };
+	Colour c{0, 0, 0, 0};
+	auto len = colour.length();
+	auto dbl = [](int val) -> int { return val * 16 + val; };
+	auto parse = [](const char * &p) -> int { int res = val(*p++); return res * 16 + val(*p++); };
+	const char *p = colour.c_str() + 1;
+	if (colour[0] == '#') {
+		if (len == 4 || len ==5) {
+			// #rgb format, with or without alpha
+			auto dbl = [](int val) -> int { return val * 16 + val; };
+			c = {
+				.r = dbl(val(*p++)),
+				.g = dbl(val(*p++)),
+				.b = dbl(val(*p++)),
+				.a = (len == 5) ? dbl(val(*p)) : 255
+			};
+		}
+		else if (len == 7 || len == 9) {
+			// #rrggbb format with or without alpha
+			c = {
+				.r = parse(p),
+				.g = parse(p),
+				.b = parse(p),
+				.a = len == 9 ? parse(p) : 255
+			};
+		}
+	}
+	else if (colour[0] == '&') {
+		auto len = colour.length();
+		if (len == 3) {
+			// #ga where c is a grey intensity level and a is an alpha level
+			auto grey = dbl(val(*p++));
+			c = {
+				.r = grey,
+				.g = grey,
+				.b = grey,
+				.a = dbl(val(*p))
+			};
+		}
+		else if (len == 5) {
+			auto grey = parse(p);
+			c = {
+				.r = grey,
+				.g = grey,
+				.b = grey,
+				.a = parse(p)
+			};
+		}
+	}
+	return nanogui::Color(nanogui::Vector4i{c.r, c.g, c.b, c.a});
+}
+
+#ifndef TESTING 
 nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
 	return colourFromProperty(element, prop.c_str());
 }
@@ -250,8 +324,11 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 		colour = defaultForProperty(prop);
 	}
 	if (colour != SymbolTable::Null) {
-		std::vector<std::string> tokens;
 		std::string colour_str = colour.asString();
+		if (colour_str[0] == '#' || colour_str[0] == '&') {
+			return colourFromString(colour_str);
+		}
+		std::vector<std::string> tokens;
 		boost::algorithm::split(tokens, colour_str, boost::is_any_of(","));
 		if (tokens.size() == 4) {
 			std::vector<float>fields(4);
@@ -289,6 +366,8 @@ int dataTypeFromModbus(int val, int len) {
 		return DOUBLE;
 #endif
 }
+
+#endif
 
 std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s) {
 	out << context << s.x()<<"," << s.y();

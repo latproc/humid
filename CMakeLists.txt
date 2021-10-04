@@ -45,7 +45,6 @@ add_definitions(${NANOGUI_EXTRA_DEFS})
 
 include_directories("/usr/local/include")
 include_directories("/opt/local/include")
-
 #LINK_DIRECTORIES("/usr/local/lib")
 #LINK_DIRECTORIES("/opt/local/lib")
 
@@ -57,6 +56,11 @@ FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono da
 
 set (CLOCKWORK_DIR /opt/latproc/iod/src)
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
+
+if (RUN_TESTS)
+enable_testing()
+add_subdirectory(tests)
+endif()
 
 set(HEADER_FILES
   ${CLOCKWORK_DIR}/MessagingInterface.h

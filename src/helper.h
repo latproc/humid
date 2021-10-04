@@ -5,8 +5,7 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#ifndef __helper_h__
-#define __helper_h__
+#pragma once
 
 #include <ostream>
 #include <string>
@@ -38,6 +37,7 @@ int createScreens();
 
 void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files);
 void backup_humid_files(boost::filesystem::path base);
+nanogui::Color colourFromString(const std::string &colour);
 nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
 nanogui::Color colourFromProperty(Structure *element, const char *prop);
 int dataTypeFromModbus(int val);
@@ -45,4 +45,3 @@ void getPropertyNames(std::list<std::string> &names);
 void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
 std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s);
 void invert_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed);
-#endif
