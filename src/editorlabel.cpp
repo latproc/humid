@@ -15,6 +15,7 @@
 #include "editor.h"
 #include "propertyformhelper.h"
 #include "helper.h"
+#include "colourhelper.h"
 
 const std::map<std::string, std::string> & EditorLabel::property_map() const {
   auto structure_class = findClass("LABEL");

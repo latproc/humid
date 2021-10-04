@@ -19,6 +19,7 @@
 #include "propertyformhelper.h"
 #include "resourcemanager.h"
 #include "helper.h"
+#include "colourhelper.h"
 
 std::string stripEscapes(const std::string &s);
 

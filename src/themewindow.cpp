@@ -14,6 +14,38 @@
 #include "editorgui.h"
 #include "propertyformhelper.h"
 
+std::map<std::string, std::string> theme_properties;
+
+void setup(Structure *s) {
+	auto & prop = theme_properties;
+    prop["Standard Font Size"] = "StandardFontSize";
+    prop["Button Font Size"] = "ButtonFontSize";
+    prop["TextBox Font Size"] = "TextBoxFontSize";
+    prop["Corner Radius"] = "CornerRadius";
+    prop["Header Height"] = "HeaderHeight";
+    prop["Drop Shadow Size"] = "DropShadowSize";
+    prop["Button Corner Radius"] = "ButtonCornerRadius";
+    prop["Drop Shadow Colour"] = "DropShadowColour";
+    prop["Transparent Colour"] = "TransparentColour";
+    prop["Dark Border Colour"] = "DarkBorderColour";
+    prop["Light Border Colour"] = "LightBorderColour";
+    prop["Medium Border Colour"] = "MediumBorderColour";
+    prop["Text Colour"] = "TextColour";
+    prop["Disabled Text Colour"] = "DisabledTextColour";
+    prop["Text Shadow Colour"] = "TextShadowColour";
+    prop["Icon Colour"] = "IconColour";
+    prop["Focussed Btn Gradient Top Colour"] = "FocussedBtnGradientTopColour";
+    prop["Focussed Btn Bottom Colour"] = "FocussedBtnBottomColour";
+    prop["Btn Gradient Top Colour"] = "BtnGradientTopColour";
+    prop["Btn Gradient Bottom Colour"] = "BtnGradientBottomColour";
+    prop["Pushed Btn Top Colour"] = "PushedBtnTopColour";
+    prop["Pushed Btn Bottom Colour"] = "PushedBtnBottomColour";
+    prop["Window Colour"] = "WindowColour";
+    prop["Focussed Win Colour"] = "FocussedWinColour";
+    prop["Window Title Colour"] = "WindowTitleColour";
+    prop["Focussed Win Title Colour"] = "FocussedWinTitleColour";
+}
+
 ThemeWindow::ThemeWindow(EditorGUI *screen, nanogui::Theme *theme, nanogui::Theme *user_theme) : gui(screen), main_theme(user_theme) {
 	using namespace nanogui;
 	properties = new PropertyFormHelper(screen);

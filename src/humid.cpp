@@ -69,6 +69,7 @@
 #include "viewswindow.h"
 #include "startupwindow.h"
 #include "editorwidget.h"
+#include "colourhelper.h"
 
 // settings file parser globals
 #define __MAIN__ 1
@@ -610,6 +611,7 @@ int main(int argc, const char ** argv ) {
 					: new EditorGUI(width, height);
 			ThemeManager::instance().setContext(app->nvgContext());
 			for (auto settings : Structure::findStructureClasses("THEME")) {
+				std::cout << "------ found user provided theme " << settings->getName() << "\n";
 				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
 			}
 			if (auto main_theme = ThemeManager::instance().findTheme("EditorTheme")) {

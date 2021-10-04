@@ -37,9 +37,6 @@ int createScreens();
 
 void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem::path> &files);
 void backup_humid_files(boost::filesystem::path base);
-nanogui::Color colourFromString(const std::string &colour);
-nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
-nanogui::Color colourFromProperty(Structure *element, const char *prop);
 int dataTypeFromModbus(int val);
 void getPropertyNames(std::list<std::string> &names);
 void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);

@@ -11,6 +11,7 @@
 #include "helper.h"
 #include "linkmanager.h"
 #include "valuehelper.h"
+#include "colourhelper.h"
 
 static bool stringEndsWith(const std::string &src, const std::string ending) {
 	size_t l_src = src.length();

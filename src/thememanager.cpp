@@ -3,8 +3,53 @@
 #include "structure.h"
 #include <symboltable.h>
 #include "structure.h"
+#include "colourhelper.h"
 
 ThemeManager *ThemeManager::theme_manager = nullptr;
+
+void set_prop(int &val, SymbolTable &st, const char *key) {
+	const Value &v = st.find(key);
+	if (!v.isNull()) {
+		long iValue;
+		if (v.asInteger(iValue)) { val = static_cast<int>(iValue); }
+	}
+}
+
+static void set_prop(nanogui::Color &val, SymbolTable &st, const char *key) {
+	const Value &v = st.find(key);
+	if (!v.isNull()) { val = colourFromString(v.asString()); }
+}
+
+static void fromStructure(nanogui::Theme *theme, Structure *s) {
+	if (!theme || !s) return;
+	auto &props = s->getProperties();
+	set_prop(theme->mStandardFontSize, props, "StandardFontSize");
+	set_prop(theme->mButtonFontSize, props, "ButtonFontSize");
+	set_prop(theme->mTextBoxFontSize, props, "TextBoxFontSize");
+	set_prop(theme->mWindowCornerRadius, props, "WindowCornerRadius");
+	set_prop(theme->mWindowHeaderHeight, props, "WindowHeaderHeight");
+	set_prop(theme->mWindowDropShadowSize, props, "WindowDropShadowSize");
+	set_prop(theme->mButtonCornerRadius, props, "ButtonCornerRadius");
+	set_prop(theme->mDropShadow, props, "DropShadowColour");
+	set_prop(theme->mTransparent, props, "TransparentColour");
+	set_prop(theme->mBorderDark, props, "BorderDarkColour");
+	set_prop(theme->mBorderLight, props, "BorderLightColour");
+	set_prop(theme->mBorderMedium, props, "BorderMediumColour");
+	set_prop(theme->mTextColor, props, "TextColour");
+	set_prop(theme->mDisabledTextColor, props, "DisabledTextColour");
+	set_prop(theme->mTextColorShadow, props, "TextShadowColour");
+	set_prop(theme->mIconColor, props, "IconColour");
+	set_prop(theme->mButtonGradientTopFocused, props, "ButtonGradientTopFocusedColour");
+	set_prop(theme->mButtonGradientBotFocused, props, "ButtonGradientBottomFocusedColour");
+	set_prop(theme->mButtonGradientTopUnfocused, props, "ButtonGradientTopUnfocusedColour");
+	set_prop(theme->mButtonGradientBotUnfocused, props, "ButtonGradientBottomUnfocusedColour");
+	set_prop(theme->mButtonGradientTopPushed, props, "ButtonGradientTopPushedColour");
+	set_prop(theme->mButtonGradientBotPushed, props, "ButtonGradientBottomPushedColour");
+	set_prop(theme->mWindowFillUnfocused, props, "WindowFillUnfocusedColour");
+	set_prop(theme->mWindowFillFocused, props, "WindowFillFocusedColour");
+	set_prop(theme->mWindowPopup, props, "WindowPopupColour");
+	set_prop(theme->mWindowPopupTransparent, props, "WindowPopupTransparentColour");
+}
 
 void setupTheme(nanogui::Theme *theme) {
 	using namespace nanogui;
@@ -75,7 +120,7 @@ public:
         if (context) {
             auto theme = new nanogui::Theme(context);
             setupTheme(theme);
-            // TODO: copy user provided properties into the theme
+            fromStructure(theme, settings);
             return theme;
         }
         return nullptr;
