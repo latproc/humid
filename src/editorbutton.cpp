@@ -177,7 +177,7 @@ void EditorButton::setImageName(const std::string &image) {
     ResourceManager::release(mImageID);
     mImageID = 0;
   }
-  image_name = image.empty() || image == "null" ? SymbolTable::Null : image;
+  image_name = image.empty() || image == "null" ? SymbolTable::Null : Value(image, Value::t_string);
   getDefinition()->getProperties().add("image", image_name);
 }
 
@@ -419,18 +419,20 @@ void EditorButton::draw(NVGcontext *ctx) {
       nvgFill(ctx);
     }
 
-    nvgBeginPath(ctx);
-    nvgStrokeWidth(ctx, border);
-    nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + (mPushed ? 0.5f : 1.5f), mSize.x() - 1,
-                   mSize.y() - 1 - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
-    nvgStrokeColor(ctx, mTheme->mBorderLight);
-    nvgStroke(ctx);
+    if (border > 0) {
+      nvgBeginPath(ctx);
+      nvgStrokeWidth(ctx, border);
+      nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + (mPushed ? 0.5f : 1.5f), mSize.x() - 1,
+                    mSize.y() - 1 - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
+      nvgStrokeColor(ctx, mTheme->mBorderLight);
+      nvgStroke(ctx);
 
-    nvgBeginPath(ctx);
-    nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - 1,
-                   mSize.y() - 2, mTheme->mButtonCornerRadius);
-    nvgStrokeColor(ctx, mTheme->mBorderDark);
-    nvgStroke(ctx);
+      nvgBeginPath(ctx);
+      nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - 1,
+                    mSize.y() - 2, mTheme->mButtonCornerRadius);
+      nvgStrokeColor(ctx, mTheme->mBorderDark);
+      nvgStroke(ctx);
+    }
  
     int fontSize = mFontSize == -1 ? mTheme->mButtonFontSize : mFontSize;
     nvgFontSize(ctx, fontSize);
