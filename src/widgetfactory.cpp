@@ -336,7 +336,7 @@ void createPlot(WidgetParams &params) {
 void createButton(WidgetParams &params) {
 	const Value caption_v(params.element->getProperties().find("caption"));
 	EditorButton *b = new EditorButton(params.s, params.window, params.element->getName(), params.lp,
-									   (caption_v != SymbolTable::Null)?caption_v.asString(): params.element->getName());
+									   (caption_v != SymbolTable::Null)?caption_v.asString(): "");
 	if (params.kind == "INDICATOR") b->setEnabled(false); else b->setEnabled(true);
 	b->setDefinition(params.element);
 	b->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
