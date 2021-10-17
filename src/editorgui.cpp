@@ -506,7 +506,6 @@ void EditorGUI::createWindows() {
 	// The user window uses the main theme
 	auto uwTheme = ThemeManager::instance().findTheme("MainTheme");
 	if (!uwTheme) {
-		std::cout << "---------- no main theme, creating one\n";
 		uwTheme = ThemeManager::instance().createTheme();
 		ThemeManager::instance().addTheme("MainTheme", uwTheme);
 	}

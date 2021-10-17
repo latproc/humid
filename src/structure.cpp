@@ -96,9 +96,6 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Image File"] = "image_file";
 		properties["Scale"] = "scale";
 	}
-	else {
-		std::cerr << "Unexpected class name " << class_name << " in prepare_class_properties\n"; 
-	}
 }
 
 StructureClass::StructureClass(const std::string class_name) 
@@ -230,7 +227,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const s
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
-		if (item.second != SymbolTable::Null && item.second.asString() != "") {
+		if (!item.second.isNull() && item.second.asString() != "") {
 			if (link_map) {
 				auto remote_name = link_map->find(item.first);
 				if (remote_name != link_map->end()) {

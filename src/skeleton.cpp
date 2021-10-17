@@ -245,7 +245,6 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		gettimeofday(&start, 0);
 		int w,h;
 		glfwGetWindowSize(mGLFWWindow, &w, &h);
-		std::cout << "created window of size: " << size.x() << "," << size.y() << " actual: " << w << "," << h <<"\n";
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {
@@ -327,7 +326,7 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 	const Value &chn = s_conn->getProperties().find("channel");
 	const Value &host = s_conn->getProperties().find("host");
 	long port = s_conn->getIntProperty("port", 5555);
-	if (chn != SymbolTable::Null && host != SymbolTable::Null) {
+	if (!(chn.isNull() || host.isNull())) {
 		Connection *conn = new Connection(this, s_conn->getName(), chn.asString(), host.asString(), port);
 		conn->setDefinition(s_conn);
 		conn->SetupInterface();
@@ -357,16 +356,13 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 			conn->iosh_cmd->getsockopt(ZMQ_TYPE, &sock_type, &param_size);
 
 		}
-		catch (zmq::error_t zex) {
+		catch (const zmq::error_t & zex) {
 			std::cerr << "zmq exception " << zmq_errno()  << " " << zmq_strerror(zmq_errno())
 			<< " for item " << item << " in SubscriptionManager::checkConnections\n";
 
 		}
 		}
 		return conn;
-	}
-	else {
-		std::cerr << "no channel for Clockwork connection\n";
 	}
 	return 0;
 }

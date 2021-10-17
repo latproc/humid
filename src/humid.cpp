@@ -421,7 +421,6 @@ void loadSettingsFiles(std::list<std::string> &files) {
 			st_yyin = fopen(filename, "r");
 			if (st_yyin)
 			{
-				std::cerr << "Processing file: " << filename << "\n";
 				st_yylineno = 1;
 				st_yycharno = 1;
 				st_yyfilename = filename;
@@ -611,7 +610,6 @@ int main(int argc, const char ** argv ) {
 					: new EditorGUI(width, height);
 			ThemeManager::instance().setContext(app->nvgContext());
 			for (auto settings : Structure::findStructureClasses("THEME")) {
-				std::cout << "------ found user provided theme " << settings->getName() << "\n";
 				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
 			}
 			if (auto main_theme = ThemeManager::instance().findTheme("EditorTheme")) {
