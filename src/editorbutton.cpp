@@ -383,8 +383,7 @@ void EditorButton::draw(NVGcontext *ctx) {
 
     nvgBeginPath(ctx);
 
-    nvgRoundedRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2,
-                 mSize.y() - 2, mTheme->mButtonCornerRadius - 1);
+    nvgRoundedRect(ctx, mPos.x()+1, mPos.y()+1, mSize.x()-2, mSize.y()-2, mTheme->mButtonCornerRadius);
 
     if (mImageID == 0) {
       if (mPushed) {
@@ -414,7 +413,7 @@ void EditorButton::draw(NVGcontext *ctx) {
       nvgFill(ctx);
     }
     else {
-      NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x()-1, mSize.y()-2, 0, mImageID, image_alpha);
+      NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 0, mImageID, image_alpha);
       nvgFillPaint(ctx, img);
       nvgFill(ctx);
     }
