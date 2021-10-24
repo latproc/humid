@@ -121,7 +121,7 @@ extern int debug;
 extern int saved_debug;
 std::string tag_file_name;
 
-const char *program_name;
+extern const char *program_name;
 
 //extern int cw_out;
 //extern std::string host;
