@@ -601,6 +601,8 @@ static void finish(int sig) {
 	sigaction(SIGUSR1, &sa, 0);
 	sigaction(SIGUSR2, &sa, 0);
 	program_state = s_finished;
+	nanogui::leave();
+
 }
 
 static void toggle_debug(int sig) {
