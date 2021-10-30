@@ -27,6 +27,7 @@ Value::Kind typeForProperty(const std::string &property) {
 	if (property == "connection") { return Value::t_string; }
 	if (property == "display_grid") { return Value::t_bool; }
 	if (property == "file_name") { return Value::t_string; }
+	if (property == "fg_color") { return Value::t_string; }
 	if (property == "font_size") { return Value::t_integer; }
 	if (property == "format") { return Value::t_string; }
 	if (property == "grid_intensity") { return Value::t_float; }
@@ -72,6 +73,7 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "command") { return {}; }
 	if (property == "connection") { return {};}
 	if (property == "display_grid") { return false; }
+	if (property == "fg_color") { return "0.3,0.3,0.7,1.0"; }
 	if (property == "file_name") { return {}; }
 	if (property == "font_size") { return 24; }
 	if (property == "format") { return {}; }

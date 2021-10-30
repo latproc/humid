@@ -42,7 +42,15 @@ public:
 	virtual Value getPropertyValue(const std::string &prop) override;
 	virtual void setProperty(const std::string &prop, const std::string value) override;
 
+	void setColor(nanogui::Color c) { fg_color = c; }
+	nanogui::Color &color() { return fg_color; }
+	void setBackgroundColor(nanogui::Color c) { bg_color = c; }
+	nanogui::Color &backgroundColor() { return bg_color; }
+
 	virtual void draw(NVGcontext *ctx) override;
+private:
+	nanogui::Color fg_color;
+	nanogui::Color bg_color;
 };
 
 #endif

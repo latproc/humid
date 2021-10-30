@@ -42,7 +42,7 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 		kind(element->getKind()), offset(offset_)
 {
 	StructureClass *element_class = findClass(kind);
-	
+
 	const Value font_size_val(element->getProperties().find("font_size"));
 	lp = nullptr;
 	const Value remote_name(element->getProperties().find("remote"));
@@ -125,7 +125,7 @@ void createLabel(WidgetParams &params) {
 	Value valignment_v(params.element->getProperties().find("valign"));
 	if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
-	if (params.value_type != -1) el->setValueType(params.value_type);				
+	if (params.value_type != -1) el->setValueType(params.value_type);
 	if (params.value_scale != 1.0) el->setValueScale( params.value_scale );
 	if (params.tab_pos) el->setTabPosition(params.tab_pos);
 	if (params.lp)
@@ -168,7 +168,7 @@ void createImage(WidgetParams &params) {
 	fixElementSize( el, params.element->getProperties());
 	if (params.font_size) el->setFontSize(params.font_size);
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
-	if (params.value_type != -1) el->setValueType(params.value_type);				
+	if (params.value_type != -1) el->setValueType(params.value_type);
 	if (params.value_scale != 1.0) el->setValueScale( params.value_scale );
 	el->setScale( img_scale );
 	if (params.tab_pos) el->setTabPosition(params.tab_pos);
@@ -184,7 +184,7 @@ void createImage(WidgetParams &params) {
 		params.lp->link(new LinkableText(el));
 	if (params.visibility) el->setVisibilityLink(params.visibility);
 	}
-	
+
 	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), el->getName());
 	if (remote_links) {
 		auto property_id_to_name = el->reverse_property_map();
@@ -214,7 +214,7 @@ void createProgress(WidgetParams &params) {
 		ep->setConnection(params.connection.asString());
 	}
 	if (params.format_val != SymbolTable::Null) ep->setValueFormat(params.format_val.asString());
-	if (params.value_type != -1) ep->setValueType(params.value_type);				
+	if (params.value_type != -1) ep->setValueType(params.value_type);
 	if (params.value_scale != 1.0) ep->setValueScale( params.value_scale );
 	if (params.tab_pos) ep->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) ep->setBorder(params.border.iValue);
@@ -223,6 +223,16 @@ void createProgress(WidgetParams &params) {
 	if (params.lp)
 		params.lp->link(new LinkableNumber(ep));
 	if (params.visibility) ep->setVisibilityLink(params.visibility);
+	{
+	Value bg_colour(params.element->getProperties().find("bg_color"));
+	if (bg_colour != SymbolTable::Null)
+		ep->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
+	}
+	{
+	Value fg_colour(params.element->getProperties().find("fg_color"));
+	if (fg_colour != SymbolTable::Null)
+		ep->setColor(colourFromProperty(params.element, "fg_color"));
+	}
 }
 
 void createText(WidgetParams &params) {
@@ -241,7 +251,7 @@ void createText(WidgetParams &params) {
 		textBox->setConnection(params.connection.asString());
 	}
 	if (params.format_val != SymbolTable::Null) textBox->setValueFormat(params.format_val.asString());
-	if (params.value_type != -1) textBox->setValueType(params.value_type);				
+	if (params.value_type != -1) textBox->setValueType(params.value_type);
 	if (params.value_scale != 1.0) textBox->setValueScale( params.value_scale );
 	setElementPosition(params, textBox, params.element->getProperties());
 	fixElementSize( textBox, params.element->getProperties());
@@ -284,7 +294,7 @@ void createText(WidgetParams &params) {
 		}
 		return false;
 	});
-	
+
 	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), textBox->getName());
 	if (remote_links) {
 		auto property_id_to_name = textBox->reverse_property_map();
@@ -314,7 +324,7 @@ void createPlot(WidgetParams &params) {
 		lp->setConnection(params.connection.asString());
 	}
 	if (params.format_val != SymbolTable::Null) lp->setValueFormat(params.format_val.asString());
-	if (params.value_type != -1) lp->setValueType(params.value_type);				
+	if (params.value_type != -1) lp->setValueType(params.value_type);
 	if (params.value_scale != 1.0) lp->setValueScale( params.value_scale );
 	if (params.font_size) lp->setFontSize(params.font_size);
 	if (params.tab_pos) lp->setTabPosition(params.tab_pos);
@@ -375,7 +385,7 @@ void createButton(WidgetParams &params) {
 	b->setupButtonCallbacks(params.lp, params.gui);
 	b->setImageName(params.element->getProperties().find("image").asString());
 	if (params.visibility) b->setVisibilityLink(params.visibility);
-	
+
 	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), b->getName());
 	if (remote_links) {
 		auto property_id_to_name = b->reverse_property_map();

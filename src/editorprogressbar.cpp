@@ -16,6 +16,7 @@
 #include "editorprogressbar.h"
 #include "propertyformhelper.h"
 #include "helper.h"
+#include "colourhelper.h"
 
 const std::map<std::string, std::string> & EditorProgressBar::property_map() const {
   auto structure_class = findClass("PROGRESS");
@@ -30,7 +31,7 @@ const std::map<std::string, std::string> & EditorProgressBar::reverse_property_m
 }
 
 EditorProgressBar::EditorProgressBar(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp)
-	: ProgressBar(parent), EditorWidget(owner, "PROGRESS", nam, this, lp) {
+	: ProgressBar(parent), EditorWidget(owner, "PROGRESS", nam, this, lp),fg_color(nanogui::Color(192,192,192,255)), bg_color(nanogui::Color(240,240,240,255)) {
 	}
 
 bool EditorProgressBar::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -59,7 +60,32 @@ bool EditorProgressBar::mouseEnterEvent(const Vector2i &p, bool enter) {
 }
 
 void EditorProgressBar::draw(NVGcontext *ctx) {
-    nanogui::ProgressBar::draw(ctx);
+	/* the following is based on nanogui::progressbar::draw */
+    Widget::draw(ctx);
+
+    NVGpaint paint = nvgBoxGradient(
+        ctx, mPos.x() + 1, mPos.y() + 1,
+        mSize.x()-2, mSize.y(), 3, 4, bg_color, bg_color);
+    nvgBeginPath(ctx);
+    nvgRoundedRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 3);
+    nvgFillPaint(ctx, paint);
+    nvgFill(ctx);
+
+    float value = std::min(std::max(0.0f, mValue / value_scale), 1.0f);
+
+    int barPos = (int) std::round((mSize.x() - 2) * value);
+
+    paint = nvgBoxGradient(
+        ctx, mPos.x(), mPos.y(),
+        barPos+1.5f, mSize.y()-1, 3, 4,
+        fg_color, fg_color);
+
+    nvgBeginPath(ctx);
+    nvgRoundedRect(
+        ctx, mPos.x()+1, mPos.y()+1,
+        barPos, mSize.y()-2, 3);
+    nvgFillPaint(ctx, paint);
+    nvgFill(ctx);
     if (mSelected)
       drawSelectionBorder(ctx, mPos, mSize);
     else if (EDITOR->isEditMode()) {
@@ -73,12 +99,30 @@ void EditorProgressBar::loadPropertyToStructureMap(std::map<std::string, std::st
 
 void EditorProgressBar::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
+    names.push_back("Foreground Colour");
+    names.push_back("Background Colour");
 }
 
 Value EditorProgressBar::getPropertyValue(const std::string &prop) {
 	Value res = EditorWidget::getPropertyValue(prop);
   if (res != SymbolTable::Null)
     return res;
+  if (prop == "Foreground Colour") {
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+    nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
+    char buf[50];
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
+      color().r(), color().g(), color().b(), color().w());
+    return Value(buf, Value::t_string);
+  }
+  if (prop == "Background Colour") {
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+    nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
+    char buf[50];
+    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
+      backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
+    return Value(buf, Value::t_string);
+  }
   return SymbolTable::Null;
 }
 
@@ -88,6 +132,14 @@ void EditorProgressBar::setProperty(const std::string &prop, const std::string v
     if (remote) {
         remote->link(new LinkableNumber(this));  }
     }
+  else if (prop == "Foreground Colour") {
+    getDefinition()->getProperties().add("fg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "fg_color"));
+  }
+  else if (prop == "Background Colour") {
+    getDefinition()->getProperties().add("bg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+  }
 }
 
 
@@ -95,10 +147,19 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
   EditorWidget::loadProperties(properties);
   nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
   if (w) {
+    EditorGUI *gui = EDITOR->gui();
     properties->addVariable<float> (
       "Value",
       [&](float value) mutable { setValue(value); },
       [&]()->float{ return value(); });
+    properties->addVariable<nanogui::Color> (
+      "Foreground colour",
+       [&](const nanogui::Color &value) mutable{ setColor(value); },
+	   [&]()->const nanogui::Color &{ return color(); });
+    properties->addVariable<nanogui::Color> (
+      "Background colour",
+       [&](const nanogui::Color &value) mutable{ setBackgroundColor(value); },
+       [&]()->const nanogui::Color &{ return backgroundColor(); });
     properties->addGroup("Remote");
     properties->addVariable<std::string> (
       "Remote object",
@@ -108,7 +169,6 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
         if (remote) remote->unlink(this);
         remote = lp;
         if (lp) { lp->link(new LinkableNumber(this)); }
-        //properties->refresh();
        },
       [&]()->std::string{
         if (remote) return remote->tagName();
@@ -116,7 +176,7 @@ void EditorProgressBar::loadProperties(PropertyFormHelper* properties) {
           const Value &rmt_v = getDefinition()->getProperties().find("remote");
           if (rmt_v != SymbolTable::Null)
             return rmt_v.asString();
-        } 
+        }
         return "";
       });
     properties->addVariable<std::string> (

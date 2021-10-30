@@ -96,9 +96,13 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Image File"] = "image_file";
 		properties["Scale"] = "scale";
 	}
+	else if (class_name == "PROGRESS") {
+		properties["Foreground Colour"] = "fg_color";
+		properties["Background Colour"] = "bg_color";
+	}
 }
 
-StructureClass::StructureClass(const std::string class_name) 
+StructureClass::StructureClass(const std::string class_name)
 : NamedObject(nullptr, class_name), builtin(false) {
 	prepare_class_properties(class_name, m_property_map);
 	invert_property_map(m_property_map, m_reverse_map);
@@ -201,7 +205,7 @@ bool Structure::getBoolProperty(const std::string name, bool default_value) {
 			case Value::t_integer: return val.iValue;
 			case Value::t_float: return default_value;
 			case Value::t_string:
-			case Value::t_symbol: 
+			case Value::t_symbol:
 				if (val.sValue == "true" || val.sValue == "TRUE") return true;
 				else if (val.sValue == "false" || val.sValue == "FALSE") return false;
 				else return default_value;
