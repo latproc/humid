@@ -3,7 +3,7 @@
 find_library(
 	ClockworkClient_LIBRARY
 	PATHS /opt/latproc/iod/stage/lib /opt/latproc/iod/build
-	NAMES cw_client
+	NAMES cw_client Clockwork
 )
 
 find_path(
