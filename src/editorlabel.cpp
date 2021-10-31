@@ -176,18 +176,13 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
   if (prop == "Text Colour") {
       nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
       nanogui::Label *lbl = dynamic_cast<nanogui::Label*>(this);
-      char buf[50];
-      snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", mTextColor.r(), mTextColor.g(), mTextColor.b(), mTextColor.w());
-      return Value(buf, Value::t_string);
+    return Value(stringFromColour(mTextColor), Value::t_string);
   }
   if (prop == "Alignment") return alignment;
   if (prop == "Vertical Alignment") return valign;
   if (prop == "Wrap Text") return wrap_text ? 1 : 0;
   if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
-             backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(backgroundColor()), Value::t_string);
   }
 
   return SymbolTable::Null;
@@ -214,7 +209,6 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     setTextColor(colourFromProperty(getDefinition(), "text_colour"));
   }
   if (prop == "Background Colour") {
-    std::cout << " label " << name << " setting Background Colour to " << value << "\n";
     getDefinition()->getProperties().add("bg_color", value);
     setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
   }

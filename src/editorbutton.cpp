@@ -255,30 +255,20 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "Background Colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
-      backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(backgroundColor()), Value::t_string);
   }
   if (prop == "Background on colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
-      bg_on_color.r(), bg_on_color.g(), bg_on_color.b(), bg_on_color.w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(bg_on_color), Value::t_string);
   }
   if (prop == "Text colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", mTextColor.r(), mTextColor.g(), mTextColor.b(), mTextColor.w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(mTextColor), Value::t_string);
   }
   if (prop == "Text on colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f", text_on_colour.r(), text_on_colour.g(), text_on_colour.b(), text_on_colour.w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(text_on_colour), Value::t_string);
   }
   if (prop == "Command") {
     return Value(command(), Value::t_string);

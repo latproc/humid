@@ -7,7 +7,8 @@
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
-
+#include <iomanip>
+#include <sstream>
 #include "colourhelper.h"
 #include "valuehelper.h"
 #include "structure.h"
@@ -78,6 +79,18 @@ nanogui::Color colourFromString(const std::string &colour) {
 		}
 	}
 	return nanogui::Color(nanogui::Vector4i{c.r, c.g, c.b, c.a});
+}
+
+std::string stringFromColour(const nanogui::Color &colour) {
+
+	std::stringstream ss;
+	ss << '#' << std::hex << std::setfill('0') 
+		<< std::setw(2) << static_cast<int>(colour.r()*255) 
+		<< std::setw(2) << static_cast<int>(colour.g()*255)  
+		<< std::setw(2) << static_cast<int>(colour.b()*255);
+	if (colour.w() != 1.0)
+		ss << std::setw(2) <<static_cast<int>(colour.w()*255);
+	return ss.str();
 }
 
 nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {

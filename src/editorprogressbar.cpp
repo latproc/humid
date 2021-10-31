@@ -110,18 +110,12 @@ Value EditorProgressBar::getPropertyValue(const std::string &prop) {
   if (prop == "Foreground Colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
-      color().r(), color().g(), color().b(), color().w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(color()), Value::t_string);
   }
   if (prop == "Background Colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
-    char buf[50];
-    snprintf(buf, 50, "%5.4f,%5.4f,%5.4f,%5.4f",
-      backgroundColor().r(), backgroundColor().g(), backgroundColor().b(), backgroundColor().w());
-    return Value(buf, Value::t_string);
+    return Value(stringFromColour(backgroundColor()), Value::t_string);
   }
   return SymbolTable::Null;
 }

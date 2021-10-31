@@ -12,5 +12,6 @@
 #include "structure.h"
 
 nanogui::Color colourFromString(const std::string &colour);
+std::string stringFromColour(const nanogui::Color &colour);
 nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
 nanogui::Color colourFromProperty(Structure *element, const char *prop);
