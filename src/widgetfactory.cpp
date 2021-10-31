@@ -12,6 +12,7 @@
 #include "linkmanager.h"
 #include "valuehelper.h"
 #include "colourhelper.h"
+#include "thememanager.h"
 
 static bool stringEndsWith(const std::string &src, const std::string ending) {
 	size_t l_src = src.length();
@@ -94,6 +95,7 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 
 	const Value theme_name(element->getProperties().find("theme"));
 	if (theme_name != SymbolTable::Null) {
+		theme = ThemeManager::instance().findTheme(theme_name.asString());
 	}
 }
 
@@ -127,6 +129,7 @@ void createLabel(WidgetParams &params) {
 		(caption_v != SymbolTable::Null) ? caption_v.asString() : "");
 	el->setName(params.element->getName());
 	el->setDefinition(params.element);
+	if (params.theme.get()) { el->setTheme(params.theme); }
 	setElementPosition(params, el, params.element->getProperties());
 	fixElementSize( el, params.element->getProperties());
 	if (params.connection != SymbolTable::Null) {
@@ -164,6 +167,7 @@ void createImage(WidgetParams &params) {
 	if (params.connection != SymbolTable::Null) {
 		el->setConnection(params.connection.asString());
 	}
+	if (params.theme.get()) { el->setTheme(params.theme); }
 	const Value img_scale_val(params.element->getProperties().find("scale"));
 	double img_scale = 1.0f;
 	if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
@@ -194,6 +198,7 @@ void createImage(WidgetParams &params) {
 void createProgress(WidgetParams &params) {
 	EditorProgressBar *ep = new EditorProgressBar(params.s, params.window, params.element->getName(), params.lp);
 	ep->setDefinition(params.element);
+	if (params.theme.get()) { ep->setTheme(params.theme); }
 	setElementPosition(params, ep, params.element->getProperties());
 	fixElementSize( ep, params.element->getProperties());
 	if (params.connection != SymbolTable::Null) {
@@ -227,6 +232,7 @@ void createProgress(WidgetParams &params) {
 void createText(WidgetParams &params) {
 	EditorTextBox *textBox = new EditorTextBox(params.s, params.window, params.element->getName(), params.lp);
 	textBox->setDefinition(params.element);
+	if (params.theme.get()) { textBox->setTheme(params.theme); }
 	const Value text_v( (params.lp) ? params.lp->value() : (params.remote != SymbolTable::Null) ? "" : params.element->getProperties().find("text"));
 	if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
 	const Value alignment_v(params.element->getProperties().find("alignment"));
@@ -289,6 +295,7 @@ void createText(WidgetParams &params) {
 void createPlot(WidgetParams &params) {
 	EditorLinePlot *lp = new EditorLinePlot(params.s, params.window, params.element->getName(), nullptr);
 	lp->setDefinition(params.element);
+	if (params.theme.get()) { lp->setTheme(params.theme); }
 	lp->setBufferSize(params.gui->sampleBufferSize());
 	setElementPosition(params, lp, params.element->getProperties());
 	fixElementSize( lp, params.element->getProperties());
@@ -323,6 +330,7 @@ void createButton(WidgetParams &params) {
 									   (caption_v != SymbolTable::Null)?caption_v.asString(): "");
 	if (params.kind == "INDICATOR") b->setEnabled(false); else b->setEnabled(true);
 	b->setDefinition(params.element);
+	if (params.theme.get()) { b->setTheme(params.theme); }
 	b->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
 	b->setTextColor(colourFromProperty(params.element, "text_colour"));
 	b->setOnColor(colourFromProperty(params.element, "bg_on_color"));

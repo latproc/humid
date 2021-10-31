@@ -46,7 +46,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	properties["Remote"] = "remote";
 	properties["Structure"] = ""; // not to be copied
 	properties["Tab Position"] = "tab_position";
-	properties["Theme"] = "";
+	properties["Theme"] = "MainTheme";
 	properties["Value Scale"] = "value_scale";
 	properties["Value Type"] = "value_type";
 	properties["Vertical Pos"] = "pos_y";
