@@ -708,7 +708,7 @@ char *ClockworkClient::Connection::sendIOD(const char *msg) {
 char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 	if (!Ready()) return 0;
 
-	std::cerr << "sendIOD sending " << s << "\n";
+	if (DEBUG_BASIC) std::cerr << "sendIOD sending " << s << "\n";
 
 	if (g_iodcmd)
 		return g_iodcmd->send(s.c_str());
@@ -722,7 +722,7 @@ char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 char *ClockworkClient::sendIOD(const std::string & connection_name, int group, int addr, int new_value) {
 	Connection *conn = findConnection(connection_name, connections);
 	std::string s(getIODSyncCommand(connection_name, group, addr, new_value));
-	std::cerr << "sendIOD sending " << s << "\n";
+	if (DEBUG_BASIC) std::cerr << "sendIOD sending " << s << "\n";
 	if (conn)
 		return conn->sendIODMessage(s);
 	return 0;

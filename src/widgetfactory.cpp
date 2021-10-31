@@ -97,6 +97,26 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 	}
 }
 
+template <typename T>
+void prepare_remote_links(const WidgetParams &params, T *w) {
+	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), w->getName());
+	if (remote_links) {
+		auto property_id_to_name = w->reverse_property_map();
+		for (auto & link_info : *remote_links) {
+			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
+			if (linkable_property) {
+				auto found_property = property_id_to_name.find(link_info.property_name);
+				if (found_property != property_id_to_name.end()) {
+					linkable_property->link(new LinkableObject(new PropertyLinkTarget(w, (*found_property).second, defaultForProperty(link_info.property_name))));
+				}
+			}
+			else {
+				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << w->getName() << "\n";
+			}
+		}
+	}
+}
+
 void createLabel(WidgetParams &params) {
 	const Value caption_v( (params.lp)
 		? params.lp->value()
@@ -133,24 +153,7 @@ void createLabel(WidgetParams &params) {
 	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
 	el->setInvertedVisibility(params.ivis);
 	if (params.visibility) el->setVisibilityLink(params.visibility);
-
-	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), el->getName());
-	if (remote_links) {
-		auto property_id_to_name = el->reverse_property_map();
-		for (auto & link_info : *remote_links) {
-			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
-			if (linkable_property) {
-				auto found_property = property_id_to_name.find(link_info.property_name);
-				if (found_property != property_id_to_name.end()) {
-					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
-				}
-			}
-			else {
-				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << el->getName() << "\n";
-			}
-		}
-	}
-
+	prepare_remote_links(params, el);
 	el->setChanged(false);
 }
 
@@ -184,23 +187,7 @@ void createImage(WidgetParams &params) {
 		params.lp->link(new LinkableText(el));
 	if (params.visibility) el->setVisibilityLink(params.visibility);
 	}
-
-	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), el->getName());
-	if (remote_links) {
-		auto property_id_to_name = el->reverse_property_map();
-		for (auto & link_info : *remote_links) {
-			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
-			if (linkable_property) {
-				auto found_property = property_id_to_name.find(link_info.property_name);
-				if (found_property != property_id_to_name.end()) {
-					linkable_property->link(new LinkableObject(new PropertyLinkTarget(el, (*found_property).second, defaultForProperty(link_info.property_name))));
-				}
-			}
-			else {
-				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << el->getName() << "\n";
-			}
-		}
-	}
+	prepare_remote_links(params, el);
 	el->setChanged(false);
 }
 
@@ -233,6 +220,8 @@ void createProgress(WidgetParams &params) {
 	if (fg_colour != SymbolTable::Null)
 		ep->setColor(colourFromProperty(params.element, "fg_color"));
 	}
+	prepare_remote_links(params, ep);
+	ep->setChanged(false);
 }
 
 void createText(WidgetParams &params) {
@@ -294,23 +283,7 @@ void createText(WidgetParams &params) {
 		}
 		return false;
 	});
-
-	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), textBox->getName());
-	if (remote_links) {
-		auto property_id_to_name = textBox->reverse_property_map();
-		for (auto & link_info : *remote_links) {
-			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
-			if (linkable_property) {
-				auto found_property = property_id_to_name.find(link_info.property_name);
-				if (found_property != property_id_to_name.end()) {
-					linkable_property->link(new LinkableObject(new PropertyLinkTarget(textBox, (*found_property).second, defaultForProperty(link_info.property_name))));
-				}
-			}
-			else {
-				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << textBox->getName() << "\n";
-			}
-		}
-	}
+	prepare_remote_links(params, textBox);
 }
 
 void createPlot(WidgetParams &params) {
@@ -341,6 +314,7 @@ void createPlot(WidgetParams &params) {
 	}
 	lp->setChanged(false);
 	if (params.visibility) lp->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, lp);
 }
 
 void createButton(WidgetParams &params) {
@@ -385,24 +359,7 @@ void createButton(WidgetParams &params) {
 	b->setupButtonCallbacks(params.lp, params.gui);
 	b->setImageName(params.element->getProperties().find("image").asString());
 	if (params.visibility) b->setVisibilityLink(params.visibility);
-
-	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), b->getName());
-	if (remote_links) {
-		auto property_id_to_name = b->reverse_property_map();
-		for (auto & link_info : *remote_links) {
-			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
-			if (linkable_property) {
-				auto found_property = property_id_to_name.find(link_info.property_name);
-				if (found_property != property_id_to_name.end()) {
-					linkable_property->link(new LinkableObject(new PropertyLinkTarget(b, (*found_property).second, defaultForProperty(link_info.property_name))));
-				}
-			}
-			else {
-				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << b->getName() << "\n";
-			}
-		}
-	}
-
+	prepare_remote_links(params, b);
 	b->setChanged(false);
 }
 

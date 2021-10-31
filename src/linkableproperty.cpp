@@ -134,3 +134,5 @@ void LinkableProperty::save(std::ostream &out) const {
 		<< "size:" << data_size << ", "
 		<< "remote:" << tag_name;
 }
+
+PropertyLink::PropertyLink(LinkableProperty *lp, const Value &val) : remote(lp), value(val) {}

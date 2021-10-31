@@ -64,7 +64,7 @@ private:
 
 class PropertyLink {
 public:
-	PropertyLink(LinkableProperty *lp, const Value &val) : remote(lp), value(val) {}
+	PropertyLink(LinkableProperty *lp, const Value &val);
 	virtual void set(const Value &val) { value = val; /*(setter(val); */ }
 	virtual const Value &get() const { return value; }
 protected:
