@@ -202,17 +202,25 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setFixedSize(mDefaultSize);
 	window->setSize(mDefaultSize);
 	window->setVisible(false);
-	window->setTitle("Panel Window");
-	long window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
-	long window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
-	{
-		const Value x_v = EditorGUI::systemSettings()->getProperties().find("panel_left");
-		const Value y_v = EditorGUI::systemSettings()->getProperties().find("panel_top");
-		x_v.asInteger(window_x);
-		y_v.asInteger(window_y);
-	}
+	extern int run_only;
+	extern long full_screen_mode;
+	if (!run_only || !full_screen_mode) {
+		window->setTitle("Panel Window");
+		long window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
+		long window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
+		{
+			const Value x_v = EditorGUI::systemSettings()->getProperties().find("panel_left");
+			const Value y_v = EditorGUI::systemSettings()->getProperties().find("panel_top");
+			x_v.asInteger(window_x);
+			y_v.asInteger(window_y);
+		}
 
-	window->setPosition(nanogui::Vector2i(window_x, window_y));
+		window->setPosition(nanogui::Vector2i(window_x, window_y));
+	}
+	else {
+		window->setTitle("");
+		window->setPosition(nanogui::Vector2i(0,0));
+	}
 	push(window);
 }
 

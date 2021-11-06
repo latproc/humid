@@ -603,6 +603,14 @@ int main(int argc, const char ** argv ) {
 				width_v.asInteger(width);
 				height_v.asInteger(height);
 			}
+			if (run_only) {
+				//long width, height;
+				const Value width_v = EditorGUI::systemSettings()->getProperties().find("panel_width");
+				const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
+				width_v.asInteger(width);
+				height_v.asInteger(height);
+			}
+			
 			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
 
 			nanogui::ref<EditorGUI> app = (full_screen)

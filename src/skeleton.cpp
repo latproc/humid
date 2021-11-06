@@ -242,9 +242,16 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 : nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0),
 	window_stagger(this) {
-		gettimeofday(&start, 0);
+	gettimeofday(&start, 0);
+	extern int full_screen_mode;
+	if (full_screen_mode) {
 		int w,h;
 		glfwGetWindowSize(mGLFWWindow, &w, &h);
+		auto monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+	
+		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
+	}
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {

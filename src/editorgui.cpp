@@ -509,7 +509,9 @@ void EditorGUI::createWindows() {
 		uwTheme = ThemeManager::instance().createTheme();
 		ThemeManager::instance().addTheme("MainTheme", uwTheme);
 	}
-	if (size().y() == uww->size().y()) {
+	extern int run_only;
+	extern int full_screen_mode;
+	if (size().y() == uww->size().y() || run_only || full_screen_mode) {
 	    uwTheme->mWindowHeaderHeight = 0;
 	}
 	w_user = new UserWindow(this, uwTheme, uww);
