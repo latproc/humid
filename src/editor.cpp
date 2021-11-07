@@ -129,7 +129,7 @@ void Editor::save() {
 			std::cout << s->getName() << " is owned by " << s->getOwner()->getName() << "\n";
 			continue;
 		}
-		Value filename = s->getProperties().find("file_name");
+		Value filename = s->getValue("file_name");
 		if (filename == SymbolTable::Null)
 			filename = 	s->getInternalProperties().find("file_name");
 		std::string fname(s->getName());

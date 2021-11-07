@@ -30,8 +30,8 @@ private:
 	std::vector<Parameter> parameters;
 };
 
-bool writePropertyList(std::ostream &out, const SymbolTable &table, const std::map<std::string, std::string> * links = nullptr);
-bool writePropertyDefaults(std::ostream &out, const SymbolTable &table);
+bool writePropertyList(std::ostream &out, const SymbolTable &table, const SymbolTable *defaults ,const std::map<std::string, std::string> * links = nullptr);
+bool writePropertyDefaults(std::ostream &out, const SymbolTable &table, const SymbolTable *defaults);
 
 class StructureClass : public NamedObject {
 public:
@@ -51,6 +51,8 @@ public:
 	void setDefinitionLocation(const std::string fnam, int lineno) {
 		internal_properties.add("file_name", Value(fnam, Value::t_string));
 	}
+	void setDefaults(const SymbolTable &props) { defaults.add(props); }
+	SymbolTable &getDefaults() { return defaults; }
 
 	void addLocal(Parameter item) { locals.push_back(item); }
 
@@ -78,6 +80,7 @@ protected:
 	std::string base;
 	SymbolTable internal_properties;
 	SymbolTable properties;
+	SymbolTable defaults;
 	std::vector<Parameter> parameters;
 	std::list<Parameter> locals;
 	std::map<std::string, Value> options;
@@ -100,6 +103,8 @@ public:
 	SymbolTable &getInternalProperties() { return internal_properties; }
 	void setProperties(const SymbolTable &props) { properties.add(props); }
 	SymbolTable &getProperties() { return properties; }
+	const Value &getValue(const char *name);
+	const Value &getDefault(const char *name);
 
 	long getIntProperty(const std::string name, int default_value = 0);
 	std::string getStringProperty(const std::string name, const char *default_value = "");
@@ -140,5 +145,6 @@ std::ostream &operator<<(std::ostream &out, const Structure &s);
 
 void addStructureClass(StructureClass *new_class, std::list<StructureClass*> &classes);
 std::list<std::string> checkStructureClasses();
+SymbolTable default_properties(const StructureClass *s);
 
 #endif

@@ -25,34 +25,6 @@ std::map<std::string, LinkableProperty *> remotes;
 
 extern void loadProjectFiles(std::list<std::string> &files_and_directories);
 
-static bool stringEndsWith(const std::string &src, const std::string ending) {
-	size_t l_src = src.length();
-	size_t l_end = ending.length();
-	if (l_src < l_end) return false;
-	return src.substr(src.end() - l_end - src.begin()) == ending;
-}
-
-void fixElementPosition(nanogui::Widget *w, const SymbolTable &properties) {
-	Value vx = properties.find("pos_x");
-	Value vy = properties.find("pos_y");
-	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-		long x, y;
-		if (vx.asInteger(x) && vy.asInteger(y)) w->setPosition(nanogui::Vector2i(x,y));
-	}
-}
-
-void fixElementSize(nanogui::Widget *w, const SymbolTable &properties) {
-	Value vx = properties.find("width");
-	Value vy = properties.find("height");
-	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-		long x, y;
-		if (vx.asInteger(x) && vy.asInteger(y)) {
-			w->setSize(nanogui::Vector2i(x,y));
-			w->setFixedSize(nanogui::Vector2i(x,y));
-		}
-	}
-}
-
 void UserWindowWin::draw(NVGcontext *ctx) {
 	nvgSave(ctx);
 //    glMatrixMode(GL_PROJECTION);
@@ -431,8 +403,13 @@ void UserWindow::loadStructure(Structure *s) {
 				std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
 				continue;
 			}
-			std::string kind = element->getKind();
-			StructureClass *element_class = findClass(kind);
+			StructureClass *element_class = param.machine->getStructureDefinition();
+			if (!element_class) {
+				std::string kind = element->getKind();
+				StructureClass *element_class = findClass(kind);
+				param.machine->setStructureDefinition(element_class);
+				if (element_class) std::cout << "set class for " << param.machine->getName() << " to " << kind << "\n";
+			}
 
 			WidgetParams params(s, window, element, gui, nanogui::Vector2i(0,0));
 
@@ -460,7 +437,7 @@ void UserWindow::loadStructure(Structure *s) {
 		}
 	}
 	if (s->getKind() == "REMOTE") {
-		const Value &rname(s->getProperties().find("NAME"));
+		const Value &rname(s->getValue("NAME"));
 		if (rname != SymbolTable::Null) {
 			LinkableProperty *lp = gui->findLinkableProperty(rname.asString());
 			if (lp) {
@@ -469,7 +446,7 @@ void UserWindow::loadStructure(Structure *s) {
 		}
 	}
 	if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
-		const Value &title(s->getProperties().find("caption"));
+		const Value &title(s->getValue("caption"));
 		//if (title != SymbolTable::Null) window->setTitle(title.asString());
 		PanelScreen *ps = getActivePanel();
 		if (ps) ps->setName(s->getName());
@@ -696,7 +673,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 		[uw]()->int{
 			Structure *s = uw->structure();
 			if (s) {
-				const Value &v(s->getProperties().find("screen_id"));
+				const Value &v(s->getValue("screen_id"));
 				long res = 0;
 				if (v.asInteger(res)) return res;
 			}

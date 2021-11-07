@@ -560,6 +560,13 @@ int main(int argc, const char ** argv ) {
 					}
 					return EXIT_FAILURE;
 				}
+				for (auto sc : hm_classes) {
+					SymbolTable defaults = default_properties(sc);
+					if (!defaults.empty()) {
+						std::cout << "found defaults for " << sc->getName() << "\n";
+						sc->setDefaults(defaults);
+					}
+				}
 			}
 			StructureClass *system_class = findClass("SYSTEM");
 			if (!system_class) {

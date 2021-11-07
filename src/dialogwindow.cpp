@@ -99,22 +99,22 @@ void DialogWindow::loadStructure(Structure *s) {
 
 			WidgetParams params(s, this, element, gui, offset);
 
-			if (kind == "LABEL") {
+			if (element_class &&element_class->isExtension("LABEL")) {
 				createLabel(params);
 			}
-			if (kind == "IMAGE") {
+			if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
 			}
-			if (kind == "PROGRESS") {
+			if (element_class &&element_class->isExtension("PROGRESS")) {
 				createProgress(params);
 			}
-			if (kind == "TEXT") {
+			if (element_class &&element_class->isExtension("TEXT")) {
 				createText(params);
 			}
-			else if (kind == "PLOT" || (element_class &&element_class->getBase() == "PLOT") ) {
+			else if (element_class && element_class->isExtension("PLOT")) {
 				createPlot(params);
 			}
-			else if (kind == "BUTTON" || kind == "INDICATOR") {
+			else if (element_class && (element_class->isExtension("BUTTON") || element_class->isExtension("INDICATOR"))) {
 				createButton(params);
 			}
 		}

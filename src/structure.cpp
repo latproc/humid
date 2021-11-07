@@ -214,6 +214,23 @@ bool Structure::getBoolProperty(const std::string name, bool default_value) {
 	return default_value;
 }
 
+const Value &Structure::getDefault(const char *name) {
+	const auto & result =  class_definition ? class_definition->getDefaults().find(name) : SymbolTable::Null;
+	return result;;
+}
+
+const Value &Structure::getValue(const char *name) {
+	const auto & value = getProperties().find(name);
+	if (value != SymbolTable::Null) {
+		return value;
+	}
+	if (class_definition) {
+			return getDefault(name);
+	}
+	std::cout << "no class for structure: " << getName() << "\n";
+	return SymbolTable::Null;
+}
+
 const std::map<std::string, std::string> &StructureClass::property_map() const {
 	return m_property_map;
 }
@@ -222,7 +239,7 @@ const std::map<std::string, std::string> &StructureClass::reverse_property_map()
 }
 
 
-bool writePropertyList(std::ostream &out, const SymbolTable &properties, const std::map<std::string, std::string> * link_map) {
+bool writePropertyList(std::ostream &out, const SymbolTable &properties, const SymbolTable *defaults, const std::map<std::string, std::string> * link_map) {
 	const char *begin_properties = "(\n    ";
 	const char *property_delim = ",\n    ";
 	const char *delim = begin_properties;
@@ -230,6 +247,8 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const s
 	while (i != properties.end()) {
 		auto item = *i++;
 		if (!item.second.isNull() && item.second.asString() != "") {
+			const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
+			if (item.second == default_value) { continue; } // don't write unchanged properties
 			if (link_map) {
 				auto remote_name = link_map->find(item.first);
 				if (remote_name != link_map->end()) {
@@ -283,7 +302,8 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 			}
 		}
 	}
-	bool res = writePropertyList(out, properties, &link_map);
+	bool res = writePropertyList(out, properties, 
+					getStructureDefinition() ? &getStructureDefinition()->getDefaults() : nullptr, &link_map);
 	out << ";\n";
 	return res;
 }
@@ -291,7 +311,7 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 bool StructureClass::save(std::ostream &out) {
 	using namespace nanogui;
 	out << getName() << " STRUCTURE";
-	writePropertyList(out, properties);
+	writePropertyList(out, properties, &defaults);
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
 	out << " {\n";
 	writeOptions(out, options);
@@ -413,4 +433,28 @@ std::list<std::string> checkStructureClasses() {
 		}
 	}
 	return errors;
+}
+
+SymbolTable default_properties(const StructureClass *s) {
+	SymbolTable props;
+	if (s->getBase().empty()) { return props; }
+	std::string base = s->getName();
+	std::list<StructureClass *>inheritance;
+	for (auto iter = hm_classes.rbegin(); iter != hm_classes.rend(); ++iter) {
+		const auto & sc = *iter;
+		if (sc->getName() == base) {
+			std::cout << "found ihneritance: " << base << " -> " << sc->getBase() << "\n";
+			inheritance.push_back(sc);
+			base = sc->getBase();
+			if (base.empty()) { break; }
+		}
+	}
+
+	for (const auto sc : inheritance) {
+		for (const auto & option : sc->getOptions()) {
+			props.add(option.first, option.second, SymbolTable::ST_REPLACE);
+		}
+		props.add(sc->getProperties(), SymbolTable::ST_REPLACE);
+	}
+	return props;
 }

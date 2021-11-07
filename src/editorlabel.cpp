@@ -258,7 +258,7 @@ void EditorLabel::loadProperties(PropertyFormHelper* properties) {
       [&]()->std::string{
         if (remote) return remote->tagName();
         if (getDefinition()) {
-          const Value &rmt_v = getDefinition()->getProperties().find("remote");
+          const Value &rmt_v = getDefinition()->getValue("remote");
           if (rmt_v != SymbolTable::Null)
             return rmt_v.asString();
         } 

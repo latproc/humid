@@ -66,7 +66,7 @@ std::ostream &RemoteAnchor::operator()(std::ostream &out) const {
 }
 
 Value StructurePropertyAnchor::get() {
-  return endpoint->getProperties().find( property_name.c_str() );
+  return endpoint->getValue( property_name.c_str() );
 }
 
 void StructurePropertyAnchor::set(Value v) {

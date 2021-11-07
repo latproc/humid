@@ -21,11 +21,33 @@ static bool stringEndsWith(const std::string &src, const std::string ending) {
 	return src.substr(src.end() - l_end - src.begin()) == ending;
 }
 
-void fixElementPosition(nanogui::Widget *w, const SymbolTable &properties);
-void fixElementSize(nanogui::Widget *w, const SymbolTable &properties);
+void fixElementPosition(nanogui::Widget *w, const Value & vx, const Value & vy) {
+	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
+		long x, y;
+		if (vx.asInteger(x) && vy.asInteger(y)) w->setPosition(nanogui::Vector2i(x,y));
+	}
+}
 
-void setElementPosition(const WidgetParams &params, nanogui::Widget *w, const SymbolTable &properties) {
-	fixElementPosition(w, properties);
+void fixElementPosition(nanogui::Widget *w, Structure *s) {
+	fixElementPosition(w, s->getValue("pos_x"), s->getValue("pos_y"));
+}
+
+void fixElementSize(nanogui::Widget *w, const Value & vx, const Value & vy) {
+	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
+		long x, y;
+		if (vx.asInteger(x) && vy.asInteger(y)) {
+			w->setSize(nanogui::Vector2i(x,y));
+			w->setFixedSize(nanogui::Vector2i(x,y));
+		}
+	}
+}
+
+void fixElementSize(nanogui::Widget *w, Structure *s) {
+	fixElementSize(w, s->getValue("width"), s->getValue("height"));
+}
+
+void setElementPosition(const WidgetParams &params, nanogui::Widget *w, Structure *s) {
+	fixElementPosition(w, s->getValue("pos_x"), s->getValue("pos_y"));
 	if (params.offset != nanogui::Vector2i(0,0)) {
 		auto pos = w->position();
 		w->setPosition(pos - params.offset);
@@ -35,18 +57,18 @@ void setElementPosition(const WidgetParams &params, nanogui::Widget *w, const Sy
 WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 	EditorGUI *editor_gui, const nanogui::Vector2i &offset_) :
 		s(structure), window(w), element(elem), gui(editor_gui),
-		format_val(element->getProperties().find("format")),
-		connection(element->getProperties().find("connection")),
-		vis(element->getProperties().find("visibility")),
-		scale_val(element->getProperties().find("value_scale")),
-		border(element->getProperties().find("border")),
+		format_val(element->getValue("format")),
+		connection(element->getValue("connection")),
+		vis(element->getValue("visibility")),
+		scale_val(element->getValue("value_scale")),
+		border(element->getValue("border")),
 		kind(element->getKind()), offset(offset_)
 {
 	StructureClass *element_class = findClass(kind);
 
-	const Value font_size_val(element->getProperties().find("font_size"));
+	const Value font_size_val(element->getValue("font_size"));
 	lp = nullptr;
-	const Value remote_name(element->getProperties().find("remote"));
+	const Value remote_name(element->getValue("remote"));
 	remote = remote_name == SymbolTable::Null || remote_name.asString() == "null"
 		? SymbolTable::Null
 		: remote_name;
@@ -68,32 +90,32 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 
 	wrap = false;
 	{
-		const Value wrap_v(element->getProperties().find("wrap"));
+		const Value wrap_v(element->getValue("wrap"));
 		if (wrap_v != SymbolTable::Null) wrap_v.asBoolean(wrap);
 	}
 
 	ivis = false;
 	{
-		const Value ivis_v(element->getProperties().find("inverted_visibility"));
+		const Value ivis_v(element->getValue("inverted_visibility"));
 		if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
 	}
 	font_size = 0;
 	if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
 
-	const Value value_type_val(element->getProperties().find("value_type"));
+	const Value value_type_val(element->getValue("value_type"));
 	value_type = -1;
 	if (value_type_val != SymbolTable::Null) value_type_val.asInteger(value_type);
 	value_scale = 1.0f;
 	if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
 	tab_pos = 0;
-	const Value tab_pos_val(element->getProperties().find("tab_pos"));
+	const Value tab_pos_val(element->getValue("tab_pos"));
 	if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
 	x_scale = 0;
-	const Value x_scale_val(element->getProperties().find("x_scale"));
+	const Value x_scale_val(element->getValue("x_scale"));
 	if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);
-	//const Value caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getProperties().find("caption"));
+	//const Value caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getValue("caption"));
 
-	const Value theme_name(element->getProperties().find("theme"));
+	const Value theme_name(element->getValue("theme"));
 	if (theme_name != SymbolTable::Null) {
 		theme = ThemeManager::instance().findTheme(theme_name.asString());
 	}
@@ -124,28 +146,28 @@ void createLabel(WidgetParams &params) {
 		? params.lp->value()
 		: (params.remote != SymbolTable::Null)
 			? ""
-			: params.element->getProperties().find("caption"));
+			: params.element->getValue("caption"));
 	EditorLabel *el = new EditorLabel(params.s, params.window, params.element->getName(), params.lp,
 		(caption_v != SymbolTable::Null) ? caption_v.asString() : "");
 	el->setName(params.element->getName());
 	el->setDefinition(params.element);
 	if (params.theme.get()) { el->setTheme(params.theme); }
-	setElementPosition(params, el, params.element->getProperties());
-	fixElementSize( el, params.element->getProperties());
+	setElementPosition(params, el, params.element);
+	fixElementSize( el, params.element);
 	if (params.connection != SymbolTable::Null) {
 		el->setRemoteName(params.remote.asString());
 		el->setConnection(params.connection.asString());
 	}
 	if (params.font_size) el->setFontSize(params.font_size);
-	Value bg_colour(params.element->getProperties().find("bg_color"));
+	Value bg_colour(params.element->getValue("bg_color"));
 	if (bg_colour != SymbolTable::Null)
 		el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-	Value text_colour(params.element->getProperties().find("text_colour"));
+	Value text_colour(params.element->getValue("text_colour"));
 	if (text_colour != SymbolTable::Null)
 		el->setTextColor(colourFromProperty(params.element, "text_colour"));
-	Value alignment_v(params.element->getProperties().find("alignment"));
+	Value alignment_v(params.element->getValue("alignment"));
 	if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
-	Value valignment_v(params.element->getProperties().find("valign"));
+	Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
 	if (params.value_type != -1) el->setValueType(params.value_type);
@@ -168,11 +190,11 @@ void createImage(WidgetParams &params) {
 		el->setConnection(params.connection.asString());
 	}
 	if (params.theme.get()) { el->setTheme(params.theme); }
-	const Value img_scale_val(params.element->getProperties().find("scale"));
+	const Value img_scale_val(params.element->getValue("scale"));
 	double img_scale = 1.0f;
 	if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
-	setElementPosition(params, el, params.element->getProperties());
-	fixElementSize( el, params.element->getProperties());
+	setElementPosition(params, el, params.element);
+	fixElementSize( el, params.element);
 	if (params.font_size) el->setFontSize(params.font_size);
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
 	if (params.value_type != -1) el->setValueType(params.value_type);
@@ -180,7 +202,7 @@ void createImage(WidgetParams &params) {
 	el->setScale( img_scale );
 	if (params.tab_pos) el->setTabPosition(params.tab_pos);
 	el->setInvertedVisibility(params.ivis);
-	const Value image_file_v( (params.lp) ? params.lp->value() : (params.element->getProperties().find("image_file")));
+	const Value image_file_v( (params.lp) ? params.lp->value() : (params.element->getValue("image_file")));
 	if (image_file_v != SymbolTable::Null) {
 		std::string ifn = image_file_v.asString();
 		el->setImageName(ifn);
@@ -199,8 +221,8 @@ void createProgress(WidgetParams &params) {
 	EditorProgressBar *ep = new EditorProgressBar(params.s, params.window, params.element->getName(), params.lp);
 	ep->setDefinition(params.element);
 	if (params.theme.get()) { ep->setTheme(params.theme); }
-	setElementPosition(params, ep, params.element->getProperties());
-	fixElementSize( ep, params.element->getProperties());
+	setElementPosition(params, ep, params.element);
+	fixElementSize( ep, params.element);
 	if (params.connection != SymbolTable::Null) {
 		ep->setRemoteName(params.remote.asString());
 		ep->setConnection(params.connection.asString());
@@ -216,12 +238,12 @@ void createProgress(WidgetParams &params) {
 		params.lp->link(new LinkableNumber(ep));
 	if (params.visibility) ep->setVisibilityLink(params.visibility);
 	{
-	Value bg_colour(params.element->getProperties().find("bg_color"));
+	Value bg_colour(params.element->getValue("bg_color"));
 	if (bg_colour != SymbolTable::Null)
 		ep->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
 	}
 	{
-	Value fg_colour(params.element->getProperties().find("fg_color"));
+	Value fg_colour(params.element->getValue("fg_color"));
 	if (fg_colour != SymbolTable::Null)
 		ep->setColor(colourFromProperty(params.element, "fg_color"));
 	}
@@ -233,11 +255,11 @@ void createText(WidgetParams &params) {
 	EditorTextBox *textBox = new EditorTextBox(params.s, params.window, params.element->getName(), params.lp);
 	textBox->setDefinition(params.element);
 	if (params.theme.get()) { textBox->setTheme(params.theme); }
-	const Value text_v( (params.lp) ? params.lp->value() : (params.remote != SymbolTable::Null) ? "" : params.element->getProperties().find("text"));
+	const Value text_v( (params.lp) ? params.lp->value() : (params.remote != SymbolTable::Null) ? "" : params.element->getValue("text"));
 	if (text_v != SymbolTable::Null) textBox->setValue(text_v.asString());
-	const Value alignment_v(params.element->getProperties().find("alignment"));
+	const Value alignment_v(params.element->getValue("alignment"));
 	if (alignment_v != SymbolTable::Null) textBox->setPropertyValue("Alignment", alignment_v.asString());
-	const Value valignment_v(params.element->getProperties().find("valign"));
+	const Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	textBox->setEnabled(true);
 	textBox->setEditable(true);
@@ -248,8 +270,8 @@ void createText(WidgetParams &params) {
 	if (params.format_val != SymbolTable::Null) textBox->setValueFormat(params.format_val.asString());
 	if (params.value_type != -1) textBox->setValueType(params.value_type);
 	if (params.value_scale != 1.0) textBox->setValueScale( params.value_scale );
-	setElementPosition(params, textBox, params.element->getProperties());
-	fixElementSize( textBox, params.element->getProperties());
+	setElementPosition(params, textBox, params.element);
+	fixElementSize( textBox, params.element);
 	if (params.font_size) textBox->setFontSize(params.font_size);
 	if (params.tab_pos) textBox->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) textBox->setBorder(params.border.iValue);
@@ -297,8 +319,8 @@ void createPlot(WidgetParams &params) {
 	lp->setDefinition(params.element);
 	if (params.theme.get()) { lp->setTheme(params.theme); }
 	lp->setBufferSize(params.gui->sampleBufferSize());
-	setElementPosition(params, lp, params.element->getProperties());
-	fixElementSize( lp, params.element->getProperties());
+	setElementPosition(params, lp, params.element);
+	fixElementSize( lp, params.element);
 	if (params.connection != SymbolTable::Null) {
 		lp->setRemoteName(params.remote.asString());
 		lp->setConnection(params.connection.asString());
@@ -311,10 +333,10 @@ void createPlot(WidgetParams &params) {
 	if (params.x_scale) lp->setTimeScale(params.x_scale);
 	{
 	bool should_overlay_plots;
-	if (params.element->getProperties().find("overlay_plots").asBoolean(should_overlay_plots))
+	if (params.element->getValue("overlay_plots").asBoolean(should_overlay_plots))
 		lp->overlay(should_overlay_plots);
 	}
-	const Value monitors(params.element->getProperties().find("monitors"));
+	const Value monitors(params.element->getValue("monitors"));
 	lp->setInvertedVisibility(params.ivis);
 	if (monitors != SymbolTable::Null) {
 		lp->setMonitors(params.gui->getUserWindow(), monitors.asString());
@@ -325,7 +347,7 @@ void createPlot(WidgetParams &params) {
 }
 
 void createButton(WidgetParams &params) {
-	const Value caption_v(params.element->getProperties().find("caption"));
+	const Value caption_v(params.element->getValue("caption"));
 	EditorButton *b = new EditorButton(params.s, params.window, params.element->getName(), params.lp,
 									   (caption_v != SymbolTable::Null)?caption_v.asString(): "");
 	if (params.kind == "INDICATOR") b->setEnabled(false); else b->setEnabled(true);
@@ -340,32 +362,34 @@ void createButton(WidgetParams &params) {
 		b->setRemoteName(params.remote.asString());
 		b->setConnection(params.connection.asString());
 	}
-	setElementPosition(params, b, params.element->getProperties());
-	fixElementSize( b, params.element->getProperties());
+	setElementPosition(params, b, params.element);
+	fixElementSize( b, params.element);
 	if (params.font_size) b->setFontSize(params.font_size);
 	if (params.tab_pos) b->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) b->setBorder(params.border.iValue);
 	b->setInvertedVisibility(params.ivis);
 	b->setWrap(params.wrap);
-	const Value alignment_v(params.element->getProperties().find("alignment"));
+	const Value alignment_v(params.element->getValue("alignment"));
 	if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v);
-	const Value valignment_v(params.element->getProperties().find("valign"));
+	const Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v);
 
 	{
-		const Value caption_v = params.element->getProperties().find("caption");
+		const Value caption_v = params.element->getValue("caption");
 		if (caption_v != SymbolTable::Null) b->setCaption(caption_v.asString());
 	}
 	{
-		const Value caption_v = params.element->getProperties().find("on_caption");
-		if (caption_v != SymbolTable::Null) b->setOnCaption(caption_v.asString());
+		const Value caption_v = params.element->getValue("on_caption");
+		if (caption_v != SymbolTable::Null) {
+			b->setOnCaption(caption_v.asString());
+		}
 	}
 	{
-		const Value cmd(params.element->getProperties().find("command"));
+		const Value cmd(params.element->getValue("command"));
 		if (cmd != SymbolTable::Null && cmd.asString().length()) b->setCommand(cmd.asString());
 	}
 	b->setupButtonCallbacks(params.lp, params.gui);
-	b->setImageName(params.element->getProperties().find("image").asString());
+	b->setImageName(params.element->getValue("image").asString());
 	if (params.visibility) b->setVisibilityLink(params.visibility);
 	prepare_remote_links(params, b);
 	b->setChanged(false);
@@ -375,8 +399,8 @@ void createButton(WidgetParams &params) {
 void createFrame(WidgetParams &params) {
 	auto ep = new EditorFrame(params.s, params.window, params.element->getName(), params.lp);
 	ep->setDefinition(params.element);
-	setElementPosition(params, ep, params.element->getProperties());
-	fixElementSize( ep, params.element->getProperties());
+	setElementPosition(params, ep, params.element);
+	fixElementSize( ep, params.element);
 	if (params.connection != SymbolTable::Null) {
 		ep->setRemoteName(params.remote.asString());
 		ep->setConnection(params.connection.asString());
