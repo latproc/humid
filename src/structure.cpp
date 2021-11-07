@@ -173,12 +173,10 @@ Structure::Structure(Structure *parent, const Structure &other)
 }
 */
 
-
 bool Structure::isA(const std::string &seek) {
 	if (kind == seek) return true;
-	return class_definition && (class_definition->getName() == seek || class_definition->getBase() == seek);
+	return class_definition && (class_definition->isExtension(seek));
 }
-
 
 long Structure::getIntProperty(const std::string name, int default_value) {
 	const Value &val = properties.find(name.c_str());
@@ -330,5 +328,89 @@ bool StructureClass::save(std::ostream &out) {
 }
 
 void Structure::loadBuiltins() {
+	StructureClass *sc = new StructureClass("BUTTON", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("FRAME", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("IMAGE", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("INDICATOR", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("LABEL", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("PLOT", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("PROGRESS", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("SCREEN", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("TEXT", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
 	const std::string keypad = R"()";
+}
+
+bool StructureClass::isExtension(const std::string & seek) {
+	if (name == seek) { return true; }
+	std::string check = base;
+	while (!check.empty()) {
+		if (check == seek) { return true; }
+		auto found = findClass(check);
+		if (!found) break;
+		check = found->base;
+	}
+	return false;
+}
+
+void loadProperties(SymbolTable &properties);
+
+// Structures are added to the list so extensions always follow base classes.
+// Structures can arrive in any order.
+void addStructureClass(StructureClass *new_class, std::list<StructureClass*> &classes) {
+	if (new_class->getBase().empty()) {
+		classes.push_front(new_class);
+	}
+	else {
+		std::cout << "carefully inserting " << new_class->getName() << " (" << new_class->getBase() << ")\n";
+		auto iter = classes.begin();
+		while (iter != classes.end()) {
+			const auto & sc  = *iter;
+			if (sc->getName() == new_class->getBase()) {
+				classes.insert(++iter, new_class);
+				return;
+			}
+			else if (sc->getBase() == new_class->getBase() || sc->getBase() == new_class->getName()) {
+				classes.insert(iter++, new_class);
+				return;
+			}
+			else {
+				++iter;
+			}
+		}
+		classes.push_back(new_class);
+	}
+}
+
+// check structure classes and return a list of detected errors
+std::list<std::string> checkStructureClasses() {
+	std::list<std::string> errors;
+	for (const auto sc : hm_classes) {
+		if (!sc->getBase().empty()) {
+			const auto found = findClass(sc->getBase());
+			if (!found) {
+				std::stringstream ss;
+				ss << "Base structure: " << sc->getBase() << " not found for class: " << sc->getName();
+				errors.push_back(ss.str());
+			}
+		}
+	}
+	return errors;
 }

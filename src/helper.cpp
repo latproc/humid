@@ -115,8 +115,8 @@ Structure *findScreen(const std::string &seek) {
 			if (sc) s->setStructureDefinition(sc);
 		}
 		if (s->getName() == seek && s->getStructureDefinition()
-					&& (s->getStructureDefinition()->getName() == "SCREEN" || s->getStructureDefinition()->getBase() == "SCREEN") )
-				return s;
+					&& s->getStructureDefinition()->isExtension("SCREEN") )
+			return s;
 	}
 	return 0;
 }

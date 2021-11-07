@@ -61,9 +61,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		Structure *s = new Structure(nullptr, "Start_Button", "BUTTON");
 		starters["BUTTON"] = s;
-		StructureClass *sc = new StructureClass("BUTTON", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 
 		s->getProperties().add("width",120);
 		s->getProperties().add("height",60);
@@ -76,9 +73,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Indicator", "INDICATOR");
 		starters["INDICATOR"] = s;
-		sc = new StructureClass("INDICATOR", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 
 		s->getProperties().add("width",120);
 		s->getProperties().add("height",60);
@@ -92,9 +86,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Image", "IMAGE");
 		starters["IMAGE"] = s;
-		sc = new StructureClass("IMAGE", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",128);
 		s->getProperties().add("height",128);
 
@@ -106,9 +97,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Label", "LABEL");
 		starters["LABEL"] = s;
-		sc = new StructureClass("LABEL", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",80);
 		s->getProperties().add("height",40);
 
@@ -120,9 +108,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Text", "TEXT");
 		starters["TEXT"] = s;
-		sc = new StructureClass("TEXT", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",80);
 		s->getProperties().add("height",40);
 
@@ -134,9 +119,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Plot", "PLOT");
 		starters["PLOT"] = s;
-		sc = new StructureClass("PLOT", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",256);
 		s->getProperties().add("height",128);
 
@@ -149,9 +131,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Progress", "PROGRESS");
 		starters["PROGRESS"] = s;
-		sc = new StructureClass("PROGRESS", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",256);
 		s->getProperties().add("height",32);
 
@@ -163,9 +142,6 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		b->setPosition(Vector2i(2,2));
 		s = new Structure(nullptr, "Start_Frame", "FRAME");
 		starters["FRAME"] = s;
-		sc = new StructureClass("FRAME", "");
-		sc->setBuiltIn();
-		hm_classes.push_back(sc);
 		s->getProperties().add("width",128);
 		s->getProperties().add("height",128);
 	}

@@ -69,6 +69,7 @@ public:
 
 	void setBuiltIn() { builtin = true; }
 	bool isBuiltIn() { return builtin; }
+	bool isExtension(const std::string & base);
 
 protected:
 	std::map<std::string, Structure *>global_references;
@@ -136,5 +137,8 @@ private:
 	bool changed_; // in memory copy has been modified
 };
 std::ostream &operator<<(std::ostream &out, const Structure &s);
+
+void addStructureClass(StructureClass *new_class, std::list<StructureClass*> &classes);
+std::list<std::string> checkStructureClasses();
 
 #endif

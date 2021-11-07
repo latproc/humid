@@ -139,7 +139,7 @@ definition_header '{' definition_body '}' {
 				}
 				hps.current_locals.clear();
       }
-      hm_classes.push_back(hps.current_machineclass);
+      addStructureClass(hps.current_machineclass, hm_classes);
       hps.current_machineclass = NULL;
   }
 }
@@ -154,6 +154,8 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL STRUCTURE parameters extension {
     hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
+	delete hps.current_base;
+	hps.current_base = nullptr;
 	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     std::copy(hps.current_parameters.begin(), hps.current_parameters.end(),back_inserter(hps.current_machineclass->getParameters() ));
     hps.current_parameters.clear();
@@ -170,7 +172,9 @@ SYMBOL STRUCTURE parameters {
 }
 | SYMBOL STRUCTURE property_block parameters extension  {
     hps.current_machineclass = new StructureClass($1, hps.current_base->getName());
-		hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
+	delete hps.current_base;
+	hps.current_base = nullptr;
+	hps.current_machineclass->setDefinitionLocation(yyfilename, yylineno);
     hps.properties = hps.property_stack.back();
     hps.property_stack.pop_back();
     hps.current_machineclass->setProperties(hps.properties);

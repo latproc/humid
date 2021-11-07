@@ -249,7 +249,7 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		glfwGetWindowSize(mGLFWWindow, &w, &h);
 		auto monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-	
+		std::cout << "setting monitor resolution: " << size.x() << "," << size.y() << "\n";
 		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
 	}
 }

@@ -552,6 +552,14 @@ int main(int argc, const char ** argv ) {
 				if (!loadProjectFiles(source_files)) {
 					return EXIT_FAILURE;
 				}
+				auto errors = checkStructureClasses();
+				if (!errors.empty()) {
+					std::cerr << "Errors detected:\n";
+					for (const auto error : errors) {
+						std::cerr << "    " << error << "\n";
+					}
+					return EXIT_FAILURE;
+				}
 			}
 			StructureClass *system_class = findClass("SYSTEM");
 			if (!system_class) {
@@ -604,7 +612,6 @@ int main(int argc, const char ** argv ) {
 				height_v.asInteger(height);
 			}
 			if (run_only) {
-				//long width, height;
 				const Value width_v = EditorGUI::systemSettings()->getProperties().find("panel_width");
 				const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
 				width_v.asInteger(width);
