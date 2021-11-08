@@ -52,7 +52,7 @@ void ObjectWindow::rebuildWindow() {
 	}
 	for (auto group : groups) {
 		createTab(group.c_str());
-		if (boost::filesystem::exists(group)) {// load a tag file if given
+		if (boost::filesystem::is_regular_file(group)) {// load a tag file if given
 			std::cout << "tag file found, loading: " << group << " from file\n";
 			createPanelPage(group.c_str(), gui->getObjectWindow()->getPaletteContent());
 		}

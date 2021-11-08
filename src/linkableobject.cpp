@@ -22,7 +22,7 @@
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
 	: widget_(widget), property_name(property), default_value(default_value) {
-		
+
 }
 
 void PropertyLinkTarget::update(const Value &value) {

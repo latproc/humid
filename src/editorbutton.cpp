@@ -290,10 +290,10 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         remote->link(new LinkableIndicator(this));
     }
   }
-  else if (prop == "On Text") {
+  else if (prop == "On text") {
     on_caption = value;
   }
-  else if (prop == "Off Text") {
+  else if (prop == "Off text") {
     setCaption(value);
 
   }
