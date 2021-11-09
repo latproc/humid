@@ -1,0 +1,12 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    active_screen: "dialog",
+    main_window_height: 800,
+    main_window_width: 1400,
+    panel_height: 720,
+    panel_width: 1200,
+    remote_dialog: "P_Dialog",
+    remote_dialog_visibility: "P_DialogVisible",
+    remote_screen: "P_Screen"
+  );

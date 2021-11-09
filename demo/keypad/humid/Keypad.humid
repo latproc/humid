@@ -1,0 +1,204 @@
+KeyButton STRUCTURE EXTENDS BUTTON {
+	OPTION alignment centre;
+	OPTION behaviour 1;
+	OPTION bg_color "0.7408,0.7408,0.7408,1.0000";
+	OPTION bg_on_color "0.3000,0.3000,0.3000,0.0000";
+	OPTION border 1;
+	OPTION connection "CW";
+	OPTION font_size 36;
+	OPTION height 80;
+	OPTION inverted_visibility false;
+	OPTION text_colour "0.0000,0.0000,0.0000,0.0000";
+	OPTION text_on_colour "0.2000,0.2000,0.2000,1.0000";
+	OPTION valign centre;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 80;
+	OPTION wrap 0;
+}
+Keypad STRUCTURE EXTENDS SCREEN {
+  DialogFrame FRAME(
+    border: 1,
+    font_size: 20,
+    height: 611,
+    inverted_visibility: false,
+    pos_x: 617,
+    pos_y: 76,
+    text_colour: "0.0000,0.0000,0.0000,0.0000",
+    text_on_colour: "0.2000,0.2000,0.2000,1.0000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 496,
+    wrap: 0
+  );
+  btn_0 KeyButton(
+    caption: "0",
+    pos_x: 640,
+    pos_y: 476,
+    remote: "keypad_0",
+    width: 180
+  );
+  btn_7 KeyButton(
+    caption: "7",
+    pos_x: 640,
+    pos_y: 200,
+    remote: "keypad_7"
+  );
+  btn_8 KeyButton(
+    caption: "8",
+    pos_x: 740,
+    pos_y: 200,
+    remote: "keypad_8"
+  );
+  btn_4 KeyButton(
+    caption: "4",
+    pos_x: 640,
+    pos_y: 292,
+    remote: "keypad_4"
+  );
+  Untitled_012 KeyButton(
+    caption: "9",
+    pos_x: 840,
+    pos_y: 201,
+    remote: "keypad_9"
+  );
+  btn_5 KeyButton(
+    caption: "5",
+    pos_x: 740,
+    pos_y: 292,
+    remote: "keypad_5"
+  );
+  btn_6 KeyButton(
+    caption: "6",
+    pos_x: 840,
+    pos_y: 292,
+    remote: "keypad_6"
+  );
+  btn_2 KeyButton(
+    caption: "2",
+    pos_x: 740,
+    pos_y: 384,
+    remote: "keypad_2"
+  );
+  btn_1 KeyButton(
+    caption: "1",
+    pos_x: 640,
+    pos_y: 384,
+    remote: "keypad_1"
+  );
+  btn_3 KeyButton(
+    caption: "3",
+    pos_x: 840,
+    pos_y: 384,
+    remote: "keypad_3"
+  );
+  btn_decimal KeyButton(
+    caption: ".",
+    pos_x: 841,
+    pos_y: 476,
+    remote: "keypad_period"
+  );
+  btn_ok KeyButton(
+    caption: "OK",
+    pos_x: 788,
+    pos_y: 576,
+    remote: "keypad_ok",
+    width: 132
+  );
+  btn_backspace KeyButton(
+    caption: "BSPC",
+    pos_x: 948,
+    pos_y: 201,
+    remote: "keypad_backspace"
+  );
+  btn_minus KeyButton(
+    caption: "-",
+    pos_x: 948,
+    pos_y: 292,
+    remote: "keypad_minus"
+  );
+  btn_cancel KeyButton(
+    caption: "Cancel",
+    pos_x: 949,
+    pos_y: 576,
+    width: 132
+  );
+  Message LABEL(
+    alignment: 0,
+    border: 0,
+    caption: "Enter value",
+    connection: "CW",
+    font_size: 36,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 639,
+    pos_y: 95,
+    remote: "dialog.message",
+    text_colour: "0.0247,0.0000,0.9206,1.0000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 389,
+    wrap: 1
+  );
+  Value LABEL(
+    alignment: 1,
+    bg_color: "0.4510,0.6556,0.7464,1.0000",
+    border: 1,
+    caption: "126.3203",
+    connection: "CW",
+    font_size: 36,
+    height: 45,
+    inverted_visibility: false,
+    pos_x: 640,
+    pos_y: 144,
+    remote: "input.value",
+    text_colour: "0.0000,0.0000,0.0000,0.0000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 2,
+    width: 230,
+    wrap: 1
+  );
+  result LABEL(
+    alignment: 1,
+    bg_color: "1.0000,0.7356,0.6349,1.0000",
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 330,
+    pos_y: 76,
+    remote: "output",
+    text_colour: "0.0000,0.0000,0.0000,0.0000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 274,
+    wrap: 1
+  );
+  Untitled_004 BUTTON(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "0.7129,0.7129,0.7129,1.0000",
+    bg_on_color: "0.0000,0.0000,0.0000,0.0000",
+    border: 1,
+    caption: "RST",
+    connection: "CW",
+    font_size: 36,
+    height: 80,
+    inverted_visibility: false,
+    pos_x: 946,
+    pos_y: 476,
+    remote: "keypad_reset",
+    text_colour: "0.0000,0.0000,0.0000,0.0000",
+    text_on_colour: "0.0000,0.0000,0.0000,0.0000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 0
+  );
+}

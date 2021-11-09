@@ -1,0 +1,8 @@
+MainScreen STRUCTURE EXTENDS SCREEN {
+}
+Main MainScreen(
+    file_name: "MainScreen.humid",
+    screen_height: 952,
+    screen_id: 2,
+    screen_width: 1920
+  );

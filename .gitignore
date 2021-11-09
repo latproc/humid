@@ -46,6 +46,7 @@ Thumbs.db
 ._*
 *.lyx?
 .~*
+
 # Language-server/editor support
 tags
 
@@ -61,6 +62,7 @@ ext/
 LocalCMakeLists.txt
 
 #editor files
+*.humid_
 .vscode/
 .project
 .cproject
