@@ -1,0 +1,17 @@
+Screen_Untitled_004 STRUCTURE EXTENDS SCREEN {
+  Untitled_004 LABEL(
+    alignment: 1,
+    border: 1,
+    caption: "Preferences",
+    font_size: 20,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 148,
+    pos_y: 91,
+    text_color: "0.0000,0.0000,0.0000,0.0000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 163,
+    wrap: 1);
+}

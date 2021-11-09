@@ -31,6 +31,7 @@
 
 "<<"                return CONCAT;
 "~"                 return MATCHES;
+\.\.				return RANGEOP;
 16BIT               return WORD;
 32BIT               return DOUBLEWORD;
 ABORT				return ABORT;
@@ -81,10 +82,12 @@ EXTENDS             return EXTENDS;
 EXTRACT             return EXTRACT;
 FIRST               return FIRST;
 FROM				return FROM;
+GENERATE			return GENERATE;
 GLOBAL              return GLOBAL;
 GROUP               return GROUP;
 IGNORE				return IGNORE;
 IGNORES				return IGNORES;
+INDEX				return INDEX;
 INC                 return INC;
 INCLUDE             return INCLUDE;
 INCLUDES            return INCLUDES;
@@ -126,6 +129,7 @@ PROPERTIES          return PROPERTIES;
 PROPERTY			return PROPERTY;
 PUBLISHER			return tokPUBLISHER;
 PUSH				return PUSH;
+RANGE				return RANGE;
 READONLY            return READONLY;
 READWRITE           return READWRITE;
 REMOTE							return REMOTE;

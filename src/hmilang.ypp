@@ -72,7 +72,7 @@ static char *timeout_message_name = 0;
 %token THROW CATCH ABORT RETURN ERROR ERRORS TIMEOUT
 %token REPORTS STATE_CHANGES PROPERTY_CHANGES MODBUS
 %token LINKED SDO LOCAL CLASS STRUCTURE SCREEN
-%token LINK REMOTE ACTION
+%token LINK REMOTE ACTION GENERATE RANGE RANGEOP INDEX
 
 %union {
 	int iVal;
@@ -122,6 +122,7 @@ program_section
 program_section:
 | machine_definition
 | machine_instantiation
+| generator_block
 | error ';'
 | error '}'
 ;
@@ -327,6 +328,30 @@ SYMBOL SYMBOL parameters
 		LinkManager::instance().add_pending(link.first, hps.current_machineclass->getName(), hps.current_machine->getName(), link.second);
 	}
 	hps.current_pending_links.clear();
+}
+;
+
+generator_block:
+GENERATE SYMBOL '{' generator_statements '}' {
+
+}
+;
+
+generator_statements:
+generator_statement
+| generator_statements ';' generator_statement {
+
+}
+
+generator_statement:
+INDEX SYMBOL RANGE INTEGER RANGEOP INTEGER {
+
+}
+| NAME STRINGVAL {
+
+}
+| PROPERTIES property_block {
+
 }
 ;
 

@@ -1,0 +1,7 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    active_screen: "Main",
+    remote_dialog: "P_Dialog",
+    remote_dialog_visibility: "P_DialogVisible",
+    remote_screen: "P_Screen");

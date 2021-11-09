@@ -1,0 +1,6 @@
+dialog Screen_Untitled_003(
+    file_name: "dialog.humid",
+    screen_height: 1080,
+    screen_id: 1,
+    screen_width: 1920,
+    visibility: "counter.dialog.visible");
