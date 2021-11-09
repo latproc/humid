@@ -17,7 +17,7 @@ public:
 	void loadStructure( Structure *s);
 	void clear();
 private:
-	EditorGUI *gui;
-	Structure *current_structure;
+	EditorGUI *gui = nullptr;
+	Structure *current_structure = nullptr;
 };
 
