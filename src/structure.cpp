@@ -225,7 +225,7 @@ const Value &Structure::getValue(const char *name) {
 		return value;
 	}
 	if (class_definition) {
-			return getDefault(name);
+		return getDefault(name);
 	}
 	std::cout << "no class for structure: " << getName() << "\n";
 	return SymbolTable::Null;

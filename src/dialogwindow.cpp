@@ -66,11 +66,17 @@ void DialogWindow::loadStructure(Structure *s) {
 			}
 			std::string kind = element->getKind();
 			if (kind == "FRAME") {
+				StructureClass *element_class = param.machine->getStructureDefinition();
+				if (!element_class) {
+					std::string kind = element->getKind();
+					StructureClass *element_class = findClass(kind);
+					param.machine->setStructureDefinition(element_class);
+				}
 				auto properties = element->getProperties();
-				Value vx = properties.find("pos_x");
-				Value vy = properties.find("pos_y");
-				Value w = properties.find("width");
-				Value h = properties.find("height");
+				Value vx = element->getValue("pos_x");
+				Value vy = element->getValue("pos_y");
+				Value w = element->getValue("width");
+				Value h = element->getValue("height");
 				long x, y;
 				if (vx.asInteger(x) && vy.asInteger(y)) {
 					offset = nanogui::Vector2i(x,y);
@@ -94,8 +100,15 @@ void DialogWindow::loadStructure(Structure *s) {
 				std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
 				continue;
 			}
-			std::string kind = element->getKind();
-			StructureClass *element_class = findClass(kind);
+			StructureClass *element_class = param.machine->getStructureDefinition();
+			if (!element_class) {
+				std::string kind = element->getKind();
+				element_class = findClass(kind);
+				element->setStructureDefinition(element_class);
+				if (!element_class) {
+					std::cout << "cannot find structure definition for " << kind << " when loading screen " << s->getName() << "\n";
+				}
+			}
 
 			WidgetParams params(s, this, element, gui, offset);
 

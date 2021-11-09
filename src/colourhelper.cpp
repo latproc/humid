@@ -100,7 +100,6 @@ nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
 nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 	Value colour(element->getValue(prop));
 	if (colour == SymbolTable::Null) {
-		std::cerr << "---------- unable to find colour " << prop << " on structure " << element->getName() << "\n";
 		colour = defaultForProperty(prop);
 	}
 	if (colour != SymbolTable::Null) {
@@ -123,9 +122,6 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 		else {
 			std::cerr << "unrecognised colour: " << colour << "\n";
 		}
-	}
-	else {
-		std::cerr << "No property " << prop << " on element " << element->getName() << "\n";
 	}
 	return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
 }
