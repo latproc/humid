@@ -1,0 +1,47 @@
+ProgressDemo STRUCTURE EXTENDS SCREEN {
+  progressbar PROGRESS(
+    bg_color: $display.progress_bg,
+    border: 2,
+    fg_color: $display.progress_fg,
+    font_size: 20,
+    height: 35,
+    inverted_visibility: false,
+    pos_x: 75,
+    pos_y: 168,
+    tab_pos: 0,
+    theme: MainTheme,
+    value: $pos,
+    value_scale: $max_pos,
+    value_type: 0,
+    width: 436,
+    wrap: 0,
+    x_scale: 1.000000
+  );
+  progress_label LABEL(
+    alignment: 0,
+    border: 0,
+    caption: $ramp1.label,
+    font_size: 20,
+    height: 32,
+    inverted_visibility: false,
+    pos_x: 76,
+    pos_y: 128,
+    tab_pos: 0,
+    text_colour: "#00000000",
+    theme: MainTheme,
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 163,
+    wrap: 1,
+    x_scale: 1.000000
+  );
+}
+progress_demo ProgressDemo(
+    caption: "demo",
+    file_name: "ProgressDemo.humid",
+    screen_height: 600,
+    screen_id: 1,
+    screen_width: 600,
+    visibility: 1
+  );

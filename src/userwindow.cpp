@@ -392,8 +392,8 @@ CircularBuffer *UserWindow::createBuffer(const std::string name) {
 
 void UserWindow::loadStructure(Structure *s) {
 	StructureClass *sc = findClass(s->getKind());
-	if (sc && (s->getKind() == "SCREEN" || sc->getBase() == "SCREEN") ) {
-		if (sc && !s->getStructureDefinition())
+	if (sc && sc->isExtension("SCREEN")) {
+		if (!s->getStructureDefinition())
 			s->setStructureDefinition(sc);
 		int pnum = 0;
 		for (auto param : sc->getLocals()) {
@@ -408,7 +408,6 @@ void UserWindow::loadStructure(Structure *s) {
 				std::string kind = element->getKind();
 				StructureClass *element_class = findClass(kind);
 				param.machine->setStructureDefinition(element_class);
-				if (element_class) std::cout << "set class for " << param.machine->getName() << " to " << kind << "\n";
 			}
 
 			WidgetParams params(s, window, element, gui, nanogui::Vector2i(0,0));
@@ -445,7 +444,7 @@ void UserWindow::loadStructure(Structure *s) {
 			}
 		}
 	}
-	if (s->getKind() == "SCREEN" || (sc && sc->getBase() == "SCREEN") ) {
+	if (sc && sc->isExtension("SCREEN")) {
 		const Value &title(s->getValue("caption"));
 		//if (title != SymbolTable::Null) window->setTitle(title.asString());
 		PanelScreen *ps = getActivePanel();

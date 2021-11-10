@@ -1,0 +1,10 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    active_screen: "progress_demo",
+    main_window_height: 768,
+    main_window_width: 1024,
+    panel_height: 600,
+    panel_width: 600,
+    remote_screen: "P_Screen"
+  );

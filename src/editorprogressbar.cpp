@@ -63,11 +63,13 @@ void EditorProgressBar::draw(NVGcontext *ctx) {
 	/* the following is based on nanogui::progressbar::draw */
     Widget::draw(ctx);
 
+    int a = border / 2 + 1;
     NVGpaint paint = nvgBoxGradient(
         ctx, mPos.x() + 1, mPos.y() + 1,
         mSize.x()-2, mSize.y(), 3, 4, bg_color, bg_color);
     nvgBeginPath(ctx);
-    nvgRoundedRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 3);
+    nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, mSize.x() - 2*a,
+                    mSize.y() - 2*a, mTheme->mButtonCornerRadius);
     nvgFillPaint(ctx, paint);
     nvgFill(ctx);
 
@@ -81,11 +83,21 @@ void EditorProgressBar::draw(NVGcontext *ctx) {
         fg_color, fg_color);
 
     nvgBeginPath(ctx);
-    nvgRoundedRect(
-        ctx, mPos.x()+1, mPos.y()+1,
-        barPos, mSize.y()-2, 3);
+    nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, barPos - 2*a,
+                    mSize.y() - 2*a, mTheme->mButtonCornerRadius);
     nvgFillPaint(ctx, paint);
     nvgFill(ctx);
+
+    if (border > 0) {
+      nvgBeginPath(ctx);
+      nvgStrokeWidth(ctx, border);
+      int a = border / 2 + 1;
+      nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, mSize.x() - 2*a,
+                    mSize.y() - 2*a, mTheme->mButtonCornerRadius);
+      nvgStrokeColor(ctx, mTheme->mBorderMedium);
+      nvgStroke(ctx);
+    }
+
     if (mSelected)
       drawSelectionBorder(ctx, mPos, mSize);
     else if (EDITOR->isEditMode()) {
@@ -101,6 +113,7 @@ void EditorProgressBar::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
     names.push_back("Foreground Colour");
     names.push_back("Background Colour");
+    names.push_back("Value");
 }
 
 Value EditorProgressBar::getPropertyValue(const std::string &prop) {
@@ -112,10 +125,13 @@ Value EditorProgressBar::getPropertyValue(const std::string &prop) {
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
     return Value(stringFromColour(color()), Value::t_string);
   }
-  if (prop == "Background Colour") {
+  else if (prop == "Background Colour") {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
     return Value(stringFromColour(backgroundColor()), Value::t_string);
+  }
+  else if (prop == "Value") {
+    return this->value();
   }
   return SymbolTable::Null;
 }
@@ -128,11 +144,16 @@ void EditorProgressBar::setProperty(const std::string &prop, const std::string v
     }
   else if (prop == "Foreground Colour") {
     getDefinition()->getProperties().add("fg_color", value);
-    setBackgroundColor(colourFromProperty(getDefinition(), "fg_color"));
+    setColor(colourFromProperty(getDefinition(), "fg_color"));
   }
   else if (prop == "Background Colour") {
     getDefinition()->getProperties().add("bg_color", value);
     setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
+  }
+  else if (prop == "Value") {
+    float val = std::atof(value.c_str());
+    setValue(val);
+    getDefinition()->getProperties().add("value", val);
   }
 }
 

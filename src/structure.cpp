@@ -99,6 +99,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	else if (class_name == "PROGRESS") {
 		properties["Foreground Colour"] = "fg_color";
 		properties["Background Colour"] = "bg_color";
+		properties["Value"] = "value";
 	}
 }
 
@@ -225,7 +226,8 @@ const Value &Structure::getValue(const char *name) {
 		return value;
 	}
 	if (class_definition) {
-		return getDefault(name);
+		const Value & result = getDefault(name);
+		return result;
 	}
 	std::cout << "no class for structure: " << getName() << "\n";
 	return SymbolTable::Null;
@@ -248,7 +250,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const S
 		auto item = *i++;
 		if (!item.second.isNull() && item.second.asString() != "") {
 			const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
-			if (item.second == default_value) { continue; } // don't write unchanged properties
+			//if (item.second == default_value) { continue; } // don't write unchanged properties
 			if (link_map) {
 				auto remote_name = link_map->find(item.first);
 				if (remote_name != link_map->end()) {
