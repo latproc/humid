@@ -135,7 +135,7 @@ void prepare_remote_links(const WidgetParams &params, T *w) {
 				}
 			}
 			else {
-				std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << w->getName() << "\n";
+				//std::cout << "expecting to find linkable property for " << link_info.remote_name << " on " << w->getName() << "\n";
 			}
 		}
 	}
