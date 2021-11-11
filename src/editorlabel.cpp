@@ -70,9 +70,11 @@ void EditorLabel::draw(NVGcontext *ctx) {
       nvgBeginPath(ctx);
       if (border == 0)
         nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
-      else
-        nvgRoundedRect(ctx, mPos.x() + 1.0f, mPos.y() + 1.0f, mSize.x(),
-                 mSize.y(), mTheme->mButtonCornerRadius - 1);
+      else {
+      int a = border / 2+1;
+        nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a, mSize.x()-2*a,
+                 mSize.y()-2*a, mTheme->mButtonCornerRadius);
+      }
       nvgFillColor(ctx, nanogui::Color(mBackgroundColor));
       nvgFill(ctx);
     }
@@ -80,7 +82,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
     if (border > 0) {
       nvgBeginPath(ctx);
       nvgStrokeWidth(ctx, border);
-      int a = border / 2 + 1;
+      int a = border / 2;
       nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, mSize.x() - 2*a,
                     mSize.y() - 2*a, mTheme->mButtonCornerRadius);
       nvgStrokeColor(ctx, mTheme->mBorderMedium);

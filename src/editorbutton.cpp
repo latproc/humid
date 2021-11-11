@@ -372,9 +372,10 @@ void EditorButton::draw(NVGcontext *ctx) {
     }
 
     nvgBeginPath(ctx);
-
-    nvgRoundedRect(ctx, mPos.x()+1, mPos.y()+1, mSize.x()-2, mSize.y()-2, mTheme->mButtonCornerRadius);
-
+    {
+      int a = border/2 + 1;
+      nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
+    }
     if (mImageID == 0) {
       if (mPushed) {
         if (bg_on_color.w() != 0) {
@@ -411,16 +412,18 @@ void EditorButton::draw(NVGcontext *ctx) {
     if (border > 0) {
       nvgBeginPath(ctx);
       nvgStrokeWidth(ctx, border);
-      nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + (mPushed ? 0.5f : 1.5f), mSize.x() - 1,
-                    mSize.y() - 1 - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
-      nvgStrokeColor(ctx, mTheme->mBorderLight);
+      int a = border / 2;
+      nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a +  (mPushed ? -0.5f : +0.5f), mSize.x() - 2*a,
+                    mSize.y() - 2*a - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
+      nvgStrokeColor(ctx, mTheme->mBorderDark);
       nvgStroke(ctx);
-
+#if 0
       nvgBeginPath(ctx);
       nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - 1,
                     mSize.y() - 2, mTheme->mButtonCornerRadius);
       nvgStrokeColor(ctx, mTheme->mBorderDark);
       nvgStroke(ctx);
+#endif
     }
  
     int fontSize = mFontSize == -1 ? mTheme->mButtonFontSize : mFontSize;
