@@ -403,8 +403,9 @@ void UserWindow::loadStructure(Structure *s) {
 				std::cout << "Warning: no structure for parameter " << pnum << "of " << s->getName() << "\n";
 				continue;
 			}
-			StructureClass *element_class = param.machine->getStructureDefinition();
-			if (!element_class) {
+
+			StructureClass *element_class = findClass(element->getKind());
+			if (false && !element_class) {
 				std::string kind = element->getKind();
 				StructureClass *element_class = findClass(kind);
 				param.machine->setStructureDefinition(element_class);

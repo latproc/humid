@@ -229,7 +229,22 @@ const Value &Structure::getValue(const char *name) {
 		const Value & result = getDefault(name);
 		return result;
 	}
-	std::cout << "no class for structure: " << getName() << "\n";
+	else {
+		auto sc = findClass(getKind());
+		if (sc) {
+			const Value & result = sc->getDefaults().find(name);
+			if (!result.isNull()) {
+				return result;
+			}
+			else {
+				return SymbolTable::Null;
+			}
+		}
+		else { 
+			std::cerr << "no class: " << getKind() << "\n";
+		}
+	}
+	std::cerr << "no class for structure: " << getName() << "\n";
 	return SymbolTable::Null;
 }
 
