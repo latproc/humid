@@ -207,7 +207,7 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
   if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }
-  if (prop == "Text colour") {
+  if (prop == "Text Colour") {
     getDefinition()->getProperties().add("text_colour", value);
     setTextColor(colourFromProperty(getDefinition(), "text_colour"));
   }
