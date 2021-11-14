@@ -1,6 +1,4 @@
-PROJECTSETTINGS STRUCTURE(
-    asset_path: "."
-  ) {
+PROJECTSETTINGS STRUCTURE {
   CW CONNECTION(
     channel: PANEL_CHANNEL,
     host: localhost,

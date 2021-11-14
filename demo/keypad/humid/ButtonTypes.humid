@@ -1,0 +1,36 @@
+KeyButton STRUCTURE EXTENDS BUTTON {
+	OPTION alignment centre;
+	OPTION behaviour 1;
+	OPTION bg_color "0.7408,0.7408,0.7408,1.0000";
+	OPTION bg_on_color "0.3000,0.3000,0.3000,0.0000";
+	OPTION border 1;
+	OPTION connection "CW";
+	OPTION font_size 36;
+	OPTION height 80;
+	OPTION inverted_visibility false;
+	OPTION text_colour "0.0000,0.0000,0.0000,0.0000";
+	OPTION text_on_colour "0.2000,0.2000,0.2000,1.0000";
+	OPTION valign centre;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 80;
+	OPTION wrap 0;
+}
+KeyboardButton STRUCTURE EXTENDS BUTTON {
+	OPTION alignment centre;
+	OPTION behaviour 1;
+	OPTION bg_color "0.7408,0.7408,0.7408,1.0000";
+	OPTION bg_on_color "0.3000,0.3000,0.3000,0.0000";
+	OPTION border 1;
+	OPTION connection "CW";
+	OPTION font_size 36;
+	OPTION height 40;
+	OPTION inverted_visibility false;
+	OPTION text_colour "0.0000,0.0000,0.0000,0.0000";
+	OPTION text_on_colour "0.2000,0.2000,0.2000,1.0000";
+	OPTION valign centre;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 40;
+	OPTION wrap 0;
+}

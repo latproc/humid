@@ -416,7 +416,6 @@ void addStructureClass(StructureClass *new_class, std::list<StructureClass*> &cl
 		classes.push_front(new_class);
 	}
 	else {
-		std::cout << "carefully inserting " << new_class->getName() << " (" << new_class->getBase() << ")\n";
 		auto iter = classes.begin();
 		while (iter != classes.end()) {
 			const auto & sc  = *iter;

@@ -1,7 +1,7 @@
 SYSTEM STRUCTURE {
 }
 System SYSTEM(
-    active_screen: "dialog",
+    active_screen: "keyboard_dialog",
     main_window_height: 800,
     main_window_width: 1400,
     panel_height: 720,

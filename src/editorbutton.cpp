@@ -100,7 +100,7 @@ namespace {
 void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
   if (!getDefinition()) return;
   std::string conn("");
-  if (getDefinition()->isA("BUTTON") && getDefinition()->getKind() != "INDICATOR") {
+  if (!getDefinition()->isA("INDICATOR")) {
     EditorGUI *gui = egui;
     if (lp) {
       lp->link(new LinkableIndicator(this));

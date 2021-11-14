@@ -1,9 +1,18 @@
 # Keypad support
 
-P_Dialog VARIABLE (export:str, strlen:50) "dialog";
-P_DialogVisible VARIABLE(export: ro) 0;
+# The keypad accepts a key press and appends it to the output
+# value. Backspace removes the last item in the output.
+# A period is only valid once within the output so extra
+# presses of the period button do nothing.
+# A minus is only valid as the first character of the output.
+#
+# The keypad is designed to return the output value to the
+# linked form field when OK is pressed and to clear the output
+# when cancel is pressed.
 
-dialog MessageBox(message: "Enter value");
+# Humid will need to have a screen with the same name
+# as this message box.
+keypad MessageBox(message: "Enter value");
 
 keypad_0 KeyButton(value:"0") input;
 keypad_1 KeyButton(value:"1") input;
@@ -18,92 +27,12 @@ keypad_9 KeyButton(value:"9") input;
 keypad_period KeyButton(value:".") input;
 keypad_minus KeyButton(value: "-" ) input;
 keypad_backspace BackspaceButton input;
-keypad_ok OkButton input, output;
-keypad_cancel CancelButton dialog;
+keypad_ok OkButton input, output, keypad;
+keypad_cancel CancelButton keypad;
 keypad_reset ResetButton output, input;
 
-input TextField;
-output VARIABLE (export:str, strlen:50) "";
-period_button_monitor PeriodMonitor input, keypad_period;
-minus_button_monitor MinusMonitor input, keypad_minus;
-
-KeyButton MACHINE input {
-    OPTION value "";
-    OPTION export rw;
-    off INITIAL;
-    on STATE;
-
-    ENTER on { input.value := input.value + value; }
-}
-
-BackspaceButton MACHINE input {
-    OPTION export rw;
-    off INITIAL;
-    on STATE;
-    ENTER on { input.value := COPY `(.*).` FROM input.value }
-}
-
-TextField MACHINE {
-    OPTION value "";
-    EXPORT READWRITE STRING 50 value;
-}
-
-OkButton MACHINE input, output {
-    OPTION export rw;
-    off INITIAL;
-    on STATE;
-    ENTER on {
-        output.VALUE := input.value;
-        input.value := ""
-    }
-}
-
-ResetButton MACHINE source, dest {
-    OPTION export rw;
-    off INITIAL;
-    on STATE;
-    ENTER on {
-        dest.value := source.VALUE;
-    }
-}
-
-CancelButton MACHINE keypad {
-    COMMAND cancel { SET keypad TO invisible; }
-}
-
-PeriodMonitor MACHINE input, button {
-    # There can only be one period (full-stop) in a value
-    OPTION last "";
-    idle WHEN last == input.value;
-    disabling WHEN input.value MATCHES `.*\..*` AND button ENABLED;
-    enabling WHEN input.value MATCHES `^[^.]*$` AND button DISABLED;
-    updating DEFAULT;
-    ENTER disabling { DISABLE button; }
-    ENTER enabling { ENABLE button; }
-    ENTER updating { last := input.value; }
-}
-
-MinusMonitor MACHINE input, button {
-    # A minus character can only be entered as the first character in the field
-    OPTION last "";
-    idle WHEN last == input.value;
-    disabling WHEN input.value MATCHES `.` AND button ENABLED;
-    enabling WHEN input.value MATCHES `^$` AND button DISABLED;
-    updating DEFAULT;
-    ENTER disabling { DISABLE button; }
-    ENTER enabling { ENABLE button; }
-    ENTER updating { last := input.value; }
-}
-
-MessageBox MACHINE {
-  OPTION message "Hello World";
-  EXPORT STATES invisible, visible;
-  EXPORT READONLY STRING 120 message;
-
-  visible STATE;
-  invisible INITIAL;
-
-  ENTER visible { P_DialogVisible.VALUE := 1; }
-  ENTER invisible { P_DialogVisible.VALUE := 0; }
-}
+input TextField; # A copy of the form value as input to the keypad
+output VARIABLE (export:str, strlen:50) ""; # the result of keypad entry
+period_button_monitor PeriodMonitor input, keypad_period; # validating period
+minus_button_monitor MinusMonitor input, keypad_minus; # validating minus
 

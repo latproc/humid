@@ -1,5 +1,5 @@
-dialog Keypad(
-    file_name: "KeypadDialog.humid",
+keyboard_dialog Keyboard(
+    file_name: "KeyboardDialog.humid",
     screen_height: 720,
     screen_id: 1,
     screen_width: 1200

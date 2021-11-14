@@ -1,0 +1,424 @@
+Keyboard STRUCTURE EXTENDS SCREEN {
+  DialogFrame FRAME(
+    border: 1,
+    font_size: 20,
+    height: 347,
+    inverted_visibility: false,
+    pos_x: 32,
+    pos_y: 35,
+    text_colour: "0.0000,0.0000,0.0000,0.0000",
+    text_on_colour: "0.2000,0.2000,0.2000,1.0000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 784,
+    wrap: 0
+  );
+  btn_ok KeyButton(
+    caption: "OK",
+    height: 59,
+    pos_x: 686,
+    pos_y: 228,
+    remote: "kbd_ok",
+    width: 82
+  );
+  btn_backspace KeyButton(
+    caption: "BSPC",
+    height: 58,
+    pos_x: 688,
+    pos_y: 101,
+    remote: "kbd_backspace",
+    width: 80
+  );
+  btn_cancel KeyButton(
+    caption: "Cancel",
+    height: 58,
+    pos_x: 684,
+    pos_y: 291,
+    remote: "kbd_cancel",
+    width: 84
+  );
+  Message LABEL(
+    alignment: 0,
+    border: 0,
+    caption: "Enter description",
+    connection: "CW",
+    font_size: 36,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 51,
+    pos_y: 49,
+    remote: "keyboard_dialog.message",
+    text_colour: "#0600ea",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 244,
+    wrap: 1
+  );
+  Value LABEL(
+    alignment: 1,
+    bg_color: "#73a7be",
+    border: 1,
+    caption: "126.3203",
+    connection: "CW",
+    font_size: 36,
+    height: 45,
+    inverted_visibility: false,
+    pos_x: 308,
+    pos_y: 47,
+    remote: "kbd_input.value",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 2,
+    width: 457,
+    wrap: 1
+  );
+  result LABEL(
+    alignment: 1,
+    bg_color: "#ffbba1",
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 245,
+    pos_y: 414,
+    remote: "kbd_output",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 274,
+    wrap: 1
+  );
+  Untitled_004 KeyButton(
+    caption: "RST",
+    height: 60,
+    pos_x: 688,
+    pos_y: 164,
+    remote: "kbd_reset",
+    width: 80
+  );
+  kbd_1 KeyboardButton(
+    caption: "1",
+    height: 60,
+    pos_x: 50,
+    pos_y: 100,
+    remote: "kbd_1",
+    width: 60
+  );
+  kbd_2 KeyboardButton(
+    caption: "2",
+    height: 60,
+    pos_x: 113,
+    pos_y: 100,
+    remote: "kbd_2",
+    width: 60
+  );
+  kbd_3 KeyboardButton(
+    caption: "3",
+    height: 60,
+    pos_x: 176,
+    pos_y: 100,
+    remote: "kbd_3",
+    width: 60
+  );
+  kbd_4 KeyboardButton(
+    caption: "4",
+    height: 60,
+    pos_x: 239,
+    pos_y: 100,
+    remote: "kbd_4",
+    width: 60
+  );
+  kbd_5 KeyboardButton(
+    caption: "5",
+    height: 60,
+    pos_x: 302,
+    pos_y: 100,
+    remote: "kbd_5",
+    width: 60
+  );
+  kbd_6 KeyboardButton(
+    caption: "6",
+    height: 60,
+    pos_x: 365,
+    pos_y: 100,
+    remote: "kbd_6",
+    width: 60
+  );
+  kbd_7 KeyboardButton(
+    caption: "7",
+    height: 60,
+    pos_x: 428,
+    pos_y: 100,
+    remote: "kbd_7",
+    width: 60
+  );
+  kbd_8 KeyboardButton(
+    caption: "8",
+    height: 60,
+    pos_x: 491,
+    pos_y: 100,
+    remote: "kbd_8",
+    width: 60
+  );
+  kbd_9 KeyboardButton(
+    caption: "9",
+    height: 60,
+    pos_x: 554,
+    pos_y: 100,
+    remote: "kbd_9",
+    width: 60
+  );
+  kbd_0 KeyboardButton(
+    caption: "0",
+    height: 60,
+    pos_x: 617,
+    pos_y: 100,
+    remote: "kbd_0",
+    width: 60
+  );
+  kbd_Q KeyboardButton(
+    caption: "Q",
+    height: 60,
+    pos_x: 50,
+    pos_y: 163,
+    remote: "kbd_Q",
+    width: 60
+  );
+  kbd_W KeyboardButton(
+    caption: "W",
+    height: 60,
+    pos_x: 113,
+    pos_y: 163,
+    remote: "kbd_W",
+    width: 60
+  );
+  kbd_E KeyboardButton(
+    caption: "E",
+    height: 60,
+    pos_x: 176,
+    pos_y: 163,
+    remote: "kbd_E",
+    width: 60
+  );
+  kbd_R KeyboardButton(
+    caption: "R",
+    height: 60,
+    pos_x: 239,
+    pos_y: 163,
+    remote: "kbd_R",
+    width: 60
+  );
+  kbd_T KeyboardButton(
+    caption: "T",
+    height: 60,
+    pos_x: 302,
+    pos_y: 163,
+    remote: "kbd_T",
+    width: 60
+  );
+  kbd_Y KeyboardButton(
+    caption: "Y",
+    height: 60,
+    pos_x: 365,
+    pos_y: 163,
+    remote: "kbd_Y",
+    width: 60
+  );
+  kbd_U KeyboardButton(
+    caption: "U",
+    height: 60,
+    pos_x: 428,
+    pos_y: 163,
+    remote: "kbd_U",
+    width: 60
+  );
+  kbd_I KeyboardButton(
+    caption: "I",
+    height: 60,
+    pos_x: 491,
+    pos_y: 163,
+    remote: "kbd_I",
+    width: 60
+  );
+  kbd_O KeyboardButton(
+    caption: "O",
+    height: 60,
+    pos_x: 554,
+    pos_y: 163,
+    remote: "kbd_O",
+    width: 60
+  );
+  kbd_P KeyboardButton(
+    caption: "P",
+    height: 60,
+    pos_x: 617,
+    pos_y: 163,
+    remote: "kbd_P",
+    width: 60
+  );
+  kbd_A KeyboardButton(
+    caption: "A",
+    height: 60,
+    pos_x: 50,
+    pos_y: 226,
+    remote: "kbd_A",
+    width: 60
+  );
+  kbd_S KeyboardButton(
+    caption: "S",
+    height: 60,
+    pos_x: 113,
+    pos_y: 226,
+    remote: "kbd_S",
+    width: 60
+  );
+  kbd_D KeyboardButton(
+    caption: "D",
+    height: 60,
+    pos_x: 176,
+    pos_y: 226,
+    remote: "kbd_D",
+    width: 60
+  );
+  kbd_F KeyboardButton(
+    caption: "F",
+    height: 60,
+    pos_x: 239,
+    pos_y: 226,
+    remote: "kbd_F",
+    width: 60
+  );
+  kbd_G KeyboardButton(
+    caption: "G",
+    height: 60,
+    pos_x: 302,
+    pos_y: 226,
+    remote: "kbd_G",
+    width: 60
+  );
+  kbd_H KeyboardButton(
+    caption: "H",
+    height: 60,
+    pos_x: 365,
+    pos_y: 226,
+    remote: "kbd_H",
+    width: 60
+  );
+  kbd_J KeyboardButton(
+    caption: "J",
+    height: 60,
+    pos_x: 428,
+    pos_y: 226,
+    remote: "kbd_J",
+    width: 60
+  );
+  kbd_K KeyboardButton(
+    caption: "K",
+    height: 60,
+    pos_x: 491,
+    pos_y: 226,
+    remote: "kbd_K",
+    width: 60
+  );
+  kbd_L KeyboardButton(
+    caption: "L",
+    height: 60,
+    pos_x: 554,
+    pos_y: 226,
+    remote: "kbd_L",
+    width: 60
+  );
+  kbd_colon KeyboardButton(
+    caption: ":",
+    height: 60,
+    pos_x: 617,
+    pos_y: 226,
+    remote: "kbd_colon",
+    width: 60
+  );
+  kbd_Z KeyboardButton(
+    caption: "Z",
+    height: 60,
+    pos_x: 50,
+    pos_y: 289,
+    remote: "kbd_Z",
+    width: 60
+  );
+  kbd_X KeyboardButton(
+    caption: "X",
+    height: 60,
+    pos_x: 113,
+    pos_y: 289,
+    remote: "kbd_X",
+    width: 60
+  );
+  kbd_C KeyboardButton(
+    caption: "C",
+    height: 60,
+    pos_x: 176,
+    pos_y: 289,
+    remote: "kbd_C",
+    width: 60
+  );
+  kbd_V KeyboardButton(
+    caption: "V",
+    height: 60,
+    pos_x: 239,
+    pos_y: 289,
+    remote: "kbd_V",
+    width: 60
+  );
+  kbd_B KeyboardButton(
+    caption: "B",
+    height: 60,
+    pos_x: 302,
+    pos_y: 289,
+    remote: "kbd_B",
+    width: 60
+  );
+  kbd_N KeyboardButton(
+    caption: "N",
+    height: 60,
+    pos_x: 365,
+    pos_y: 289,
+    remote: "kbd_N",
+    width: 60
+  );
+  kbd_M KeyboardButton(
+    caption: "M",
+    height: 60,
+    pos_x: 428,
+    pos_y: 289,
+    remote: "kbd_M",
+    width: 60
+  );
+  kbd_comma KeyboardButton(
+    caption: ",",
+    height: 60,
+    pos_x: 491,
+    pos_y: 289,
+    remote: "kbd_comma",
+    width: 60
+  );
+  kbd_period KeyboardButton(
+    caption: ".",
+    height: 60,
+    pos_x: 554,
+    pos_y: 289,
+    remote: "kbd_period",
+    width: 60
+  );
+  kbd_slash KeyboardButton(
+    caption: "/",
+    height: 60,
+    pos_x: 617,
+    pos_y: 289,
+    remote: "kbd_slash",
+    width: 60
+  );
+}
