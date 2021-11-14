@@ -1,0 +1,11 @@
+PROJECTSETTINGS STRUCTURE(
+    asset_path: "."
+  ) {
+  Remote CONNECTION(
+    host: localhost,
+    port: 5555
+  );
+}
+ProjectSettings PROJECTSETTINGS(
+    asset_path: "."
+  );

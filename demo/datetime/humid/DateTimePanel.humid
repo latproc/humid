@@ -1,0 +1,363 @@
+DateTimeButton STRUCTURE EXTENDS BUTTON {
+	OPTION alignment centre;
+	OPTION behaviour 1;
+	OPTION bg_color "#6688cc";
+	OPTION bg_on_color "#00000000";
+	OPTION border 1;
+	OPTION font_size 36;
+	OPTION height 48;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION text_on_colour "#00000000";
+	OPTION valign centre;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION wrap 0;
+}
+DateTimeSeparator STRUCTURE EXTENDS LABEL {
+	OPTION alignment 1;
+	OPTION border 0;
+	OPTION caption "/";
+	OPTION font_size 36;
+	OPTION height 60;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION valign 1;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 40;
+	OPTION wrap 1;
+}
+DateTimeLabel STRUCTURE EXTENDS LABEL {
+	OPTION alignment 1;
+	OPTION border 0;
+	OPTION font_size 20;
+	OPTION height 36;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION valign 1;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION wrap 1;
+}
+DateTimePanel STRUCTURE EXTENDS SCREEN {
+  hour_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Hour",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 49,
+    pos_y: 191,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 107,
+    wrap: 1
+  );
+  hour DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "00",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 49,
+    pos_y: 231,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 109,
+    wrap: 0
+  );
+  minutes_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Minute",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 191,
+    pos_y: 191,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 1
+  );
+  minutes DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "00",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 191,
+    pos_y: 231,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 0
+  );
+  seconds_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Second",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 304,
+    pos_y: 191,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 1
+  );
+  seconds DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "00",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 305,
+    pos_y: 231,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 0
+  );
+  hm_sep DateTimeSeparator(
+    alignment: 1,
+    border: 0,
+    caption: ":",
+    font_size: 36,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 156,
+    pos_y: 224,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 40,
+    wrap: 1
+  );
+  ms_sep DateTimeSeparator(
+    alignment: 1,
+    border: 0,
+    caption: ":",
+    font_size: 36,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 270,
+    pos_y: 224,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 40,
+    wrap: 1
+  );
+  year_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Year",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 49,
+    pos_y: 88,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 107,
+    wrap: 1
+  );
+  year DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "0000",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 49,
+    pos_y: 128,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 109,
+    wrap: 0
+  );
+  month_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Month",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 191,
+    pos_y: 88,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 1
+  );
+  month DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "00",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 191,
+    pos_y: 128,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 0
+  );
+  day_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Day",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 304,
+    pos_y: 88,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 1
+  );
+  day DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "00",
+    font_size: 36,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 305,
+    pos_y: 128,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 0
+  );
+  ym_sep DateTimeSeparator(
+    alignment: 1,
+    border: 0,
+    caption: "/",
+    font_size: 36,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 156,
+    pos_y: 121,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 40,
+    wrap: 1
+  );
+  md_sep DateTimeSeparator(
+    alignment: 1,
+    border: 0,
+    caption: "/",
+    font_size: 36,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 270,
+    pos_y: 121,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 40,
+    wrap: 1
+  );
+  time_zone_label DateTimeLabel(
+    alignment: 1,
+    border: 0,
+    caption: "Time Zone",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 53,
+    pos_y: 306,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 107,
+    wrap: 1
+  );
+  time_zone DateTimeButton(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#6688cc",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "Australia/Adelaide",
+    font_size: 20,
+    height: 48,
+    inverted_visibility: false,
+    pos_x: 164,
+    pos_y: 303,
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 220,
+    wrap: 0
+  );
+}
+date_time_panel DateTimePanel(
+    screen_id: 1
+  );

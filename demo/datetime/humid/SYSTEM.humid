@@ -1,0 +1,8 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    remote_screen: "P_Screen",
+	panel_width: 800,
+	panel_height: 600,
+	active_screen: date_time_panel
+  );
