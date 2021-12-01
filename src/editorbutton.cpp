@@ -38,7 +38,7 @@ const std::map<std::string, std::string> & EditorButton::reverse_property_map() 
 namespace {
 
   int intFromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
-    switch(align) { 
+    switch(align) {
       case EditorButton::HorizontalAlignment::Left: return NVG_ALIGN_LEFT;
       case EditorButton::HorizontalAlignment::Centre: return NVG_ALIGN_CENTER;
       case EditorButton::HorizontalAlignment::Right: return NVG_ALIGN_RIGHT;
@@ -46,7 +46,7 @@ namespace {
   }
 
   std::string fromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
-    switch(align) { 
+    switch(align) {
       case EditorButton::HorizontalAlignment::Left: return "left";
       case EditorButton::HorizontalAlignment::Centre: return "centre";
       case EditorButton::HorizontalAlignment::Right: return "right";
@@ -68,7 +68,7 @@ namespace {
   }
 
   int intFromVerticalAlignment(EditorButton::VerticalAlignment align) {
-    switch(align) { 
+    switch(align) {
       case EditorButton::VerticalAlignment::Top: return NVG_ALIGN_LEFT;
       case EditorButton::VerticalAlignment::Centre: return NVG_ALIGN_CENTER;
       case EditorButton::VerticalAlignment::Bottom: return NVG_ALIGN_RIGHT;
@@ -76,7 +76,7 @@ namespace {
   }
 
   std::string fromVerticalAlignment(EditorButton::VerticalAlignment align) {
-    switch(align) { 
+    switch(align) {
       case EditorButton::VerticalAlignment::Top: return "top";
       case EditorButton::VerticalAlignment::Centre: return "centre";
       case EditorButton::VerticalAlignment::Bottom: return "bottom";
@@ -106,13 +106,13 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
       lp->link(new LinkableIndicator(this));
       setRemote(lp);
     }
-    if (getRemote()) 
+    if (getRemote())
       conn = getRemote()->group();
     else
       conn = getConnection();
       //if (!flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton)
       //  getRemote()->link(new LinkableIndicator(this));
-    
+
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
       if (cmd.length()) {
@@ -140,7 +140,7 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
       const std::string &conn = getRemote()->group();
       if (getRemote()) {
         if ( !(flags() & nanogui::Button::NormalButton ) )  {
-          if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
+          if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) {
             gui->queueMessage(conn,
               gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){std::cout << s << "\n"; });
           }
@@ -161,7 +161,7 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
 
 
 EditorButton::EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp, const std::string &caption, bool toggle, int icon)
-	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle), 
+	: Button(parent, caption, icon), EditorWidget(owner, "BUTTON", btn_name, this, lp), is_toggle(toggle),
     alignment(HorizontalAlignment::Centre), valign(VerticalAlignment::Centre), wrap_text(false), shadow(1) {
     setPushed(false);
     bg_on_color = mBackgroundColor;
@@ -329,7 +329,7 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     image_alpha = std::atof(value.c_str());
   }
   if (prop == "Enabled" && getDefinition()->getKind() != "INDICATOR") {
-    mEnabled = (value == "1" || value == "true" || value == "TRUE");   
+    mEnabled = (value == "1" || value == "true" || value == "TRUE");
     if (!mEnabled) {
       setBackgroundColor(nanogui::Color(0.7f, 0.7f, 0.7f, 1.0f));
       setTextColor(nanogui::Color(0.8f, 0.8f, 0.8f, 1.0f));
@@ -367,8 +367,10 @@ void EditorButton::draw(NVGcontext *ctx) {
     }
 
     nvgSave(ctx);
+    nanogui::Vector2i offset(0,0);
     if (mImageID != 0 && mPushed) {
-      nvgTranslate(ctx, 1, 2);
+      offset = {1,2};
+      nvgTranslate(ctx, offset.x(), offset.y());
     }
 
     nvgBeginPath(ctx);
@@ -376,39 +378,42 @@ void EditorButton::draw(NVGcontext *ctx) {
       int a = border/2 + 1;
       nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
     }
-    if (mImageID == 0) {
-      if (mPushed) {
-        if (bg_on_color.w() != 0) {
-          nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
-          nvgFill(ctx);
-          gradTop.a = gradBot.a = 0.0f;
-        }  
-        else if (mBackgroundColor.w() != 0) {
-          nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
-          nvgFill(ctx);
-          double v = 1 - mBackgroundColor.w();
-          gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
-        }  
+    if (mPushed) {
+      if (bg_on_color.w() != 0) {
+        nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
+        nvgFill(ctx);
+        gradTop.a = gradBot.a = 0.0f;
       }
       else if (mBackgroundColor.w() != 0) {
-        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
+        nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
         nvgFill(ctx);
         double v = 1 - mBackgroundColor.w();
         gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
       }
+    }
+    else if (mBackgroundColor.w() != 0) {
+      nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
+      nvgFill(ctx);
+      double v = 1 - mBackgroundColor.w();
+      gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
+    }
 
+    if (!getDefinition()->isA("INDICATOR")) {
       NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
                                       mPos.y() + mSize.y(), gradTop, gradBot);
-
       nvgFillPaint(ctx, bg);
       nvgFill(ctx);
     }
-    else {
+    if (mImageID != 0) {
+      nvgBeginPath(ctx);
+      {
+        int a = border/2 + 1;
+        nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
+      }
       NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 0, mImageID, image_alpha);
       nvgFillPaint(ctx, img);
       nvgFill(ctx);
     }
-
     if (border > 0) {
       nvgBeginPath(ctx);
       nvgStrokeWidth(ctx, border);
@@ -425,7 +430,7 @@ void EditorButton::draw(NVGcontext *ctx) {
       nvgStroke(ctx);
 #endif
     }
- 
+
     int fontSize = mFontSize == -1 ? mTheme->mButtonFontSize : mFontSize;
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
@@ -493,7 +498,7 @@ void EditorButton::draw(NVGcontext *ctx) {
         }
     }
 
-    // we are using two separate alignments: 1,2,4 so we 
+    // we are using two separate alignments: 1,2,4 so we
     // convert the default alignment from nanogui here
     int align = intFromHorizontalAlignment(alignment);
 
@@ -504,14 +509,14 @@ void EditorButton::draw(NVGcontext *ctx) {
     int label_y = textPos.y();
 
     if (alignment == HorizontalAlignment::Right) {
-      label_x = mPos.x() + mSize.x()-5; 
+      label_x = mPos.x() + mSize.x()-5;
     }
     else if (alignment == HorizontalAlignment::Centre) {
       label_x = wrap_text ? textPos.x() : mPos.x() + mSize.x()/2;
     }
     else
       label_x = mPos.x();
-    
+
     int alignv = 0;
     if (valign == VerticalAlignment::Top) {
       label_y = mPos.y();
@@ -671,7 +676,7 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
           const Value &rmt_v = getDefinition()->getValue("remote");
           if (rmt_v != SymbolTable::Null)
             return rmt_v.asString();
-        } 
+        }
         return "";
       });
     properties->addVariable<std::string> (
