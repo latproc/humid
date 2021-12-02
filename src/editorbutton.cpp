@@ -398,7 +398,7 @@ void EditorButton::draw(NVGcontext *ctx) {
       gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
     }
 
-    if (!getDefinition()->isA("INDICATOR")) {
+    if (!getDefinition()->isA("INDICATOR") && !mImageID) {
       NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
                                       mPos.y() + mSize.y(), gradTop, gradBot);
       nvgFillPaint(ctx, bg);
