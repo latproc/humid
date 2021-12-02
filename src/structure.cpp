@@ -101,6 +101,10 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Background Colour"] = "bg_color";
 		properties["Value"] = "value";
 	}
+	else if (class_name == "COMBOBOX") {
+		properties["Text Colour"] = "text_colour";
+		properties["Background Colour"] = "bg_color";
+	}
 }
 
 StructureClass::StructureClass(const std::string class_name)
@@ -384,6 +388,9 @@ void Structure::loadBuiltins() {
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("PROGRESS", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("COMBOBOX", "");
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("SCREEN", "");

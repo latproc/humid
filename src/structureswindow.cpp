@@ -144,6 +144,19 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		starters["FRAME"] = s;
 		s->getProperties().add("width",128);
 		s->getProperties().add("height",128);
+
+	{
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "COMBOBOX", this, cell, 0, "COMBOBOX", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure(nullptr, "Start_ComboBox", "COMBOBOX");
+		starters["COMBOBOX"] = s;
+		s->getProperties().add("width",80);
+		s->getProperties().add("height",40);
+	}
 	}
 
 }

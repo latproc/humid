@@ -7,6 +7,7 @@
 #include "editorlineplot.h"
 #include "editorbutton.h"
 #include "editorframe.h"
+#include "editorcombobox.h"
 #include <nanogui/button.h>
 #include "helper.h"
 #include "linkmanager.h"
@@ -415,6 +416,36 @@ void createFrame(WidgetParams &params) {
 	if (params.lp)
 		params.lp->link(new LinkableNumber(ep));
 	if (params.visibility) ep->setVisibilityLink(params.visibility);
+}
+
+void createComboBox(WidgetParams &params) {
+	EditorComboBox *el = new EditorComboBox(params.s, params.window, params.element->getName(), params.lp,
+		new std::vector<std::string>());
+	el->setName(params.element->getName());
+	el->setDefinition(params.element);
+	if (params.theme.get()) { el->setTheme(params.theme); }
+	setElementPosition(params, el, params.element);
+	fixElementSize( el, params.element);
+	if (params.connection != SymbolTable::Null) {
+		el->setRemoteName(params.remote.asString());
+		el->setConnection(params.connection.asString());
+	}
+	if (params.font_size) el->setFontSize(params.font_size);
+	Value bg_colour(params.element->getValue("bg_color"));
+	if (bg_colour != SymbolTable::Null)
+		el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
+	Value text_colour(params.element->getValue("text_colour"));
+	if (text_colour != SymbolTable::Null)
+		el->setTextColor(colourFromProperty(params.element, "text_colour"));
+	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
+	if (params.value_type != -1) el->setValueType(params.value_type);
+	if (params.value_scale != 1.0) el->setValueScale( params.value_scale );
+	if (params.tab_pos) el->setTabPosition(params.tab_pos);
+	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
+	el->setInvertedVisibility(params.ivis);
+	if (params.visibility) el->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, el);
+	el->setChanged(false);
 }
 
 

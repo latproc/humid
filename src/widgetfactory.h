@@ -45,4 +45,5 @@ void createText(WidgetParams &params);
 void createPlot(WidgetParams &params);
 void createButton(WidgetParams &params);
 void createFrame(WidgetParams &params);
+void createComboBox(WidgetParams &params);
 

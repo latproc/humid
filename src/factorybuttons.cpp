@@ -16,6 +16,7 @@
 #include "editorimageview.h"
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
+#include "editorcombobox.h"
 #include "editorframe.h"
 #include "editorgui.h"
 #include "factorybuttons.h"
@@ -121,6 +122,12 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "PROGRESS") {
 		EditorProgressBar *ep = new EditorProgressBar(parent, window, generated_name, nullptr);
+		s->setName(ep->getName());
+		ep->setDefinition(s);
+		result = ep;
+	}
+	else if (sc->getName() == "COMBOBOX") {
+		EditorComboBox *ep = new EditorComboBox(parent, window, generated_name, nullptr,new std::vector<std::string>);
 		s->setName(ep->getName());
 		ep->setDefinition(s);
 		result = ep;

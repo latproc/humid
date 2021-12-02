@@ -431,6 +431,9 @@ void UserWindow::loadStructure(Structure *s) {
 			else if (element_class && element_class->isExtension("FRAME")) {
 				createFrame(params);
 			}
+			else if (element_class && element_class->isExtension("COMBOBOX")) {
+				createComboBox(params);
+			}
 			else if (element_class && (element_class->isExtension("BUTTON") || element_class->isExtension("INDICATOR"))) {
 				createButton(params);
 			}
