@@ -169,6 +169,7 @@ public:
 	virtual void draw(NVGcontext *ctx) override;
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
+    virtual bool mouseButtonCallbackEvent(int button, int action, int modifiers) override;
 
 	virtual void drawAll() override;
 	virtual void idle(); // this routine is called after event processing and while idle
@@ -200,6 +201,7 @@ public:
 
 protected:
 	nanogui::Window *window;
+	GLFWcursorposfun std_cursorposfunc;
 	std::map<std::string, Connection *>connections;
 
 	struct timeval start;

@@ -37,9 +37,11 @@
 #include "structure.h"
 #include "resourcemanager.h"
 #include "editorsettings.h"
+#include "editor.h"
 
 long collect_history = 0;
 extern Structure *system_settings;
+ClockworkClient *main_screen;
 
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
 using namespace nanogui;
@@ -252,7 +254,68 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		std::cout << "setting monitor resolution: " << size.x() << "," << size.y() << "\n";
 		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
 	}
+	main_screen = this;
+	std_cursorposfunc = glfwSetCursorPosCallback(mGLFWWindow,
+        [](GLFWwindow *w, double x, double y) {
+			if (!main_screen->mProcessEvents) { return; }
+            main_screen->cursorPosCallbackEvent(x, y);
+        }
+    );
 }
+
+// The following is derived from Screen::mouseButtonCallbackEvent
+bool ClockworkClient::mouseButtonCallbackEvent(int button, int action, int modifiers) {
+    mModifiers = modifiers;
+    mLastInteraction = glfwGetTime();
+    try {
+        if (mFocusPath.size() > 1) {
+            const nanogui::Window *window =
+                dynamic_cast<nanogui::Window *>(mFocusPath[mFocusPath.size() - 2]);
+            if (window && window->modal()) {
+                if (!window->contains(mMousePos))
+                    return false;
+            }
+        }
+
+        if (action == GLFW_PRESS)
+            mMouseState |= 1 << button;
+        else
+            mMouseState &= ~(1 << button);
+		if (EDITOR->isEditMode()) {
+			auto dropWidget = findWidget(mMousePos);
+			if (mDragActive && action == GLFW_RELEASE &&
+				dropWidget != mDragWidget)
+				if (mDragWidget && mDragWidget->parent()) {
+					mDragWidget->mouseButtonEvent(
+					mMousePos - mDragWidget->parent()->absolutePosition(), button,
+					false, mModifiers);
+				}
+
+			if (dropWidget != nullptr && dropWidget->cursor() != mCursor) {
+				mCursor = dropWidget->cursor();
+				glfwSetCursor(mGLFWWindow, mCursors[(int) mCursor]);
+			}
+
+			if (action == GLFW_PRESS && (button == GLFW_MOUSE_BUTTON_1 || button == GLFW_MOUSE_BUTTON_2)) {
+				mDragWidget = findWidget(mMousePos);
+				if (mDragWidget == this)
+					mDragWidget = nullptr;
+				mDragActive = mDragWidget != nullptr;
+				if (!mDragActive)
+					updateFocus(nullptr);
+			} else {
+				mDragActive = false;
+				mDragWidget = nullptr;
+			}
+		}
+        return mouseButtonEvent(mMousePos, button, action == GLFW_PRESS,
+                                mModifiers);
+    } catch (const std::exception &e) {
+        std::cerr << "Caught exception in event handler: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {
 
