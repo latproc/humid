@@ -419,8 +419,7 @@ void createFrame(WidgetParams &params) {
 }
 
 void createComboBox(WidgetParams &params) {
-	EditorComboBox *el = new EditorComboBox(params.s, params.window, params.element->getName(), params.lp,
-		new std::vector<std::string>());
+	EditorComboBox *el = new EditorComboBox(params.s, params.window, params.element->getName(), params.lp);
 	el->setName(params.element->getName());
 	el->setDefinition(params.element);
 	if (params.theme.get()) { el->setTheme(params.theme); }

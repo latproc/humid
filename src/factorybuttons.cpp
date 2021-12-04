@@ -127,7 +127,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		result = ep;
 	}
 	else if (sc->getName() == "COMBOBOX") {
-		EditorComboBox *ep = new EditorComboBox(parent, window, generated_name, nullptr,new std::vector<std::string>);
+		EditorComboBox *ep = new EditorComboBox(parent, window, generated_name, nullptr);
 		s->setName(ep->getName());
 		ep->setDefinition(s);
 		result = ep;
