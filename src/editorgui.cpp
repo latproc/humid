@@ -1138,8 +1138,8 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 				if (connection->getStartupState() == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
 					Structure *s = findScreen(active.asString());
 					if (connection->getStartupState() == sRELOAD || (s && w_user->structure() != s) ) {
-						w_user->getWindow()->requestFocus();
 						w_user->clearSelections();
+						w_user->getWindow()->requestFocus();
 						w_user->setStructure(s);
 						std::cout << "Loaded active screen " << active << "\n";
 						if (connection->getStartupState() == sRELOAD) connection->setState(sDONE);
