@@ -87,8 +87,6 @@ set(HEADER_FILES
 
 include_directories("${ClockworkClient_INCLUDE_DIR}")
 
-#string(TOUPPER "${CMAKE_BUILD_TYPE}" U_CMAKE_BUILD_TYPE)
-
 # Needed to generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -113,9 +111,6 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
 		  src/editorcombobox.h
   )
-
-#add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
-#target_link_libraries(okdialog ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} nanogui ${Boost_LIBRARIES})
 
 # based on yacc instructions from Andy Cedilnik 2002.
 
