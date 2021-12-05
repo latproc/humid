@@ -63,6 +63,7 @@ set (CLOCKWORK_DIR /opt/latproc/iod/src)
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
 if (USE_CLOCKWORK_SOURCE)
   set (Clockwork_INCLUDE_DIR /opt/latproc/iod/src)
+  set (ClockworkClient_INCLUDE_DIR /opt/latproc/iod/src)
 endif()
 
 if (RUN_TESTS)
@@ -111,7 +112,6 @@ add_library (Clockwork
 )
 target_link_libraries(Clockwork ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
 target_include_directories(Clockwork PUBLIC ${ZeroMQ_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
-
 
 include_directories("${ClockworkClient_INCLUDE_DIR}")
 
