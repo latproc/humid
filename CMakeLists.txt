@@ -4,6 +4,7 @@ project("Humid")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 set (USE_PROTOBUF off)
+set (USE_CLOCKWORK_SOURCE on)
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 	message("Including local CMake settings")
@@ -50,7 +51,9 @@ include_directories("/opt/local/include")
 #LINK_DIRECTORIES("/opt/local/lib")
 
 find_package(ZeroMQ REQUIRED)
+if (NOT USE_CLOCKWORK_SOURCE)
 find_package(ClockworkClient REQUIRED)
+endif()
 find_package(CURL REQUIRED)
 
 #set(BOOST_ROOT "/usr/local/")
@@ -58,8 +61,9 @@ FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono da
 
 set (CLOCKWORK_DIR /opt/latproc/iod/src)
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
-#set(Clockwork_INCLUDE_DIR /opt/latproc/iod/stage/include/clockwork)
-#set(ClockworkClient_LIBRARIES /opt/latproc/iod/stage/lib/libcw_client.a)
+if (USE_CLOCKWORK_SOURCE)
+  set (Clockwork_INCLUDE_DIR /opt/latproc/iod/src)
+endif()
 
 if (RUN_TESTS)
 enable_testing()
@@ -84,6 +88,30 @@ set(HEADER_FILES
   ${Clockwork_INCLUDE_DIR}/watchdog.h
   ${Clockwork_INCLUDE_DIR}/Message.h
   )
+
+add_library (Clockwork
+  ${CLOCKWORK_DIR}/MessagingInterface.cpp
+  ${CLOCKWORK_DIR}/MessageLog.cpp
+  ${CLOCKWORK_DIR}/MessageEncoding.cpp
+  ${CLOCKWORK_DIR}/MessageHeader.cpp
+  ${CLOCKWORK_DIR}/regular_expressions.cpp
+  ${CLOCKWORK_DIR}/CommandManager.cpp
+  ${CLOCKWORK_DIR}/SocketMonitor.cpp
+  ${CLOCKWORK_DIR}/ConnectionManager.cpp
+  ${CLOCKWORK_DIR}/Logger.cpp
+  ${CLOCKWORK_DIR}/anet.c
+  ${CLOCKWORK_DIR}/cJSON.c
+  ${CLOCKWORK_DIR}/DebugExtra.cpp
+  ${CLOCKWORK_DIR}/value.cpp
+  ${CLOCKWORK_DIR}/symboltable.cpp
+  ${CLOCKWORK_DIR}/rate.cpp
+  ${CLOCKWORK_DIR}/Message.cpp
+  ${CLOCKWORK_DIR}/watchdog.cpp
+  ${HEADER_FILES}
+)
+target_link_libraries(Clockwork ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
+target_include_directories(Clockwork PUBLIC ${ZeroMQ_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
+
 
 include_directories("${ClockworkClient_INCLUDE_DIR}")
 
@@ -239,23 +267,28 @@ endif()
 		  src/editorcombobox.cpp
 		  ${HEADERS})
 
-  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
-
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp src/linkmanager.cpp)
-  target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
-
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
   		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
 	)
-  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
+if (USE_CLOCKWORK_SOURCE)
+  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
+  target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+else()
+  target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
+  target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+endif()
 
   # Copy icons for example application
   file(COPY resources/images DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   #file(COPY CLOCKWORK_tags.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
   #file(COPY 2GRAB_tags.csv DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+if (false)
 get_directory_property(NANOGUI_HAS_PARENT PARENT_DIRECTORY)
 if(NANOGUI_HAS_PARENT)
   # This project is included from somewhere else. Export NANOGUI_EXTRA_LIBS variable
@@ -270,4 +303,5 @@ else()
 		  -I${NANO_GUI_BUILD_DIR}/ext/nanovg/src
 		  -I${NANO_GUI_BUILD_DIR}/ext/eigen -I${NANO_GUI_BUILD_DIR}/ext/glfw/include
 	${NANO_GUI_BUILD_DIR}/include/nanogui/*.h > ${NANO_GUI_BUILD_DIR}/python/py_doc.h)
+endif()
 endif()
