@@ -1,0 +1,76 @@
+CounterButton STRUCTURE EXTENDS BUTTON {
+	OPTION alignment centre;
+	OPTION behaviour 1;
+	OPTION bg_color "#0088cc";
+	OPTION bg_on_color "#00000000";
+	OPTION border 1;
+	OPTION font_size 36;
+	OPTION height 40;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION text_on_colour "#00000000";
+	OPTION valign centre;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 40;
+	OPTION wrap 0;
+}
+DateTimeValue STRUCTURE EXTENDS LABEL {
+	OPTION alignment 1;
+	OPTION border 1;
+	OPTION font_size 36;
+	OPTION height 38;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION valign 1;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 80;
+	OPTION wrap 1;
+}
+DateTimeValueLabel STRUCTURE EXTENDS LABEL {
+	OPTION alignment 1;
+	OPTION border 1;
+	OPTION font_size 20;
+	OPTION height 24;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION valign 1;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION width 158;
+	OPTION wrap 1;
+}
+Screen_Untitled_003 STRUCTURE EXTENDS SCREEN {
+  Year DateTimeValue( caption: "2021", pos_x: 47, pos_y: 88);
+  YearDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 87);
+  YearInc CounterButton( caption: "+", pos_x: 128, pos_y: 87);
+  YearLbl DateTimeValueLabel( caption: "Year", pos_x: 9, pos_y: 64);
+  Month DateTimeValue( caption: "12", pos_x: 247, pos_y: 88);
+  MonthDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 87);
+  MonthInc CounterButton( caption: "+", pos_x: 328, pos_y: 87);
+  MonthLbl DateTimeValueLabel( caption: "Month", pos_x: 209, pos_y: 64);
+  Day DateTimeValue( caption: "6", pos_x: 447, pos_y: 88);
+  DayDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 87);
+  DayInc CounterButton( caption: "+", pos_x: 528, pos_y: 87);
+  DayLbl DateTimeValueLabel( caption: "Day", pos_x: 409, pos_y: 64);
+
+  Hour DateTimeValue( caption: "10", pos_x: 47, pos_y: 188);
+  HourDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 187);
+  HourInc CounterButton( caption: "+", pos_x: 128, pos_y: 187);
+  HourLbl DateTimeValueLabel( caption: "Hour", pos_x: 9, pos_y: 164);
+  Minute DateTimeValue( caption: "11", pos_x: 247, pos_y: 188);
+  MinuteDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 187);
+  MinuteInc CounterButton( caption: "+", pos_x: 328, pos_y: 187);
+  MinuteLbl DateTimeValueLabel( caption: "Minutes", pos_x: 209, pos_y: 164);
+  Second DateTimeValue( caption: "09", pos_x: 447, pos_y: 188);
+  SecondDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 187);
+  SecondInc CounterButton( caption: "+", pos_x: 528, pos_y: 187);
+  SecondLbl DateTimeValueLabel( caption: "Seconds", pos_x: 409, pos_y: 164);
+}
+date_time2 Screen_Untitled_003(
+    file_name: "DateTime.humid",
+    screen_height: 600,
+    screen_id: 1,
+    screen_width: 800
+  );

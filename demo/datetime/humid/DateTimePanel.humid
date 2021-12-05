@@ -14,6 +14,18 @@ DateTimeButton STRUCTURE EXTENDS BUTTON {
 	OPTION value_type 0;
 	OPTION wrap 0;
 }
+DateTimeLabel STRUCTURE EXTENDS LABEL {
+	OPTION alignment 1;
+	OPTION border 0;
+	OPTION font_size 20;
+	OPTION height 36;
+	OPTION inverted_visibility false;
+	OPTION text_colour "#00000000";
+	OPTION valign 1;
+	OPTION value_scale 1.000000;
+	OPTION value_type 0;
+	OPTION wrap 1;
+}
 DateTimeSeparator STRUCTURE EXTENDS LABEL {
 	OPTION alignment 1;
 	OPTION border 0;
@@ -26,18 +38,6 @@ DateTimeSeparator STRUCTURE EXTENDS LABEL {
 	OPTION value_scale 1.000000;
 	OPTION value_type 0;
 	OPTION width 40;
-	OPTION wrap 1;
-}
-DateTimeLabel STRUCTURE EXTENDS LABEL {
-	OPTION alignment 1;
-	OPTION border 0;
-	OPTION font_size 20;
-	OPTION height 36;
-	OPTION inverted_visibility false;
-	OPTION text_colour "#00000000";
-	OPTION valign 1;
-	OPTION value_scale 1.000000;
-	OPTION value_type 0;
 	OPTION wrap 1;
 }
 DateTimePanel STRUCTURE EXTENDS SCREEN {
@@ -359,5 +359,8 @@ DateTimePanel STRUCTURE EXTENDS SCREEN {
   );
 }
 date_time_panel DateTimePanel(
-    screen_id: 1
+    file_name: "DateTimePanel.humid",
+    screen_height: 600,
+    screen_id: 1,
+    screen_width: 800
   );
