@@ -1,7 +1,8 @@
 PROJECTSETTINGS STRUCTURE(
     asset_path: "."
   ) {
-  Remote CONNECTION(
+  CW CONNECTION(
+    channel: PANEL_CHANNEL,
     host: localhost,
     port: 5555
   );

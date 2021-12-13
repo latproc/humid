@@ -4,6 +4,7 @@ CounterButton STRUCTURE EXTENDS BUTTON {
 	OPTION bg_color "#0088cc";
 	OPTION bg_on_color "#00000000";
 	OPTION border 1;
+    OPTION connection CW;
 	OPTION font_size 36;
 	OPTION height 40;
 	OPTION inverted_visibility false;
@@ -18,6 +19,7 @@ CounterButton STRUCTURE EXTENDS BUTTON {
 DateTimeValue STRUCTURE EXTENDS LABEL {
 	OPTION alignment 1;
 	OPTION border 1;
+    OPTION connection CW;
 	OPTION font_size 36;
 	OPTION height 38;
 	OPTION inverted_visibility false;
@@ -42,30 +44,34 @@ DateTimeValueLabel STRUCTURE EXTENDS LABEL {
 	OPTION wrap 1;
 }
 Screen_Untitled_003 STRUCTURE EXTENDS SCREEN {
-  Year DateTimeValue( caption: "2021", pos_x: 47, pos_y: 88);
-  YearDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 87);
-  YearInc CounterButton( caption: "+", pos_x: 128, pos_y: 87);
+  Year DateTimeValue( caption: "2021", pos_x: 47, pos_y: 88, value_type: 1, format: "%04d", remote: "date_time_year");
+  YearDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 87, remote: "btn_dec_year");
+  YearInc CounterButton( caption: "+", pos_x: 128, pos_y: 87, remote: "btn_inc_year");
   YearLbl DateTimeValueLabel( caption: "Year", pos_x: 9, pos_y: 64);
-  Month DateTimeValue( caption: "12", pos_x: 247, pos_y: 88);
-  MonthDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 87);
-  MonthInc CounterButton( caption: "+", pos_x: 328, pos_y: 87);
+
+  Month DateTimeValue( caption: "12", pos_x: 247, pos_y: 88, value_type: 1, format: "%02d", remote: "date_time_month");
+  MonthDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 87, remote: "btn_dec_month");
+  MonthInc CounterButton( caption: "+", pos_x: 328, pos_y: 87, remote: "btn_inc_month");
   MonthLbl DateTimeValueLabel( caption: "Month", pos_x: 209, pos_y: 64);
-  Day DateTimeValue( caption: "6", pos_x: 447, pos_y: 88);
-  DayDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 87);
-  DayInc CounterButton( caption: "+", pos_x: 528, pos_y: 87);
+
+  Day DateTimeValue( caption: "6", pos_x: 447, pos_y: 88, value_type: 1, format: "%02d", remote: "date_time_day");
+  DayDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 87, remote: "btn_dec_day");
+  DayInc CounterButton( caption: "+", pos_x: 528, pos_y: 87, remote: "btn_inc_day");
   DayLbl DateTimeValueLabel( caption: "Day", pos_x: 409, pos_y: 64);
 
-  Hour DateTimeValue( caption: "10", pos_x: 47, pos_y: 188);
-  HourDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 187);
-  HourInc CounterButton( caption: "+", pos_x: 128, pos_y: 187);
+  Hour DateTimeValue( caption: "10", pos_x: 47, pos_y: 188, value_type: 1, format: "%02d", remote: "date_time_hour");
+  HourDec CounterButton( alignment: centre, caption: "-", pos_x: 8, pos_y: 187, remote: "btn_dec_hour");
+  HourInc CounterButton( caption: "+", pos_x: 128, pos_y: 187, remote: "btn_inc_hour");
   HourLbl DateTimeValueLabel( caption: "Hour", pos_x: 9, pos_y: 164);
-  Minute DateTimeValue( caption: "11", pos_x: 247, pos_y: 188);
-  MinuteDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 187);
-  MinuteInc CounterButton( caption: "+", pos_x: 328, pos_y: 187);
+
+  Minute DateTimeValue( caption: "11", pos_x: 247, pos_y: 188, value_type: 1, format: "%02d", remote: "date_time_min");
+  MinuteDec CounterButton( alignment: centre, caption: "-", pos_x: 208, pos_y: 187, remote: "btn_dec_min");
+  MinuteInc CounterButton( caption: "+", pos_x: 328, pos_y: 187, remote: "btn_inc_min");
   MinuteLbl DateTimeValueLabel( caption: "Minutes", pos_x: 209, pos_y: 164);
-  Second DateTimeValue( caption: "09", pos_x: 447, pos_y: 188);
-  SecondDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 187);
-  SecondInc CounterButton( caption: "+", pos_x: 528, pos_y: 187);
+
+  Second DateTimeValue( caption: "09", pos_x: 447, pos_y: 188, value_type: 1, format: "%02d", remote: "date_time_sec");
+  SecondDec CounterButton( alignment: centre, caption: "-", pos_x: 408, pos_y: 187, remote: "btn_dec_sec");
+  SecondInc CounterButton( caption: "+", pos_x: 528, pos_y: 187, remote: "btn_inc_sec");
   SecondLbl DateTimeValueLabel( caption: "Seconds", pos_x: 409, pos_y: 164);
 }
 date_time2 Screen_Untitled_003(
