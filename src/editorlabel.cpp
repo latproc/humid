@@ -139,6 +139,11 @@ void EditorLabel::draw(NVGcontext *ctx) {
         snprintf(buf, 20, "%ld", (long)(val / scale));
         valStr = buf;
     }
+    if (format_string == "password") {
+      for (size_t i = 0; i<valStr.length(); ++i) {
+        valStr[i] = '*';
+      }
+    }
 
     if (mFixedSize.x() > 0) {
         nvgTextAlign(ctx, align | alignv);

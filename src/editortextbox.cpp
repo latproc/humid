@@ -362,6 +362,11 @@ void EditorTextBox::draw(NVGcontext* ctx) {
         valStr = buf;
       }
     }
+    if (format_string == "password") {
+      for (size_t i = 0; i<valStr.length(); ++i) {
+        valStr[i] = '*';
+      }
+    }
 
     Vector2i oldDrawPos(drawPos);
     drawPos.x() += mTextOffset;
