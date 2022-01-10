@@ -212,7 +212,7 @@ void EditorWidget::drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nan
     nvgStrokeWidth(ctx, 4.0f);
     nvgBeginPath(ctx);
     nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
-    nvgStrokeColor(ctx, nvgRGBA(192, 192, 255, 255));
+    nvgStrokeColor(ctx, nvgRGBA(192, 192, 255, 128));
     nvgStroke(ctx);
   }
 }
@@ -319,7 +319,7 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
     if (pos != 0) setTabPosition(pos);
     return;
   }
-  if (prop == "Border") {
+  if (prop == "Border Width") {
     border = std::atoi(value.c_str());
     return;
   }

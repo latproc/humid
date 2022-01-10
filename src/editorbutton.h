@@ -26,6 +26,9 @@ public:
 
 	enum class HorizontalAlignment {Left, Centre, Right};
 	enum class VerticalAlignment { Top, Centre, Bottom};
+    enum class BorderStyle { None, Shadow, Frame };
+    enum class BorderColouring { Manual, Auto };
+    enum class BorderGradientDirection { Down, Right, Up, Left, TLBR, BRTL };
 
 	EditorButton(NamedObject *owner, Widget *parent, const std::string &btn_name, LinkableProperty *lp,
             const std::string &caption = "Untitled", bool toggle = false, int icon = 0);
@@ -59,6 +62,13 @@ public:
 	void setOnCaption(const std::string c) { on_caption = c; }
 	const std::string &onCaption() { return on_caption; }
 
+	void setBorderStyle(BorderStyle s) { border_style = s; }
+	void setBorderGradientDir(BorderGradientDirection d) { border_grad_dir = d; }
+	void setBorderColouring(BorderColouring c) { border_colouring = c; }
+	void setBorderGradTop(const nanogui::Color &c) { border_grad_top = c; }
+	void setBorderGradBot(const nanogui::Color &c) { border_grad_bot = c; }
+
+
 	virtual void draw(NVGcontext *ctx) override;
 
 	void setImageName(const std::string &name);
@@ -81,6 +91,11 @@ protected:
 	Value image_name;
 	int mImageID = 0;
 	float image_alpha = 1.0f;
+	BorderColouring border_colouring = BorderColouring::Manual;
+	BorderGradientDirection border_grad_dir = BorderGradientDirection::Down;
+	nanogui::Color border_grad_bot = {51, 255};
+	nanogui::Color border_grad_top = {204, 255};
+	BorderStyle border_style = BorderStyle::Shadow;
 };
 
 #endif

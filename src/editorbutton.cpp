@@ -9,6 +9,8 @@
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
 #include <nanogui/widget.h>
+#include <set>
+#include <utility>
 
 #include "editorwidget.h"
 #include "editorbutton.h"
@@ -223,6 +225,11 @@ void EditorButton::getPropertyNames(std::list<std::string> &names) {
     names.push_back("On text");
     names.push_back("Background Colour");
     names.push_back("Background on colour");
+		names.push_back("Border colouring");
+		names.push_back("Border gradient dir");
+		names.push_back("Border grad bot");
+		names.push_back("Border grad top");
+		names.push_back("Border style");
     names.push_back("Text colour");
     names.push_back("Text on colour");
     names.push_back("Behaviour");
@@ -257,19 +264,6 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
     nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
     return Value(stringFromColour(backgroundColor()), Value::t_string);
   }
-  if (prop == "Background on colour") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    nanogui::Button *btn = dynamic_cast<nanogui::Button*>(this);
-    return Value(stringFromColour(bg_on_color), Value::t_string);
-  }
-  if (prop == "Text colour") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return Value(stringFromColour(mTextColor), Value::t_string);
-  }
-  if (prop == "Text on colour") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return Value(stringFromColour(text_on_colour), Value::t_string);
-  }
   if (prop == "Command") {
     return Value(command(), Value::t_string);
   }
@@ -279,6 +273,30 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
   if (prop == "Alignment") return fromHorizontalAlignment(alignment);
   if (prop == "Vertical Alignment") return fromVerticalAlignment(valign);
   if (prop == "Wrap Text") return wrap_text ? 1 : 0;
+  if (prop == "Border colouring") {
+    return static_cast<int>(border_colouring);
+  }
+  if (prop == "Border style") {
+    return static_cast<int>(border_style);
+  }
+  if (prop == "Border gradient dir") {
+    return static_cast<int>(border_grad_dir);
+  }
+  if (prop == "Border grad bot") {
+    return Value(stringFromColour(border_grad_bot), Value::t_string);
+  }
+  if (prop == "Border grad top") {
+    return Value(stringFromColour(border_grad_top), Value::t_string);
+  }
+  if (prop == "Background on colour") {
+    return Value(stringFromColour(bg_on_color), Value::t_string);
+  }
+  if (prop == "Text colour") {
+    return Value(stringFromColour(mTextColor), Value::t_string);
+  }
+  if (prop == "Text on colour") {
+    return Value(stringFromColour(text_on_colour), Value::t_string);
+  }
   return SymbolTable::Null;
 }
 
@@ -339,14 +357,110 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
       setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
   }
+  else if (prop == "Border colouring") {
+    Value bc(value);
+    long bci = -1;
+    if (bc.asInteger(bci)) {
+      getDefinition()->getProperties().add("border_colouring", bci);
+      border_colouring = static_cast<BorderColouring>(bci);
+    }
+    else {
+      if (value == "manual") {
+        getDefinition()->getProperties().add("border_colouring", 0);
+        border_colouring = BorderColouring::Manual;
+      }
+      else if (value == "auto") {
+        getDefinition()->getProperties().add("border_colouring", 1);
+        border_colouring = BorderColouring::Auto;
+      }
+    }
+  }
+  else if (prop == "Border gradient dir") {
+    Value bgd(value);
+    long bgdi = -1;
+    if (bgd.asInteger(bgdi)) {
+      getDefinition()->getProperties().add("border_grad_dir", bgdi);
+      border_grad_dir = static_cast<BorderGradientDirection>(bgdi);
+    }
+    else {
+      if (value == "down") {
+        getDefinition()->getProperties().add("border_grad_dir", 0);
+        border_grad_dir = BorderGradientDirection::Down;
+      }
+      else if (value == "right") {
+        getDefinition()->getProperties().add("border_grad_dir", 1);
+        border_grad_dir = BorderGradientDirection::Right;
+      }
+      if (value == "up") {
+        getDefinition()->getProperties().add("border_grad_dir", 2);
+        border_grad_dir = BorderGradientDirection::Up;
+      }
+      else if (value == "left") {
+        getDefinition()->getProperties().add("border_grad_dir", 3);
+        border_grad_dir = BorderGradientDirection::Left;
+      }
+      else if (value == "tlbr") {
+        getDefinition()->getProperties().add("border_grad_dir", 4);
+        border_grad_dir = BorderGradientDirection::TLBR;
+      }
+      else if (value == "brtl") {
+        getDefinition()->getProperties().add("border_grad_dir", 4);
+        border_grad_dir = BorderGradientDirection::BRTL;
+      }
+    }
+  }
+  else if (prop == "Border style") {
+    Value bs(value);
+    long bsi = -1;
+    if (bs.asInteger(bsi)) {
+      getDefinition()->getProperties().add("border_style", value);
+      border_style = static_cast<BorderStyle>(std::atoi(value.c_str()));
+    }
+    else {
+      if (value == "none") {
+        border = 0;
+        getDefinition()->getProperties().add("border", 0);
+        getDefinition()->getProperties().add("border_style", 0);
+        border_style = BorderStyle::None;
+      }
+      else if (value == "shadow") {
+        getDefinition()->getProperties().add("border_style", 1);
+        border_style = BorderStyle::Shadow;
+      }
+      else if (value == "frame") {
+        getDefinition()->getProperties().add("border_style", 2);
+        border_style = BorderStyle::Frame;
+      }
+    }
+  }
+  else if (prop == "Border grad bot") {
+    getDefinition()->getProperties().add("border_grad_bot", value);
+    border_grad_bot = colourFromProperty(getDefinition(), "bg_on_color");
+  }
+  else if (prop == "Border grad top") {
+    getDefinition()->getProperties().add("border_grad_top", value);
+    border_grad_top = colourFromProperty(getDefinition(), "bg_on_color");
+  }
 }
 
 void EditorButton::draw(NVGcontext *ctx) {
     using namespace nanogui;
 
-    Widget::draw(ctx);
     NVGcolor gradTop = mTheme->mButtonGradientTopUnfocused;
     NVGcolor gradBot = mTheme->mButtonGradientBotUnfocused;
+
+    Widget::draw(ctx);
+
+    auto border_gradient_bottom = border_grad_bot;
+    auto border_gradient_top = border_grad_top;
+    if (border_colouring == BorderColouring::Auto) {
+      auto base_colour = mPushed ? bg_on_color : mBackgroundColor;
+      float lum = 0.2126f * base_colour.r() + 0.7152f * base_colour.g() + 0.0722 * base_colour.b();
+      float darken = 0.4f;
+      float lighten = 0.9f;
+      border_gradient_bottom = { darken * base_colour.r(),  darken * base_colour.g(),  darken * base_colour.b(), 1.0f};
+      border_gradient_top = {lighten * base_colour.r(), lighten * base_colour.g(), lighten * base_colour.b(), 1.0f};
+    }
 
     if (mPushed) {
         gradTop = mTheme->mButtonGradientTopPushed;
@@ -367,18 +481,58 @@ void EditorButton::draw(NVGcontext *ctx) {
     }
 
     nvgSave(ctx);
-    nanogui::Vector2i offset(0,0);
-    if (mImageID != 0 && mPushed) {
-      offset = {1,2};
-      nvgTranslate(ctx, offset.x(), offset.y());
+    // nanogui::Vector2i offset(0,0);
+    // if (mImageID != 0 && mPushed) {
+    //   offset = {1,1};
+    //   nvgTranslate(ctx, offset.x(), offset.y());
+    // }
+    
+    nanogui::Vector2i offset(mPos);
+    nanogui::Vector2i size(mSize);
+    if (border > 0) {
+      nvgBeginPath(ctx);
+      if (border_style == BorderStyle::Frame) {
+        nvgStrokeWidth(ctx, border+2);
+        nvgBeginPath(ctx);
+        nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
+        nanogui::Vector2i border_gradient_end(offset.x(), offset.y() + size.y() );
+        if (border_grad_dir == BorderGradientDirection::Right
+            || border_grad_dir == BorderGradientDirection::Left) {
+          border_gradient_end = {offset.x() + size.x(), offset.y()};
+        }
+        else if (border_grad_dir == BorderGradientDirection::TLBR
+            || border_grad_dir == BorderGradientDirection::BRTL) {
+          border_gradient_end = {offset.x() + size.x(), offset.y() + size.x()};
+        }
+        const std::set<BorderGradientDirection> reversed_grad = {
+          BorderGradientDirection::Up, BorderGradientDirection::Left, BorderGradientDirection::BRTL};
+        if (reversed_grad.count(border_grad_dir)) {
+          std::swap<nanogui::Color>(border_gradient_bottom, border_gradient_top);
+        }
+        NVGpaint bg = nvgLinearGradient(ctx, offset.x(), offset.y(), border_gradient_end.x(),
+                                          border_gradient_end.y(), border_gradient_top, border_gradient_bottom);
+        nvgFillPaint(ctx, bg);
+        nvgFill(ctx);
+        offset += nanogui::Vector2i(border, border);
+        size -= nanogui::Vector2i(2*border, 2*border);
+      }
+      else {
+        offset += nanogui::Vector2i(border, border);
+        size -= nanogui::Vector2i(2*border, 2*border);
+        nvgStrokeWidth(ctx, border);
+        nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
+        nvgStrokeColor(ctx, mTheme->mBorderDark);
+        nvgStroke(ctx);
+      }
     }
 
-    nvgBeginPath(ctx);
-    {
-      int a = border/2 + 1;
-      nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
-    }
     if (mPushed) {
+      nvgBeginPath(ctx);
+      if (border_style == BorderStyle::Frame) {
+        offset += nanogui::Vector2i(2, 2);
+        size -= nanogui::Vector2i(4, 4);
+      }
+      nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
       if (bg_on_color.w() != 0) {
         nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
         nvgFill(ctx);
@@ -392,46 +546,36 @@ void EditorButton::draw(NVGcontext *ctx) {
       }
     }
     else if (mBackgroundColor.w() != 0) {
+      nvgBeginPath(ctx);
+      nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
       nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
       nvgFill(ctx);
       double v = 1 - mBackgroundColor.w();
       gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
     }
 
-    if (!getDefinition()->isA("INDICATOR") && !mImageID) {
-      NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
-                                      mPos.y() + mSize.y(), gradTop, gradBot);
-      nvgFillPaint(ctx, bg);
-      nvgFill(ctx);
-    }
     if (mImageID != 0) {
       nvgBeginPath(ctx);
-      {
-        int a = border/2 + 1;
-        nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
-      }
-      NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 0, mImageID, image_alpha);
+      nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
+      // {
+      //   int a = border/2 + 1;
+      //   nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
+      // }
+      NVGpaint img = nvgImagePattern(ctx, offset.x(), offset.y(), size.x(), size.y(), 0, mImageID, image_alpha * (mPushed ? 0.8f : 1.0f));
       nvgFillPaint(ctx, img);
       nvgFill(ctx);
     }
-    if (border > 0) {
-      nvgBeginPath(ctx);
-      nvgStrokeWidth(ctx, border);
-      int a = border / 2;
-      nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a +  (mPushed ? -0.5f : +0.5f), mSize.x() - 2*a,
-                    mSize.y() - 2*a - (mPushed ? 0.0f : 1.0f), mTheme->mButtonCornerRadius);
-      nvgStrokeColor(ctx, mTheme->mBorderDark);
-      nvgStroke(ctx);
-#if 0
-      nvgBeginPath(ctx);
-      nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - 1,
-                    mSize.y() - 2, mTheme->mButtonCornerRadius);
-      nvgStrokeColor(ctx, mTheme->mBorderDark);
-      nvgStroke(ctx);
-#endif
+    nvgBeginPath(ctx);
+    nvgRoundedRect(ctx, offset.x(), offset.y(), size.x()-border, size.y()-border, mTheme->mButtonCornerRadius);
+    if (!getDefinition()->isA("INDICATOR") && !mImageID) {
+      NVGpaint bg = nvgLinearGradient(ctx, offset.x(), offset.y(), offset.x(),
+                                      offset.y() + size.y(), gradTop, gradBot);
+      nvgFillPaint(ctx, bg);
+      nvgFill(ctx);
     }
 
     int fontSize = mFontSize == -1 ? mTheme->mButtonFontSize : mFontSize;
+    if (mPushed) fontSize -= 1;
     nvgFontSize(ctx, fontSize);
     nvgFontFace(ctx, "sans-bold");
 
@@ -543,10 +687,10 @@ void EditorButton::draw(NVGcontext *ctx) {
         nvgTextBoxBounds(ctx, 0, label_y, mSize.x(), text.c_str(), nullptr, bounds);
         // Vertical centre alignment seems to need some adjustment
         auto h = bounds[3] - bounds[1];
-        label_y = mPos.y() + mSize.y()/2.0 + (1.5*fontSize - h)/2;
+        label_y = mPos.y() + mSize.y()/2.0 + (1.6*fontSize - h)/2;
       }
       else {
-        label_y += fontSize / 4;
+        label_y += 0.35f * fontSize;
       }
     }
 
@@ -578,22 +722,6 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
   EditorButton *btn = dynamic_cast<EditorButton*>(this);
   if (btn) {
     EditorGUI *gui = EDITOR->gui();
-    properties->addVariable<nanogui::Color> (
-      "Off colour",
-       [&,btn](const nanogui::Color &value) mutable{ setBackgroundColor(value); },
-       [&,btn]()->const nanogui::Color &{ return backgroundColor(); });
-    properties->addVariable<nanogui::Color> (
-      "On colour",
-         [&,btn](const nanogui::Color &value) mutable{ setOnColor(value); },
-         [&,btn]()->const nanogui::Color &{ return onColor(); });
-    properties->addVariable<nanogui::Color> (
-      "Off text colour",
-        [&,btn](const nanogui::Color &value) mutable{ setTextColor(value); },
-        [&,btn]()->const nanogui::Color &{ return textColor(); } );
-    properties->addVariable<nanogui::Color> (
-      "On text colour",
-      [&,btn](const nanogui::Color &value) mutable{ setOnTextColor(value); },
-      [&,btn]()->const nanogui::Color &{ return onTextColor(); } );
     properties->addVariable<std::string> (
       "Off caption",
       [&](std::string value) mutable{ setCaption(value); },
@@ -658,6 +786,37 @@ void EditorButton::loadProperties(PropertyFormHelper* properties) {
       "Pushed",
       [&](bool value) { setPushed(value); },
       [&]()->bool{ return pushed(); });
+    properties->addVariable<BorderStyle> (
+      "Border style",border_style, true)->setItems({"None","Shadow","Frame"});
+    properties->addVariable<BorderColouring> (
+      "Border colouring",border_colouring, true)->setItems({"Manual","Auto"});
+    properties->addVariable<BorderGradientDirection> (
+      "Border gradient dir",border_grad_dir, true)->setItems({"Down","Right","Up","Left","TLBR","BRTL"});
+    properties->addGroup("Colours");
+    properties->addVariable<nanogui::Color> (
+      "Off colour",
+       [&,btn](const nanogui::Color &value) mutable{ setBackgroundColor(value); },
+       [&,btn]()->const nanogui::Color &{ return backgroundColor(); });
+    properties->addVariable<nanogui::Color> (
+      "On colour",
+         [&,btn](const nanogui::Color &value) mutable{ setOnColor(value); },
+         [&,btn]()->const nanogui::Color &{ return onColor(); });
+    properties->addVariable<nanogui::Color> (
+      "Off text colour",
+        [&,btn](const nanogui::Color &value) mutable{ setTextColor(value); },
+        [&,btn]()->const nanogui::Color &{ return textColor(); } );
+    properties->addVariable<nanogui::Color> (
+      "On text colour",
+      [&,btn](const nanogui::Color &value) mutable{ setOnTextColor(value); },
+      [&,btn]()->const nanogui::Color &{ return onTextColor(); } );
+    properties->addVariable<nanogui::Color> (
+      "Border gradient top",
+      [&,btn](const nanogui::Color &value) mutable{ border_grad_top = value; },
+      [&,btn]()->const nanogui::Color &{ return border_grad_top; } );
+    properties->addVariable<nanogui::Color> (
+      "Border gradient bot",
+      [&,btn](const nanogui::Color &value) mutable{ border_grad_bot = value; },
+      [&,btn]()->const nanogui::Color &{ return border_grad_bot; } );
     properties->addGroup("Remote");
     properties->addVariable<std::string> (
       "Remote object",

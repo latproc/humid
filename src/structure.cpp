@@ -58,6 +58,11 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Background Colour"] = "bg_color";
 		properties["Background on colour"] = "bg_on_color";
 		properties["Behaviour"] = "behaviour";
+		properties["Border colouring"] = "border_colouring";
+		properties["Border gradient dir"] = "border_grad_dir";
+		properties["Border grad bot"] = "border_grad_bot";
+		properties["Border grad top"] = "border_grad_top";
+		properties["Border style"] = "border_style";
 		properties["Command"] = "command";
 		properties["Enabled"] = "enabled";
 		properties["Image opacity"] = "image_alpha";

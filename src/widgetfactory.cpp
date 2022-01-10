@@ -358,6 +358,19 @@ void createButton(WidgetParams &params) {
 	b->setTextColor(colourFromProperty(params.element, "text_colour"));
 	b->setOnColor(colourFromProperty(params.element, "bg_on_color"));
 	b->setOnTextColor(colourFromProperty(params.element, "text_on_colour"));
+	long enum_val;
+	if (params.element->getValue("border_style").asInteger(enum_val)) {
+		b->setBorderStyle(static_cast<EditorButton::BorderStyle>(enum_val));
+	}
+	if (params.element->getValue("border_grad_dir").asInteger(enum_val)) {
+		b->setBorderGradientDir(static_cast<EditorButton::BorderGradientDirection>(enum_val));
+	}
+	if (params.element->getValue("border_colouring").asInteger(enum_val)) {
+		b->setBorderColouring(static_cast<EditorButton::BorderColouring>(enum_val));
+	}
+	b->setBorderGradTop(colourFromProperty(params.element, "border_grad_top"));
+	b->setBorderGradBot(colourFromProperty(params.element, "border_grad_bot"));
+
 	b->setFlags(params.element->getIntProperty("behaviour", nanogui::Button::NormalButton));
 	if (params.connection != SymbolTable::Null) {
 		b->setRemoteName(params.remote.asString());

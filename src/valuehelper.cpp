@@ -68,6 +68,11 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "bg_color") { return "0.7,0.7,0.7,1.0"; }
 	if (property == "bg_on_color") { return "1.0,1.0,1.0,1.0"; }
 	if (property == "border") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "border_grad_top") { return "0.8,0.8,0.8,1.0"; }
+	if (property == "border_grad_bot") { return "0.2,0.2,0.2,1.0"; }
+	if (property == "border_style") { return 1; }
+	if (property == "border_colouring") { return 0; }
+	if (property == "border_grad_dir") { return 0; }
 	if (property == "caption") { return ""; }
 	if (property == "channel") { return {}; }
 	if (property == "command") { return {}; }
