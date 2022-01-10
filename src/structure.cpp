@@ -54,56 +54,56 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	properties["Width"] = "width";
 	if (class_name == "WIDGET") { return; }
 	if (class_name == "BUTTON" || class_name == "INDICATOR") {
-		properties["Off text"] = "caption";
-		properties["On text"] = "on_caption";
+		properties["Alignment"] = "alignment";
 		properties["Background Colour"] = "bg_color";
 		properties["Background on colour"] = "bg_on_color";
-		properties["Enabled"] = "enabled";
-		properties["Text colour"] = "text_colour";
-		properties["Text on colour"] = "text_on_colour";
 		properties["Behaviour"] = "behaviour";
 		properties["Command"] = "command";
-		properties["Alignment"] = "alignment";
+		properties["Enabled"] = "enabled";
+		properties["Image opacity"] = "image_alpha";
+		properties["Image"] = "image";
+		properties["Off text"] = "caption";
+		properties["On text"] = "on_caption";
+		properties["Text colour"] = "text_colour";
+		properties["Text on colour"] = "text_on_colour";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
-		properties["Image"] = "image";
-		properties["Image opacity"] = "image_alpha";
 	}
 	else if (class_name == "TEXT") {
-		properties["Text"] = "text";
-		properties["Font Size"] = "font_size";
 		properties["Alignment"] = "alignment";
+		properties["Font Size"] = "font_size";
+		properties["Text"] = "text";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
 	}
 	else if (class_name == "LABEL") {
+		properties["Alignment"] = "alignment";
+		properties["Background Colour"] = "bg_color";
 		properties["Caption"] = "caption";
 		properties["Font Size"] = "font_size";
 		properties["Text Colour"] = "text_colour";
-		properties["Alignment"] = "alignment";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
-		properties["Background Colour"] = "bg_color";
 	}
 	else if (class_name == "PLOT") {
-		properties["X scale"] = "x_scale";
-		properties["X offset"] = "x_offset";
-		properties["Grid Intensity"] = "grid_intensity";
 		properties["Display Grid"] = "display_grid";
+		properties["Grid Intensity"] = "grid_intensity";
 		properties["Overlay plots"] = "overlay_plots";
+		properties["X offset"] = "x_offset";
+		properties["X scale"] = "x_scale";
 	}
 	else if (class_name == "IMAGE") {
 		properties["Image File"] = "image_file";
 		properties["Scale"] = "scale";
 	}
 	else if (class_name == "PROGRESS") {
-		properties["Foreground Colour"] = "fg_color";
 		properties["Background Colour"] = "bg_color";
+		properties["Foreground Colour"] = "fg_color";
 		properties["Value"] = "value";
 	}
 	else if (class_name == "COMBOBOX") {
-		properties["Text Colour"] = "text_colour";
 		properties["Background Colour"] = "bg_color";
+		properties["Text Colour"] = "text_colour";
 	}
 }
 
@@ -244,7 +244,7 @@ const Value &Structure::getValue(const char *name) {
 				return SymbolTable::Null;
 			}
 		}
-		else { 
+		else {
 			std::cerr << "no class: " << getKind() << "\n";
 		}
 	}
@@ -323,7 +323,7 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 			}
 		}
 	}
-	bool res = writePropertyList(out, properties, 
+	bool res = writePropertyList(out, properties,
 					getStructureDefinition() ? &getStructureDefinition()->getDefaults() : nullptr, &link_map);
 	out << ";\n";
 	return res;
