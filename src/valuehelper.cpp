@@ -113,3 +113,36 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "x_scale") { return 1.0; }
     return defaultForType(typeForProperty(property));
 }
+
+std::string format_caption(const std::string &caption, const std::string format_string, int value_type, float value_scale) {
+    std::string valStr(caption);
+    float scale = value_scale;
+    if (scale == 0.0f) scale = 1.0f;
+    if (format_string.length()) {
+      if (value_type == Value::t_integer) {// integer
+        char buf[20];
+        long val = std::atol(valStr.c_str());
+        snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
+        valStr = buf;
+      }
+      else if (value_type == Value::t_float) {
+        char buf[20];
+        float val = std::atof(valStr.c_str());
+        snprintf(buf, 20, format_string.c_str(), val / scale);
+        valStr = buf;       
+      }
+    } 
+    else if (value_type == Value::t_float) {
+        char buf[20];
+        float val = std::atof(valStr.c_str());
+        snprintf(buf, 20, "%5.3f", val / scale);
+        valStr = buf;       
+    }
+    else if (value_type == Value::t_integer) {
+        char buf[20];
+        long val = std::atol(valStr.c_str());
+        snprintf(buf, 20, "%ld", (long)(val / scale));
+        valStr = buf;
+    }
+	return valStr;
+}

@@ -16,6 +16,7 @@
 #include "propertyformhelper.h"
 #include "helper.h"
 #include "colourhelper.h"
+#include "valuehelper.h"
 
 const std::map<std::string, std::string> & EditorLabel::property_map() const {
   auto structure_class = findClass("LABEL");
@@ -110,41 +111,12 @@ void EditorLabel::draw(NVGcontext *ctx) {
       pos_v = mPos.y() + mSize.y();
     }
 
-    std::string valStr(mCaption);
-    float scale = value_scale;
-    if (scale == 0.0f) scale = 1.0f;
-    if (format_string.length()) {
-      if (value_type == Value::t_integer) {// integer
-        char buf[20];
-        long val = std::atol(valStr.c_str());
-        snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
-        valStr = buf;
-      }
-      else if (value_type == Value::t_float) {
-        char buf[20];
-        float val = std::atof(valStr.c_str());
-        snprintf(buf, 20, format_string.c_str(), val / scale);
-        valStr = buf;       
-      }
-    } 
-    else if (value_type == Value::t_float) {
-        char buf[20];
-        float val = std::atof(valStr.c_str());
-        snprintf(buf, 20, "%5.3f", val / scale);
-        valStr = buf;       
-    }
-    else if (value_type == Value::t_integer) {
-        char buf[20];
-        long val = std::atol(valStr.c_str());
-        snprintf(buf, 20, "%ld", (long)(val / scale));
-        valStr = buf;
-    }
+    std::string valStr = format_caption(mCaption, format_string, value_type, value_scale);
     if (format_string == "password") {
       for (size_t i = 0; i<valStr.length(); ++i) {
         valStr[i] = '*';
       }
     }
-
     if (mFixedSize.x() > 0) {
         nvgTextAlign(ctx, align | alignv);
         nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), valStr.c_str(), nullptr);

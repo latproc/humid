@@ -22,6 +22,7 @@
 #include "resourcemanager.h"
 #include "helper.h"
 #include "colourhelper.h"
+#include "valuehelper.h"
 
 std::string stripEscapes(const std::string &s);
 
@@ -582,7 +583,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     NVGcolor textColor =
         mTextColor.w() == 0 ? mTheme->mTextColor : mTextColor;
 
-    std::string text = mCaption;
+    std::string text = format_caption(mCaption, format_string, value_type, value_scale);
     if (mPushed) {
       if (text_on_colour.w() != 0) textColor = text_on_colour;
       if (!on_caption.empty()) text = on_caption;
