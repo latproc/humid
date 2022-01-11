@@ -387,7 +387,9 @@ void createButton(WidgetParams &params) {
 	if (alignment_v != SymbolTable::Null) b->setPropertyValue("Alignment", alignment_v);
 	const Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) b->setPropertyValue("Vertical Alignment", valignment_v);
-
+	if (params.format_val != SymbolTable::Null) b->setValueFormat(params.format_val.asString());
+	if (params.value_type != -1) b->setValueType(params.value_type);
+	if (params.value_scale != 1.0) b->setValueScale( params.value_scale );
 	{
 		const Value caption_v = params.element->getValue("caption");
 		if (caption_v != SymbolTable::Null) b->setCaption(caption_v.asString());
