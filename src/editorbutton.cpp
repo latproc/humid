@@ -46,6 +46,7 @@ namespace {
       case EditorButton::HorizontalAlignment::Centre: return NVG_ALIGN_CENTER;
       case EditorButton::HorizontalAlignment::Right: return NVG_ALIGN_RIGHT;
     }
+    return NVG_ALIGN_CENTER;
   }
 
   std::string fromHorizontalAlignment(EditorButton::HorizontalAlignment align) {
@@ -54,6 +55,7 @@ namespace {
       case EditorButton::HorizontalAlignment::Centre: return "centre";
       case EditorButton::HorizontalAlignment::Right: return "right";
     }
+    return "centre";
   }
 
   EditorButton::HorizontalAlignment toHorizontalAlignment(int align) {
@@ -76,6 +78,7 @@ namespace {
       case EditorButton::VerticalAlignment::Centre: return NVG_ALIGN_CENTER;
       case EditorButton::VerticalAlignment::Bottom: return NVG_ALIGN_RIGHT;
     }
+    return NVG_ALIGN_CENTER;
   }
 
   std::string fromVerticalAlignment(EditorButton::VerticalAlignment align) {
