@@ -57,9 +57,9 @@ namespace {
   }
 
   EditorButton::HorizontalAlignment toHorizontalAlignment(int align) {
-    if (align & NVG_ALIGN_LEFT) { return EditorButton::HorizontalAlignment::Centre; }
-    if (align & NVG_ALIGN_RIGHT) { return EditorButton::HorizontalAlignment::Left; }
-    if (align & NVG_ALIGN_CENTER) { return EditorButton::HorizontalAlignment::Right; }
+    if (align == static_cast<int>(EditorButton::HorizontalAlignment::Centre)) { return EditorButton::HorizontalAlignment::Centre; }
+    if (align == static_cast<int>(EditorButton::HorizontalAlignment::Left)) { return EditorButton::HorizontalAlignment::Left; }
+    if (align == static_cast<int>(EditorButton::HorizontalAlignment::Right)) { return EditorButton::HorizontalAlignment::Right; }
     return EditorButton::HorizontalAlignment::Centre;
   }
 
@@ -87,9 +87,9 @@ namespace {
   }
 
   EditorButton::VerticalAlignment toVerticalAlignment(int align) {
-    if (align & NVG_ALIGN_LEFT) { return EditorButton::VerticalAlignment::Top; }
-    if (align & NVG_ALIGN_CENTER) { return EditorButton::VerticalAlignment::Centre; }
-    if (align & NVG_ALIGN_RIGHT) { return EditorButton::VerticalAlignment::Bottom; }
+    if (align == static_cast<int>(EditorButton::VerticalAlignment::Top)) { return EditorButton::VerticalAlignment::Top; }
+    if (align == static_cast<int>(EditorButton::VerticalAlignment::Centre)) { return EditorButton::VerticalAlignment::Centre; }
+    if (align == static_cast<int>(EditorButton::VerticalAlignment::Bottom)) { return EditorButton::VerticalAlignment::Bottom; }
     return EditorButton::VerticalAlignment::Centre;
   }
 
