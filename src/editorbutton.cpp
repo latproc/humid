@@ -87,6 +87,7 @@ namespace {
       case EditorButton::VerticalAlignment::Centre: return "centre";
       case EditorButton::VerticalAlignment::Bottom: return "bottom";
     }
+    return "centre";
   }
 
   EditorButton::VerticalAlignment toVerticalAlignment(int align) {
