@@ -72,7 +72,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
       if (border == 0)
         nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
       else {
-      int a = border / 2+1;
+        int a = border / 2+1;
         nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a, mSize.x()-2*a,
                  mSize.y()-2*a, mTheme->mButtonCornerRadius);
       }
@@ -101,28 +101,46 @@ void EditorLabel::draw(NVGcontext *ctx) {
     else if (alignment == 2)
       align = NVG_ALIGN_RIGHT;
 
-    int pos_v = mPos.y();
-    if (valign == 1) {
-      alignv = NVG_ALIGN_MIDDLE;
-      pos_v = mPos.y() + mSize.y()/2;
-    }
-    else if (valign == 2) {
-      alignv = NVG_ALIGN_BOTTOM;
-      pos_v = mPos.y() + mSize.y();
-    }
-
     std::string valStr = format_caption(mCaption, format_string, value_type, value_scale);
     if (format_string == "password") {
       for (size_t i = 0; i<valStr.length(); ++i) {
         valStr[i] = '*';
       }
     }
+
+    int pos_v = mPos.y();
+    if (valign != 0) {
+      float bounds[4];
+      nvgTextBoxBounds(ctx, mPos.x(), mPos.y(), mSize.x(), "A", nullptr, bounds);
+      float line_height = bounds[3] - bounds[1];
+      if (wrap_text) {
+        nvgTextBoxBounds(ctx, mPos.x(), mPos.y(), mSize.x(), valStr.c_str(), nullptr, bounds);
+      }
+      if (valign == 1) {
+        alignv = NVG_ALIGN_MIDDLE;
+        pos_v = mPos.y() + mSize.y()/2 - (bounds[3] - bounds[1] - line_height) / 2.0;
+      }
+      else if (valign == 2) {
+        alignv = NVG_ALIGN_BOTTOM;
+        pos_v = mPos.y() + mSize.y() - (bounds[3] - bounds[1] - line_height);
+      }
+    }
+
     if (mFixedSize.x() > 0) {
         nvgTextAlign(ctx, align | alignv);
-        nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), valStr.c_str(), nullptr);
+        if (wrap_text)
+          nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), valStr.c_str(), nullptr);
+        else {
+          if (align == NVG_ALIGN_LEFT)
+            nvgText(ctx, mPos.x(), pos_v, valStr.c_str(), nullptr);
+          else if (align == NVG_ALIGN_CENTER)
+            nvgText(ctx, mPos.x() + mSize.x()/2, pos_v, valStr.c_str(), nullptr);
+          else if (align == NVG_ALIGN_RIGHT)
+            nvgText(ctx, mPos.x() + mSize.x(), pos_v, valStr.c_str(), nullptr);
+        }
     } else {
         nvgTextAlign(ctx, align | alignv);
-        nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, valStr.c_str(), nullptr);
+        nvgText(ctx, mPos.x(), pos_v, valStr.c_str(), nullptr);
     }
     if (mSelected)
       drawSelectionBorder(ctx, mPos, mSize);
