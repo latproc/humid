@@ -449,6 +449,18 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	}
 }
 
+void monitor_callback(GLFWmonitor* monitor, int event)
+{
+    if (event == GLFW_CONNECTED)
+    {
+        std::cerr << "Monitor " << glfwGetMonitorName(monitor) << " was connected\n";
+    }
+    else if (event == GLFW_DISCONNECTED)
+    {
+        std::cerr << "Monitor " << glfwGetMonitorName(monitor) << " was disconnected\n";
+    }
+}
+
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
@@ -536,6 +548,11 @@ int main(int argc, const char ** argv ) {
 		nanogui::init();
 
 		GLFWmonitor* primary = glfwGetPrimaryMonitor();
+		if (!primary) {
+			std::cerr << "No monitor detected. Exiting\n";
+			return EXIT_FAILURE;
+		}
+		glfwSetMonitorCallback(monitor_callback);
 		const GLFWvidmode* mode = glfwGetVideoMode(primary);
 		int widthMM, heightMM;
 		glfwGetMonitorPhysicalSize(primary, &widthMM, &heightMM);
