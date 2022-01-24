@@ -33,6 +33,8 @@ const char *st_yyfilename = 0;
 
 const char *program_name;
 
+bool isNull(const Value & value) { return value.kind == Value::t_empty; }
+
 StructureClass *findClass(const std::string &name) {
     return nullptr;
 }

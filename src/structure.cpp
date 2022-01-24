@@ -242,7 +242,7 @@ const Value &Structure::getValue(const char *name) {
 		auto sc = findClass(getKind());
 		if (sc) {
 			const Value & result = sc->getDefaults().find(name);
-			if (!result.isNull()) {
+			if (!isNull(result)) {
 				return result;
 			}
 			else {
@@ -272,7 +272,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const S
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
-		if (!item.second.isNull() && item.second.asString() != "") {
+		if (!isNull(item.second) && item.second.asString() != "") {
 			const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
 			//if (item.second == default_value) { continue; } // don't write unchanged properties
 			if (link_map) {
@@ -471,7 +471,9 @@ SymbolTable default_properties(const StructureClass *s) {
 	for (auto iter = hm_classes.rbegin(); iter != hm_classes.rend(); ++iter) {
 		const auto & sc = *iter;
 		if (sc->getName() == base) {
-			std::cout << "found ihneritance: " << base << " -> " << sc->getBase() << "\n";
+			std::cout << "found inheritance: " << base;
+			if (!sc->getBase().empty()) { std::cout << " -> " << sc->getBase(); }
+			std::cout << "\n";
 			inheritance.push_back(sc);
 			base = sc->getBase();
 			if (base.empty()) { break; }

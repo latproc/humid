@@ -396,7 +396,7 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 	const Value &chn = s_conn->getProperties().find("channel");
 	const Value &host = s_conn->getProperties().find("host");
 	long port = s_conn->getIntProperty("port", 5555);
-	if (!(chn.isNull() || host.isNull())) {
+	if (!(isNull(chn) || isNull(host))) {
 		Connection *conn = new Connection(this, s_conn->getName(), chn.asString(), host.asString(), port);
 		conn->setDefinition(s_conn);
 		conn->SetupInterface();

@@ -2,14 +2,14 @@
 #include "thememanager.h"
 #include "structure.h"
 #include <symboltable.h>
-#include "structure.h"
 #include "colourhelper.h"
+#include "helper.h"
 
 ThemeManager *ThemeManager::theme_manager = nullptr;
 
 void set_prop(int &val, SymbolTable &st, const char *key) {
 	const Value &v = st.find(key);
-	if (!v.isNull()) {
+	if (!isNull(v)) {
 		long iValue;
 		if (v.asInteger(iValue)) { val = static_cast<int>(iValue); }
 	}
@@ -17,7 +17,7 @@ void set_prop(int &val, SymbolTable &st, const char *key) {
 
 static void set_prop(nanogui::Color &val, SymbolTable &st, const char *key) {
 	const Value &v = st.find(key);
-	if (!v.isNull()) { val = colourFromString(v.asString()); }
+	if (!isNull(v)) { val = colourFromString(v.asString()); }
 }
 
 static void fromStructure(nanogui::Theme *theme, Structure *s) {

@@ -304,3 +304,5 @@ void invert_map(const std::map<std::string, std::string> &normal, std::map<std::
 		reversed.insert({item.second, item.first});
 	}
 }
+
+bool isNull(const Value & value) { return value.kind == Value::t_empty; }

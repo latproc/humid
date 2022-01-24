@@ -38,8 +38,9 @@ std::map<std::string, LinkableProperty *> remotes;
 void LinkableProperty::setValue(const Value &v) {}
 Value & LinkableProperty::value() { return current; }
 
-
 const char *program_name;
+
+bool isNull(const Value & value) { return value.kind == Value::t_empty; }
 
 StructureClass *findClass(const std::string &name) {
     return nullptr;
