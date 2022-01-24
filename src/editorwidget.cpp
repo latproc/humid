@@ -33,7 +33,7 @@ extern Handle::Mode all_handles[];
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1), value_type(0) {
+    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(0), value_type(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
@@ -45,7 +45,7 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
       nanogui::Widget *w, LinkableProperty *lp)
   : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(1), value_type(0) {
+  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(0), value_type(0) {
     assert(w != 0);
     Palette *p = dynamic_cast<Palette*>(w);
     if (!p) {
