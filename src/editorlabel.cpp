@@ -199,8 +199,32 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     int fs = std::atoi(value.c_str());
     setFontSize(fs);
   }
-  if (prop == "Alignment") alignment = std::atoi(value.c_str());
-  if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  if (prop == "Alignment") {
+    long align_int = 0;
+    Value val(value);
+    if (val.asInteger(align_int)) {
+      alignment = static_cast<int>(align_int);
+    }
+    else {
+      if (value == "left") { alignment = 0;}
+      else if (value == "centre" || value == "center") { alignment = 1; }
+      else if (value == "right") { alignment = 2; }
+      else alignment = defaultForProperty("alignment").iValue;
+    }
+  }
+  if (prop == "Vertical Alignment") {
+    long v_align_int = 0;
+    Value val(value);
+    if (val.asInteger(v_align_int)) {
+      valign = static_cast<int>(v_align_int);
+    }
+    else {
+      if (value == "top") { valign = 0;}
+      else if (value == "centre" || value == "center") { valign = 1; }
+      else if (value == "bottom") { valign = 2; }
+      else valign = defaultForProperty("valign").iValue;
+    }
+  }
   if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }
