@@ -174,7 +174,7 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg) : Skeleto
 
 const int DEBUG_ALL = 255;
 #define DEBUG_BASIC ( 1 & debug)
-int debug = DEBUG_ALL;
+int debug = 0;
 int saved_debug = 0;
 
 /* Clockwork Interface */
@@ -482,7 +482,7 @@ zmq::socket_t* ClockworkClient::Connection::getCommandSocket() const {
 bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
 	if (command_state == WaitingCommand && !messages.empty()) {
 		std::string msg = messages.front().first;
-		std::cerr << name << " sending " << msg << "\n";
+		if (debug) { std::cerr << name << " sending " << msg << "\n"; }
 		safeSend(*cmd_interface, msg.c_str(), msg.length());
 		command_state = WaitingResponse;
 	}

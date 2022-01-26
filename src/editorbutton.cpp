@@ -123,9 +123,17 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
       if (cmd.length()) {
-          std::cout << name << " sending " << cmd << " to " << conn << "\n";
+          extern int debug;
+          if (debug) {
+            std::cout << name << " sending: " << cmd << " to " << conn << "\n";
+          }
           gui->queueMessage(conn, cmd,
-            [](std::string s){std::cout << " Response: " << s << "\n"; });
+            [](std::string s){
+              extern int debug;
+              if (debug) {
+                std::cout << " Response: " << s << "\n"; 
+              }
+            });
       }
       else if (flags() & nanogui::Button::RemoteButton) {
         // a remote button is reset remotely

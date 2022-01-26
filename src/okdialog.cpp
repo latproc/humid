@@ -67,7 +67,7 @@ namespace po = boost::program_options;
 const int DEBUG_ALL = 255;
 #define DEBUG_BASIC ( 1 & debug)
 static nanogui::DragHandle *drag_handle = 0;
-int debug = DEBUG_ALL;
+int debug = 0;
 int saved_debug = 0;
 
 /* Clockwork Interface */
