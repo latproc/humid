@@ -58,10 +58,38 @@ bool EditorTextBox::mouseEnterEvent(const Vector2i &p, bool enter) {
     return true;
 }
 
+const LinkManager::LinkInfo *find_link(const LinkManager::Links *links, const std::string & property) {
+  if (!links) { return nullptr; }
+  for (const auto & link : *links) {
+    if (link.property_name == property) return &link;
+  }
+  return nullptr;
+}
+
 bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
     bool res = nanogui::TextBox::keyboardCharacterEvent(codepoint);
-    if (mEditable && focused() && auto_update) {
-      std::cout << mValueTemp << "\n";
+    if (!connection_name.empty() && mEditable && focused() && auto_update && remote_links) {
+      working_text = mValueTemp;
+      const auto * link = find_link(remote_links, "working_text");
+      if (link) {
+        std::stringstream ss;
+        std::string remote_machine = link->remote_name;
+        std::string remote_property;
+        auto separator_pos = remote_machine.rfind('.');
+        if (separator_pos == std::string::npos) {
+          remote_property =  "VALUE";
+        }
+        else {
+          remote_property = remote_machine.substr(separator_pos+1);
+          remote_machine = remote_machine.substr(0, separator_pos);
+        }
+        ss << "PROPERTY " << remote_machine << " " << remote_property << " \"" << working_text << "\"";
+        EDITOR->gui()->queueMessage(connection_name, ss.str(),
+              [](std::string s){
+                extern int debug;
+                if (debug) { std::cout << " Response: " << s << "\n"; }
+              });
+      }
     }
     return res;
 }
@@ -73,6 +101,7 @@ void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Font Size");
   names.push_back("Alignment");
   names.push_back("Vertical Alignment");
+  names.push_back("Working Text");
   names.push_back("Wrap Text");
 }
 
@@ -179,6 +208,7 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
     }
   }
   else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
+  else if (prop == "Working Text") { working_text = value; }
   else if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
   }

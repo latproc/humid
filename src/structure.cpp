@@ -95,6 +95,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Text"] = "text";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
+		properties["Working Text"] = "working_text";
 	}
 	else if (class_name == "LABEL") {
 		properties["Alignment"] = "alignment";

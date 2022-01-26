@@ -23,6 +23,7 @@ struct WidgetParams {
 	const Value &scale_val;
 	const Value &border;
 	const Value & auto_update;
+	const Value & working_text;
 	Value remote;
 	long value_type;
 	//const Value &scale_val;

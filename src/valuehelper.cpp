@@ -60,6 +60,7 @@ Value::Kind typeForProperty(const std::string &property) {
     	property_types["value_type"] = Value::t_integer;
     	property_types["visibility"] = Value::t_bool;
     	property_types["width"] = Value::t_integer;
+		property_types["working_text"] = Value::t_string;
     	property_types["wrap"] = Value::t_bool;
     	property_types["x_offset"] = Value::t_integer;
     	property_types["x_scale"] = Value::t_float;

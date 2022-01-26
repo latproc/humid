@@ -64,6 +64,7 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 		scale_val(element->getValue("value_scale")),
 		border(element->getValue("border")),
 		auto_update(element->getValue("auto_update")),
+		working_text(element->getValue("working_text")),
 		kind(element->getKind()), offset(offset_)
 {
 	StructureClass *element_class = findClass(kind);
@@ -283,6 +284,9 @@ void createText(WidgetParams &params) {
 		if (params.auto_update.asBoolean(aa)) {
 			textBox->auto_update = aa;
 		}
+	}
+	if (params.working_text != SymbolTable::Null) {
+		textBox->working_text = params.working_text.asString();
 	}
 	textBox->setName(params.element->getName());
 	if (params.lp)

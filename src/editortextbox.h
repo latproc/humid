@@ -45,6 +45,7 @@ public:
 	int valign = 1;
 	bool wrap_text = true;
     bool auto_update = false;
+	std::string working_text;
 };
 
 #endif
