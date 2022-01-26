@@ -110,6 +110,8 @@ public:
 	void setConnection(const std::string c) { connection_name = c; }
 	std::string getConnection() { return connection_name; }
 
+	void setRemoteLinks(const LinkManager::Links *links) { remote_links = links; }
+
 	void setBorder(int val) { border = val; }
 	int getBorder() { return border; }
 
@@ -123,11 +125,12 @@ protected:
 	std::string base;
 	std::string remote_name; // only used if there is no remote
 	std::string connection_name; // only used if there is no remote
-	nanogui::DragHandle *dh;
+	nanogui::DragHandle *dh = nullptr;
 	std::vector<Handle> handles;
 	MatrixXd handle_coordinates;
 	std::string pattern_list;
-	Structure *definition;
+	Structure *definition = nullptr;
+	const LinkManager::Links *remote_links = nullptr;
 	std::string format_string;
 	float value_scale;
 	int tab_position;

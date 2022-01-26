@@ -71,7 +71,7 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 	const Value font_size_val(element->getValue("font_size"));
 	lp = nullptr;
 	const Value remote_name(element->getValue("remote"));
-	remote = remote_name == SymbolTable::Null || remote_name.asString() == "null"
+	remote = remote_name == SymbolTable::Null || remote_name.asString().empty() || remote_name.asString() == "null"
 		? SymbolTable::Null
 		: remote_name;
 	if (remote != SymbolTable::Null) {
@@ -127,6 +127,7 @@ template <typename T>
 void prepare_remote_links(const WidgetParams &params, T *w) {
 	auto remote_links = LinkManager::instance().remote_links(params.s->getStructureDefinition()->getName(), w->getName());
 	if (remote_links) {
+		w->setRemoteLinks(remote_links);
 		auto property_id_to_name = w->reverse_property_map();
 		for (auto & link_info : *remote_links) {
 			auto linkable_property = params.gui->findLinkableProperty(link_info.remote_name);
@@ -316,6 +317,19 @@ void createText(WidgetParams &params) {
 						textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
 				return true;
 			}
+		}
+		{
+			std::string msg = value;
+			int size = textBox->getRemote()->dataSize();
+			if (size < msg.length()) {
+				msg = msg.substr(size);
+			}
+			params.gui->queueMessage(conn,
+				params.gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
+					textBox->getRemote()->address(), msg.c_str()), 
+						[](std::string s){ extern int debug; if (debug) { std::cout << s << "\n"; } });
+			extern int debug;
+			if (debug) { std::cout << "sending: " << value << " of size " << size << "\n"; }
 		}
 		return false;
 	});

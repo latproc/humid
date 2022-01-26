@@ -287,10 +287,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const S
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
-		if (item.first == "text") continue;
-		if (!isNull(item.second) && item.second.asString() != "") {
-			const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
-			//if (item.second == default_value) { continue; } // don't write unchanged properties
+		if (!isNull(item.second) && (link_map || item.second.asString() != "") ) {
 			if (link_map) {
 				auto remote_name = link_map->find(item.first);
 				if (remote_name != link_map->end()) {
@@ -299,6 +296,9 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const S
 					continue;
 				}
 			}
+			// const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
+			// if (item.second == default_value) { continue; } // don't write unchanged properties
+			if (item.first == "text" || item.first == "working_text") continue; // don't save text properties unless they were in a link map.
 			if (item.second.kind == Value::t_string)
 				out << delim << item.first << ": " << item.second; // quotes are automatically added to string values
 			else

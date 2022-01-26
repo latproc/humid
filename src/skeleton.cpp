@@ -761,7 +761,7 @@ std::string ClockworkClient::getIODSyncCommand(const std::string & connection_na
 		return s;
 }
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, const char *new_value) {
-	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, Value(new_value, Value::t_string));
 
 		if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 		std::string s(msg);
