@@ -84,24 +84,16 @@ nanogui::Color colourFromString(const std::string &colour) {
 std::string stringFromColour(const nanogui::Color &colour) {
 
 	std::stringstream ss;
-	ss << '#' << std::hex << std::setfill('0') 
-		<< std::setw(2) << static_cast<int>(colour.r()*255) 
-		<< std::setw(2) << static_cast<int>(colour.g()*255)  
+	ss << '#' << std::hex << std::setfill('0')
+		<< std::setw(2) << static_cast<int>(colour.r()*255)
+		<< std::setw(2) << static_cast<int>(colour.g()*255)
 		<< std::setw(2) << static_cast<int>(colour.b()*255);
 	if (colour.w() != 1.0)
 		ss << std::setw(2) <<static_cast<int>(colour.w()*255);
 	return ss.str();
 }
 
-nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
-	return colourFromProperty(element, prop.c_str());
-}
-
-nanogui::Color colourFromProperty(Structure *element, const char *prop) {
-	Value colour(element->getValue(prop));
-	if (colour == SymbolTable::Null) {
-		colour = defaultForProperty(prop);
-	}
+nanogui::Color colourFromValue(const Value & colour) {
 	if (colour != SymbolTable::Null) {
 		std::string colour_str = colour.asString();
 		if (colour_str[0] == '#' || colour_str[0] == '&') {

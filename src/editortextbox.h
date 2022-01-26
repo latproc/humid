@@ -43,8 +43,9 @@ public:
 	virtual bool focusEvent(bool focused) override;
 	virtual void draw(NVGcontext *ctx) override;
 	MatrixXd handle_coordinates;
-	int valign;
-	bool wrap_text;
+	int valign = 1;
+	bool wrap_text = true;
+    bool auto_update = false;
 };
 
 #endif

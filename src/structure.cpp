@@ -13,6 +13,20 @@
 #include "structure.h"
 #include "helper.h"
 #include "linkmanager.h"
+#include "valuehelper.h"
+#include "colourhelper.h"
+
+nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
+	return colourFromProperty(element, prop.c_str());
+}
+
+nanogui::Color colourFromProperty(Structure *element, const char *prop) {
+	Value colour(element->getValue(prop));
+	if (colour == SymbolTable::Null) {
+		colour = defaultForProperty(prop);
+	}
+    return colourFromValue(colour);
+}
 
 std::list<Structure *>hm_structures;
 std::list<Structure *>builtin_structures;
@@ -76,6 +90,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	}
 	else if (class_name == "TEXT") {
 		properties["Alignment"] = "alignment";
+		properties["Auto Update"] = "auto_update";
 		properties["Font Size"] = "font_size";
 		properties["Text"] = "text";
 		properties["Vertical Alignment"] = "valign";

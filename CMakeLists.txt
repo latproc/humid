@@ -38,8 +38,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-register -Wno-deprecated-declarations -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-copy")
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
+set(NANOGUI_BUILD_EXAMPLE OFF)
 add_subdirectory(lib/nanogui)
 include_directories(lib/nanogui/include)
 include_directories(${NANOGUI_EXTRA_INCS})
@@ -267,10 +269,15 @@ endif()
 		  src/editorcombobox.cpp
 		  ${HEADERS})
 
-  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp src/linkmanager.cpp)
+  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp
+    src/linkmanager.cpp src/colourhelper.cpp
+    src/valuehelper.cpp
+  )
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
   		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+        src/colourhelper.cpp
+        src/valuehelper.cpp
 	)
 
 if (USE_CLOCKWORK_SOURCE)

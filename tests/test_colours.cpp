@@ -1,7 +1,10 @@
 #include "gtest/gtest.h"
 #include <nanogui/common.h>
+#include <value.h>
 
 nanogui::Color colourFromString(const std::string &colour);
+
+bool isNull(const Value &value) { return value.kind == Value::t_empty; }
 
 namespace {
 

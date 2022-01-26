@@ -1,5 +1,6 @@
 #include "valuehelper.h"
 #include <symboltable.h>
+#include <unordered_map>
 
 Value defaultForType(Value::Kind kind) {
 	switch(kind) {
@@ -16,101 +17,111 @@ Value defaultForType(Value::Kind kind) {
 }
 
 Value::Kind typeForProperty(const std::string &property) {
-	if (property == "alignment") { return Value::t_integer; }
-	if (property == "behaviour") { return Value::t_integer; }
-	if (property == "bg_color") { return Value::t_string; }
-	if (property == "bg_on_color") { return Value::t_string; }
-	if (property == "border") { return Value::t_integer; }
-	if (property == "caption") { return Value::t_string; }
-	if (property == "channel") { return Value::t_string; }
-	if (property == "command") { return Value::t_string; }
-	if (property == "connection") { return Value::t_string; }
-	if (property == "display_grid") { return Value::t_bool; }
-	if (property == "file_name") { return Value::t_string; }
-	if (property == "fg_color") { return Value::t_string; }
-	if (property == "font_size") { return Value::t_integer; }
-	if (property == "format") { return Value::t_string; }
-	if (property == "grid_intensity") { return Value::t_float; }
-	if (property == "height") { return Value::t_integer; }
-	if (property == "image") { return Value::t_string; }
-	if (property == "image_alpha") { return Value::t_float; }
-	if (property == "image_file") { return Value::t_string; }
-	if (property == "inverted_visibility") { return Value::t_bool; }
-	if (property == "on_caption") { return Value::t_string; }
-	if (property == "text_on_colour") { return Value::t_string; }
-	if (property == "overlay_plots") { return Value::t_bool; }
-	if (property == "pos_x") { return Value::t_integer; }
-	if (property == "pos_y") { return Value::t_integer; }
-	if (property == "remote") { return Value::t_string; }
-	if (property == "scale") { return Value::t_float; }
-	if (property == "screen_height") { return Value::t_integer; }
-	if (property == "screen_id") { return Value::t_string; }
-	if (property == "screen_width") { return Value::t_integer; }
-	if (property == "tab_position") { return Value::t_integer; }
-	if (property == "text") { return Value::t_string; }
-	if (property == "text_colour") { return Value::t_string; }
-	if (property == "text_colour") { return Value::t_string; }
-	if (property == "theme") { return Value::t_string; }
-	if (property == "valign") { return Value::t_integer; }
-	if (property == "value_scale") { return Value::t_float; }
-	if (property == "value_type") { return Value::t_integer; }
-	if (property == "visibility") { return Value::t_bool; }
-	if (property == "width") { return Value::t_integer; }
-	if (property == "wrap") { return Value::t_bool; }
-	if (property == "x_offset") { return Value::t_integer; }
-	if (property == "x_scale") { return Value::t_float; }
+    static std::unordered_map<std::string, Value::Kind> property_types;
+    if (property_types.empty()) {
+    	property_types["alignment"] = Value::t_integer;
+    	property_types["behaviour"] = Value::t_integer;
+    	property_types["bg_color"] = Value::t_string;
+    	property_types["bg_on_color"] = Value::t_string;
+    	property_types["border"] = Value::t_integer;
+    	property_types["caption"] = Value::t_string;
+    	property_types["channel"] = Value::t_string;
+    	property_types["command"] = Value::t_string;
+    	property_types["connection"] = Value::t_string;
+    	property_types["display_grid"] = Value::t_bool;
+    	property_types["file_name"] = Value::t_string;
+    	property_types["fg_color"] = Value::t_string;
+    	property_types["font_size"] = Value::t_integer;
+    	property_types["format"] = Value::t_string;
+    	property_types["grid_intensity"] = Value::t_float;
+    	property_types["height"] = Value::t_integer;
+    	property_types["image"] = Value::t_string;
+    	property_types["image_alpha"] = Value::t_float;
+    	property_types["image_file"] = Value::t_string;
+    	property_types["inverted_visibility"] = Value::t_bool;
+    	property_types["on_caption"] = Value::t_string;
+    	property_types["text_on_colour"] = Value::t_string;
+    	property_types["overlay_plots"] = Value::t_bool;
+    	property_types["pos_x"] = Value::t_integer;
+    	property_types["pos_y"] = Value::t_integer;
+    	property_types["remote"] = Value::t_string;
+    	property_types["scale"] = Value::t_float;
+    	property_types["screen_height"] = Value::t_integer;
+    	property_types["screen_id"] = Value::t_string;
+    	property_types["screen_width"] = Value::t_integer;
+    	property_types["tab_position"] = Value::t_integer;
+    	property_types["text"] = Value::t_string;
+    	property_types["text_colour"] = Value::t_string;
+    	property_types["text_colour"] = Value::t_string;
+    	property_types["theme"] = Value::t_string;
+    	property_types["valign"] = Value::t_integer;
+    	property_types["value_scale"] = Value::t_float;
+    	property_types["value_type"] = Value::t_integer;
+    	property_types["visibility"] = Value::t_bool;
+    	property_types["width"] = Value::t_integer;
+    	property_types["wrap"] = Value::t_bool;
+    	property_types["x_offset"] = Value::t_integer;
+    	property_types["x_scale"] = Value::t_float;
+    }
+    auto found = property_types.find(property);
+    if (found != property_types.end()) { return found->second; }
 	return Value::t_string;
 }
 
 Value defaultForProperty(const std::string &property) {
-	if (property == "alignment") { return 1; }
-	if (property == "behaviour") { return 1; }
-	if (property == "bg_color") { return "0.7,0.7,0.7,1.0"; }
-	if (property == "bg_on_color") { return "1.0,1.0,1.0,1.0"; }
-	if (property == "border") { return 0; }
-	if (property == "border_grad_top") { return "0.8,0.8,0.8,1.0"; }
-	if (property == "border_grad_bot") { return "0.2,0.2,0.2,1.0"; }
-	if (property == "border_style") { return 1; }
-	if (property == "border_colouring") { return 0; }
-	if (property == "border_grad_dir") { return 0; }
-	if (property == "caption") { return ""; }
-	if (property == "channel") { return {}; }
-	if (property == "command") { return {}; }
-	if (property == "connection") { return {};}
-	if (property == "display_grid") { return false; }
-	if (property == "fg_color") { return "0.3,0.3,0.7,1.0"; }
-	if (property == "file_name") { return {}; }
-	if (property == "font_size") { return 24; }
-	if (property == "format") { return {}; }
-	if (property == "grid_intensity") { return 0.05; }
-	if (property == "height") { return 48; }
-	if (property == "image") { return {}; }
-	if (property == "image_alpha") { return 1.0; }
-	if (property == "image_file") { return {}; }
-	if (property == "inverted_visibility") { return false; }
-	if (property == "on_caption") { return ""; }
-	if (property == "overlay_plots") { return true; }
-	if (property == "pos_x") { return 0; }
-	if (property == "pos_y") { return 0; }
-	if (property == "remote") { return {}; }
-	if (property == "scale") { return 1.0; }
-	if (property == "screen_height") { return 600; }
-	if (property == "screen_id") { return 0; }
-	if (property == "screen_width") { return 800; }
-	if (property == "tab_position") { return 0; }
-	if (property == "text") { return ""; }
-	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
-	if (property == "text_colour") { return "0.2,0.2,0.2,1.0"; }
-	if (property == "text_on_colour") { return "0.2,0.2,0.2,1.0"; }
-	if (property == "theme") { return ""; }
-	if (property == "valign") { return 1; }
-	if (property == "value_scale") { return 1.0f; }
-	if (property == "value_type") { return 0; }
-	if (property == "visibility") { return true; }
-	if (property == "width") { return 72; }
-	if (property == "wrap") { return false; }
-	if (property == "x_offset") { return 0; }
-	if (property == "x_scale") { return 1.0; }
+    static std::unordered_map<std::string, Value> property_defaults;
+    if (property_defaults.empty()) {
+    	property_defaults["alignment"] = 1;
+    	property_defaults["behaviour"] = 1;
+    	property_defaults["bg_color"] = "0.7,0.7,0.7,1.0";
+    	property_defaults["bg_on_color"] = "1.0,1.0,1.0,1.0";
+    	property_defaults["border"] = 0;
+    	property_defaults["border_grad_top"] = "0.8,0.8,0.8,1.0";
+    	property_defaults["border_grad_bot"] = "0.2,0.2,0.2,1.0";
+    	property_defaults["border_style"] = 1;
+    	property_defaults["border_colouring"] = 0;
+    	property_defaults["border_grad_dir"] = 0;
+    	property_defaults["caption"] = "";
+    	property_defaults["channel"] = Value{};
+    	property_defaults["command"] = Value{};
+    	property_defaults["connection"] = Value{};
+    	property_defaults["display_grid"] = false;
+    	property_defaults["fg_color"] = "0.3,0.3,0.7,1.0";
+    	property_defaults["file_name"] = Value{};
+    	property_defaults["font_size"] = 24;
+    	property_defaults["format"] = Value{};
+    	property_defaults["grid_intensity"] = 0.05;
+    	property_defaults["height"] = 48;
+    	property_defaults["image"] = Value{};
+    	property_defaults["image_alpha"] = 1.0;
+    	property_defaults["image_file"] = Value{};
+    	property_defaults["inverted_visibility"] = false;
+    	property_defaults["on_caption"] = "";
+    	property_defaults["overlay_plots"] = true;
+    	property_defaults["pos_x"] = 0;
+    	property_defaults["pos_y"] = 0;
+    	property_defaults["remote"] = Value{};
+    	property_defaults["scale"] = 1.0;
+    	property_defaults["screen_height"] = 600;
+    	property_defaults["screen_id"] = 0;
+    	property_defaults["screen_width"] = 800;
+    	property_defaults["tab_position"] = 0;
+    	property_defaults["text"] = "";
+    	property_defaults["text_colour"] = "0.2,0.2,0.2,1.0";
+    	property_defaults["text_colour"] = "0.2,0.2,0.2,1.0";
+    	property_defaults["text_on_colour"] = "0.2,0.2,0.2,1.0";
+    	property_defaults["theme"] = "";
+    	property_defaults["valign"] = 1;
+    	property_defaults["value_scale"] = 1.0f;
+    	property_defaults["value_type"] = 0;
+    	property_defaults["visibility"] = true;
+    	property_defaults["width"] = 72;
+    	property_defaults["wrap"] = false;
+    	property_defaults["x_offset"] = 0;
+    	property_defaults["x_scale"] = 1.0;
+    }
+    auto found = property_defaults.find(property);
+    if (found != property_defaults.end()) { return found->second; }
     return defaultForType(typeForProperty(property));
 }
 
@@ -129,14 +140,14 @@ std::string format_caption(const std::string &caption, const std::string format_
         char buf[20];
         float val = std::atof(valStr.c_str());
         snprintf(buf, 20, format_string.c_str(), val / scale);
-        valStr = buf;       
+        valStr = buf;
       }
-    } 
+    }
     else if (value_type == Value::t_float) {
         char buf[20];
         float val = std::atof(valStr.c_str());
         snprintf(buf, 20, "%5.3f", val / scale);
-        valStr = buf;       
+        valStr = buf;
     }
     else if (value_type == Value::t_integer) {
         char buf[20];
