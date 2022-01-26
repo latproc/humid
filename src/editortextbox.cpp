@@ -58,8 +58,17 @@ bool EditorTextBox::mouseEnterEvent(const Vector2i &p, bool enter) {
     return true;
 }
 
+bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
+    bool res = nanogui::TextBox::keyboardCharacterEvent(codepoint);
+    if (mEditable && focused() && auto_update) {
+      std::cout << mValueTemp << "\n";
+    }
+    return res;
+}
+
 void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
 	EditorWidget::getPropertyNames(names);
+  names.push_back("Auto Update");
   names.push_back("Text");
   names.push_back("Font Size");
   names.push_back("Alignment");
@@ -77,6 +86,7 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
     return res;
   if (prop == "Text") return Value(value(), Value::t_string);
   else if (prop == "Font Size") return fontSize();
+  else if (prop == "Auto Update") return auto_update;
   else if (prop == "Alignment") return (int)alignment();
   else if (prop == "Vertical Alignment") return valign;
   else if (prop == "Wrap Text") return wrap_text ? 1 : 0;
@@ -88,7 +98,7 @@ std::string EditorTextBox::getScaledValue(bool scaleUp) {
     const char *p = value().c_str();
     while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
     if (value_type == Value::t_integer && value_scale != 1.0f) {
-      long i_value = std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
+      long i_value = value_scale == 0.0 ? 0 : (std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
       char buf[20];
       if (format_string.empty())
         snprintf(buf, 20, "%ld", i_value);
@@ -98,7 +108,7 @@ std::string EditorTextBox::getScaledValue(bool scaleUp) {
     }
     else if (value_type == Value::t_float) {
       std::string v;
-      double f_value = std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
+      double f_value = value_scale == 0.0 ? 0.0 : (std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
       char buf[20];
       if (format_string.empty())
         snprintf(buf, 20, "%5.3lf", f_value);
@@ -158,6 +168,16 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
   else if (prop == "Alignment") {
     setAlignment((Alignment)std::atoi(value.c_str()));
   }
+  else if (prop == "Auto Update") {
+    Value v{value};
+    bool aa;
+    if (v.asBoolean(aa)) {
+      auto_update = aa;
+    }
+    else {
+      std::cerr << name << " could not get auto_update value from: " << value << "\n";
+    }
+  }
   else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
   else if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
@@ -168,13 +188,13 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
 bool EditorTextBox::focusEvent(bool focused) {
     bool res = TextBox::focusEvent(focused);
     if (!res) return res;
-    if (value_scale == 1.0f) return res;
 
     if (mEditable) {
         if (focused)
             mValueTemp = getScaledValue(false);
         else
-            mValue =  mValueTemp; mValue = getScaledValue(true);
+            mValue =  mValueTemp;
+        mValue = getScaledValue(true);
     }
 
     return true;
@@ -463,6 +483,10 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
       "Text",
       [&](std::string value) { setProperty("Text", value); },
       [&]()->std::string{ return getPropertyValue("Text").asString(); });
+    properties->addVariable<bool> (
+      "Auto Update",
+      [&](bool value) { auto_update = value; },
+      [&]()->bool{ return auto_update; });
 
     properties->addVariable<int> (
       "Alignment",

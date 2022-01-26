@@ -63,6 +63,7 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 		vis(element->getValue("visibility")),
 		scale_val(element->getValue("value_scale")),
 		border(element->getValue("border")),
+		auto_update(element->getValue("auto_update")),
 		kind(element->getKind()), offset(offset_)
 {
 	StructureClass *element_class = findClass(kind);
@@ -276,6 +277,12 @@ void createText(WidgetParams &params) {
 	if (params.font_size) textBox->setFontSize(params.font_size);
 	if (params.tab_pos) textBox->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) textBox->setBorder(params.border.iValue);
+	if (params.auto_update != SymbolTable::Null) {
+		bool aa;
+		if (params.auto_update.asBoolean(aa)) {
+			textBox->auto_update = aa;
+		}
+	}
 	textBox->setName(params.element->getName());
 	if (params.lp)
 		textBox->setTooltip(params.remote.asString());

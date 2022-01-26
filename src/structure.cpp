@@ -287,6 +287,7 @@ bool writePropertyList(std::ostream &out, const SymbolTable &properties, const S
 	SymbolTableConstIterator i = properties.begin();
 	while (i != properties.end()) {
 		auto item = *i++;
+		if (item.first == "text") continue;
 		if (!isNull(item.second) && item.second.asString() != "") {
 			const Value &default_value = defaults ? defaults->find(item.first.c_str()) : SymbolTable::Null;
 			//if (item.second == default_value) { continue; } // don't write unchanged properties

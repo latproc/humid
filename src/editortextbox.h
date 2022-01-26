@@ -35,10 +35,9 @@ public:
 	int getScaledInteger(bool scaleUp);
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
-
 	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
-
 	virtual bool mouseEnterEvent(const Vector2i &p, bool enter) override;
+	virtual bool keyboardCharacterEvent(unsigned int codepoint) override;
 
 	virtual bool focusEvent(bool focused) override;
 	virtual void draw(NVGcontext *ctx) override;

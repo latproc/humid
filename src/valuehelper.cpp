@@ -20,6 +20,7 @@ Value::Kind typeForProperty(const std::string &property) {
     static std::unordered_map<std::string, Value::Kind> property_types;
     if (property_types.empty()) {
     	property_types["alignment"] = Value::t_integer;
+		property_types["auto_update"] = Value::t_bool;
     	property_types["behaviour"] = Value::t_integer;
     	property_types["bg_color"] = Value::t_string;
     	property_types["bg_on_color"] = Value::t_string;
@@ -72,6 +73,7 @@ Value defaultForProperty(const std::string &property) {
     static std::unordered_map<std::string, Value> property_defaults;
     if (property_defaults.empty()) {
     	property_defaults["alignment"] = 1;
+		property_defaults["auto_update"] = false;
     	property_defaults["behaviour"] = 1;
     	property_defaults["bg_color"] = "0.7,0.7,0.7,1.0";
     	property_defaults["bg_on_color"] = "1.0,1.0,1.0,1.0";
