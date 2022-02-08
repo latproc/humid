@@ -131,7 +131,7 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
             [](std::string s){
               extern int debug;
               if (debug) {
-                std::cout << " Response: " << s << "\n"; 
+                std::cout << " Response: " << s << "\n";
               }
             });
       }
@@ -499,7 +499,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     //   offset = {1,1};
     //   nvgTranslate(ctx, offset.x(), offset.y());
     // }
-    
+
     nanogui::Vector2i offset(mPos);
     nanogui::Vector2i size(mSize);
     if (border > 0) {
@@ -530,12 +530,12 @@ void EditorButton::draw(NVGcontext *ctx) {
         size -= nanogui::Vector2i(2*border, 2*border);
       }
       else {
+        nvgStrokeWidth(ctx, border+2);
+        nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
+        nvgFillColor(ctx, Color(mTheme->mBorderDark.head<3>(), 1.f));
+        nvgFill(ctx);
         offset += nanogui::Vector2i(border, border);
         size -= nanogui::Vector2i(2*border, 2*border);
-        nvgStrokeWidth(ctx, border);
-        nvgRoundedRect(ctx, offset.x(), offset.y(), size.x(), size.y(), mTheme->mButtonCornerRadius);
-        nvgStrokeColor(ctx, mTheme->mBorderDark);
-        nvgStroke(ctx);
       }
     }
 

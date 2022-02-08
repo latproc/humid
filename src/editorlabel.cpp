@@ -72,7 +72,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
       if (border == 0)
         nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
       else {
-        int a = border / 2+1;
+        int a = border / 2;
         nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a, mSize.x()-2*a,
                  mSize.y()-2*a, mTheme->mButtonCornerRadius);
       }
