@@ -66,8 +66,7 @@ const LinkManager::LinkInfo *find_link(const LinkManager::Links *links, const st
   return nullptr;
 }
 
-bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
-    bool res = nanogui::TextBox::keyboardCharacterEvent(codepoint);
+void EditorTextBox::reportContentChange() {
     if (!connection_name.empty() && mEditable && focused() && auto_update && remote_links) {
       working_text = mValueTemp;
       const auto * link = find_link(remote_links, "working_text");
@@ -91,6 +90,18 @@ bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
               });
       }
     }
+}
+
+bool EditorTextBox::keyboardEvent(int key, int scancode, int action, int modifiers) {
+  bool res = TextBox::keyboardEvent(key, scancode, action, modifiers);
+  reportContentChange();
+  return res;
+}
+
+
+bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
+    bool res = nanogui::TextBox::keyboardCharacterEvent(codepoint);
+    reportContentChange();
     return res;
 }
 
