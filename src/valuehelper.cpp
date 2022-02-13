@@ -36,6 +36,8 @@ Value::Kind typeForProperty(const std::string &property) {
     	property_types["format"] = Value::t_string;
     	property_types["grid_intensity"] = Value::t_float;
     	property_types["height"] = Value::t_integer;
+		property_types["items"] = Value::t_string;
+		property_types["items_file"] = Value::t_string;
     	property_types["image"] = Value::t_string;
     	property_types["image_alpha"] = Value::t_float;
     	property_types["image_file"] = Value::t_string;
@@ -99,6 +101,8 @@ Value defaultForProperty(const std::string &property) {
     	property_defaults["image_alpha"] = 1.0;
     	property_defaults["image_file"] = Value{};
     	property_defaults["inverted_visibility"] = false;
+		property_defaults["items"] = "";
+		property_defaults["items_file"] = "";
     	property_defaults["on_caption"] = "";
     	property_defaults["overlay_plots"] = true;
     	property_defaults["pos_x"] = 0;
