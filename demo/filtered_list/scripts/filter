@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ $# -ne 3 ]; then
+    echo "usage: $0 datafile filter outputfile" >&2
+    exit 1;
+fi
+
+datafile=$(echo "$1" | tr -d '"')
+filter=$(  echo "$2" | tr -d '"')
+output=$(  echo "$3" | tr -d '"')
+
+if [ "$filter" = "" ]; then
+  cp $datafile $output
+else
+  grep -i "$filter" "$datafile" >"$output"
+fi

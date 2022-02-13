@@ -1,0 +1,67 @@
+FilterList STRUCTURE EXTENDS SCREEN {
+  Untitled_004 LABEL(
+    alignment: 2,
+    border: 0,
+    caption: "Search",
+    connection: "",
+    font_size: 20,
+    format: "",
+    height: 27,
+    inverted_visibility: false,
+    pos_x: 233,
+    pos_y: 50,
+    remote: "",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    visibility: "",
+    width: 71,
+    wrap: 1
+  );
+  Untitled_006 TEXT(
+    alignment: 0,
+    auto_update: true,
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    format: "",
+    height: 33,
+    inverted_visibility: false,
+    pos_x: 310,
+    pos_y: 46,
+    remote: "",
+    text: "",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    visibility: "",
+    width: 248,
+    working_text: $filter.filter,
+    wrap: 0
+  );
+  Untitled_008 LIST(
+    alignment: 1,
+    border: 0,
+    connection: "CW",
+    font_size: 20,
+    format: "",
+    height: 452,
+    inverted_visibility: false,
+    items: "",
+    items_file: $filter.filename,
+    pos_x: 238,
+    pos_y: 102,
+    remote: "",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    visibility: "",
+    width: 649,
+    wrap: 1
+  );
+}
+FilterScreen FilterList (
+    screen_id: 1
+  );

@@ -1,0 +1,9 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    main_window_height: 800,
+    main_window_width: 1400,
+    panel_height: 720,
+    panel_width: 1200,
+    remote_screen: "P_Screen"
+  );
