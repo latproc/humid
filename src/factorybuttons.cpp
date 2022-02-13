@@ -13,6 +13,7 @@
 #include "editorbutton.h"
 #include "editortextbox.h"
 #include "editorlabel.h"
+#include "editorlist.h"
 #include "editorimageview.h"
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
@@ -36,6 +37,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	using namespace nanogui;
 
 	StructureClass *sc = findClass(getClass());
+	if (!sc) { std::cerr << "No widget class " << getClass() << "\n"; }
 	assert(sc);
 	Structure *parent = gui->getUserWindow()->structure();
 	Structure *s = sc->instantiate(parent);
@@ -67,6 +69,13 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		eb->setName(eb->getName());
 		if (s) s->setName(eb->getName());
 		result = eb;
+	}
+	else if (sc->getName() == "LIST") {
+		EditorList *el = new EditorList(parent, window, generated_name, nullptr, "untitled");
+		el->setDefinition(s);
+		el->setName(el->getName());
+		if (s) s->setName(el->getName());
+		result = el;
 	}
 	else if (sc->getName() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();

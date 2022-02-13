@@ -115,6 +115,9 @@ void DialogWindow::loadStructure(Structure *s) {
 			if (element_class &&element_class->isExtension("LABEL")) {
 				createLabel(params);
 			}
+			if (element_class &&element_class->isExtension("LIST")) {
+				createList(params);
+			}
 			if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
 			}

@@ -14,6 +14,7 @@
 #include "valuehelper.h"
 #include "colourhelper.h"
 #include "thememanager.h"
+#include "editorlist.h"
 
 static bool stringEndsWith(const std::string &src, const std::string ending) {
 	size_t l_src = src.length();
@@ -171,6 +172,49 @@ void createLabel(WidgetParams &params) {
 		el->setTextColor(colourFromProperty(params.element, "text_colour"));
 	Value alignment_v(params.element->getValue("alignment"));
 	if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
+	Value valignment_v(params.element->getValue("valign"));
+	if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
+	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());
+	if (params.value_type != -1) el->setValueType(params.value_type);
+	if (params.value_scale != 1.0) el->setValueScale( params.value_scale );
+	if (params.tab_pos) el->setTabPosition(params.tab_pos);
+	if (params.lp)
+		params.lp->link(new LinkableText(el));
+	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
+	el->setInvertedVisibility(params.ivis);
+	if (params.visibility) el->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, el);
+	el->setChanged(false);
+}
+
+void createList(WidgetParams &params) {
+	EditorList *el = new EditorList(params.s, params.window, params.element->getName(), params.lp, "");
+	el->setName(params.element->getName());
+	el->setDefinition(params.element);
+	if (params.theme.get()) { el->setTheme(params.theme); }
+	setElementPosition(params, el, params.element);
+	fixElementSize( el, params.element);
+	if (params.connection != SymbolTable::Null) {
+		el->setRemoteName(params.remote.asString());
+		el->setConnection(params.connection.asString());
+	}
+	if (params.font_size) el->setFontSize(params.font_size);
+	Value bg_colour(params.element->getValue("bg_color"));
+	if (bg_colour != SymbolTable::Null)
+		el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
+	Value text_colour(params.element->getValue("text_colour"));
+	if (text_colour != SymbolTable::Null)
+		el->setTextColor(colourFromProperty(params.element, "text_colour"));
+	Value alignment_v(params.element->getValue("alignment"));
+	if (alignment_v != SymbolTable::Null) el->setPropertyValue("Alignment", alignment_v.asString());
+	Value items_v(params.element->getValue("items"));
+	if (items_v != SymbolTable::Null) {
+		el->setItems(items_v.asString());
+	}
+	Value items_file_v(params.element->getValue("items_file"));
+	if (items_file_v != SymbolTable::Null) {
+		el->setItemFilename(items_file_v.asString());
+	}
 	Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());

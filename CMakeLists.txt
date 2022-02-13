@@ -143,7 +143,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
 		  src/editorframe.h src/keypad.h src/valuehelper.h
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
-		  src/editorcombobox.h
+		  src/editorcombobox.h src/editorlabel.h
   )
 
 # based on yacc instructions from Andy Cedilnik 2002.
@@ -270,7 +270,7 @@ endif()
 		  src/widgetfactory.cpp src/dialogwindow.cpp
 		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
-		  src/editorcombobox.cpp
+		  src/editorcombobox.cpp src/editorlist.cpp
 		  ${HEADERS})
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp

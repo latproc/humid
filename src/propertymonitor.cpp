@@ -9,6 +9,7 @@
 #include <nanogui/imageview.h>
 #include <nanogui/theme.h>
 #include "lineplot.h"
+#include "editor.h"
 
 using nanogui::Vector2i;
 
@@ -62,15 +63,18 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 				Vector2i newPos = dh->position() + dh->size()/2 - dh->getTarget()->size()/2;
 				nanogui::Widget *target_parent = dh->getTarget()->parent();
 				if (target_parent && target_parent->contains(newPos + target_parent->position())
-						&& target_parent->contains(newPos + dh->getTarget()->size() + target_parent->position()))
+						&& target_parent->contains(newPos + dh->getTarget()->size() + target_parent->position())) {
 					dh->getTarget()->setPosition( newPos );
+				}
 
 				int x = newPos.x(); 
-				if (x < 0) x = 0;
-				if (x > target_parent->size().x() - dh->getTarget()->size().x()) x = target_parent->size().x() - dh->getTarget()->size().x();
+				if (x < 0) { x = 0; }
+				if (x > target_parent->size().x() - dh->getTarget()->size().x()) {
+					x = target_parent->size().x() - dh->getTarget()->size().x();
+				}
 				int y = newPos.y(); 
-				if (y < target_parent->theme()->mWindowHeaderHeight+1) y = target_parent->theme()->mWindowHeaderHeight+1;
-				if (y > target_parent->size().y() - dh->getTarget()->size().y()) y = target_parent->size().y() - dh->getTarget()->size().y();
+				if (y < target_parent->theme()->mWindowHeaderHeight+1) { y = target_parent->theme()->mWindowHeaderHeight+1; }
+				if (y > target_parent->size().y() - dh->getTarget()->size().y()) { y = target_parent->size().y() - dh->getTarget()->size().y(); }
 				dh->getTarget()->setPosition( Vector2i(x,y ) );
 
 			}
@@ -209,6 +213,7 @@ void PositionMonitor::update(nanogui::DragHandle *dh) {
 		if (resized) {
 			nanogui::LinePlot *lp = dynamic_cast<nanogui::LinePlot*>(dh->getTarget());
 			if (lp) lp->resized();
+			else { dh->getTarget()->performLayout(EDITOR->gui()->nvgContext()); }
 		}
 	}
 }

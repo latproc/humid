@@ -102,6 +102,17 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "LIST", this, cell, 0, "LIST", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure(nullptr, "Start_List", "LIST");
+		starters["LIST"] = s;
+		s->getProperties().add("width",80);
+		s->getProperties().add("height",40);
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "TEXT", this, cell, 0, "TEXT", "");
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));

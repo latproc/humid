@@ -416,17 +416,23 @@ void UserWindow::loadStructure(Structure *s) {
 			if (element_class &&element_class->isExtension("LABEL")) {
 				createLabel(params);
 			}
-			if (element_class &&element_class->isExtension("IMAGE")) {
+			if (element_class &&element_class->isExtension("LIST")) {
+				createList(params);
+			}
+			else if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
 			}
-			if (element_class &&element_class->isExtension("PROGRESS")) {
+			else if (element_class &&element_class->isExtension("PROGRESS")) {
 				createProgress(params);
 			}
-			if (element_class &&element_class->isExtension("TEXT")) {
+			else if (element_class &&element_class->isExtension("TEXT")) {
 				createText(params);
 			}
 			else if (element_class && element_class->isExtension("PLOT")) {
 				createPlot(params);
+			}
+			else if (element_class &&element_class->isExtension("LIST")) {
+				createList(params);
 			}
 			else if (element_class && element_class->isExtension("FRAME")) {
 				createFrame(params);

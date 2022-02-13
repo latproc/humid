@@ -49,6 +49,7 @@ public:
 	virtual void moveWindowToFront(nanogui::Window *window) override { if (!w_user || window != w_user->getWindow() ) Screen::moveWindowToFront(window); }
 
 	void setTheme(nanogui::Theme *theme) override;
+	nanogui::Theme *getTheme() const { return theme; }
 	void createWindows();
 
 	GuiState getState() { return state; }

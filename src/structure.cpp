@@ -110,6 +110,16 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
 	}
+	else if (class_name == "LIST") {
+		properties["Alignment"] = "alignment";
+		properties["Background Colour"] = "bg_color";
+		properties["Items"] = "items";
+		properties["Items File"] = "items_file";
+		properties["Font Size"] = "font_size";
+		properties["Text Colour"] = "text_colour";
+		properties["Vertical Alignment"] = "valign";
+		properties["Wrap Text"] = "wrap";
+	}
 	else if (class_name == "PLOT") {
 		properties["Display Grid"] = "display_grid";
 		properties["Grid Intensity"] = "grid_intensity";
@@ -408,6 +418,9 @@ void Structure::loadBuiltins() {
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("LABEL", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("LIST", "");
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("PLOT", "");
