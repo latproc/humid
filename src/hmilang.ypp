@@ -208,7 +208,6 @@ EXTENDS SCREEN {
 }
 | EXTENDS SYMBOL {
 	hps.current_base = new ClassExtension($2);
-	std::cout << "new extension of " <<  hps.current_base->getName() << "\n";
 	$$=hps.current_base;
 }
 ;

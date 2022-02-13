@@ -595,7 +595,7 @@ void EditorButton::draw(NVGcontext *ctx) {
     NVGcolor textColor =
         mTextColor.w() == 0 ? mTheme->mTextColor : mTextColor;
 
-    std::string text = format_caption(mCaption, format_string, value_type, value_scale);
+    std::string text = format_string.length() > 0 ? format_caption(mCaption, format_string, value_type, value_scale) : mCaption;
     if (mPushed) {
       if (text_on_colour.w() != 0) textColor = text_on_colour;
       if (!on_caption.empty()) text = on_caption;

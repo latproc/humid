@@ -114,7 +114,9 @@ void LinkableProperty::unlink(EditorObject *w) {
     else
       ++iter;
   }
+#ifdef TESTING
   if (unlinked == 0) { std::cout << "did not unlink " << w->getName() << "\n";   }
+#endif
 }
 
 void LinkableProperty::clear() {

@@ -488,9 +488,6 @@ SymbolTable default_properties(const StructureClass *s) {
 	for (auto iter = hm_classes.rbegin(); iter != hm_classes.rend(); ++iter) {
 		const auto & sc = *iter;
 		if (sc->getName() == base) {
-			std::cout << "found inheritance: " << base;
-			if (!sc->getBase().empty()) { std::cout << " -> " << sc->getBase(); }
-			std::cout << "\n";
 			inheritance.push_back(sc);
 			base = sc->getBase();
 			if (base.empty()) { break; }

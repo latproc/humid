@@ -37,6 +37,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
+if (CMAKE_BUILD_TYPE MATCHES DEBUG)
+	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -DDEBUG")
+endif()
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-register -Wno-deprecated-declarations -Wno-unused-parameter")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-copy")
 

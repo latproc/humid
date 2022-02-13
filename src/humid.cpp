@@ -318,7 +318,6 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 				else {
 					widget->setSize(nanogui::Vector2i(w, h));
 					widget->setFixedSize(nanogui::Vector2i(w, h));
-					std::cout << item->getName() << " size: " << w << "," << h << "\n";
 				}
 			}
 		}
@@ -534,7 +533,6 @@ int main(int argc, const char ** argv ) {
 	settings_files.push_back(fname);
 	loadSettingsFiles(settings_files);
 	for (auto item : st_structures) {
-		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
 		structures[item->getName()] = item;
 	}
 	Structure::loadBuiltins();
@@ -580,7 +578,6 @@ int main(int argc, const char ** argv ) {
 				for (auto sc : hm_classes) {
 					SymbolTable defaults = default_properties(sc);
 					if (!defaults.empty()) {
-						std::cout << "found defaults for " << sc->getName() << "\n";
 						sc->setDefaults(defaults);
 					}
 				}
