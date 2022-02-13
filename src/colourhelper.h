@@ -11,9 +11,13 @@
 #include <nanogui/common.h>
 #include "structure.h"
 #include <value.h>
+#include <utility>
+#include <string>
 
-nanogui::Color colourFromString(const std::string &colour);
+using ColourResult = std::pair<nanogui::Color, std::string>;
+
+ColourResult colourFromString(const std::string &colour);
+ColourResult colourFromValue(const Value & colour);
 std::string stringFromColour(const nanogui::Color &colour);
 nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
 nanogui::Color colourFromProperty(Structure *element, const char *prop);
-nanogui::Color colourFromValue(const Value & colour);

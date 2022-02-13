@@ -28,9 +28,10 @@ static int val(char hex) {
 	return res;
 }
 
-nanogui::Color colourFromString(const std::string &colour) {
+ColourResult colourFromString(const std::string &colour) {
 	struct Colour { int r, g, b, a; };
 	Colour c{0, 0, 0, 0};
+	std::string error;
 	auto len = colour.length();
 	auto dbl = [](int val) -> int { return val * 16 + val; };
 	auto parse = [](const char * &p) -> int { int res = val(*p++); return res * 16 + val(*p++); };
@@ -55,6 +56,9 @@ nanogui::Color colourFromString(const std::string &colour) {
 				.a = len == 9 ? parse(p) : 255
 			};
 		}
+		else {
+			error += "Unrecognised colour " + colour;
+		}
 	}
 	else if (colour[0] == '&') {
 		auto len = colour.length();
@@ -77,8 +81,11 @@ nanogui::Color colourFromString(const std::string &colour) {
 				.a = parse(p)
 			};
 		}
+		else {
+			error += "Unrecognised colour " + colour;
+		}
 	}
-	return nanogui::Color(nanogui::Vector4i{c.r, c.g, c.b, c.a});
+	return std::make_pair(nanogui::Color(nanogui::Vector4i{c.r, c.g, c.b, c.a}), error);
 }
 
 std::string stringFromColour(const nanogui::Color &colour) {
@@ -93,7 +100,8 @@ std::string stringFromColour(const nanogui::Color &colour) {
 	return ss.str();
 }
 
-nanogui::Color colourFromValue(const Value & colour) {
+ColourResult colourFromValue(const Value & colour) {
+	std::string error;
 	if (colour != SymbolTable::Null) {
 		std::string colour_str = colour.asString();
 		if (colour_str[0] == '#' || colour_str[0] == '&') {
@@ -104,17 +112,20 @@ nanogui::Color colourFromValue(const Value & colour) {
 		if (tokens.size() == 4) {
 			std::vector<float>fields(4);
 			for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
-			return nanogui::Color(fields[0], fields[1], fields[2], fields[3]);
+			return std::make_pair(nanogui::Color(fields[0], fields[1], fields[2], fields[3]), error);
 		}
 		else if (tokens.size() == 3) {
 			std::vector<float>fields(3);
 			for (int i=0; i<4; ++i) fields[i] = std::atof(tokens[i].c_str());
-			return nanogui::Color(fields[0], fields[1], fields[2], 1.0f);
+			return std::make_pair(nanogui::Color(fields[0], fields[1], fields[2], 1.0f), error);
 		}
 		else {
-			std::cerr << "unrecognised colour: " << colour << "\n";
+			error += "unrecognised colour: " + colour.asString();
 		}
 	}
-	return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
+	else {
+		error += "unexepected colour: null";
+	}
+	return std::make_pair(nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f), error);
 }
 

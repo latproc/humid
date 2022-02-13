@@ -17,7 +17,13 @@ void set_prop(int &val, SymbolTable &st, const char *key) {
 
 static void set_prop(nanogui::Color &val, SymbolTable &st, const char *key) {
 	const Value &v = st.find(key);
-	if (!isNull(v)) { val = colourFromString(v.asString()); }
+	if (!isNull(v)) {
+		const auto & result = colourFromString(v.asString());
+		val = result.first;
+		if (!result.second.empty()) {
+			std::cerr << "Error loading theme: " << result.second << "\n";
+		}
+	}
 }
 
 static void fromStructure(nanogui::Theme *theme, Structure *s) {

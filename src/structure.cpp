@@ -25,7 +25,11 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 	if (colour == SymbolTable::Null) {
 		colour = defaultForProperty(prop);
 	}
-    return colourFromValue(colour);
+    const auto & result = colourFromValue(colour);
+	if (!result.second.empty()) {
+		std::cerr << "Error getting colour for property " << prop << ":" << result.second << "\n";
+	}
+	return result.first;
 }
 
 std::list<Structure *>hm_structures;
