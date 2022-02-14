@@ -113,9 +113,11 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	else if (class_name == "LIST") {
 		properties["Alignment"] = "alignment";
 		properties["Background Colour"] = "bg_color";
+		properties["Font Size"] = "font_size";
 		properties["Items"] = "items";
 		properties["Items File"] = "items_file";
-		properties["Font Size"] = "font_size";
+		properties["Selected"] = "selected";
+		properties["Selected Index"] = "selected_index";
 		properties["Text Colour"] = "text_colour";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
@@ -344,7 +346,6 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 	std::map<std::string, std::string> link_map;
 	auto links = LinkManager::instance().remote_links(structure_name, getName());
 	if (links) {
-		std::cout << "have " << links->size() << " links for " << getName() << " when writing property list" << "\n";
 		if (links) {
 			auto structure_class = findClass(kind);
 			if (structure_class) {
@@ -352,7 +353,6 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 				for (auto & link : *links) {
 					auto prop = reverse_map.find(link.property_name);
 					if (prop != reverse_map.end()) {
-						std::cout << (*prop).first << " --> " << link.remote_name << "\n";
 						link_map[(*prop).first] = link.remote_name;
 					}
 				}

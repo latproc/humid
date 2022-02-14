@@ -53,6 +53,8 @@ FilterList STRUCTURE EXTENDS SCREEN {
     pos_x: 238,
     pos_y: 102,
     remote: "",
+    selected: $filter.selected,
+    selected_index: $filter.selected_index,
     text_colour: "#00000000",
     valign: 1,
     value_scale: 1.000000,

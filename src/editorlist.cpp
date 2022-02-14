@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <fstream>
+#include <utility>
 #include "editorwidget.h"
 #include "editorlist.h"
 #include "editor.h"
@@ -58,6 +59,7 @@ EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam
             LinkableProperty *lp, const std::string caption,
             const std::string &font, int fontSize, int icon)
 : nanogui::Widget(parent), EditorWidget(owner, "LIST", nam, this, lp), mBackgroundColor(nanogui::Color(0,0)), mTextColor(nanogui::Color(0,0)),
+  Palette(Palette::PT_SINGLE_SELECT),
   alignment(1), valign(1), wrap_text(true) {
 		palette_scroller = new nanogui::VScrollPanel(this);
 		palette_scroller->setPosition( Vector2i(0,0));
@@ -122,6 +124,48 @@ void EditorList::loadItems() {
     }
 }
 
+namespace {
+  const LinkManager::LinkInfo *find_link(const LinkManager::Links *links, const std::string & property) {
+    if (!links) { return nullptr; }
+    for (const auto & link : *links) {
+      if (link.property_name == property) return &link;
+    }
+    return nullptr;
+  }
+};
+
+void EditorList::reportSelectionChange() {
+    if (!connection_name.empty() && remote_links) {
+      std::vector<std::pair<const LinkManager::LinkInfo *, Value>> links;
+      const auto * selection_link = find_link(remote_links, "selected");
+      const auto * index_link = find_link(remote_links, "selected_index");
+      if (selection_link) { links.push_back(std::make_pair(selection_link, Value(m_selected, Value::t_string))); }
+      if (index_link) { links.push_back(std::make_pair(index_link, selected_index)); }
+      for (const auto & link : links) {
+          std::stringstream ss;
+          std::string remote_machine = link.first->remote_name;
+          std::string remote_property;
+          auto separator_pos = remote_machine.rfind('.');
+          if (separator_pos == std::string::npos) {
+              remote_property =  "VALUE";
+          }
+          else {
+              remote_property = remote_machine.substr(separator_pos+1);
+              remote_machine = remote_machine.substr(0, separator_pos);
+          }
+          char *msg = MessageEncoding::encodeCommand("PROPERTY", remote_machine, remote_property, link.second);
+          //ss << "PROPERTY " << remote_machine << " " << remote_property << " " << link.second << "";
+          EDITOR->gui()->queueMessage(connection_name, msg,
+                [](std::string s){
+                  extern int debug;
+                  if (debug) { std::cout << " Response: " << s << "\n"; }
+                });
+          delete msg;
+      }
+    }
+}
+
+
 void EditorList::performLayout(NVGcontext *ctx) {
     using namespace nanogui;
     for (int i=palette_content->childCount(); i>0; ) {
@@ -135,8 +179,9 @@ void EditorList::performLayout(NVGcontext *ctx) {
         b->setEnabled(true);
         b->setFixedSize(Vector2i(width()-10, 30));
         b->setTheme(EDITOR->gui()->getTheme());
-        b->setCallback( [b, item](){
-          std::cout << "click " << item << "\n";
+        b->setPassThrough(true);
+        b->setCallback( [this, item](){
+          setSelected(item);
         });
     }
     int content_height = mItems.size() * 30;
@@ -190,10 +235,36 @@ void EditorList::setItemFilename(const std::string &filename) {
   loadItems();
 }
 
-
 const std::string & EditorList::items_str() { return m_item_str; }
 
 const std::string & EditorList::item_filename() { return m_item_file; }
+
+int EditorList::selectedIndex() const {
+  return selected_index;
+}
+
+void EditorList::select(int index) {
+  if (index<0 || index >= mItems.size()) { selected_index = -1; m_selected = ""; return; }
+  selected_index = index;
+  m_selected = mItems[index];
+  reportSelectionChange();
+}
+
+const std::string & EditorList::selected() const {
+  return m_selected;
+}
+
+void EditorList::setSelected(const std::string &sel) {
+  int i=0;
+  for (const auto & item : mItems) {
+    if (item == sel) {
+      select(i);
+      return;
+    }
+    ++i;
+  }
+  select(-1);
+}
 
 void EditorList::draw(NVGcontext *ctx) {
     // poll for file changes
@@ -251,6 +322,8 @@ void EditorList::getPropertyNames(std::list<std::string> &names) {
   names.push_back("Alignment");
   names.push_back("Wrap Text");
   names.push_back("Background Colour");
+  names.push_back("Selected");
+  names.push_back("Selected Index");
 }
 
 Value EditorList::getPropertyValue(const std::string &prop) {
@@ -271,6 +344,8 @@ Value EditorList::getPropertyValue(const std::string &prop) {
   if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
     return Value(stringFromColour(backgroundColor()), Value::t_string);
   }
+  if (prop == "Selected") return Value(m_selected, Value::t_string);
+  if (prop == "Selected Index") return selected_index;
 
   return SymbolTable::Null;
 }
@@ -282,6 +357,12 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
   }
   if (prop == "Items File") {
       setItemFilename(value);
+  }
+  if (prop == "Selected") {
+    setSelected(value);
+  }
+  if (prop == "Selected Index") {
+    select(std::atoi(value.c_str()));
   }
   if (prop == "Remote") {
     if (remote) {
@@ -345,6 +426,14 @@ void EditorList::loadProperties(PropertyFormHelper* properties) {
       "Items File",
       [&](std::string value) mutable{ setItemFilename(value); },
       [&]()->std::string{ return item_filename(); });
+    properties->addVariable<std::string> (
+      "Selected",
+      [&](std::string value) mutable{ setSelected(value); },
+      [&]()->std::string{ return selected(); });
+    properties->addVariable<int> (
+      "Selected Index",
+      [&](int value) mutable{ select(value); },
+      [&]()->int{ return selectedIndex(); });
     properties->addVariable<int> (
       "Alignment",
       [&](int value) mutable{ alignment = value; },

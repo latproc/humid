@@ -9,8 +9,12 @@ filter FilterMonitor;
 FilterMonitor MACHINE {
   OPTION filter "";
   OPTION filename "";
+  OPTION selected "";
+  OPTION selected_index -1;
   EXPORT READWRITE STRING 50 filter;
   EXPORT READONLY STRING 50 filename;
+  EXPORT READWRITE STRING 50 selected;
+  EXPORT READWRITE 16BIT selected_index;
 
   LOCAL OPTION last_filter "";
   LOCAL OPTION safe_filter "";

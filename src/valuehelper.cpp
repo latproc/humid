@@ -52,6 +52,8 @@ Value::Kind typeForProperty(const std::string &property) {
     	property_types["screen_height"] = Value::t_integer;
     	property_types["screen_id"] = Value::t_string;
     	property_types["screen_width"] = Value::t_integer;
+		property_types["selected"] = Value::t_string;
+		property_types["selected_index"] = Value::t_integer;
     	property_types["tab_position"] = Value::t_integer;
     	property_types["text"] = Value::t_string;
     	property_types["text_colour"] = Value::t_string;
@@ -112,6 +114,8 @@ Value defaultForProperty(const std::string &property) {
     	property_defaults["screen_height"] = 600;
     	property_defaults["screen_id"] = 0;
     	property_defaults["screen_width"] = 800;
+		property_defaults["selected"] = "";
+		property_defaults["selected_index"] = -1;
     	property_defaults["tab_position"] = 0;
     	property_defaults["text"] = "";
     	property_defaults["text_colour"] = "0.2,0.2,0.2,1.0";

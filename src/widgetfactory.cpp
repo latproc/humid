@@ -215,6 +215,17 @@ void createList(WidgetParams &params) {
 	if (items_file_v != SymbolTable::Null) {
 		el->setItemFilename(items_file_v.asString());
 	}
+	Value selected_v(params.element->getValue("selected"));
+	if (selected_v != SymbolTable::Null) {
+		el->setSelected(selected_v.asString());
+	}
+	Value selind_v(params.element->getValue("selected_index"));
+	if (selind_v != SymbolTable::Null) {
+		long idx;
+		if (selind_v.asInteger(idx)) {
+			el->select(idx);
+		}
+	}
 	Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) el->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	if (params.format_val != SymbolTable::Null) el->setValueFormat(params.format_val.asString());

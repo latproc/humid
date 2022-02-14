@@ -54,6 +54,11 @@ public:
     void setItems(const std::string & str);
 	void setItemFilename(const std::string &filename);
 	const std::string & item_filename();
+	int selectedIndex() const;
+	void select(int index);
+	const std::string & selected() const;
+	void setSelected(const std::string &sel);
+	void reportSelectionChange();
 
 protected:
     nanogui::Color mBackgroundColor;
@@ -63,6 +68,8 @@ protected:
     std::vector<std::string> mItems;
     std::string m_item_str;
 	std::string m_item_file;
+	std::string m_selected;
+	int selected_index = -1;
 	timespec last_file_mod = {0, 0};
 	int alignment;
 	int valign;
