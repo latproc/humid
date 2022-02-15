@@ -114,7 +114,11 @@ void EditorList::loadItems() {
     if (err == -1) {
         return; // the file was tested and error logged when set
     }
+#ifdef linux
+    if (last_file_mod < file_stat.st_mtime) {
+#else
     if (last_file_mod < file_stat.st_mtimespec) {
+#endif
         char contents[file_stat.st_size+1];
         std::ifstream in(m_item_file);
         in.read(contents, file_stat.st_size);
@@ -216,7 +220,11 @@ void EditorList::setItems(const std::string & str) {
 
 void EditorList::setItemFilename(const std::string &filename) {
   if (!filename.empty() && filename == m_item_file) {
+#ifdef linux
+    last_file_mod = 0; // force an update
+#else
     last_file_mod = {0, 0}; // force an update
+#endif
     return;
   }
   m_item_file = filename;
@@ -230,7 +238,11 @@ void EditorList::setItemFilename(const std::string &filename) {
         std::cerr << "Error: " << strerror(errno) << " looking for file: " << m_item_file << "\n";
     }
     item_delimiter = '\n';
+#ifdef linux
+    last_file_mod = 0; // force a load
+#else
     last_file_mod = {0, 0}; // force a load
+#endif
   }
   loadItems();
 }
@@ -271,7 +283,11 @@ void EditorList::draw(NVGcontext *ctx) {
     if (!m_item_file.empty()) {
       struct stat file_stat;
       int err = stat(m_item_file.c_str(), &file_stat);
+#ifdef linux
+      if (err == 0 && last_file_mod < file_stat.st_mtime) {
+#else
       if (err == 0 && last_file_mod < file_stat.st_mtimespec) {
+#endif
           // TODO: defer a loadItems()
       }
     }

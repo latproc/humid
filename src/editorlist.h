@@ -70,7 +70,11 @@ protected:
 	std::string m_item_file;
 	std::string m_selected;
 	int selected_index = -1;
+#ifdef linux
+	time_t last_file_mod = 0;
+#else
 	timespec last_file_mod = {0, 0};
+#endif
 	int alignment;
 	int valign;
 	bool wrap_text;
