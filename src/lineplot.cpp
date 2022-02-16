@@ -11,7 +11,8 @@
 
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
-#include <nanogui/serializer/core.h>
+//#include <nanogui/serializer/core.h>
+#include <fstream>
 #include "circularbuffer.h"
 #include "lineplot.h"
 #include <value.h>
@@ -530,7 +531,7 @@ void LinePlot::thaw() {
 void LinePlot::update() {
 }
 
-
+#if 0
 void LinePlot::save(Serializer &s) const {
     Widget::save(s);
     s.set("caption", mCaption);
@@ -553,6 +554,7 @@ bool LinePlot::load(Serializer &s) {
     if (!s.get("values", mValues)) return false;
     return true;
 }
+#endif
 
 std::string LinePlot::monitors() {
 	std::lock_guard<std::recursive_mutex>  lock(series_mutex);

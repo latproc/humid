@@ -139,9 +139,10 @@ public:
 	void drawGrid(NVGcontext *ctx, int x_start, double x_step, int num_x_steps, int y_start, double y_step,  int num_y_steps);
     virtual void draw(NVGcontext *ctx) override;
 
+#if 0
     virtual void save(Serializer &s) const override;
     virtual bool load(Serializer &s) override;
-
+#endif
 	TimeSeries *getTimeSeries(std::string name);
 	void addTimeSeries(TimeSeries *);
 
