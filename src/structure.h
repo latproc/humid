@@ -19,6 +19,7 @@
 #include <vector>
 
 class Structure;
+class WidgetParams;
 
 class ClassExtension {
   public:
@@ -95,7 +96,7 @@ class StructureClass : public NamedObject {
 class Structure : public NamedObject {
   public:
     Structure(Structure *owner, const std::string sname, const std::string skind);
-    virtual ~Structure() {}
+    virtual ~Structure();
     std::list<Parameter> parameters;
     void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
     StructureClass *getStructureDefinition() { return class_definition; }
@@ -133,12 +134,15 @@ class Structure : public NamedObject {
     static void loadBuiltins();
 
     static std::list<Structure *> findStructureClasses(const std::string &class_name);
+    WidgetParams *widgetParams();
+    void setWidgetParams(WidgetParams *params);
 
   protected:
     Structure(const Structure &other);
     SymbolTable internal_properties;
     StructureClass *class_definition;
     Structure *owner;
+    WidgetParams *widget_params = nullptr;
 
   private:
     SymbolTable properties;

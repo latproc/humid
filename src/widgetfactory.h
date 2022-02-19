@@ -23,6 +23,14 @@ struct WidgetParams {
     const Value &border;
     const Value &auto_update;
     const Value &working_text;
+    const Value & font_size_val;
+    const Value & remote_name;
+    const Value & wrap_v;
+    const Value & ivis_v;
+    const Value & value_type_val;
+    const Value & tab_pos_val;
+    const Value & x_scale_val;
+    const Value & theme_name;
     Value remote;
     long value_type;
     //const Value &scale_val;
@@ -38,6 +46,7 @@ struct WidgetParams {
     nanogui::ref<nanogui::Theme> theme;
     WidgetParams(Structure *structure, nanogui::Widget *w, Structure *elem, EditorGUI *editor_gui,
                  const nanogui::Vector2i &offset);
+    void update();
 };
 
 void createLabel(WidgetParams &params);
