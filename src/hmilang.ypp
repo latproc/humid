@@ -309,7 +309,7 @@ SYMBOL SYMBOL parameters
 	hps.current_machine->setProperties(hps.properties);
 	hps.properties.clear();
 	for (auto & link : hps.current_pending_links) {
-		LinkManager::instance().add_pending(link.first, hps.current_machineclass->getName(), hps.current_machine->getName(), link.second);
+		LinkManager::instance().add_pending(link.first, $2, hps.current_machine->getName(), link.second);
 	}
 	hps.current_pending_links.clear();
 }
