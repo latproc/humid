@@ -5,34 +5,35 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
-#include <nanogui/theme.h>
-#include <nanogui/opengl.h>
-#include <nanogui/widget.h>
-#include <nanogui/entypo.h>
 #include "editor.h"
+#include <iostream>
+#include <nanogui/entypo.h>
+#include <nanogui/opengl.h>
+#include <nanogui/theme.h>
+#include <nanogui/widget.h>
 
 #include "editortextbox.h"
-#include "propertyformhelper.h"
 #include "helper.h"
+#include "propertyformhelper.h"
 
-const std::map<std::string, std::string> & EditorTextBox::property_map() const {
-  auto structure_class = findClass("TEXT");
-  assert(structure_class);
-  return structure_class->property_map();
+const std::map<std::string, std::string> &EditorTextBox::property_map() const {
+    auto structure_class = findClass("TEXT");
+    assert(structure_class);
+    return structure_class->property_map();
 }
 
-const std::map<std::string, std::string> & EditorTextBox::reverse_property_map() const {
-  auto structure_class = findClass("TEXT");
-  assert(structure_class);
-  return structure_class->reverse_property_map();
+const std::map<std::string, std::string> &EditorTextBox::reverse_property_map() const {
+    auto structure_class = findClass("TEXT");
+    assert(structure_class);
+    return structure_class->reverse_property_map();
 }
 
-EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(0), wrap_text(false) {
-}
+EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam,
+                             LinkableProperty *lp, int icon)
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(0), wrap_text(false) {}
 
-bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
+                                     int modifiers) {
 
     using namespace nanogui;
 
@@ -42,7 +43,8 @@ bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, boo
     return true;
 }
 
-bool EditorTextBox::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
+bool EditorTextBox::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel,
+                                     int button, int modifiers) {
 
     if (editorMouseMotionEvent(this, p, rel, button, modifiers))
         return TextBox::mouseMotionEvent(p, rel, button, modifiers);
@@ -58,106 +60,122 @@ bool EditorTextBox::mouseEnterEvent(const Vector2i &p, bool enter) {
     return true;
 }
 
-const LinkManager::LinkInfo *find_link(const LinkManager::Links *links, const std::string & property) {
-  if (!links) { return nullptr; }
-  for (const auto & link : *links) {
-    if (link.property_name == property) return &link;
-  }
-  return nullptr;
+const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
+                                       const std::string &property) {
+    if (!links) {
+        return nullptr;
+    }
+    for (const auto &link : *links) {
+        if (link.property_name == property)
+            return &link;
+    }
+    return nullptr;
 }
 
 void EditorTextBox::reportContentChange() {
     if (!connection_name.empty() && mEditable && focused() && auto_update && remote_links) {
-      working_text = mValueTemp;
-      const auto * link = find_link(remote_links, "working_text");
-      if (link) {
-        std::stringstream ss;
-        std::string remote_machine = link->remote_name;
-        std::string remote_property;
-        auto separator_pos = remote_machine.rfind('.');
-        if (separator_pos == std::string::npos) {
-          remote_property =  "VALUE";
-        }
-        else {
-          remote_property = remote_machine.substr(separator_pos+1);
-          remote_machine = remote_machine.substr(0, separator_pos);
-        }
-        ss << "PROPERTY " << remote_machine << " " << remote_property << " \"" << working_text << "\"";
-        EDITOR->gui()->queueMessage(connection_name, ss.str(),
-              [](std::string s){
+        working_text = mValueTemp;
+        const auto *link = find_link(remote_links, "working_text");
+        if (link) {
+            std::stringstream ss;
+            std::string remote_machine = link->remote_name;
+            std::string remote_property;
+            auto separator_pos = remote_machine.rfind('.');
+            if (separator_pos == std::string::npos) {
+                remote_property = "VALUE";
+            }
+            else {
+                remote_property = remote_machine.substr(separator_pos + 1);
+                remote_machine = remote_machine.substr(0, separator_pos);
+            }
+            ss << "PROPERTY " << remote_machine << " " << remote_property << " \"" << working_text
+               << "\"";
+            EDITOR->gui()->queueMessage(connection_name, ss.str(), [](std::string s) {
                 extern int debug;
-                if (debug) { std::cout << " Response: " << s << "\n"; }
-              });
-      }
+                if (debug) {
+                    std::cout << " Response: " << s << "\n";
+                }
+            });
+        }
     }
 }
 
 bool EditorTextBox::keyboardEvent(int key, int scancode, int action, int modifiers) {
-  bool res = TextBox::keyboardEvent(key, scancode, action, modifiers);
-  reportContentChange();
-  return res;
+    bool res = TextBox::keyboardEvent(key, scancode, action, modifiers);
+    reportContentChange();
+    return res;
 }
 
-
-bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint)  {
+bool EditorTextBox::keyboardCharacterEvent(unsigned int codepoint) {
     bool res = nanogui::TextBox::keyboardCharacterEvent(codepoint);
     reportContentChange();
     return res;
 }
 
 void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
-	EditorWidget::getPropertyNames(names);
-  names.push_back("Auto Update");
-  names.push_back("Text");
-  names.push_back("Font Size");
-  names.push_back("Alignment");
-  names.push_back("Vertical Alignment");
-  names.push_back("Working Text");
-  names.push_back("Wrap Text");
+    EditorWidget::getPropertyNames(names);
+    names.push_back("Auto Update");
+    names.push_back("Text");
+    names.push_back("Font Size");
+    names.push_back("Alignment");
+    names.push_back("Vertical Alignment");
+    names.push_back("Working Text");
+    names.push_back("Wrap Text");
 }
 
 void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
-  properties = property_map();
+    properties = property_map();
 }
 
 Value EditorTextBox::getPropertyValue(const std::string &prop) {
-  Value res = EditorWidget::getPropertyValue(prop);
-  if (res != SymbolTable::Null)
-    return res;
-  if (prop == "Text") return Value(value(), Value::t_string);
-  else if (prop == "Font Size") return fontSize();
-  else if (prop == "Auto Update") return auto_update;
-  else if (prop == "Alignment") return (int)alignment();
-  else if (prop == "Vertical Alignment") return valign;
-  else if (prop == "Wrap Text") return wrap_text ? 1 : 0;
-  return SymbolTable::Null;
+    Value res = EditorWidget::getPropertyValue(prop);
+    if (res != SymbolTable::Null)
+        return res;
+    if (prop == "Text")
+        return Value(value(), Value::t_string);
+    else if (prop == "Font Size")
+        return fontSize();
+    else if (prop == "Auto Update")
+        return auto_update;
+    else if (prop == "Alignment")
+        return (int)alignment();
+    else if (prop == "Vertical Alignment")
+        return valign;
+    else if (prop == "Wrap Text")
+        return wrap_text ? 1 : 0;
+    return SymbolTable::Null;
 }
 
 std::string EditorTextBox::getScaledValue(bool scaleUp) {
-  if (value_scale != 1.0f && (value_type == Value::t_integer || value_type == Value::t_float) ) {
-    const char *p = value().c_str();
-    while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
-    if (value_type == Value::t_integer && value_scale != 1.0f) {
-      long i_value = value_scale == 0.0 ? 0 : (std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
-      char buf[20];
-      if (format_string.empty())
-        snprintf(buf, 20, "%ld", i_value);
-      else
-        snprintf(buf, 20, format_string.c_str(), i_value);
-      return buf;
+    if (value_scale != 1.0f && (value_type == Value::t_integer || value_type == Value::t_float)) {
+        const char *p = value().c_str();
+        while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p == '0'))
+            ++p;
+        if (value_type == Value::t_integer && value_scale != 1.0f) {
+            long i_value = value_scale == 0.0
+                               ? 0
+                               : (std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
+            char buf[20];
+            if (format_string.empty())
+                snprintf(buf, 20, "%ld", i_value);
+            else
+                snprintf(buf, 20, format_string.c_str(), i_value);
+            return buf;
+        }
+        else if (value_type == Value::t_float) {
+            std::string v;
+            double f_value = value_scale == 0.0
+                                 ? 0.0
+                                 : (std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
+            char buf[20];
+            if (format_string.empty())
+                snprintf(buf, 20, "%5.3lf", f_value);
+            else
+                snprintf(buf, 20, format_string.c_str(), f_value);
+            return buf;
+        }
     }
-    else if (value_type == Value::t_float) {
-      std::string v;
-      double f_value = value_scale == 0.0 ? 0.0 : (std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
-      char buf[20];
-      if (format_string.empty())
-        snprintf(buf, 20, "%5.3lf", f_value);
-      else
-        snprintf(buf, 20, format_string.c_str(), f_value);
-      return buf;
-    }
-  }
-  return value();
+    return value();
 }
 /*
 int EditorTextBox::getScaledInteger(bool scaleUp) {
@@ -192,74 +210,75 @@ float EditorTextBox::getScaledFloat(bool scaleUp) {
 */
 
 void EditorTextBox::setProperty(const std::string &prop, const std::string value) {
-  EditorWidget::setProperty(prop, value);
-  if (prop == "Remote") {
-    if (remote) {
-        remote->link(new LinkableText(this));
+    EditorWidget::setProperty(prop, value);
+    if (prop == "Remote") {
+        if (remote) {
+            remote->link(new LinkableText(this));
+        }
     }
-  }
-  else if (prop == "Text") {
-    setValue(value);
-  }
-  else if (prop == "Font Size") {
-    int fs = std::atoi(value.c_str());
-    setFontSize(fs);
-  }
-  else if (prop == "Alignment") {
-    setAlignment((Alignment)std::atoi(value.c_str()));
-  }
-  else if (prop == "Auto Update") {
-    Value v{value};
-    bool aa;
-    if (v.asBoolean(aa)) {
-      auto_update = aa;
+    else if (prop == "Text") {
+        setValue(value);
     }
-    else {
-      std::cerr << name << " could not get auto_update value from: " << value << "\n";
+    else if (prop == "Font Size") {
+        int fs = std::atoi(value.c_str());
+        setFontSize(fs);
     }
-  }
-  else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
-  else if (prop == "Working Text") { working_text = value; }
-  else if (prop == "Wrap Text") {
-    wrap_text = (value == "1" || value == "true" || value == "TRUE");
-  }
+    else if (prop == "Alignment") {
+        setAlignment((Alignment)std::atoi(value.c_str()));
+    }
+    else if (prop == "Auto Update") {
+        Value v{value};
+        bool aa;
+        if (v.asBoolean(aa)) {
+            auto_update = aa;
+        }
+        else {
+            std::cerr << name << " could not get auto_update value from: " << value << "\n";
+        }
+    }
+    else if (prop == "Vertical Alignment")
+        valign = std::atoi(value.c_str());
+    else if (prop == "Working Text") {
+        working_text = value;
+    }
+    else if (prop == "Wrap Text") {
+        wrap_text = (value == "1" || value == "true" || value == "TRUE");
+    }
 }
-
 
 bool EditorTextBox::focusEvent(bool focused) {
     bool res = TextBox::focusEvent(focused);
-    if (!res) return res;
+    if (!res)
+        return res;
 
     if (mEditable) {
         if (focused)
             mValueTemp = getScaledValue(false);
         else
-            mValue =  mValueTemp;
+            mValue = mValueTemp;
         mValue = getScaledValue(true);
     }
 
     return true;
 }
 
-void EditorTextBox::draw(NVGcontext* ctx) {
-  using namespace nanogui;
+void EditorTextBox::draw(NVGcontext *ctx) {
+    using namespace nanogui;
 
     Widget::draw(ctx);
 
-    NVGpaint bg = nvgBoxGradient(ctx,
-        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, Color(255, 32), Color(32, 32));
-    NVGpaint fg1 = nvgBoxGradient(ctx,
-        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, Color(150, 32), Color(32, 32));
-    NVGpaint fg2 = nvgBoxGradient(ctx,
-        mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, nvgRGBA(255, 0, 0, 100), nvgRGBA(255, 0, 0, 50));
+    NVGpaint bg = nvgBoxGradient(ctx, mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2,
+                                 mSize.y() - 2, 3, 4, Color(255, 32), Color(32, 32));
+    NVGpaint fg1 = nvgBoxGradient(ctx, mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2,
+                                  mSize.y() - 2, 3, 4, Color(150, 32), Color(32, 32));
+    NVGpaint fg2 =
+        nvgBoxGradient(ctx, mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2, 3, 4,
+                       nvgRGBA(255, 0, 0, 100), nvgRGBA(255, 0, 0, 50));
 
     nvgBeginPath(ctx);
     if (border)
-      nvgRoundedRect(ctx, mPos.x() + border, mPos.y() + border + 1.0f, mSize.x() - 1 - border,
-                   mSize.y() - 1 - border, 3);
+        nvgRoundedRect(ctx, mPos.x() + border, mPos.y() + border + 1.0f, mSize.x() - 1 - border,
+                       mSize.y() - 1 - border, 3);
 
     if (mEditable && focused())
         mValidFormat ? nvgFillPaint(ctx, fg1) : nvgFillPaint(ctx, fg2);
@@ -272,13 +291,13 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
     nvgBeginPath(ctx);
     if (border) {
-      nvgStrokeWidth(ctx, border);
-      nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - border,
-                   mSize.y() - border, 2.5f);
-      nvgStrokeColor(ctx, Color(0, 48));
-      nvgStroke(ctx);
-      nvgStrokeWidth(ctx, 1.0);
-  }
+        nvgStrokeWidth(ctx, border);
+        nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - border,
+                       mSize.y() - border, 2.5f);
+        nvgStrokeColor(ctx, Color(0, 48));
+        nvgStroke(ctx);
+        nvgStrokeWidth(ctx, 1.0);
+    }
 
     nvgFontSize(ctx, fontSize());
     nvgFontFace(ctx, "sans");
@@ -293,22 +312,21 @@ void EditorTextBox::draw(NVGcontext* ctx) {
         nvgImageSize(ctx, mUnitsImage, &w, &h);
         float unitHeight = mSize.y() * 0.4f;
         unitWidth = w * unitHeight / h;
-        NVGpaint imgPaint = nvgImagePattern(
-            ctx, mPos.x() + mSize.x() - xSpacing - unitWidth,
-            drawPos.y() - unitHeight * 0.5f, unitWidth, unitHeight, 0,
-            mUnitsImage, mEnabled ? 0.7f : 0.35f);
+        NVGpaint imgPaint = nvgImagePattern(ctx, mPos.x() + mSize.x() - xSpacing - unitWidth,
+                                            drawPos.y() - unitHeight * 0.5f, unitWidth, unitHeight,
+                                            0, mUnitsImage, mEnabled ? 0.7f : 0.35f);
         nvgBeginPath(ctx);
-        nvgRect(ctx, mPos.x() + mSize.x() - xSpacing - unitWidth,
-                drawPos.y() - unitHeight * 0.5f, unitWidth, unitHeight);
+        nvgRect(ctx, mPos.x() + mSize.x() - xSpacing - unitWidth, drawPos.y() - unitHeight * 0.5f,
+                unitWidth, unitHeight);
         nvgFillPaint(ctx, imgPaint);
         nvgFill(ctx);
         unitWidth += 2;
-    } else if (!mUnits.empty()) {
+    }
+    else if (!mUnits.empty()) {
         unitWidth = nvgTextBounds(ctx, 0, 0, mUnits.c_str(), nullptr, nullptr);
         nvgFillColor(ctx, Color(255, mEnabled ? 64 : 32));
         nvgTextAlign(ctx, NVG_ALIGN_RIGHT | NVG_ALIGN_MIDDLE);
-        nvgText(ctx, mPos.x() + mSize.x() - xSpacing, drawPos.y(),
-                mUnits.c_str(), nullptr);
+        nvgText(ctx, mPos.x() + mSize.x() - xSpacing, drawPos.y(), mUnits.c_str(), nullptr);
         unitWidth += 2;
     }
 
@@ -324,21 +342,21 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
         /* up button */ {
             bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Top;
-            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor
+                                                                : mTheme->mDisabledTextColor);
             auto icon = utf8(ENTYPO_ICON_CHEVRON_UP);
             nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-            Vector2f iconPos(mPos.x() + 4.f,
-                             mPos.y() + mSize.y()/2.f - xSpacing/2.f);
+            Vector2f iconPos(mPos.x() + 4.f, mPos.y() + mSize.y() / 2.f - xSpacing / 2.f);
             nvgText(ctx, iconPos.x(), iconPos.y(), icon.data(), nullptr);
         }
 
         /* down button */ {
             bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Bottom;
-            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor
+                                                                : mTheme->mDisabledTextColor);
             auto icon = utf8(ENTYPO_ICON_CHEVRON_DOWN);
             nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
-            Vector2f iconPos(mPos.x() + 4.f,
-                             mPos.y() + mSize.y()/2.f + xSpacing/2.f + 1.5f);
+            Vector2f iconPos(mPos.x() + 4.f, mPos.y() + mSize.y() / 2.f + xSpacing / 2.f + 1.5f);
             nvgText(ctx, iconPos.x(), iconPos.y(), icon.data(), nullptr);
         }
 
@@ -347,38 +365,40 @@ void EditorTextBox::draw(NVGcontext* ctx) {
     }
     int alignment = 0;
     switch (mAlignment) {
-        case Alignment::Left:
-            alignment = NVG_ALIGN_LEFT;
-            drawPos.x() += xSpacing + spinArrowsWidth;
-            break;
-        case Alignment::Right:
-            alignment = NVG_ALIGN_RIGHT;
-            drawPos.x() += mSize.x() - unitWidth - xSpacing;
-            break;
-        case Alignment::Center:
-            alignment = NVG_ALIGN_CENTER;
-            drawPos.x() += mSize.x() * 0.5f;
-            break;
-        default:
-            alignment = NVG_ALIGN_LEFT;
-            break;
+    case Alignment::Left:
+        alignment = NVG_ALIGN_LEFT;
+        drawPos.x() += xSpacing + spinArrowsWidth;
+        break;
+    case Alignment::Right:
+        alignment = NVG_ALIGN_RIGHT;
+        drawPos.x() += mSize.x() - unitWidth - xSpacing;
+        break;
+    case Alignment::Center:
+        alignment = NVG_ALIGN_CENTER;
+        drawPos.x() += mSize.x() * 0.5f;
+        break;
+    default:
+        alignment = NVG_ALIGN_LEFT;
+        break;
     }
     switch (valign) {
-      case 0: alignment |= NVG_ALIGN_TOP;
+    case 0:
+        alignment |= NVG_ALIGN_TOP;
         break;
-      case 1: alignment |= NVG_ALIGN_MIDDLE;
+    case 1:
+        alignment |= NVG_ALIGN_MIDDLE;
         break;
-      case 2: alignment |= NVG_ALIGN_BOTTOM;
+    case 2:
+        alignment |= NVG_ALIGN_BOTTOM;
         break;
-      default:
+    default:
         alignment |= NVG_ALIGN_MIDDLE;
         break;
     }
     nvgTextAlign(ctx, alignment);
 
     nvgFontSize(ctx, fontSize());
-    nvgFillColor(ctx,
-                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+    nvgFillColor(ctx, mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
 
     // clip visible text area
     float clipX = mPos.x() + xSpacing + spinArrowsWidth - 1.0f;
@@ -390,43 +410,46 @@ void EditorTextBox::draw(NVGcontext* ctx) {
     nvgIntersectScissor(ctx, clipX, clipY, clipWidth, clipHeight);
     // mValueTemp is used for display while editing is open
     std::string valStr(mValueTemp);
-    if (mCommitted) valStr = mValue;
+    if (mCommitted)
+        valStr = mValue;
     if (mCommitted) {
-      float scale = value_scale;
-      if (scale == 0.0f) scale = 1.0f;
-      const char *p = valStr.c_str();
-      while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
-      if (format_string.length()) {
-        if (value_type == Value::t_integer) {// integer
-          char buf[20];
-          long val = std::atol(p);
-          snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
-          valStr = buf;
+        float scale = value_scale;
+        if (scale == 0.0f)
+            scale = 1.0f;
+        const char *p = valStr.c_str();
+        while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p == '0'))
+            ++p;
+        if (format_string.length()) {
+            if (value_type == Value::t_integer) { // integer
+                char buf[20];
+                long val = std::atol(p);
+                snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
+                valStr = buf;
+            }
+            else if (value_type == Value::t_float) {
+                char buf[20];
+                float val = std::atof(p);
+                snprintf(buf, 20, format_string.c_str(), val / scale);
+                valStr = buf;
+            }
         }
         else if (value_type == Value::t_float) {
-          char buf[20];
-          float val = std::atof(p);
-          snprintf(buf, 20, format_string.c_str(), val / scale);
-          valStr = buf;       
+            char buf[20];
+            float val = std::atof(p);
+            snprintf(buf, 20, "%5.3f", val / scale);
+            valStr = buf;
         }
-      }
-      else if (value_type == Value::t_float) {
-        char buf[20];
-        float val = std::atof(p);
-        snprintf(buf, 20, "%5.3f", val / scale);
-        valStr = buf;       
-      }
-      else if (value_type == Value::t_integer) {
-        char buf[20];
-        long val = std::atol(p);
-        snprintf(buf, 20, "%ld", (long)(val / scale));
-        valStr = buf;
-      }
+        else if (value_type == Value::t_integer) {
+            char buf[20];
+            long val = std::atol(p);
+            snprintf(buf, 20, "%ld", (long)(val / scale));
+            valStr = buf;
+        }
     }
     if (format_string == "password") {
-      for (size_t i = 0; i<valStr.length(); ++i) {
-        valStr[i] = '*';
-      }
+        for (size_t i = 0; i < valStr.length(); ++i) {
+            valStr[i] = '*';
+        }
     }
 
     Vector2i oldDrawPos(drawPos);
@@ -434,18 +457,17 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
     if (mCommitted) {
         nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
-    } else {
+    }
+    else {
         const int maxGlyphs = 1024;
         NVGglyphPosition glyphs[maxGlyphs];
         float textBound[4];
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
-                      nullptr, textBound);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr, textBound);
         float lineh = textBound[3] - textBound[1];
 
         // find cursor positions
-        int nglyphs =
-            nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
-                                  valStr.c_str(), nullptr, glyphs, maxGlyphs);
+        int nglyphs = nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr,
+                                            glyphs, maxGlyphs);
         updateCursor(ctx, textBound[2], glyphs, nglyphs);
 
         // compute text offset
@@ -463,19 +485,16 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
         // draw text with offset
         nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
-                      nullptr, textBound);
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr, textBound);
 
         // recompute cursor positions
-        nglyphs = nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(),
-                valStr.c_str(), nullptr, glyphs, maxGlyphs);
+        nglyphs = nvgTextGlyphPositions(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr,
+                                        glyphs, maxGlyphs);
 
         if (mCursorPos > -1) {
             if (mSelectionPos > -1) {
-                float caretx = cursorIndex2Position(mCursorPos, textBound[2],
-                                                    glyphs, nglyphs);
-                float selx = cursorIndex2Position(mSelectionPos, textBound[2],
-                                                  glyphs, nglyphs);
+                float caretx = cursorIndex2Position(mCursorPos, textBound[2], glyphs, nglyphs);
+                float selx = cursorIndex2Position(mSelectionPos, textBound[2], glyphs, nglyphs);
 
                 if (caretx > selx)
                     std::swap(caretx, selx);
@@ -483,8 +502,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
                 // draw selection
                 nvgBeginPath(ctx);
                 nvgFillColor(ctx, nvgRGBA(160, 255, 160, 160));
-                nvgRect(ctx, caretx, drawPos.y() - lineh * 0.5f, selx - caretx,
-                        lineh);
+                nvgRect(ctx, caretx, drawPos.y() - lineh * 0.5f, selx - caretx, lineh);
                 nvgFill(ctx);
             }
 
@@ -499,84 +517,83 @@ void EditorTextBox::draw(NVGcontext* ctx) {
             nvgStroke(ctx);
         }
 
-     nvgFillColor(ctx,
-                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+        nvgFillColor(ctx, mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
         // draw text with offset
         nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
-        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
-                      nullptr, textBound);
-
+        nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr, textBound);
     }
     nvgRestore(ctx);
-  if (mSelected)
-    drawSelectionBorder(ctx, mPos, mSize);
-  else if (EDITOR->isEditMode()) {
-    drawElementBorder(ctx, mPos, mSize);
-  }
-
+    if (mSelected)
+        drawSelectionBorder(ctx, mPos, mSize);
+    else if (EDITOR->isEditMode()) {
+        drawElementBorder(ctx, mPos, mSize);
+    }
 }
 
-void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
-  EditorWidget::loadProperties(properties);
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-  if (w) {
-    properties->addVariable<std::string> (
-      "Text",
-      [&](std::string value) { setProperty("Text", value); },
-      [&]()->std::string{ return getPropertyValue("Text").asString(); });
-    properties->addVariable<bool> (
-      "Auto Update",
-      [&](bool value) { auto_update = value; },
-      [&]()->bool{ return auto_update; });
+void EditorTextBox::loadProperties(PropertyFormHelper *properties) {
+    EditorWidget::loadProperties(properties);
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+    if (w) {
+        properties->addVariable<std::string>(
+            "Text", [&](std::string value) { setProperty("Text", value); },
+            [&]() -> std::string { return getPropertyValue("Text").asString(); });
+        properties->addVariable<bool>(
+            "Auto Update", [&](bool value) { auto_update = value; },
+            [&]() -> bool { return auto_update; });
 
-    properties->addVariable<int> (
-      "Alignment",
-      [&](int value) { setAlignment((Alignment)value); },
-      [&]()->int{ return (int)alignment(); });
-    properties->addVariable<int> (
-      "Vertical Alignment",
-      [&](int value) mutable{ valign = value; },
-      [&]()->int{ return valign; });
-    properties->addVariable<bool> (
-      "Wrap Text",
-      [&](bool value) mutable{ wrap_text = value; },
-      [&]()->bool{ return wrap_text; });
-    properties->addGroup("Remote");
-    properties->addVariable<std::string> (
-      "Remote object",
-      [&,this,properties](std::string value) {
-        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        this->setRemoteName(value);
-        if (remote) remote->unlink(this);
-        remote = lp;
-        if (lp) { lp->link(new LinkableNumber(this)); }
-       },
-      [&]()->std::string{
-        if (remote) return remote->tagName();
-        if (getDefinition()) {
-          const Value &rmt_v = getDefinition()->getValue("remote");
-          if (rmt_v != SymbolTable::Null)
-            return rmt_v.asString();
-        } 
-        return "";
-      });
-    properties->addVariable<std::string> (
-      "Connection",
-      [&,this,properties](std::string value) {
-        if (remote) remote->setGroup(value); else setConnection(value);
-       },
-      [&]()->std::string{ return remote ? remote->group() : getConnection(); });
+        properties->addVariable<int>(
+            "Alignment", [&](int value) { setAlignment((Alignment)value); },
+            [&]() -> int { return (int)alignment(); });
+        properties->addVariable<int>(
+            "Vertical Alignment", [&](int value) mutable { valign = value; },
+            [&]() -> int { return valign; });
+        properties->addVariable<bool>(
+            "Wrap Text", [&](bool value) mutable { wrap_text = value; },
+            [&]() -> bool { return wrap_text; });
+        properties->addGroup("Remote");
+        properties->addVariable<std::string>(
+            "Remote object",
+            [&, this, properties](std::string value) {
+                LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+                this->setRemoteName(value);
+                if (remote)
+                    remote->unlink(this);
+                remote = lp;
+                if (lp) {
+                    lp->link(new LinkableNumber(this));
+                }
+            },
+            [&]() -> std::string {
+                if (remote)
+                    return remote->tagName();
+                if (getDefinition()) {
+                    const Value &rmt_v = getDefinition()->getValue("remote");
+                    if (rmt_v != SymbolTable::Null)
+                        return rmt_v.asString();
+                }
+                return "";
+            });
+        properties->addVariable<std::string>(
+            "Connection",
+            [&, this, properties](std::string value) {
+                if (remote)
+                    remote->setGroup(value);
+                else
+                    setConnection(value);
+            },
+            [&]() -> std::string { return remote ? remote->group() : getConnection(); });
 
-    properties->addVariable<std::string> (
-      "Visibility",
-      [&,this,properties](std::string value) {
-        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        if (visibility) visibility->unlink(this);
-        visibility = lp;
-        if (lp) { lp->link(new LinkableVisibility(this)); }
-       },
-      [&]()->std::string{ return visibility ? visibility->tagName() : ""; 
-    });
-  }
+        properties->addVariable<std::string>(
+            "Visibility",
+            [&, this, properties](std::string value) {
+                LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+                if (visibility)
+                    visibility->unlink(this);
+                visibility = lp;
+                if (lp) {
+                    lp->link(new LinkableVisibility(this));
+                }
+            },
+            [&]() -> std::string { return visibility ? visibility->tagName() : ""; });
+    }
 }
-

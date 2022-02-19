@@ -5,12 +5,12 @@
 #ifndef hmilang_h
 #define hmilang_h
 
-#include <list>
-#include <symboltable.h>
-#include "parameter.h"
-#include "structure.h"
 #include "anchor.h"
 #include "linkableproperty.h"
+#include "parameter.h"
+#include "structure.h"
+#include <list>
+#include <symboltable.h>
 
 void yyerror(const char *str);
 
@@ -20,7 +20,7 @@ class LinkedProperty;
 extern int line_num;
 extern SymbolTable globals;
 extern const char *yyfilename;
-extern std::list<Structure *>hm_structures;
+extern std::list<Structure *> hm_structures;
 extern std::list<StructureClass *> hm_classes;
 extern std::map<std::string, LinkedProperty *> remotes;
 #endif

@@ -1,3 +1,5 @@
+ASTYLE := $(shell command -v astyle 2>/dev/null)
+CLANGFORMAT := $(shell command -v clang-format 2>/dev/null)
 ifeq ($(JOBS),)
   JOBS=-j3
 endif
@@ -32,4 +34,12 @@ xcode:
 test:
 	[ -d ".test" ] || mkdir .test
 	cd .test && cmake -DCMAKE_BUILD_TYPE=Debug -DRUN_TESTS=ON .. && make $(JOBS) && make test
+
+	cd .test && cmake -DCMAKE_BUILD_TYPE=Debug -DRUN_TESTS=ON .. && make $(JOBS) && make test
+
+style:
+ifdef CLANGFORMAT
+	clang-format --style=file -i `find src -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp`
+	clang-format --style=file -i `find tests -name \*.c -o -name \*.cpp -o -name \*.h -o -name \*.hpp`
+endif
 

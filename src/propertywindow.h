@@ -12,30 +12,30 @@
 #include <string>
 
 #include <nanogui/common.h>
-#include <nanogui/window.h>
-#include <nanogui/theme.h>
 #include <nanogui/screen.h>
+#include <nanogui/theme.h>
 #include <nanogui/widget.h>
+#include <nanogui/window.h>
 
 #include "editorgui.h"
 
 class PropertyFormHelper;
 
 class PropertyWindow : public nanogui::Object {
-public:
-	PropertyWindow(nanogui::Screen *screen, nanogui::Theme *theme);
-	void setVisible(bool which);
-	nanogui::Window *getWindow()  { return window; }
-	PropertyFormHelper *getFormHelper() { return properties; }
-	void update();
-	nanogui::Screen *getScreen() { return screen; }
-	void show(nanogui::Widget &w);
+  public:
+    PropertyWindow(nanogui::Screen *screen, nanogui::Theme *theme);
+    void setVisible(bool which);
+    nanogui::Window *getWindow() { return window; }
+    PropertyFormHelper *getFormHelper() { return properties; }
+    void update();
+    nanogui::Screen *getScreen() { return screen; }
+    void show(nanogui::Widget &w);
 
-protected:
-	nanogui::Screen *screen;
-	nanogui::Window *window;
-	PropertyFormHelper *properties;
-	nanogui::Widget *items;
+  protected:
+    nanogui::Screen *screen;
+    nanogui::Window *window;
+    PropertyFormHelper *properties;
+    nanogui::Widget *items;
 };
 
 #endif

@@ -5,27 +5,24 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
-#include "settingslang.h"
 #include "editorsettings.h"
-#include <list>
+#include "settingslang.h"
 #include <fstream>
+#include <iostream>
+#include <list>
 
 std::map<std::string, nanogui::Widget *> EditorSettings::widgets;
-extern std::list<std::string>settings_files;
+extern std::list<std::string> settings_files;
 bool EditorSettings::dirty = false;
-extern std::map<std::string, Structure *>structures;
+extern std::map<std::string, Structure *> structures;
 
-std::ostream &EditorSettings::operator<<(std::ostream &out) const  {
-    return out;
-}
+std::ostream &EditorSettings::operator<<(std::ostream &out) const { return out; }
 
-std::ostream &operator<<(std::ostream &out, const EditorSettings &m) {
-    return m.operator<<(out);
-}
+std::ostream &operator<<(std::ostream &out, const EditorSettings &m) { return m.operator<<(out); }
 
-EditorSettings::EditorSettings(const std::string sname, const std::string skind) : Structure(nullptr, sname, skind) {
-  getProperties().add("full_screen", false);
+EditorSettings::EditorSettings(const std::string sname, const std::string skind)
+    : Structure(nullptr, sname, skind) {
+    getProperties().add("full_screen", false);
 }
 
 void EditorSettings::applySettings(const std::string object_name, nanogui::Widget *widget) {
@@ -41,34 +38,40 @@ void EditorSettings::applySettings(const std::string object_name, nanogui::Widge
         }
     }
     if (!errors.empty()) {
-        for (auto err : errors) { std::cout << err << "\n";}
+        for (auto err : errors) {
+            std::cout << err << "\n";
+        }
     }
 }
 
 Structure *EditorSettings::find(const std::string object_name) {
-  auto found = structures.find(object_name);
-  if (found != structures.end()) return (*found).second;
-  for (auto item : st_structures) {
-      if (item->getName() == object_name) {
-          return item;
-      }
-  }
-  return nullptr;
+    auto found = structures.find(object_name);
+    if (found != structures.end())
+        return (*found).second;
+    for (auto item : st_structures) {
+        if (item->getName() == object_name) {
+            return item;
+        }
+    }
+    return nullptr;
 }
 
 Structure *EditorSettings::create() {
-  Structure *s = find("EditorSettings");
-  if (!s) s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
-  st_structures.push_back(s);
-  structures["EditorSettings"] = s;
-  flush();
-  return s;
+    Structure *s = find("EditorSettings");
+    if (!s)
+        s = new EditorSettings("EditorSettings", "EDITORSETTINGS");
+    st_structures.push_back(s);
+    structures["EditorSettings"] = s;
+    flush();
+    return s;
 }
 
 void EditorSettings::flush() {
-    if (!dirty) return;
+    if (!dirty)
+        return;
     dirty = false;
-    if (settings_files.size() == 0) return;
+    if (settings_files.size() == 0)
+        return;
     std::string fname(settings_files.front());
     std::ofstream settings_file(fname);
     Structure *s = EditorSettings::find("EditorSettings");
@@ -76,7 +79,8 @@ void EditorSettings::flush() {
     s->save(settings_file, "");
     for (auto w : widgets) {
         s = find(w.first);
-        if (s) s->save(settings_file, "");
+        if (s)
+            s->save(settings_file, "");
     }
     settings_file.close();
 }

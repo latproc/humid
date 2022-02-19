@@ -8,8 +8,8 @@ class Keypad : public DialogWindow {
     void set_target(EditorTextBox *);
 
     // display the window with the target value preloaded
-    bool show(const std::string & dialog_name);
+    bool show(const std::string &dialog_name);
 
-private:
+  private:
     EditorTextBox *target;
 };

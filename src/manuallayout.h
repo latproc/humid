@@ -18,23 +18,24 @@
 #pragma once
 
 #include <nanogui/compat.h>
+#include <nanogui/layout.h>
 #include <nanogui/object.h>
 #include <unordered_map>
-#include <nanogui/layout.h>
 
 NAMESPACE_BEGIN(nanogui)
 /**
  * \brief Simple manual layout for hand drawn panels
  */
 class NANOGUI_EXPORT ManualLayout : public Layout {
-public:
-		ManualLayout(Vector2i requested_size);
+  public:
+    ManualLayout(Vector2i requested_size);
 
-		/* Implementation of the layout interface */
-		virtual Vector2i preferredSize(NVGcontext *ctx, const Widget *widget) const override;
-		virtual void performLayout(NVGcontext *ctx, Widget *widget) const override;
-protected:
-	Vector2i user_size;
+    /* Implementation of the layout interface */
+    virtual Vector2i preferredSize(NVGcontext *ctx, const Widget *widget) const override;
+    virtual void performLayout(NVGcontext *ctx, Widget *widget) const override;
+
+  protected:
+    Vector2i user_size;
 };
 
 NAMESPACE_END(nanogui)

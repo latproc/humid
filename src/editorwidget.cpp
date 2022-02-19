@@ -5,77 +5,74 @@
 //  All rights reserved. Use of this source code is governed by the
 //  3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
-#include <string>
 #include <assert.h>
+#include <iostream>
 #include <nanogui/common.h>
 #include <nanogui/widget.h>
+#include <string>
 
-#include "editorwidget.h"
-#include "selectable.h"
 #include "connectable.h"
-#include "linkableobject.h"
-#include "palette.h"
+#include "draghandle.h"
 #include "editor.h"
 #include "editorgui.h"
-#include "userwindow.h"
-#include "structure.h"
-#include "draghandle.h"
-#include "propertywindow.h"
-#include "themewindow.h"
-#include "helper.h"
 #include "editorlabel.h"
-#include "propertyformhelper.h"
+#include "editorwidget.h"
 #include "factorybuttons.h"
+#include "helper.h"
+#include "linkableobject.h"
 #include "objectwindow.h"
+#include "palette.h"
+#include "propertyformhelper.h"
+#include "propertywindow.h"
+#include "selectable.h"
+#include "structure.h"
+#include "themewindow.h"
+#include "userwindow.h"
 
 extern Handle::Mode all_handles[];
 
-EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp)
-  : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-    definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(0), value_type(0) {
+EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w,
+                           LinkableProperty *lp)
+    : Selectable(0), EditorObject(owner), Connectable(lp), base(structure_name), dh(0), handles(9),
+      handle_coordinates(9, 2), definition(0), value_scale(1.0f), tab_position(0), visibility(0),
+      inverted_visibility(0), border(0), value_type(0) {
     assert(w != 0);
-    Palette *p = dynamic_cast<Palette*>(w);
+    Palette *p = dynamic_cast<Palette *>(w);
     if (!p) {
-      p = EDITOR->gui()->getUserWindow();
+        p = EDITOR->gui()->getUserWindow();
     }
     palette = p;
 }
 
-EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
-      nanogui::Widget *w, LinkableProperty *lp)
-  : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0), handles(9), handle_coordinates(9,2),
-  definition(0), value_scale(1.0f), tab_position(0), visibility(0), inverted_visibility(0), border(0), value_type(0) {
+EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
+                           const std::string &nam, nanogui::Widget *w, LinkableProperty *lp)
+    : Selectable(0), EditorObject(owner, nam), Connectable(lp), base(structure_name), dh(0),
+      handles(9), handle_coordinates(9, 2), definition(0), value_scale(1.0f), tab_position(0),
+      visibility(0), inverted_visibility(0), border(0), value_type(0) {
     assert(w != 0);
-    Palette *p = dynamic_cast<Palette*>(w);
+    Palette *p = dynamic_cast<Palette *>(w);
     if (!p) {
-      p = EDITOR->gui()->getUserWindow();
+        p = EDITOR->gui()->getUserWindow();
     }
     palette = p;
 }
 
-EditorWidget::~EditorWidget() { }
+EditorWidget::~EditorWidget() {}
 
-const std::string &EditorWidget::getValueFormat() {
-  return format_string;
-}
+const std::string &EditorWidget::getValueFormat() { return format_string; }
 
-void EditorWidget::setValueFormat(const std::string fmt) {
-    format_string = fmt;
-}
+void EditorWidget::setValueFormat(const std::string fmt) { format_string = fmt; }
 
-int EditorWidget::getValueType() {
-  return value_type;
-}
+int EditorWidget::getValueType() { return value_type; }
 
-void EditorWidget::setValueType(int fmt) {
-    value_type = fmt;
-}
+void EditorWidget::setValueType(int fmt) { value_type = fmt; }
 
 void EditorWidget::setVisibilityLink(LinkableProperty *lp) {
-  if(visibility) visibility->unlink(this);
-  visibility = lp;
-  if (visibility) visibility->link(new LinkableVisibility(this));
+    if (visibility)
+        visibility->unlink(this);
+    visibility = lp;
+    if (visibility)
+        visibility->link(new LinkableVisibility(this));
 }
 
 EditorWidget *EditorWidget::create(const std::string kind) {
@@ -84,40 +81,40 @@ EditorWidget *EditorWidget::create(const std::string kind) {
 
 void EditorWidget::addLink(Link *new_link) { links.push_back(*new_link); }
 
-void EditorWidget::addLink(const Link &new_link) {
-  links.push_back(new_link);
-}
+void EditorWidget::addLink(const Link &new_link) { links.push_back(new_link); }
 
 void EditorWidget::removeLink(Anchor *src, Anchor *dest) {
-  std::list<Link>::iterator iter = links.begin();
-  while (iter != links.end()) {
-    const Link &l = *iter;
-    if (l.source == src && l.dest == dest)
-      iter = links.erase(iter);
-    else
-      ++iter;
-  }
+    std::list<Link>::iterator iter = links.begin();
+    while (iter != links.end()) {
+        const Link &l = *iter;
+        if (l.source == src && l.dest == dest)
+            iter = links.erase(iter);
+        else
+            ++iter;
+    }
 }
 
 void EditorWidget::updateLinks() {
-  std::list<Link>::iterator iter = links.begin();
-  while (iter != links.end()) {
-    const Link &l = *iter++;
-    l.update();
-  }
+    std::list<Link>::iterator iter = links.begin();
+    while (iter != links.end()) {
+        const Link &l = *iter++;
+        l.update();
+    }
 }
 
-bool EditorWidget::editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+bool EditorWidget::editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
+                                          int button, bool down, int modifiers) {
 
     using namespace nanogui;
 
     if (EDITOR->isEditMode()) {
         if (down) {
-            if (!mSelected && !(modifiers & GLFW_MOD_SHIFT) ) palette->clearSelections();
+            if (!mSelected && !(modifiers & GLFW_MOD_SHIFT))
+                palette->clearSelections();
             if (mSelected) {
-              if (modifiers & GLFW_MOD_SHIFT) {
-                deselect();
-              }
+                if (modifiers & GLFW_MOD_SHIFT) {
+                    deselect();
+                }
             }
             else
                 select();
@@ -125,27 +122,29 @@ bool EditorWidget::editorMouseButtonEvent(nanogui::Widget *widget, const nanogui
         return false;
     }
     else {
-        if (EDITOR->getDragHandle()) EDITOR->getDragHandle()->setVisible(false);
+        if (EDITOR->getDragHandle())
+            EDITOR->getDragHandle()->setVisible(false);
     }
     return true; // caller should continue to call the default handler for the object
 }
 
 bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
-        const nanogui::Vector2i &rel, int button, int modifiers) {
-    if ( !EDITOR->isEditMode() ) {
+                                          const nanogui::Vector2i &rel, int button, int modifiers) {
+    if (!EDITOR->isEditMode()) {
         EDITOR->getDragHandle()->setVisible(false);
         return true; // caller should continue to call the default handler for the object
     }
 
     nanogui::Vector2d pt(p.x(), p.y());
 
-    nanogui::VectorXd distances = (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
+    nanogui::VectorXd distances =
+        (handle_coordinates.rowwise() - pt.transpose()).rowwise().squaredNorm();
 
     double min = distances.row(0).x();
 
     int idx = 0;
 
-    for (int i=1; i<9; ++i) {
+    for (int i = 1; i < 9; ++i) {
         if (distances.row(i).x() < min) {
             min = distances.row(i).x();
             idx = i;
@@ -157,19 +156,19 @@ bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui
         drag_handle->setTarget(widget);
 
         drag_handle->setPosition(
-                Vector2i(handles[idx].position().x() - drag_handle->size().x()/2,
-                            handles[idx].position().y() - drag_handle->size().y()/2) ) ;
+            Vector2i(handles[idx].position().x() - drag_handle->size().x() / 2,
+                     handles[idx].position().y() - drag_handle->size().y() / 2));
 
         if (drag_handle->propertyMonitor())
-            drag_handle->propertyMonitor()->setMode( handles[idx].mode() );
+            drag_handle->propertyMonitor()->setMode(handles[idx].mode());
 
         updateHandles(widget);
         drag_handle->setVisible(true);
     }
     else {
         drag_handle->setPosition(
-                Vector2i(widget->position().x() + widget->width() - drag_handle->size().x()/2,
-                            widget->position().y() + widget->height() - drag_handle->size().y()/2) ) ;
+            Vector2i(widget->position().x() + widget->width() - drag_handle->size().x() / 2,
+                     widget->position().y() + widget->height() - drag_handle->size().y() / 2));
 
         updateHandles(widget);
         drag_handle->setVisible(true);
@@ -179,7 +178,8 @@ bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui
 }
 
 bool EditorWidget::editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i &p, bool enter) {
-    if (enter) updateHandles(widget);
+    if (enter)
+        updateHandles(widget);
     else {
         EDITOR->getDragHandle()->setVisible(false);
         updateHandles(widget);
@@ -189,15 +189,16 @@ bool EditorWidget::editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i
 }
 
 void EditorWidget::updateHandles(nanogui::Widget *w) {
-    for (int i=0; i<9; ++i) {
+    for (int i = 0; i < 9; ++i) {
         Handle h = Handle::create(all_handles[i], w->position(), w->size());
-        handle_coordinates(i,0) = h.position().x();
-        handle_coordinates(i,1) = h.position().y();
+        handle_coordinates(i, 0) = h.position().x();
+        handle_coordinates(i, 1) = h.position().y();
         handles[i] = h;
     }
 }
 
-void EditorWidget::drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size) {
+void EditorWidget::drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos,
+                                       nanogui::Vector2i size) {
     if (mSelected) {
         nvgStrokeWidth(ctx, 4.0f);
         nvgBeginPath(ctx);
@@ -207,19 +208,18 @@ void EditorWidget::drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, n
     }
 }
 
-void EditorWidget::drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size) {
-  if (EDITOR->isEditMode()) {
-    nvgStrokeWidth(ctx, 4.0f);
-    nvgBeginPath(ctx);
-    nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
-    nvgStrokeColor(ctx, nvgRGBA(192, 192, 255, 128));
-    nvgStroke(ctx);
-  }
+void EditorWidget::drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos,
+                                     nanogui::Vector2i size) {
+    if (EDITOR->isEditMode()) {
+        nvgStrokeWidth(ctx, 4.0f);
+        nvgBeginPath(ctx);
+        nvgRect(ctx, pos.x(), pos.y(), size.x(), size.y());
+        nvgStrokeColor(ctx, nvgRGBA(192, 192, 255, 128));
+        nvgStroke(ctx);
+    }
 }
 
-std::string EditorWidget::baseName() const {
-    return base;
-}
+std::string EditorWidget::baseName() const { return base; }
 
 const std::string &EditorWidget::getName() const { return name; }
 
@@ -230,356 +230,360 @@ void EditorWidget::setDefinition(Structure *defn) { definition = defn; }
 Structure *EditorWidget::getDefinition() { return definition; }
 
 float EditorWidget::valueScale() { return value_scale; }
-void EditorWidget::setValueScale(float s) { value_scale = s;}
+void EditorWidget::setValueScale(float s) { value_scale = s; }
 
 int EditorWidget::tabPosition() { return tab_position; }
 void EditorWidget::setTabPosition(int p) { tab_position = p; }
 
-
 void EditorWidget::justSelected() {
-  EDITOR->gui()->getUserWindow()->select(this);
-  PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
-  if (prop) {
-    //prop->show(*getWidget());
-    prop->update();
-  }
-  ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-  if (w && tw && tw->getWindow()->visible() ) {
-    tw->loadTheme(w->theme());
-  }
+    EDITOR->gui()->getUserWindow()->select(this);
+    PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
+    if (prop) {
+        //prop->show(*getWidget());
+        prop->update();
+    }
+    ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+    if (w && tw && tw->getWindow()->visible()) {
+        tw->loadTheme(w->theme());
+    }
 }
 
 void EditorWidget::justDeselected() {
-  EDITOR->gui()->getUserWindow()->deselect(this);
-  if (dynamic_cast<nanogui::Widget*>(this)) {
-    updateStructure(); // save any changes to its structure
-  }
-  ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(EDITOR->gui()->getUserWindow()->getWindow());
-  if (w && tw && tw->getWindow()->visible() ) {
-    tw->loadTheme(w->theme());
-  }
-  PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
-  if (prop) {
-    prop->update();
-    EDITOR->gui()->needsUpdate();
-  }
+    EDITOR->gui()->getUserWindow()->deselect(this);
+    if (dynamic_cast<nanogui::Widget *>(this)) {
+        updateStructure(); // save any changes to its structure
+    }
+    ThemeWindow *tw = EDITOR->gui()->getThemeWindow();
+    nanogui::Widget *w =
+        dynamic_cast<nanogui::Widget *>(EDITOR->gui()->getUserWindow()->getWindow());
+    if (w && tw && tw->getWindow()->visible()) {
+        tw->loadTheme(w->theme());
+    }
+    PropertyWindow *prop = EDITOR->gui()->getPropertyWindow();
+    if (prop) {
+        prop->update();
+        EDITOR->gui()->needsUpdate();
+    }
 }
-void EditorWidget::getPropertyNames(std::list<std::string> &names) {
-  ::getPropertyNames(names);
-}
+void EditorWidget::getPropertyNames(std::list<std::string> &names) { ::getPropertyNames(names); }
 
 void EditorWidget::setPropertyValue(const std::string &prop, const Value &v) {
-  setProperty(prop, v.asString());
+    setProperty(prop, v.asString());
 }
 
 void EditorWidget::setProperty(const std::string &prop, const std::string value) {
-  std::string::size_type sz;
-  if (prop == "Horizontal Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    if (w) w->setPosition( nanogui::Vector2i(std::stoi(value,&sz),w->position().y()) );
-    return;
-  }
-  if (prop == "Vertical Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    if (w) w->setPosition( nanogui::Vector2i(w->position().x(), std::stoi(value,&sz)) );
-    return;
-  }
-  if (prop == "Width") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    if (w) w->setWidth(std::stoi(value,&sz));
-    return;
-  }
-  if (prop == "Height") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    if (w) w->setHeight(std::stoi(value,&sz));
-    return;
-  }
-  if (prop == "Font Size") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    if (w) w->setFontSize(std::stoi(value,&sz));
-    return;
-  }
-  if (prop == "Format") {
-    format_string = value;
-    return;
-  }
-  if (prop == "Value Type") {
-    value_type = std::atoi(value.c_str());
-    return;
-  }
-  if (prop == "Value Scale") {
-    float scale = std::atof(value.c_str());
-    if (scale != 0.0) setValueScale(scale);
-    return;
-  }
-  if (prop == "Tab Position") {
-    int pos = std::atoi(value.c_str());
-    if (pos != 0) setTabPosition(pos);
-    return;
-  }
-  if (prop == "Border Width") {
-    border = std::atoi(value.c_str());
-    return;
-  }
-  if (prop == "Remote") {
-    remote_name = value;
-    LinkableProperty *remote_prop = EDITOR->gui()->findLinkableProperty(value);
-    if (remote)
-      remote->unlink(this);
-    remote = remote_prop;
-    // note: remote->link() not yet called. see subclass method.
-  }
-  if (prop == "Connection") {
-    connection_name = value;
-  }
-  if (prop == "Visibility" && !value.empty()) {
-    if (visibility) visibility->unlink(this);
-    visibility = EDITOR->gui()->findLinkableProperty(value);
-    if (visibility) visibility->link(new LinkableVisibility(this));
-  }
-  if (prop == "Inverted Visibility" && !value.empty()) {
-    inverted_visibility = (value == "1" || value == "true" || value == "TRUE");    
-  }
+    std::string::size_type sz;
+    if (prop == "Horizontal Pos") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        if (w)
+            w->setPosition(nanogui::Vector2i(std::stoi(value, &sz), w->position().y()));
+        return;
+    }
+    if (prop == "Vertical Pos") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        if (w)
+            w->setPosition(nanogui::Vector2i(w->position().x(), std::stoi(value, &sz)));
+        return;
+    }
+    if (prop == "Width") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        if (w)
+            w->setWidth(std::stoi(value, &sz));
+        return;
+    }
+    if (prop == "Height") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        if (w)
+            w->setHeight(std::stoi(value, &sz));
+        return;
+    }
+    if (prop == "Font Size") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        if (w)
+            w->setFontSize(std::stoi(value, &sz));
+        return;
+    }
+    if (prop == "Format") {
+        format_string = value;
+        return;
+    }
+    if (prop == "Value Type") {
+        value_type = std::atoi(value.c_str());
+        return;
+    }
+    if (prop == "Value Scale") {
+        float scale = std::atof(value.c_str());
+        if (scale != 0.0)
+            setValueScale(scale);
+        return;
+    }
+    if (prop == "Tab Position") {
+        int pos = std::atoi(value.c_str());
+        if (pos != 0)
+            setTabPosition(pos);
+        return;
+    }
+    if (prop == "Border Width") {
+        border = std::atoi(value.c_str());
+        return;
+    }
+    if (prop == "Remote") {
+        remote_name = value;
+        LinkableProperty *remote_prop = EDITOR->gui()->findLinkableProperty(value);
+        if (remote)
+            remote->unlink(this);
+        remote = remote_prop;
+        // note: remote->link() not yet called. see subclass method.
+    }
+    if (prop == "Connection") {
+        connection_name = value;
+    }
+    if (prop == "Visibility" && !value.empty()) {
+        if (visibility)
+            visibility->unlink(this);
+        visibility = EDITOR->gui()->findLinkableProperty(value);
+        if (visibility)
+            visibility->link(new LinkableVisibility(this));
+    }
+    if (prop == "Inverted Visibility" && !value.empty()) {
+        inverted_visibility = (value == "1" || value == "true" || value == "TRUE");
+    }
 }
 
 Value EditorWidget::getPropertyValue(const std::string &prop) {
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-  if (!w) {
-    std::cout << "Error: " << name << " does not seem to be a widget\n";
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+    if (!w) {
+        std::cout << "Error: " << name << " does not seem to be a widget\n";
+        return SymbolTable::Null;
+    }
+    if (prop == "Structure")
+        return base;
+    if (prop == "Horizontal Pos") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        return (w) ? w->position().x() : 0;
+    }
+    if (prop == "Vertical Pos") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        return (w) ? w->position().y() : 0;
+    }
+    if (prop == "Width") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        return (w) ? w->width() : 0;
+    }
+    if (prop == "Height") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        return (w) ? w->height() : 0;
+    }
+    if (prop == "Font Size") {
+        nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+        return (w) ? w->fontSize() : 0;
+    }
+    if (prop == "Format") {
+        return Value(getValueFormat(), Value::t_string);
+    }
+    if (prop == "Value Type") {
+        return getValueType();
+    }
+    if (prop == "Value Scale") {
+        return valueScale();
+    }
+    if (prop == "Border") {
+        return border;
+    }
+    if (prop == "Remote") {
+        return Value(remote ? remote->tagName() : remote_name, Value::t_string);
+    }
+    if (prop == "Connection") {
+        return Value(remote ? remote->group() : connection_name, Value::t_string);
+    }
+    if (prop == "Visibility") {
+        return Value(visibility ? visibility->tagName() : "", Value::t_string);
+    }
+    if (prop == "Inverted Visibility") {
+        return inverted_visibility;
+    }
     return SymbolTable::Null;
-  }
-  if (prop == "Structure") return base;
-  if (prop == "Horizontal Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return (w) ? w->position().x() : 0;
-  }
-  if (prop == "Vertical Pos") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return (w) ? w->position().y() : 0;
-  }
-  if (prop == "Width") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return (w) ? w->width() : 0;
-  }
-  if (prop == "Height") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return (w) ? w->height() : 0;
-  }
-  if (prop == "Font Size") {
-    nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-    return (w) ? w->fontSize() : 0;
-  }
-  if (prop == "Format") {
-    return Value(getValueFormat(), Value::t_string);
-  }
-  if (prop == "Value Type") {
-    return getValueType();
-  }
-  if (prop == "Value Scale") {
-    return valueScale();
-  }
-  if (prop == "Border") {
-    return border;
-  }
-  if (prop == "Remote") {
-    return Value(remote ? remote->tagName() : remote_name, Value::t_string);
-  }
-  if (prop == "Connection") {
-    return Value(remote ? remote->group() : connection_name, Value::t_string);
-  }
-  if (prop == "Visibility") {
-    return Value(visibility ? visibility->tagName() : "", Value::t_string);
-  }
-  if (prop == "Inverted Visibility") { 
-    return inverted_visibility;
-  }
-  return SymbolTable::Null;
 }
 
 std::string EditorWidget::getProperty(const std::string &prop) {
-  Value res = getPropertyValue(prop);
-  if (res == SymbolTable::Null) return "";
-  return res.asString();
+    Value res = getPropertyValue(prop);
+    if (res == SymbolTable::Null)
+        return "";
+    return res.asString();
 }
 
 void EditorWidget::loadPropertyToStructureMap(std::map<std::string, std::string> &property_map) {
-  ::loadPropertyToStructureMap(property_map);
+    ::loadPropertyToStructureMap(property_map);
 }
 
 // generate or update structure properties from the widget
 void EditorWidget::updateStructure() {
-  assert(dynamic_cast<nanogui::Widget*>(this));
+    assert(dynamic_cast<nanogui::Widget *>(this));
 
-  StructureClass *sc = findClass(base);
-  Structure *s = definition;
-  if (!sc)
-    sc = createStructureClass(base);
-  if (!s) {
-    if (base == "SCREEN")
-      s = createScreenStructure();
-    else
-      s = sc->instantiate(nullptr);
-    if (s) definition = s;
-  }
-  if (!s) return;
-  s->setStructureDefinition(sc);
-  std::list<std::string> property_names;
-  std::map<std::string, std::string> property_map;
-  loadPropertyToStructureMap(property_map);
-  getPropertyNames(property_names);
-  for (auto item : property_names) {
-    Value v = getPropertyValue(item);
-    auto found = property_map.find(item);
-    if (v != SymbolTable::Null) {
-      if (found != property_map.end()) {
-        if ( (*found).second.empty()) {
-          //std::cout << s->getName() << " skipping update of widget property " << item << "\n";
-          continue;
-        }
-        std::string mapped((*found).second.c_str());
-        if (mapped == "width" && v.kind == Value::t_integer && v.iValue < 40)
-          v = 40;
-        if (mapped == "height" && v.kind == Value::t_integer && v.iValue < 20)
-          v = 20;
-        s->getProperties().add(mapped, v);
-      }
-      else {
-        std::cout << s->getName() << " setting unmapped property " << item << " to " << v << "\n";
-        s->getProperties().add(item.c_str(), v);
-      }
+    StructureClass *sc = findClass(base);
+    Structure *s = definition;
+    if (!sc)
+        sc = createStructureClass(base);
+    if (!s) {
+        if (base == "SCREEN")
+            s = createScreenStructure();
+        else
+            s = sc->instantiate(nullptr);
+        if (s)
+            definition = s;
     }
-  }
+    if (!s)
+        return;
+    s->setStructureDefinition(sc);
+    std::list<std::string> property_names;
+    std::map<std::string, std::string> property_map;
+    loadPropertyToStructureMap(property_map);
+    getPropertyNames(property_names);
+    for (auto item : property_names) {
+        Value v = getPropertyValue(item);
+        auto found = property_map.find(item);
+        if (v != SymbolTable::Null) {
+            if (found != property_map.end()) {
+                if ((*found).second.empty()) {
+                    //std::cout << s->getName() << " skipping update of widget property " << item << "\n";
+                    continue;
+                }
+                std::string mapped((*found).second.c_str());
+                if (mapped == "width" && v.kind == Value::t_integer && v.iValue < 40)
+                    v = 40;
+                if (mapped == "height" && v.kind == Value::t_integer && v.iValue < 20)
+                    v = 20;
+                s->getProperties().add(mapped, v);
+            }
+            else {
+                std::cout << s->getName() << " setting unmapped property " << item << " to " << v
+                          << "\n";
+                s->getProperties().add(item.c_str(), v);
+            }
+        }
+    }
 }
 
-
-void EditorWidget::loadProperties(PropertyFormHelper* properties) {
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-  if (w) {
-    properties->addVariable<std::string> (
-      "Structure",
-      [&,w](const std::string value) { },
-      [&,w]()->std::string{ return getDefinition()->getKind(); });
-    properties->addVariable<int> (
-      "Horizontal Pos",
-      [&,w](int value) mutable{
-        nanogui::Vector2i pos(value, w->position().y());
-        w->setPosition(pos);
-      },
-      [&,w]()->int{ return w->position().x(); });
-    properties->addVariable<int> (
-      "Vertical Pos",
-      [&,w](int value) mutable{
-        nanogui::Vector2i pos(w->position().x(), value);
-        w->setPosition(pos);
-      },
-      [&,w]()->int{ return w->position().y(); });
-    properties->addVariable<int> (
-      "Width",
-      [&,w](int value) mutable{ w->setWidth(value); },
-      [&,w]()->int{ return w->width(); });
-    properties->addVariable<int> (
-      "Height",
-      [&,w](int value) mutable{ w->setHeight(value); },
-      [&,w]()->int{ return w->height(); });
-    properties->addVariable<std::string> (
-      "Name",
-      [&](std::string value) mutable{
-        setName(value);
-        if (getDefinition()) {
-          getDefinition()->setName(value);
-        }
-      },
-      [&]()->std::string{ return getName(); });
-    properties->addVariable<int> (
-      "Font Size",
-      [&,w](int value) mutable{ w->setFontSize(value); },
-      [&,w]()->int{ return w->fontSize(); });
-    properties->addVariable<int> (
-      "Tab Position",
-      [&,w](int value) mutable{ setTabPosition(value); },
-      [&,w]()->int{ return tabPosition(); });
-    properties->addVariable<std::string> (
-      "Format",
-      [&](std::string value) { setValueFormat(value); },
-      [&]()->std::string{ return getValueFormat(); });
-    properties->addVariable<int> (
-      "Value Type",
-      [&,w](int value) mutable{ setValueType(value); },
-      [&,w]()->int{ return getValueType(); });
-    properties->addVariable<float> (
-      "Value Scale",
-      [&](float value) { 
-        setValueScale(value);
-        if (remote) remote->apply();
-      },
-      [&]()->float{ return valueScale(); });
-    properties->addVariable<int> (
-      "Border",
-      [&,w](int value) mutable{ setBorder(value); },
-      [&,w]()->int{ return border; });
-    properties->addVariable<std::string> (
-      "Patterns",
-      [&,w](std::string value) mutable{ setPatterns(value); },
-      [&,w]()->std::string{ return patterns(); });
-    EditorGUI *gui = EDITOR->gui();
-    properties->addButton(
-      "Link to Remote", [&,gui,this,properties]() mutable{
-      if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
-        gui->getUserWindow()->getWindow()->requestFocus();
-        std::string items;
-        for (auto sel : gui->getObjectWindow()->getSelected()) {
-          ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
-          LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
-          if (remote) remote->unlink(this);
-          remote = lp;
-          setProperty("Remote", btn->tagName());
-          break;
-        }
-        gui->getObjectWindow()->clearSelections();
-        //properties->refresh();
-        gui->getUserWindow()->clearSelections();
-        gui->getPropertyWindow()->update();
-        //gui->getUserWindow()->select(this);
-      }
-    });
-    properties->addButton(
-      "Link Visibility", [&,gui,this,properties]() mutable{
-      if (gui->getObjectWindow()->hasSelections() && gui->getObjectWindow()->hasSelections()) {
-        gui->getUserWindow()->getWindow()->requestFocus();
-        std::string items;
-        for (auto sel : gui->getObjectWindow()->getSelected()) {
-          ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton*>(sel);
-          if (btn) {
-            LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
-            if (visibility) visibility->unlink(this);
-            visibility = lp;
-            setProperty("Visibility", btn->tagName());
-            visibility->link(new LinkableVisibility(this));
-          }
-          break;
-        }
-        gui->getObjectWindow()->clearSelections();
-        gui->getUserWindow()->clearSelections();
-        gui->getPropertyWindow()->update();
-      }
-    });
-    properties->addVariable<bool> (
-      "Inverted Visibility",
-      [&,w](bool value) mutable{ inverted_visibility = value; },
-      [&,w]()->bool{ return inverted_visibility; });
-  }
+void EditorWidget::loadProperties(PropertyFormHelper *properties) {
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+    if (w) {
+        properties->addVariable<std::string>(
+            "Structure", [&, w](const std::string value) {},
+            [&, w]() -> std::string { return getDefinition()->getKind(); });
+        properties->addVariable<int>(
+            "Horizontal Pos",
+            [&, w](int value) mutable {
+                nanogui::Vector2i pos(value, w->position().y());
+                w->setPosition(pos);
+            },
+            [&, w]() -> int { return w->position().x(); });
+        properties->addVariable<int>(
+            "Vertical Pos",
+            [&, w](int value) mutable {
+                nanogui::Vector2i pos(w->position().x(), value);
+                w->setPosition(pos);
+            },
+            [&, w]() -> int { return w->position().y(); });
+        properties->addVariable<int>(
+            "Width", [&, w](int value) mutable { w->setWidth(value); },
+            [&, w]() -> int { return w->width(); });
+        properties->addVariable<int>(
+            "Height", [&, w](int value) mutable { w->setHeight(value); },
+            [&, w]() -> int { return w->height(); });
+        properties->addVariable<std::string>(
+            "Name",
+            [&](std::string value) mutable {
+                setName(value);
+                if (getDefinition()) {
+                    getDefinition()->setName(value);
+                }
+            },
+            [&]() -> std::string { return getName(); });
+        properties->addVariable<int>(
+            "Font Size", [&, w](int value) mutable { w->setFontSize(value); },
+            [&, w]() -> int { return w->fontSize(); });
+        properties->addVariable<int>(
+            "Tab Position", [&, w](int value) mutable { setTabPosition(value); },
+            [&, w]() -> int { return tabPosition(); });
+        properties->addVariable<std::string>(
+            "Format", [&](std::string value) { setValueFormat(value); },
+            [&]() -> std::string { return getValueFormat(); });
+        properties->addVariable<int>(
+            "Value Type", [&, w](int value) mutable { setValueType(value); },
+            [&, w]() -> int { return getValueType(); });
+        properties->addVariable<float>(
+            "Value Scale",
+            [&](float value) {
+                setValueScale(value);
+                if (remote)
+                    remote->apply();
+            },
+            [&]() -> float { return valueScale(); });
+        properties->addVariable<int>(
+            "Border", [&, w](int value) mutable { setBorder(value); },
+            [&, w]() -> int { return border; });
+        properties->addVariable<std::string>(
+            "Patterns", [&, w](std::string value) mutable { setPatterns(value); },
+            [&, w]() -> std::string { return patterns(); });
+        EditorGUI *gui = EDITOR->gui();
+        properties->addButton("Link to Remote", [&, gui, this, properties]() mutable {
+            if (gui->getObjectWindow()->hasSelections() &&
+                gui->getObjectWindow()->hasSelections()) {
+                gui->getUserWindow()->getWindow()->requestFocus();
+                std::string items;
+                for (auto sel : gui->getObjectWindow()->getSelected()) {
+                    ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton *>(sel);
+                    LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+                    if (remote)
+                        remote->unlink(this);
+                    remote = lp;
+                    setProperty("Remote", btn->tagName());
+                    break;
+                }
+                gui->getObjectWindow()->clearSelections();
+                //properties->refresh();
+                gui->getUserWindow()->clearSelections();
+                gui->getPropertyWindow()->update();
+                //gui->getUserWindow()->select(this);
+            }
+        });
+        properties->addButton("Link Visibility", [&, gui, this, properties]() mutable {
+            if (gui->getObjectWindow()->hasSelections() &&
+                gui->getObjectWindow()->hasSelections()) {
+                gui->getUserWindow()->getWindow()->requestFocus();
+                std::string items;
+                for (auto sel : gui->getObjectWindow()->getSelected()) {
+                    ObjectFactoryButton *btn = dynamic_cast<ObjectFactoryButton *>(sel);
+                    if (btn) {
+                        LinkableProperty *lp = gui->findLinkableProperty(btn->tagName());
+                        if (visibility)
+                            visibility->unlink(this);
+                        visibility = lp;
+                        setProperty("Visibility", btn->tagName());
+                        visibility->link(new LinkableVisibility(this));
+                    }
+                    break;
+                }
+                gui->getObjectWindow()->clearSelections();
+                gui->getUserWindow()->clearSelections();
+                gui->getPropertyWindow()->update();
+            }
+        });
+        properties->addVariable<bool>(
+            "Inverted Visibility", [&, w](bool value) mutable { inverted_visibility = value; },
+            [&, w]() -> bool { return inverted_visibility; });
+    }
 }
 
-const std::map<std::string, std::string> & EditorWidget::property_map() const {
-  auto structure_class = findClass("WIDGET");
-  assert(structure_class);
-  return structure_class->property_map();
+const std::map<std::string, std::string> &EditorWidget::property_map() const {
+    auto structure_class = findClass("WIDGET");
+    assert(structure_class);
+    return structure_class->property_map();
 }
 
-const std::map<std::string, std::string> & EditorWidget::reverse_property_map() const {
-  auto structure_class = findClass("WIDGET");
-  assert(structure_class);
-  return structure_class->reverse_property_map();
+const std::map<std::string, std::string> &EditorWidget::reverse_property_map() const {
+    auto structure_class = findClass("WIDGET");
+    assert(structure_class);
+    return structure_class->reverse_property_map();
 }

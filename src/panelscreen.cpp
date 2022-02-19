@@ -5,12 +5,10 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
 #include "panelscreen.h"
+#include <iostream>
 
-PanelScreen::PanelScreen(const std::string sname) :name(sname) {
-    
-}
+PanelScreen::PanelScreen(const std::string sname) : name(sname) {}
 
 #if 0
 PanelScreen::PanelScreen(const PanelScreen &orig){
@@ -35,4 +33,3 @@ bool PanelScreen::operator==(const PanelScreen &other) {
     return text == other.text;
 }
 #endif
-

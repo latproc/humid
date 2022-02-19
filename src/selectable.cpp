@@ -3,37 +3,33 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
-#include <iostream>
 #include "selectable.h"
 #include "palette.h"
-#include "selectablewidget.h"
 #include "selectablebutton.h"
+#include "selectablewidget.h"
+#include <iostream>
 
-Selectable::Selectable(Palette *pal)
-: palette(pal), mSelected(false)
-{
-}
+Selectable::Selectable(Palette *pal) : palette(pal), mSelected(false) {}
 
-Selectable::~Selectable() {
-
-}
-
+Selectable::~Selectable() {}
 
 bool Selectable::isSelected() { return mSelected; }
 void Selectable::select() {
-  if (!mSelected) {
-    mSelected = true;
-    if (palette) palette->select(this);
-    justSelected();
-  }
-  else {
-    int x = 1; // already selected
-  }
+    if (!mSelected) {
+        mSelected = true;
+        if (palette)
+            palette->select(this);
+        justSelected();
+    }
+    else {
+        int x = 1; // already selected
+    }
 }
 void Selectable::deselect() {
-	mSelected = false;
-	if (palette) palette->deselect(this);
-	justDeselected();
+    mSelected = false;
+    if (palette)
+        palette->deselect(this);
+    justDeselected();
 }
 /*
 nanogui::Widget *Selectable::getWidget() const {
@@ -43,8 +39,8 @@ nanogui::Button *Selectable::getButton() const {
 	return button;
 }
 */
-void Selectable::justSelected() { }
-void Selectable::justDeselected() { }
+void Selectable::justSelected() {}
+void Selectable::justDeselected() {}
 /*
 void Selectable::setWidget(SelectableWidget *w) {
 	widget = w->getWidget();
@@ -77,4 +73,3 @@ bool Selectable::operator==(const Selectable &other) {
     return text == other.text;
 }
 #endif
-

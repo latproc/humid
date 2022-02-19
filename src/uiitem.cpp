@@ -3,8 +3,8 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
-#include <iostream>
 #include "uiitem.h"
+#include <iostream>
 
 #if 0
 UIItem::UIItem(const UIItem &orig){
@@ -29,4 +29,3 @@ bool UIItem::operator==(const UIItem &other) {
     return text == other.text;
 }
 #endif
-

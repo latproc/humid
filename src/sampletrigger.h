@@ -8,8 +8,8 @@
 
 #include <ostream>
 #include <string>
-#include <value.h>
 #include <symboltable.h>
+#include <value.h>
 
 /* Sample triggers are polled with the check(value) function.
  	When the check is performed they may change state to 'triggered'
@@ -22,39 +22,46 @@
  */
 
 class SampleTrigger {
-public:
-	enum Event { START, STOP };
-	enum Kind { EQUAL, RISING, FALLING, PASSTHROUGH };
-	enum State { IDLE, ACTIVE, TRIGGERED };
-	SampleTrigger(const std::string prop,
-				  const Value val, Kind trigger_type = EQUAL);
+  public:
+    enum Event { START, STOP };
+    enum Kind { EQUAL, RISING, FALLING, PASSTHROUGH };
+    enum State { IDLE, ACTIVE, TRIGGERED };
+    SampleTrigger(const std::string prop, const Value val, Kind trigger_type = EQUAL);
     SampleTrigger(const SampleTrigger &orig);
     SampleTrigger &operator=(const SampleTrigger &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const SampleTrigger &other);
 
-	void setType(Kind new_kind) { kind = new_kind; reset(); }
-	void setPropertyName(const std::string name);
-	void setTriggerValue(Value v) { trigger_value = v; reset(); }
+    void setType(Kind new_kind) {
+        kind = new_kind;
+        reset();
+    }
+    void setPropertyName(const std::string name);
+    void setTriggerValue(Value v) {
+        trigger_value = v;
+        reset();
+    }
 
-	State check(const Value &val);
-	void reset() { state = ACTIVE; last_check = SymbolTable::Null; }
-	void cancel() { state = IDLE; }
-	bool triggered() const { return state == TRIGGERED; }
-	bool active() const { return state == ACTIVE; }
+    State check(const Value &val);
+    void reset() {
+        state = ACTIVE;
+        last_check = SymbolTable::Null;
+    }
+    void cancel() { state = IDLE; }
+    bool triggered() const { return state == TRIGGERED; }
+    bool active() const { return state == ACTIVE; }
 
-	// when triggered, the justTriggered() method returns true, only
-	// until the next check
-	bool justTriggered() const { return just_triggered; }
+    // when triggered, the justTriggered() method returns true, only
+    // until the next check
+    bool justTriggered() const { return just_triggered; }
 
-
-private:
-	State state;
-	std::string property_name;
-	Value trigger_value;
-	Kind kind;
-	Value last_check;
-	bool just_triggered;
+  private:
+    State state;
+    std::string property_name;
+    Value trigger_value;
+    Kind kind;
+    Value last_check;
+    bool just_triggered;
 };
 
 std::ostream &operator<<(std::ostream &out, const SampleTrigger &m);

@@ -3,8 +3,8 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
-#include <iostream>
 #include "propertylist.h"
+#include <iostream>
 
 #if 0
 PropertyList::PropertyList(const PropertyList &orig){
@@ -29,4 +29,3 @@ bool PropertyList::operator==(const PropertyList &other) {
     return text == other.text;
 }
 #endif
-

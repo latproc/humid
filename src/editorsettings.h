@@ -8,30 +8,30 @@
 #ifndef __EditorSettings_h__
 #define __EditorSettings_h__
 
-#include <ostream>
-#include <string>
+#include "structure.h"
 #include <map>
 #include <nanogui/widget.h>
-#include "structure.h"
+#include <ostream>
+#include <string>
 
 bool updateSettingsStructure(const std::string name, nanogui::Widget *widget);
 bool applyWindowSettings(Structure *item, nanogui::Widget *widget);
 
 class EditorSettings : public Structure {
-public:
-	EditorSettings(const std::string sname, const std::string skind);
-	static void applySettings(const std::string object_name, nanogui::Widget *widget);
-	static Structure *find(const std::string object_name);
-	static Structure *create();
-	static void flush();
+  public:
+    EditorSettings(const std::string sname, const std::string skind);
+    static void applySettings(const std::string object_name, nanogui::Widget *widget);
+    static Structure *find(const std::string object_name);
+    static Structure *create();
+    static void flush();
 
-	static void add(const std::string &name, nanogui::Widget *w);
-	static void setDirty() { dirty = true; }
-	std::ostream &operator<<(std::ostream &out) const;
+    static void add(const std::string &name, nanogui::Widget *w);
+    static void setDirty() { dirty = true; }
+    std::ostream &operator<<(std::ostream &out) const;
 
-private:
-	static std::map<std::string, nanogui::Widget *> widgets;
-	static bool dirty;
+  private:
+    static std::map<std::string, nanogui::Widget *> widgets;
+    static bool dirty;
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorSettings &m);

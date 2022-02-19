@@ -8,12 +8,12 @@
 #ifndef __NamedObject_h__
 #define __NamedObject_h__
 
+#include <map>
 #include <ostream>
 #include <string>
-#include <map>
 
 class NamedObject {
-public:
+  public:
     NamedObject(NamedObject *parent = 0);
     NamedObject(NamedObject *parent, const char *object_name);
     NamedObject(NamedObject *parent, const std::string &object_name);
@@ -23,32 +23,33 @@ public:
     std::string fullName() const;
     std::string getName() const { return name; }
 
-  	static std::string nextName(NamedObject*, const std::string prefix = "");
+    static std::string nextName(NamedObject *, const std::string prefix = "");
     static bool changeName(NamedObject *o, const std::string &oldname, const std::string &newname);
-    std::map<std::string, NamedObject*> &siblings();
-    std::map<std::string, NamedObject*> &locals();
+    std::map<std::string, NamedObject *> &siblings();
+    std::map<std::string, NamedObject *> &locals();
 
-    void remove( const std::string &name);
-    void add( const std::string &name, NamedObject *child);
+    void remove(const std::string &name);
+    void add(const std::string &name, NamedObject *child);
 
     NamedObject *getParent() const { return parent; }
     void setParent(NamedObject *parent);
     static void forgetGlobal(const std::string &name);
-    static std::map<std::string, NamedObject*> &globals() { return global_objects; }
+    static std::map<std::string, NamedObject *> &globals() { return global_objects; }
     bool named() { return _named; }
 
-protected:
+  protected:
     bool _named;
     NamedObject *parent;
-    std::map<std::string, NamedObject*>child_objects;
+    std::map<std::string, NamedObject *> child_objects;
     std::string name;
-	static std::map<std::string, NamedObject*>global_objects;
-	static unsigned int user_object_sequence;
-private:
-   NamedObject(const NamedObject &orig);
-   NamedObject &operator=(const NamedObject &other);
-   std::ostream &operator<<(std::ostream &out) const;
-   bool operator==(const NamedObject &other);
+    static std::map<std::string, NamedObject *> global_objects;
+    static unsigned int user_object_sequence;
+
+  private:
+    NamedObject(const NamedObject &orig);
+    NamedObject &operator=(const NamedObject &other);
+    std::ostream &operator<<(std::ostream &out) const;
+    bool operator==(const NamedObject &other);
 };
 
 std::ostream &operator<<(std::ostream &out, const NamedObject &m);

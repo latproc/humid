@@ -4,9 +4,9 @@
 */
 #pragma once
 
-#include <string>
 #include <nanogui/common.h>
 #include <nanogui/widget.h>
+#include <string>
 
 #include "draghandle.h"
 
@@ -19,58 +19,64 @@ the position and size of an object.
 using nanogui::Vector2i;
 
 class Handle {
-public:
+  public:
+    enum Mode {
+        NONE,
+        POSITION,
+        RESIZE_TL,
+        RESIZE_T,
+        RESIZE_TR,
+        RESIZE_R,
+        RESIZE_BL,
+        RESIZE_L,
+        RESIZE_BR,
+        RESIZE_B
+    };
 
-enum Mode { NONE, POSITION, RESIZE_TL, RESIZE_T, RESIZE_TR, RESIZE_R, RESIZE_BL, RESIZE_L, RESIZE_BR, RESIZE_B};
+    static Handle create(Mode which, nanogui::Vector2i pos, nanogui::Vector2i size);
 
+    std::ostream &operator<<(std::ostream &out) const { return out; }
 
-static Handle create(Mode which, nanogui::Vector2i pos, nanogui::Vector2i size);
+    Handle() : mMode(NONE) {}
 
-std::ostream &operator<<(std::ostream& out) const{ 
-	return out;
-}
+    void setPosition(Vector2i newpos) { pos = newpos; }
+    Vector2i position() const { return pos; }
 
-Handle() : mMode(NONE) {}
+    void setMode(Mode newmode) { mMode = newmode; }
+    Mode mode() { return mMode; }
 
-void setPosition(Vector2i newpos) { pos = newpos; }
-Vector2i position() const { return pos; }
+    Handle closest(Vector2i pt) {
+        Handle result;
 
-void setMode(Mode newmode) { mMode = newmode; }
-Mode mode() { return mMode; }
+        return result;
+    }
 
-Handle closest(Vector2i pt) {
-	Handle result;
-	
-	
-	return result;
-}
-
-protected:
-	Mode mMode;
-	Vector2i pos;
+  protected:
+    Mode mMode;
+    Vector2i pos;
 };
 
-std::ostream &operator<<(std::ostream& out, Handle::Mode m);
+std::ostream &operator<<(std::ostream &out, Handle::Mode m);
 
 class PropertyMonitor {
-public:
-	//enum Mode { POSITION, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR};
-	PropertyMonitor() : mMode(Handle::POSITION) {}
-	virtual ~PropertyMonitor() {}
-	virtual void update(nanogui::DragHandle *) = 0;
-	void setMode(Handle::Mode m) { mMode = m; }
-	Handle::Mode mode() const { return mMode; }
-protected:
-	Handle::Mode mMode;	
+  public:
+    //enum Mode { POSITION, RESIZE_TL, RESIZE_TR, RESIZE_BL, RESIZE_BR};
+    PropertyMonitor() : mMode(Handle::POSITION) {}
+    virtual ~PropertyMonitor() {}
+    virtual void update(nanogui::DragHandle *) = 0;
+    void setMode(Handle::Mode m) { mMode = m; }
+    Handle::Mode mode() const { return mMode; }
+
+  protected:
+    Handle::Mode mMode;
 };
 
 class DummyMonitor : public PropertyMonitor {
-public:
-		virtual void update(nanogui::DragHandle *dh) override {}
+  public:
+    virtual void update(nanogui::DragHandle *dh) override {}
 };
 
 class PositionMonitor : public PropertyMonitor {
-public:
-	virtual void update(nanogui::DragHandle *dh) override;
+  public:
+    virtual void update(nanogui::DragHandle *dh) override;
 };
-

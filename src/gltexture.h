@@ -16,46 +16,47 @@
 #ifndef latprocc_GLTexture_h
 #define latprocc_GLTexture_h
 
+#include <memory>
+#include <nanogui/glutil.h>
+#include <nanogui/opengl.h>
 #include <ostream>
 #include <string>
-#include <memory>
-#include <nanogui/opengl.h>
-#include <nanogui/glutil.h>
 
 class GLTexture {
-public:
+  public:
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const GLTexture &other);
-    
-	using handleType = std::unique_ptr<uint8_t[], void(*)(void*)>;
 
-	GLTexture() = default;
-	GLTexture(const std::string& textureName);
+    using handleType = std::unique_ptr<uint8_t[], void (*)(void *)>;
 
-	GLTexture(const std::string& textureName, GLint textureId);
+    GLTexture() = default;
+    GLTexture(const std::string &textureName);
 
-	GLTexture(const GLTexture& other) = delete;
-	GLTexture(GLTexture&& other) noexcept;
-	GLTexture& operator=(const GLTexture& other) = delete;
-	GLTexture& operator=(GLTexture&& other) noexcept;
-	~GLTexture() noexcept;
+    GLTexture(const std::string &textureName, GLint textureId);
 
-	GLuint texture() const { return mTextureId; }
-	const std::string& textureName() const { return mTextureName; }
+    GLTexture(const GLTexture &other) = delete;
+    GLTexture(GLTexture &&other) noexcept;
+    GLTexture &operator=(const GLTexture &other) = delete;
+    GLTexture &operator=(GLTexture &&other) noexcept;
+    ~GLTexture() noexcept;
 
-	/* detach this object from the GL texture so that this data can be removed without 
+    GLuint texture() const { return mTextureId; }
+    const std::string &textureName() const { return mTextureName; }
+
+    /* detach this object from the GL texture so that this data can be removed without 
 		calling glDeleteTextures()
 	 */
-	void detach() { mTextureId = 0; }
+    void detach() { mTextureId = 0; }
 
-	/**
+    /**
 	 *  Load a file in memory and create an OpenGL texture.
 	 *  Returns a handle type (an std::unique_ptr) to the loaded pixels.
 	 */
-	handleType load(const std::string& fileName);
-private:
-	std::string mTextureName;
-	GLuint mTextureId;
+    handleType load(const std::string &fileName);
+
+  private:
+    std::string mTextureName;
+    GLuint mTextureId;
 };
 
 std::ostream &operator<<(std::ostream &out, const GLTexture &m);

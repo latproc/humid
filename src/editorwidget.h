@@ -8,136 +8,139 @@
 #ifndef __EditorWidget_h__
 #define __EditorWidget_h__
 
+#include <map>
 #include <ostream>
 #include <string>
-#include <map>
 #include <vector>
 
 #include <nanogui/common.h>
 #include <nanogui/widget.h>
 
-#include "selectable.h"
-#include "editorobject.h"
-#include "connectable.h"
-#include "linkableobject.h"
-#include "propertymonitor.h"
-#include "structure.h"
-#include "draghandle.h"
-#include "linkableproperty.h"
 #include "anchor.h"
+#include "connectable.h"
+#include "draghandle.h"
+#include "editorobject.h"
+#include "linkableobject.h"
+#include "linkableproperty.h"
+#include "propertymonitor.h"
+#include "selectable.h"
+#include "structure.h"
 
 namespace nanogui {
 using Vector2d = Eigen::Vector2d;
 using VectorXd = Eigen::VectorXd;
 using MatrixXd = Eigen::MatrixXd;
 using Matrix3d = Eigen::Matrix3d;
-}
+} // namespace nanogui
 
-using nanogui::Vector2d;
-using nanogui::MatrixXd;
 using nanogui::Matrix3d;
+using nanogui::MatrixXd;
+using nanogui::Vector2d;
 
 class PropertyFormHelper;
 
 class EditorWidget : public Selectable, public EditorObject, public Connectable {
 
-public:
+  public:
+    EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w,
+                 LinkableProperty *lp);
+    EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
+                 nanogui::Widget *w, LinkableProperty *lp);
+    ~EditorWidget();
 
-	EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w, LinkableProperty *lp);
-	EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
-				 nanogui::Widget *w, LinkableProperty *lp);
-	~EditorWidget();
+    static EditorWidget *create(const std::string kind);
 
-	static EditorWidget *create(const std::string kind);
+    virtual nanogui::Widget *asWidget() { return nullptr; }
 
-	virtual nanogui::Widget *asWidget() { return nullptr; }
+    //nanogui::Widget *getWidget() { return widget; }
 
-	//nanogui::Widget *getWidget() { return widget; }
+    virtual void getPropertyNames(std::list<std::string> &names);
+    virtual void loadProperties(PropertyFormHelper *pfh);
+    virtual void setProperty(const std::string &prop, const std::string value);
+    virtual std::string getProperty(const std::string &prop);
+    virtual Value getPropertyValue(const std::string &prop);
+    virtual void setPropertyValue(const std::string &prop, const Value &v);
 
-	virtual void getPropertyNames(std::list<std::string> &names);
-	virtual void loadProperties(PropertyFormHelper *pfh);
-	virtual void setProperty(const std::string &prop, const std::string value);
-	virtual std::string getProperty(const std::string &prop);
-	virtual Value getPropertyValue(const std::string &prop);
-	virtual void setPropertyValue(const std::string &prop, const Value &v);
+    virtual bool editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
+                                        int button, bool down, int modifiers);
 
-	virtual bool editorMouseButtonEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, int button, bool down, int modifiers);
+    virtual bool editorMouseEnterEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
+                                       bool enter);
 
-	virtual bool editorMouseEnterEvent(nanogui::Widget *widget, const nanogui::Vector2i &p, bool enter);
+    bool editorMouseMotionEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
+                                const nanogui::Vector2i &rel, int button, int modifiers);
 
-	bool editorMouseMotionEvent(nanogui::Widget *widget, const nanogui::Vector2i &p,
-        const nanogui::Vector2i &rel, int button, int modifiers);
+    void updateHandles(nanogui::Widget *w);
 
-	void updateHandles(nanogui::Widget *w);
+    virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos,
+                                     nanogui::Vector2i size);
+    virtual void drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
 
-	virtual void drawSelectionBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
-	virtual void drawElementBorder(NVGcontext *ctx, nanogui::Vector2i pos, nanogui::Vector2i size);
+    std::string baseName() const;
 
-	std::string baseName() const;
+    const std::string &getName() const;
 
-	const std::string &getName() const;
+    void justSelected() override;
+    void justDeselected() override;
 
-	void justSelected() override;
-	void justDeselected() override;
+    void setPatterns(const std::string patterns);
+    const std::string &patterns() const;
 
-	void setPatterns(const std::string patterns);
-	const std::string &patterns() const;
+    void setDefinition(Structure *defn);
+    Structure *getDefinition();
+    virtual void updateStructure(); // update the structure properties to reflect the object
+    virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
+    virtual const std::map<std::string, std::string> &property_map() const;
+    virtual const std::map<std::string, std::string> &reverse_property_map() const;
 
-	void setDefinition(Structure *defn);
-	Structure *getDefinition();
-	virtual void updateStructure(); // update the structure properties to reflect the object
-	virtual void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
-	virtual const std::map<std::string, std::string> & property_map() const;
-	virtual const std::map<std::string, std::string> & reverse_property_map() const;
+    float valueScale();
+    void setValueScale(float s);
 
-	float valueScale();
-	void setValueScale(float s);
+    int tabPosition();
+    void setTabPosition(int p);
 
-	int tabPosition();
-	void setTabPosition(int p);
+    void addLink(const Link &new_link);
+    void addLink(Link *new_link);
+    void removeLink(Anchor *src, Anchor *dest);
+    void updateLinks();
 
-	void addLink(const Link &new_link);
-	void addLink(Link *new_link);
-	void removeLink(Anchor *src, Anchor *dest);
-	void updateLinks();
+    void setVisibilityLink(LinkableProperty *lp);
+    void setInvertedVisibility(bool which) { inverted_visibility = which; }
+    bool invertedVisibility() { return inverted_visibility; }
 
-	void setVisibilityLink(LinkableProperty *lp);
-	void setInvertedVisibility(bool which) { inverted_visibility = which; }
-	bool invertedVisibility() { return inverted_visibility; }
+    void setRemoteName(const std::string rn) { remote_name = rn; }
+    std::string getRemoteName() { return remote_name; }
+    void setConnection(const std::string c) { connection_name = c; }
+    std::string getConnection() { return connection_name; }
 
-	void setRemoteName(const std::string rn) { remote_name = rn; }
-	std::string getRemoteName() { return remote_name; }
-	void setConnection(const std::string c) { connection_name = c; }
-	std::string getConnection() { return connection_name; }
+    void setRemoteLinks(const LinkManager::Links *links) { remote_links = links; }
 
-	void setRemoteLinks(const LinkManager::Links *links) { remote_links = links; }
+    void setBorder(int val) { border = val; }
+    int getBorder() { return border; }
 
-	void setBorder(int val) { border = val; }
-	int getBorder() { return border; }
+    const std::string &getValueFormat();
+    void setValueFormat(const std::string fmt);
+    int getValueType();
+    void setValueType(int val);
 
-	const std::string &getValueFormat();
-	void setValueFormat(const std::string fmt);
-	int getValueType();
-	void setValueType(int val);
-
-protected:
-	std::list<Link>links;
-	std::string base;
-	std::string remote_name; // only used if there is no remote
-	std::string connection_name; // only used if there is no remote
-	nanogui::DragHandle *dh = nullptr;
-	std::vector<Handle> handles;
-	MatrixXd handle_coordinates;
-	std::string pattern_list;
-	Structure *definition = nullptr;
-	const LinkManager::Links *remote_links = nullptr;
-	std::string format_string;
-	float value_scale;
-	int tab_position;
-	LinkableProperty *visibility;
-	bool inverted_visibility;
-	int border;
-	int value_type;
+  protected:
+    std::list<Link> links;
+    std::string base;
+    std::string remote_name;     // only used if there is no remote
+    std::string connection_name; // only used if there is no remote
+    nanogui::DragHandle *dh = nullptr;
+    std::vector<Handle> handles;
+    MatrixXd handle_coordinates;
+    std::string pattern_list;
+    Structure *definition = nullptr;
+    const LinkManager::Links *remote_links = nullptr;
+    std::string format_string;
+    float value_scale;
+    int tab_position;
+    LinkableProperty *visibility;
+    bool inverted_visibility;
+    int border;
+    int value_type;
 };
 
 #endif

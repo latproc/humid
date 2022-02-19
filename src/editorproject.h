@@ -15,14 +15,14 @@
 */
 
 class EditorProject {
-public:
+  public:
     EditorProject(const char *basedir);
     EditorProject(const EditorProject &orig);
     EditorProject &operator=(const EditorProject &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const EditorProject &other);
-    
-private:
+
+  private:
     std::string base_dir;
 };
 

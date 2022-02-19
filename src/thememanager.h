@@ -1,13 +1,13 @@
 #pragma once
-#include <string>
+#include <nanogui/common.h>
 #include <nanogui/object.h>
 #include <nanogui/theme.h>
-#include <nanogui/common.h>
+#include <string>
 
 class Structure;
 class ThemeManager {
-public:
-    static ThemeManager & instance();
+  public:
+    static ThemeManager &instance();
 
     void addTheme(const std::string &name, nanogui::Theme *theme);
     nanogui::Theme *findTheme(const std::string &name);
@@ -18,7 +18,7 @@ public:
     // Construct a theme from a given structure definition.
     nanogui::Theme *createTheme(Structure *settings = nullptr);
 
-private:
+  private:
     class Pimpl;
     Pimpl *impl = nullptr;
     ThemeManager();

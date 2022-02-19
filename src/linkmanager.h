@@ -1,12 +1,12 @@
 #pragma once
 
-#include <string>
 #include "linkableproperty.h"
 #include "symboltable.h"
+#include <string>
 
 class EditorWidget;
 class LinkManager {
-public:
+  public:
     struct LinkInfo {
         std::string remote_name;
         std::string property_name;
@@ -19,13 +19,14 @@ public:
     bool has_property(const std::string &property) const;
     void add(const std::string &property, LinkableProperty *links);
     LinkableProperty *links(const std::string &property) const;
- 
-    void add_pending(const std::string &remote_name, const std::string & class_name, const std::string & widget_name, const std::string & property);
-    Links *remote_links(const std::string & class_name, const std::string & widget_name);
+
+    void add_pending(const std::string &remote_name, const std::string &class_name,
+                     const std::string &widget_name, const std::string &property);
+    Links *remote_links(const std::string &class_name, const std::string &widget_name);
 
     //void unlink(const std::string & class_name, EditorWidget *widget);
 
-private:
+  private:
     LinkManager();
     ~LinkManager();
     class Impl;

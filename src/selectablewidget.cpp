@@ -3,46 +3,50 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
-#include <iostream>
-#include <string>
 #include "selectablewidget.h"
-#include <nanogui/opengl.h>
+#include <iostream>
 #include <nanogui/glutil.h>
+#include <nanogui/opengl.h>
 #include <nanovg_gl.h>
+#include <string>
 
 SelectableWidget::SelectableWidget(const std::string kind, Palette *pal, nanogui::Widget *parent,
-				 const std::string &caption)
-: nanogui::Widget(parent), Selectable(pal), UIItem(kind), display_caption(caption) {
-	//setWidget(this);
+                                   const std::string &caption)
+    : nanogui::Widget(parent), Selectable(pal), UIItem(kind), display_caption(caption) {
+    //setWidget(this);
 }
 
-SelectableWidget::~SelectableWidget() { }
+SelectableWidget::~SelectableWidget() {}
 
-bool SelectableWidget::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+bool SelectableWidget::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
+                                        int modifiers) {
 
-	using namespace nanogui;
+    using namespace nanogui;
 
-	//if (editorMouseButtonEvent(this, p, button, down, modifiers))
-	//	return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
-	//else
-	//	if (down && EDITOR->selector()) //EDITOR->selector()->select(this);
-	if (this->contains(p)) {
-		if (down) {
-			if (!mSelected) select(); else deselect();
-			return true;
-		}
-	}
-	return false;
+    //if (editorMouseButtonEvent(this, p, button, down, modifiers))
+    //	return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
+    //else
+    //	if (down && EDITOR->selector()) //EDITOR->selector()->select(this);
+    if (this->contains(p)) {
+        if (down) {
+            if (!mSelected)
+                select();
+            else
+                deselect();
+            return true;
+        }
+    }
+    return false;
 }
 void SelectableWidget::draw(NVGcontext *ctx) {
-	nanogui::Widget::draw(ctx);
-	if (mSelected) {
-		nvgStrokeWidth(ctx, 2.0f);
-		nvgBeginPath(ctx);
-		nvgRect(ctx, mPos.x() - 0.5f, mPos.y() - 0.5f, mSize.x() + 1, mSize.y() + 1);
-		nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
-		nvgStroke(ctx);
-	}
+    nanogui::Widget::draw(ctx);
+    if (mSelected) {
+        nvgStrokeWidth(ctx, 2.0f);
+        nvgBeginPath(ctx);
+        nvgRect(ctx, mPos.x() - 0.5f, mPos.y() - 0.5f, mSize.x() + 1, mSize.y() + 1);
+        nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
+        nvgStroke(ctx);
+    }
 }
 
 #if 0
@@ -68,4 +72,3 @@ bool SelectableWidget::operator==(const SelectableWidget &other) {
     return text == other.text;
 }
 #endif
-

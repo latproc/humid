@@ -3,46 +3,44 @@
 	3-clause BSD License in LICENSE.txt.
 */
 
-#include <iostream>
 #include "sampletrigger.h"
+#include <iostream>
 
-SampleTrigger::SampleTrigger(const std::string prop,
-			  const Value val, Kind trigger_type)
-	: state(IDLE), property_name(prop), trigger_value(val),
-	kind(trigger_type)
-{
-}
+SampleTrigger::SampleTrigger(const std::string prop, const Value val, Kind trigger_type)
+    : state(IDLE), property_name(prop), trigger_value(val), kind(trigger_type) {}
 
 SampleTrigger::State SampleTrigger::check(const Value &val) {
-	if (ACTIVE) {
-		just_triggered = false;
-		switch(kind) {
-			case EQUAL:
-				if (trigger_value == val) state = TRIGGERED;
-				break;
-			case FALLING:
-				if (trigger_value <= val && last_check > val)
-					state = TRIGGERED;
-				break;
-			case RISING:
-				if (trigger_value >= val && last_check < val)
-					state = TRIGGERED;
-				break;
-			case PASSTHROUGH:
-				if ( (trigger_value >= val && last_check < val)
-					|| (trigger_value <= val && last_check > val) )
-					state = TRIGGERED;
-				break;
-			default: ;
-		}
-		if (state == TRIGGERED) just_triggered = true;
-	}
-	return state;
+    if (ACTIVE) {
+        just_triggered = false;
+        switch (kind) {
+        case EQUAL:
+            if (trigger_value == val)
+                state = TRIGGERED;
+            break;
+        case FALLING:
+            if (trigger_value <= val && last_check > val)
+                state = TRIGGERED;
+            break;
+        case RISING:
+            if (trigger_value >= val && last_check < val)
+                state = TRIGGERED;
+            break;
+        case PASSTHROUGH:
+            if ((trigger_value >= val && last_check < val) ||
+                (trigger_value <= val && last_check > val))
+                state = TRIGGERED;
+            break;
+        default:;
+        }
+        if (state == TRIGGERED)
+            just_triggered = true;
+    }
+    return state;
 }
 
 void SampleTrigger::setPropertyName(const std::string name) {
-	property_name = name;
-	reset();
+    property_name = name;
+    reset();
 }
 
 #if 0
@@ -68,4 +66,3 @@ bool SampleTrigger::operator==(const SampleTrigger &other) {
     return text == other.text;
 }
 #endif
-

@@ -10,17 +10,17 @@
 #include <string>
 
 class UIItem {
-public:
-	UIItem(const std::string kind) : item_class(kind) { }
-	const std::string &getClass() const { return item_class; }
+  public:
+    UIItem(const std::string kind) : item_class(kind) {}
+    const std::string &getClass() const { return item_class; }
 
-	UIItem(const UIItem &orig);
-	UIItem &operator=(const UIItem &other);
-	std::ostream &operator<<(std::ostream &out) const;
-	bool operator==(const UIItem &other);
+    UIItem(const UIItem &orig);
+    UIItem &operator=(const UIItem &other);
+    std::ostream &operator<<(std::ostream &out) const;
+    bool operator==(const UIItem &other);
 
-private:
-	std::string item_class;
+  private:
+    std::string item_class;
 };
 
 std::ostream &operator<<(std::ostream &out, const UIItem &m);

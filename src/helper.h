@@ -7,11 +7,11 @@
 
 #pragma once
 
+#include <boost/filesystem.hpp>
+#include <map>
+#include <nanogui/common.h>
 #include <ostream>
 #include <string>
-#include <boost/filesystem.hpp>
-#include <nanogui/common.h>
-#include <map>
 #include <value.h>
 
 class StructureClass;
@@ -40,7 +40,8 @@ void backup_humid_files(boost::filesystem::path base);
 int dataTypeFromModbus(int val);
 void getPropertyNames(std::list<std::string> &names);
 void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
-std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s);
-void invert_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed);
+std::ostream &displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s);
+void invert_map(const std::map<std::string, std::string> &normal,
+                std::map<std::string, std::string> &reversed);
 
-bool isNull(const Value & value);
+bool isNull(const Value &value);

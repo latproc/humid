@@ -5,36 +5,40 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
-#include "editor.h"
 #include "editorimageview.h"
-#include "resourcemanager.h"
+#include "editor.h"
 #include "editorgui.h"
-#include "propertyformhelper.h"
 #include "helper.h"
+#include "propertyformhelper.h"
+#include "resourcemanager.h"
+#include <iostream>
 
-const std::map<std::string, std::string> & EditorImageView::property_map() const {
-  auto structure_class = findClass("IMAGE");
-  assert(structure_class);
-  return structure_class->property_map();
+const std::map<std::string, std::string> &EditorImageView::property_map() const {
+    auto structure_class = findClass("IMAGE");
+    assert(structure_class);
+    return structure_class->property_map();
 }
 
-const std::map<std::string, std::string> & EditorImageView::reverse_property_map() const {
-  auto structure_class = findClass("IMAGE");
-  assert(structure_class);
-  return structure_class->reverse_property_map();
+const std::map<std::string, std::string> &EditorImageView::reverse_property_map() const {
+    auto structure_class = findClass("IMAGE");
+    assert(structure_class);
+    return structure_class->reverse_property_map();
 }
 
-EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
-: ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp) {
-      if (mImageID) ResourceManager::manage(mImageID);
+EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam,
+                                 LinkableProperty *lp, GLuint image_id, int icon)
+    : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp) {
+    if (mImageID)
+        ResourceManager::manage(mImageID);
 }
 
 EditorImageView::~EditorImageView() {
-      if (mImageID) ResourceManager::release(mImageID);
+    if (mImageID)
+        ResourceManager::release(mImageID);
 }
 
-bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
+                                       int modifiers) {
 
     using namespace nanogui;
 
@@ -44,7 +48,8 @@ bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
     return true;
 }
 
-bool EditorImageView::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
+bool EditorImageView::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel,
+                                       int button, int modifiers) {
 
     if (editorMouseMotionEvent(this, p, rel, button, modifiers))
         return ImageView::mouseMotionEvent(p, rel, button, modifiers);
@@ -63,15 +68,16 @@ bool EditorImageView::mouseEnterEvent(const Vector2i &p, bool enter) {
 void EditorImageView::draw(NVGcontext *ctx) {
     using namespace nanogui;
     Widget::draw(ctx);
-    nvgEndFrame(ctx); // Flush the NanoVG draw stack, not necessary to call nvgBeginFrame afterwards.
+    nvgEndFrame(
+        ctx); // Flush the NanoVG draw stack, not necessary to call nvgBeginFrame afterwards.
 
     if (border) {
-      drawImageBorder(ctx);
+        drawImageBorder(ctx);
     }
 
     // Calculate several variables that need to be send to OpenGL in order for the image to be
     // properly displayed inside the widget.
-    const Screen* screen = dynamic_cast<const Screen*>(this->window()->parent());
+    const Screen *screen = dynamic_cast<const Screen *>(this->window()->parent());
     assert(screen);
     Vector2f screenSize = screen->size().cast<float>();
     Vector2f scaleFactor = mScale * imageSizeF().cwiseQuotient(screenSize);
@@ -80,8 +86,7 @@ void EditorImageView::draw(NVGcontext *ctx) {
     Vector2f imagePosition = positionAfterOffset.cwiseQuotient(screenSize);
     glEnable(GL_SCISSOR_TEST);
     float r = screen->pixelRatio();
-    glScissor(positionInScreen.x() * r,
-              (screenSize.y() - positionInScreen.y() - size().y()) * r,
+    glScissor(positionInScreen.x() * r, (screenSize.y() - positionInScreen.y() - size().y()) * r,
               size().x() * r, size().y() * r);
     mShader.bind();
     glActiveTexture(GL_TEXTURE0);
@@ -95,37 +100,36 @@ void EditorImageView::draw(NVGcontext *ctx) {
     if (helpersVisible())
         drawHelpers(ctx);
 
-    if (border) drawWidgetBorder(ctx);
+    if (border)
+        drawWidgetBorder(ctx);
     if (mSelected)
-      drawSelectionBorder(ctx, mPos, mSize);
+        drawSelectionBorder(ctx, mPos, mSize);
     else if (EDITOR->isEditMode()) {
-      drawElementBorder(ctx, mPos, mSize);
+        drawElementBorder(ctx, mPos, mSize);
     }
 }
 
 void EditorImageView::setImageName(const std::string new_name, bool reload) {
-		GLuint img = (new_name.length()) ? EDITOR->gui()->getImageId(new_name.c_str(), reload) : 0;
-		image_name = new_name;
+    GLuint img = (new_name.length()) ? EDITOR->gui()->getImageId(new_name.c_str(), reload) : 0;
+    image_name = new_name;
     if (img != mImageID) {
-			if (mImageID && ResourceManager::release(mImageID) == 0) {
-				EDITOR->gui()->freeImage(mImageID);
-			}
-			if (img) {
-				mImageID = ResourceManager::manage(img);
-				updateImageParameters();
-			}
-			else {
-				mImageID = img;
-				mImageSize = Vector2i(0, 0);
-			}
+        if (mImageID && ResourceManager::release(mImageID) == 0) {
+            EDITOR->gui()->freeImage(mImageID);
+        }
+        if (img) {
+            mImageID = ResourceManager::manage(img);
+            updateImageParameters();
+        }
+        else {
+            mImageID = img;
+            mImageSize = Vector2i(0, 0);
+        }
     }
 }
 
 const std::string &EditorImageView::imageName() const { return image_name; }
 
-void EditorImageView::refresh() {
-    need_redraw = true;
-}
+void EditorImageView::refresh() { need_redraw = true; }
 
 void EditorImageView::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
@@ -134,84 +138,100 @@ void EditorImageView::getPropertyNames(std::list<std::string> &names) {
 }
 
 void EditorImageView::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
-  properties = property_map();
+    properties = property_map();
 }
 
 Value EditorImageView::getPropertyValue(const std::string &prop) {
-  Value res = EditorWidget::getPropertyValue(prop);
-  if (res != SymbolTable::Null)
-    return res;
-  if (prop == "Image File")
-    return Value(imageName(), Value::t_string);
-  else if (prop == "Scale")
-    return scale();
-  return SymbolTable::Null;
+    Value res = EditorWidget::getPropertyValue(prop);
+    if (res != SymbolTable::Null)
+        return res;
+    if (prop == "Image File")
+        return Value(imageName(), Value::t_string);
+    else if (prop == "Scale")
+        return scale();
+    return SymbolTable::Null;
 }
 
 void EditorImageView::setProperty(const std::string &prop, const std::string value) {
-  EditorWidget::setProperty(prop, value);
-  if (prop == "Image File") {
-    setImageName(value);
-    fit();
-  }
-  else if (prop == "Remote") {
-    if (remote) remote->unlink(this);
-    remote = EDITOR->gui()->findLinkableProperty(value);
-    if (remote) {
-        remote->link(new LinkableText(this));
+    EditorWidget::setProperty(prop, value);
+    if (prop == "Image File") {
+        setImageName(value);
+        fit();
     }
-  }
-  else if (prop == "Scale") {
-    setScale(std::atof(value.c_str()));
-  }
+    else if (prop == "Remote") {
+        if (remote)
+            remote->unlink(this);
+        remote = EDITOR->gui()->findLinkableProperty(value);
+        if (remote) {
+            remote->link(new LinkableText(this));
+        }
+    }
+    else if (prop == "Scale") {
+        setScale(std::atof(value.c_str()));
+    }
 }
 
-
-void EditorImageView::loadProperties(PropertyFormHelper* properties) {
-  EditorWidget::loadProperties(properties);
-  nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
-  if (w) {
-    properties->addVariable<std::string> (
-      "Image File",
-      [&,properties](std::string value) mutable{ setImageName(value, true); fit(); },
-      [&,properties]()->std::string{ return imageName(); });
-    properties->addVariable<float> ("Scale",
-                  [&](float value) mutable{ setScale(value); center(); },
-                  [&]()->float { return scale();  });
-    properties->addGroup("Remote");
-    properties->addVariable<std::string> (
-      "Remote object",
-      [&,this,properties](std::string value) {
-        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        this->setRemoteName(value);
-        if (remote) remote->unlink(this);
-        remote = lp;
-        if (lp) { lp->link(new LinkableText(this)); }
-       },
-      [&]()->std::string{
-        if (remote) return remote->tagName();
-        if (getDefinition()) {
-          const Value &rmt_v = getDefinition()->getValue("remote");
-          if (rmt_v != SymbolTable::Null)
-            return rmt_v.asString();
-        } 
-        return "";
-      });
-    properties->addVariable<std::string> (
-      "Connection",
-      [&,this,properties](std::string value) {
-        if (remote) remote->setGroup(value); else setConnection(value);
-       },
-      [&]()->std::string{ return remote ? remote->group() : getConnection(); });
-    properties->addVariable<std::string> (
-      "Visibility",
-      [&,this,properties](std::string value) {
-        LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
-        if (visibility) visibility->unlink(this);
-        visibility = lp;
-        if (lp) { lp->link(new LinkableVisibility(this)); }
-       },
-      [&]()->std::string{ return visibility ? visibility->tagName() : ""; });
-  }
+void EditorImageView::loadProperties(PropertyFormHelper *properties) {
+    EditorWidget::loadProperties(properties);
+    nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
+    if (w) {
+        properties->addVariable<std::string>(
+            "Image File",
+            [&, properties](std::string value) mutable {
+                setImageName(value, true);
+                fit();
+            },
+            [&, properties]() -> std::string { return imageName(); });
+        properties->addVariable<float>(
+            "Scale",
+            [&](float value) mutable {
+                setScale(value);
+                center();
+            },
+            [&]() -> float { return scale(); });
+        properties->addGroup("Remote");
+        properties->addVariable<std::string>(
+            "Remote object",
+            [&, this, properties](std::string value) {
+                LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+                this->setRemoteName(value);
+                if (remote)
+                    remote->unlink(this);
+                remote = lp;
+                if (lp) {
+                    lp->link(new LinkableText(this));
+                }
+            },
+            [&]() -> std::string {
+                if (remote)
+                    return remote->tagName();
+                if (getDefinition()) {
+                    const Value &rmt_v = getDefinition()->getValue("remote");
+                    if (rmt_v != SymbolTable::Null)
+                        return rmt_v.asString();
+                }
+                return "";
+            });
+        properties->addVariable<std::string>(
+            "Connection",
+            [&, this, properties](std::string value) {
+                if (remote)
+                    remote->setGroup(value);
+                else
+                    setConnection(value);
+            },
+            [&]() -> std::string { return remote ? remote->group() : getConnection(); });
+        properties->addVariable<std::string>(
+            "Visibility",
+            [&, this, properties](std::string value) {
+                LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+                if (visibility)
+                    visibility->unlink(this);
+                visibility = lp;
+                if (lp) {
+                    lp->link(new LinkableVisibility(this));
+                }
+            },
+            [&]() -> std::string { return visibility ? visibility->tagName() : ""; });
+    }
 }
-

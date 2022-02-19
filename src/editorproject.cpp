@@ -5,12 +5,10 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
 #include "editorproject.h"
+#include <iostream>
 
-EditorProject::EditorProject(const char *basedir) :base_dir(basedir) {
-    
-}
+EditorProject::EditorProject(const char *basedir) : base_dir(basedir) {}
 
 #if 0
 EditorProject::EditorProject(const EditorProject &orig){
@@ -35,4 +33,3 @@ bool EditorProject::operator==(const EditorProject &other) {
     return text == other.text;
 }
 #endif
-

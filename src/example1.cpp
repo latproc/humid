@@ -11,37 +11,37 @@
     BSD-style license that can be found in the LICENSE.txt file.
 */
 
-#include <nanogui/screen.h>
-#include <nanogui/window.h>
-#include <nanogui/layout.h>
-#include <nanogui/label.h>
-#include <nanogui/checkbox.h>
 #include <nanogui/button.h>
-#include <nanogui/toolbutton.h>
-#include <nanogui/popupbutton.h>
+#include <nanogui/checkbox.h>
+#include <nanogui/colorwheel.h>
 #include <nanogui/combobox.h>
-#include <nanogui/progressbar.h>
 #include <nanogui/entypo.h>
-#include <nanogui/messagedialog.h>
-#include <nanogui/textbox.h>
-#include <nanogui/slider.h>
+#include <nanogui/graph.h>
 #include <nanogui/imagepanel.h>
 #include <nanogui/imageview.h>
+#include <nanogui/label.h>
+#include <nanogui/layout.h>
+#include <nanogui/messagedialog.h>
+#include <nanogui/popupbutton.h>
+#include <nanogui/progressbar.h>
+#include <nanogui/screen.h>
+#include <nanogui/slider.h>
+#include <nanogui/textbox.h>
+#include <nanogui/toolbutton.h>
 #include <nanogui/vscrollpanel.h>
-#include <nanogui/colorwheel.h>
-#include <nanogui/graph.h>
+#include <nanogui/window.h>
 #if defined(_WIN32)
 #include <windows.h>
 #endif
-#include <nanogui/glutil.h>
 #include <iostream>
+#include <nanogui/glutil.h>
 
-using std::cout;
 using std::cerr;
+using std::cout;
 using std::endl;
 
 class ExampleApplication : public nanogui::Screen {
-public:
+  public:
     ExampleApplication() : nanogui::Screen(nanogui::Vector2i(1024, 768), "NanoGUI Test") {
         using namespace nanogui;
 
@@ -72,8 +72,7 @@ public:
 
         new Label(window, "A tool palette", "sans-bold");
         Widget *tools = new Widget(window);
-        tools->setLayout(new BoxLayout(Orientation::Horizontal,
-                                       Alignment::Middle, 0, 6));
+        tools->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 6));
 
         b = new ToolButton(tools, ENTYPO_ICON_CLOUD);
         b = new ToolButton(tools, ENTYPO_ICON_FF);
@@ -97,26 +96,27 @@ public:
 
         new Label(window, "Message dialog", "sans-bold");
         tools = new Widget(window);
-        tools->setLayout(new BoxLayout(Orientation::Horizontal,
-                                       Alignment::Middle, 0, 6));
+        tools->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 6));
         b = new Button(tools, "Info");
         b->setCallback([&] {
-            auto dlg = new MessageDialog(this, MessageDialog::Type::Information, "Title", "This is an information message");
+            auto dlg = new MessageDialog(this, MessageDialog::Type::Information, "Title",
+                                         "This is an information message");
             dlg->setCallback([](int result) { cout << "Dialog result: " << result << endl; });
         });
         b = new Button(tools, "Warn");
         b->setCallback([&] {
-            auto dlg = new MessageDialog(this, MessageDialog::Type::Warning, "Title", "This is a warning message");
+            auto dlg = new MessageDialog(this, MessageDialog::Type::Warning, "Title",
+                                         "This is a warning message");
             dlg->setCallback([](int result) { cout << "Dialog result: " << result << endl; });
         });
         b = new Button(tools, "Ask");
         b->setCallback([&] {
-            auto dlg = new MessageDialog(this, MessageDialog::Type::Warning, "Title", "This is a question message", "Yes", "No", true);
+            auto dlg = new MessageDialog(this, MessageDialog::Type::Warning, "Title",
+                                         "This is a question message", "Yes", "No", true);
             dlg->setCallback([](int result) { cout << "Dialog result: " << result << endl; });
         });
 
-        std::vector<std::pair<int, std::string>>
-            icons = loadImageDirectory(mNVGContext, "icons");
+        std::vector<std::pair<int, std::string>> icons = loadImageDirectory(mNVGContext, "icons");
 
         new Label(window, "Image panel & scroll panel", "sans-bold");
         PopupButton *imagePanelBtn = new PopupButton(window, "Image Panel");
@@ -136,46 +136,48 @@ public:
         img->setFixedSize(Vector2i(300, 300));
         img->setImage(icons[0].first);
         imgPanel->setCallback([&, img, imgPanel, imagePanelBtn](int i) {
-            img->setImage(imgPanel->images()[i].first); cout << "Selected item " << i << endl;
+            img->setImage(imgPanel->images()[i].first);
+            cout << "Selected item " << i << endl;
         });
-        auto img_cb = new CheckBox(img_window, "Expand",
-            [img](bool state) { if (state) img->setPolicy(ImageView::SizePolicy::Expand);
-                                else       img->setPolicy(ImageView::SizePolicy::Fixed); });
+        auto img_cb = new CheckBox(img_window, "Expand", [img](bool state) {
+            if (state)
+                img->setPolicy(ImageView::SizePolicy::Expand);
+            else
+                img->setPolicy(ImageView::SizePolicy::Fixed);
+        });
         img_cb->setChecked(true);
 
         new Label(window, "File dialog", "sans-bold");
         tools = new Widget(window);
-        tools->setLayout(new BoxLayout(Orientation::Horizontal,
-                                       Alignment::Middle, 0, 6));
+        tools->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 6));
         b = new Button(tools, "Open");
         b->setCallback([&] {
-            cout << "File dialog result: " << file_dialog(
-                    { {"png", "Portable Network Graphics"}, {"txt", "Text file"} }, false) << endl;
+            cout << "File dialog result: "
+                 << file_dialog({{"png", "Portable Network Graphics"}, {"txt", "Text file"}}, false)
+                 << endl;
         });
         b = new Button(tools, "Save");
         b->setCallback([&] {
-            cout << "File dialog result: " << file_dialog(
-                    { {"png", "Portable Network Graphics"}, {"txt", "Text file"} }, true) << endl;
+            cout << "File dialog result: "
+                 << file_dialog({{"png", "Portable Network Graphics"}, {"txt", "Text file"}}, true)
+                 << endl;
         });
 
         new Label(window, "Combo box", "sans-bold");
-        new ComboBox(window, { "Combo box item 1", "Combo box item 2", "Combo box item 3"});
+        new ComboBox(window, {"Combo box item 1", "Combo box item 2", "Combo box item 3"});
         new Label(window, "Check box", "sans-bold");
-        CheckBox *cb = new CheckBox(window, "Flag 1",
-            [](bool state) { cout << "Check box 1 state: " << state << endl; }
-        );
+        CheckBox *cb = new CheckBox(
+            window, "Flag 1", [](bool state) { cout << "Check box 1 state: " << state << endl; });
         cb->setChecked(true);
         cb = new CheckBox(window, "Flag 2",
-            [](bool state) { cout << "Check box 2 state: " << state << endl; }
-        );
+                          [](bool state) { cout << "Check box 2 state: " << state << endl; });
         new Label(window, "Progress bar", "sans-bold");
         mProgress = new ProgressBar(window);
 
         new Label(window, "Slider and text box", "sans-bold");
 
         Widget *panel = new Widget(window);
-        panel->setLayout(new BoxLayout(Orientation::Horizontal,
-                                       Alignment::Middle, 0, 20));
+        panel->setLayout(new BoxLayout(Orientation::Horizontal, Alignment::Middle, 0, 20));
 
         Slider *slider = new Slider(panel);
         slider->setValue(0.5f);
@@ -185,20 +187,18 @@ public:
         textBox->setFixedSize(Vector2i(60, 25));
         textBox->setValue("50");
         textBox->setUnits("%");
-        slider->setCallback([textBox](float value) {
-            textBox->setValue(std::to_string((int) (value * 100)));
-        });
-        slider->setFinalCallback([&](float value) {
-            cout << "Final slider value: " << (int) (value * 100) << endl;
-        });
-        textBox->setFixedSize(Vector2i(60,25));
+        slider->setCallback(
+            [textBox](float value) { textBox->setValue(std::to_string((int)(value * 100))); });
+        slider->setFinalCallback(
+            [&](float value) { cout << "Final slider value: " << (int)(value * 100) << endl; });
+        textBox->setFixedSize(Vector2i(60, 25));
         textBox->setFontSize(20);
         textBox->setAlignment(TextBox::Alignment::Right);
 
-        window = new Window(this,"Misc. widgets");
-        window->setPosition(Vector2i(425,15));
+        window = new Window(this, "Misc. widgets");
+        window->setPosition(Vector2i(425, 15));
         window->setLayout(new GroupLayout());
-        new Label(window,"Color wheel","sans-bold");
+        new Label(window, "Color wheel", "sans-bold");
         new ColorWheel(window);
         new Label(window, "Function graph", "sans-bold");
         Graph *graph = new Graph(window, "Some function");
@@ -207,16 +207,12 @@ public:
         VectorXf &func = graph->values();
         func.resize(100);
         for (int i = 0; i < 100; ++i)
-            func[i] = 0.5f * (0.5f * std::sin(i / 10.f) +
-                              0.5f * std::cos(i / 23.f) + 1);
+            func[i] = 0.5f * (0.5f * std::sin(i / 10.f) + 0.5f * std::cos(i / 23.f) + 1);
 
         window = new Window(this, "Grid of small widgets");
         window->setPosition(Vector2i(425, 288));
-        GridLayout *layout =
-            new GridLayout(Orientation::Horizontal, 2,
-                           Alignment::Middle, 15, 5);
-        layout->setColAlignment(
-            { Alignment::Maximum, Alignment::Fill });
+        GridLayout *layout = new GridLayout(Orientation::Horizontal, 2, Alignment::Middle, 15, 5);
+        layout->setColAlignment({Alignment::Maximum, Alignment::Fill});
         layout->setSpacing(0, 10);
         window->setLayout(layout);
 
@@ -253,10 +249,9 @@ public:
         }
 
         new Label(window, "Combo box :", "sans-bold");
-        ComboBox *cobo =
-            new ComboBox(window, { "Item 1", "Item 2", "Item 3" });
+        ComboBox *cobo = new ComboBox(window, {"Item 1", "Item 2", "Item 3"});
         cobo->setFontSize(16);
-        cobo->setFixedSize(Vector2i(100,20));
+        cobo->setFixedSize(Vector2i(100, 20));
 
         new Label(window, "Color button :", "sans-bold");
         popupBtn = new PopupButton(window, "", 0);
@@ -274,9 +269,8 @@ public:
         Color c = colorwheel->color();
         colorBtn->setBackgroundColor(c);
 
-        colorwheel->setCallback([colorBtn](const Color &value) {
-            colorBtn->setBackgroundColor(value);
-        });
+        colorwheel->setCallback(
+            [colorBtn](const Color &value) { colorBtn->setBackgroundColor(value); });
 
         colorBtn->setChangeCallback([colorBtn, popupBtn](bool pushed) {
             if (pushed) {
@@ -313,8 +307,7 @@ public:
             "uniform float intensity;\n"
             "void main() {\n"
             "    color = vec4(vec3(intensity), 1.0);\n"
-            "}"
-        );
+            "}");
 
         MatrixXu indices(3, 2); /* Draw 2 triangles */
         indices.col(0) << 0, 1, 2;
@@ -322,9 +315,9 @@ public:
 
         MatrixXf positions(3, 4);
         positions.col(0) << -1, -1, 0;
-        positions.col(1) <<  1, -1, 0;
-        positions.col(2) <<  1,  1, 0;
-        positions.col(3) << -1,  1, 0;
+        positions.col(1) << 1, -1, 0;
+        positions.col(2) << 1, 1, 0;
+        positions.col(3) << -1, 1, 0;
 
         mShader.bind();
         mShader.uploadIndices(indices);
@@ -332,9 +325,7 @@ public:
         mShader.setUniform("intensity", 0.5f);
     }
 
-    ~ExampleApplication() {
-        mShader.free();
-    }
+    ~ExampleApplication() { mShader.free(); }
 
     virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) {
         if (Screen::keyboardEvent(key, scancode, action, modifiers))
@@ -348,7 +339,7 @@ public:
 
     virtual void draw(NVGcontext *ctx) {
         /* Animate the scrollbar */
-        mProgress->setValue(std::fmod((float) glfwGetTime() / 10, 1.0f));
+        mProgress->setValue(std::fmod((float)glfwGetTime() / 10, 1.0f));
 
         /* Draw the user interface */
         Screen::draw(ctx);
@@ -362,16 +353,18 @@ public:
 
         Matrix4f mvp;
         mvp.setIdentity();
-        mvp.topLeftCorner<3,3>() = Matrix3f(nanogui::AngleAxisf((float) glfwGetTime(),  Vector3f::UnitZ())) * 0.25f;
+        mvp.topLeftCorner<3, 3>() =
+            Matrix3f(nanogui::AngleAxisf((float)glfwGetTime(), Vector3f::UnitZ())) * 0.25f;
 
-        mvp.row(0) *= (float) mSize.y() / (float) mSize.x();
+        mvp.row(0) *= (float)mSize.y() / (float)mSize.x();
 
         mShader.setUniform("modelViewProj", mvp);
 
         /* Draw 2 triangles starting at index 0 */
         mShader.drawIndexed(GL_TRIANGLES, 0, 2);
     }
-private:
+
+  private:
     nanogui::ProgressBar *mProgress;
     nanogui::GLShader mShader;
 };
@@ -388,13 +381,14 @@ int main(int /* argc */, char ** /* argv */) {
         }
 
         nanogui::shutdown();
-    } catch (const std::runtime_error &e) {
+    }
+    catch (const std::runtime_error &e) {
         std::string error_msg = std::string("Caught a fatal error: ") + std::string(e.what());
-        #if defined(_WIN32)
-            MessageBoxA(nullptr, error_msg.c_str(), NULL, MB_ICONERROR | MB_OK);
-        #else
-            std::cerr << error_msg << endl;
-        #endif
+#if defined(_WIN32)
+        MessageBoxA(nullptr, error_msg.c_str(), NULL, MB_ICONERROR | MB_OK);
+#else
+        std::cerr << error_msg << endl;
+#endif
         return -1;
     }
 

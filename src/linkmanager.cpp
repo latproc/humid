@@ -1,20 +1,20 @@
 #include "linkmanager.h"
-#include "linkableproperty.h"
-#include <map>
-#include <list>
 #include "editor.h"
 #include "editorwidget.h"
+#include "linkableproperty.h"
 #include "valuehelper.h"
+#include <list>
+#include <map>
 
-LinkManager * LinkManager::_instance = nullptr;
+LinkManager *LinkManager::_instance = nullptr;
 
 class LinkManager::Impl {
-public:
+  public:
     std::map<std::string, LinkableProperty *> properties;
-    std::map<std::string, std::map<std::string, std::list<LinkInfo> > > pending_links;
+    std::map<std::string, std::map<std::string, std::list<LinkInfo>>> pending_links;
 
     ~Impl() {
-        for (auto & item : properties) {
+        for (auto &item : properties) {
             delete item.second;
         }
     }
@@ -35,17 +35,19 @@ public:
 
     LinkableProperty *links(const std::string &property) {
         auto found = properties.find(property);
-        if (found!= properties.end()) return (*found).second;
+        if (found != properties.end())
+            return (*found).second;
         return nullptr;
     }
 
-    void add_pending(const std::string &remote, const std::string class_name, const std::string & widget_name, const std::string &property) {
+    void add_pending(const std::string &remote, const std::string class_name,
+                     const std::string &widget_name, const std::string &property) {
         auto found_class = pending_links.find(class_name);
         if (found_class != pending_links.end()) {
-            auto & class_pending_properties = (*found_class).second;
+            auto &class_pending_properties = (*found_class).second;
             auto found_widget = class_pending_properties.find(widget_name);
             if (found_widget != class_pending_properties.end()) {
-                auto & property_list = (*found_widget).second;
+                auto &property_list = (*found_widget).second;
                 property_list.push_back({remote, property});
             }
             else {
@@ -54,17 +56,19 @@ public:
             }
         }
         else {
-            pending_links[class_name] = std::map<std::string, std::list<LinkInfo> >();
+            pending_links[class_name] = std::map<std::string, std::list<LinkInfo>>();
             pending_links[class_name][widget_name] = std::list<LinkInfo>();
             pending_links[class_name][widget_name].push_back({remote, property});
         }
     }
 
-    Links *remote_links(const std::string & class_name, const std::string & widget_name) {
-        if (class_name.empty() || widget_name.empty()) { return nullptr; }
+    Links *remote_links(const std::string &class_name, const std::string &widget_name) {
+        if (class_name.empty() || widget_name.empty()) {
+            return nullptr;
+        }
         auto found_class = pending_links.find(class_name);
         if (found_class != pending_links.end()) {
-            auto & class_pending_properties = (*found_class).second;
+            auto &class_pending_properties = (*found_class).second;
             auto found_widget = class_pending_properties.find(widget_name);
             if (found_widget != class_pending_properties.end()) {
                 return &(*found_widget).second;
@@ -74,16 +78,15 @@ public:
     }
 };
 
-LinkManager::LinkManager() : impl{new Impl} {
-}
+LinkManager::LinkManager() : impl{new Impl} {}
 
 LinkManager::~LinkManager() {
     delete impl;
     _instance = nullptr;
 }
 
-LinkManager & LinkManager::instance() {
-    if (!_instance){
+LinkManager &LinkManager::instance() {
+    if (!_instance) {
         _instance = new LinkManager;
     }
     return *_instance;
@@ -105,10 +108,12 @@ void LinkManager::remove() {
     delete this;
 }
 
-void LinkManager::add_pending(const std::string &remote_name, const std::string &class_name, const std::string &widget_name, const std::string &property) {
+void LinkManager::add_pending(const std::string &remote_name, const std::string &class_name,
+                              const std::string &widget_name, const std::string &property) {
     impl->add_pending(remote_name, class_name, widget_name, property);
 }
 
-std::list<LinkManager::LinkInfo> *LinkManager::remote_links(const std::string & class_name, const std::string & widget_name) {
+std::list<LinkManager::LinkInfo> *LinkManager::remote_links(const std::string &class_name,
+                                                            const std::string &widget_name) {
     return impl->remote_links(class_name, widget_name);
 }

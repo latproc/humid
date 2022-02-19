@@ -8,38 +8,35 @@
 #ifndef __ViewListController_h__
 #define __ViewListController_h__
 
-#include <ostream>
-#include <string>
 #include <map>
 #include <nanogui/widget.h>
-
+#include <ostream>
+#include <string>
 
 class ViewOptions {
-public:
-	ViewOptions() : visible(false) {}
-	bool visible;
+  public:
+    ViewOptions() : visible(false) {}
+    bool visible;
 };
 
 class ViewListController {
-public:
-	ViewListController() {}
-	void set(std::string name, bool vis) {
-		items[name].visible = vis;
-	}
-	ViewOptions get(std::string name) {
-		// default is for views to be visible except for the patterns window
-		auto found = items.find(name);
-		if (found == items.end()) {
-		    set(name, name != "Patterns");
-			return items[name];
-		}
-		return (*found).second;
-	}
-	void remove(std::string name) { items.erase(name); }
+  public:
+    ViewListController() {}
+    void set(std::string name, bool vis) { items[name].visible = vis; }
+    ViewOptions get(std::string name) {
+        // default is for views to be visible except for the patterns window
+        auto found = items.find(name);
+        if (found == items.end()) {
+            set(name, name != "Patterns");
+            return items[name];
+        }
+        return (*found).second;
+    }
+    void remove(std::string name) { items.erase(name); }
     std::ostream &operator<<(std::ostream &out) const;
 
-private:
-	std::map<std::string, ViewOptions> items;
+  private:
+    std::map<std::string, ViewOptions> items;
 };
 
 std::ostream &operator<<(std::ostream &out, const ViewListController &m);

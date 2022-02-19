@@ -7,30 +7,31 @@
 #define __Palette_h__
 
 #include <ostream>
-#include <string>
 #include <set>
+#include <string>
 
 class Selectable;
 class Palette {
-public:
-	enum PaletteType { PT_MULTIPLE_SELECT, PT_SINGLE_SELECT };
+  public:
+    enum PaletteType { PT_MULTIPLE_SELECT, PT_SINGLE_SELECT };
 
     Palette(PaletteType pt = PT_MULTIPLE_SELECT);
     Palette(const Palette &orig);
     Palette &operator=(const Palette &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const Palette &other);
-    
-	bool hasSelections() const;
-	PaletteType getType() { return kind; }
-	virtual void select(Selectable * w);
-	virtual void deselect(Selectable *w);
-	virtual void clearSelections(Selectable * except = 0);
 
-	const std::set<Selectable *> &getSelected() const;
-protected:
-	PaletteType kind;
-	std::set<Selectable *>selections;
+    bool hasSelections() const;
+    PaletteType getType() { return kind; }
+    virtual void select(Selectable *w);
+    virtual void deselect(Selectable *w);
+    virtual void clearSelections(Selectable *except = 0);
+
+    const std::set<Selectable *> &getSelected() const;
+
+  protected:
+    PaletteType kind;
+    std::set<Selectable *> selections;
 };
 
 std::ostream &operator<<(std::ostream &out, const Palette &m);
