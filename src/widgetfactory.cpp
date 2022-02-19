@@ -64,12 +64,23 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
       format_val(element->getValue("format")), connection(element->getValue("connection")),
       vis(element->getValue("visibility")), scale_val(element->getValue("value_scale")),
       border(element->getValue("border")), auto_update(element->getValue("auto_update")),
-      working_text(element->getValue("working_text")), kind(element->getKind()), offset(offset_) {
+      working_text(element->getValue("working_text")),
+      font_size_val(element->getValue("font_size")),
+      remote_name(element->getValue("remote")),
+      wrap_v(element->getValue("wrap")),
+      ivis_v(element->getValue("inverted_visibility")),
+      value_type_val(element->getValue("value_type")),
+      tab_pos_val(element->getValue("tab_pos")),
+      x_scale_val(element->getValue("x_scale")),
+      theme_name(element->getValue("theme")),
+      kind(element->getKind()), offset(offset_) {
+    update();
+}
+
+void WidgetParams::update() {
     StructureClass *element_class = findClass(kind);
 
-    const Value font_size_val(element->getValue("font_size"));
     lp = nullptr;
-    const Value remote_name(element->getValue("remote"));
     remote = remote_name == SymbolTable::Null || remote_name.asString().empty() ||
                      remote_name.asString() == "null"
                  ? SymbolTable::Null
@@ -91,23 +102,15 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
         visibility = gui->findLinkableProperty(vis.asString());
 
     wrap = false;
-    {
-        const Value wrap_v(element->getValue("wrap"));
-        if (wrap_v != SymbolTable::Null)
-            wrap_v.asBoolean(wrap);
-    }
+    if (wrap_v != SymbolTable::Null)
+        wrap_v.asBoolean(wrap);
 
     ivis = false;
-    {
-        const Value ivis_v(element->getValue("inverted_visibility"));
-        if (ivis_v != SymbolTable::Null)
+    if (ivis_v != SymbolTable::Null)
             ivis_v.asBoolean(ivis);
-    }
     font_size = 0;
     if (font_size_val != SymbolTable::Null)
         font_size_val.asInteger(font_size);
-
-    const Value value_type_val(element->getValue("value_type"));
     value_type = -1;
     if (value_type_val != SymbolTable::Null)
         value_type_val.asInteger(value_type);
@@ -115,16 +118,11 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
     if (scale_val != SymbolTable::Null)
         scale_val.asFloat(value_scale);
     tab_pos = 0;
-    const Value tab_pos_val(element->getValue("tab_pos"));
     if (tab_pos_val != SymbolTable::Null)
         tab_pos_val.asInteger(tab_pos);
     x_scale = 0;
-    const Value x_scale_val(element->getValue("x_scale"));
     if (x_scale_val != SymbolTable::Null)
         x_scale_val.asFloat(x_scale);
-    //const Value caption_v( (lp) ? lp->value() : (remote != SymbolTable::Null) ? "" : element->getValue("caption"));
-
-    const Value theme_name(element->getValue("theme"));
     if (theme_name != SymbolTable::Null) {
         theme = ThemeManager::instance().findTheme(theme_name.asString());
     }
@@ -219,35 +217,35 @@ void createList(WidgetParams &params) {
     }
     if (params.font_size)
         el->setFontSize(params.font_size);
-    Value bg_colour(params.element->getValue("bg_color"));
+    const Value & bg_colour(params.element->getValue("bg_color"));
     if (bg_colour != SymbolTable::Null)
         el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-    Value text_colour(params.element->getValue("text_colour"));
+    const Value & text_colour(params.element->getValue("text_colour"));
     if (text_colour != SymbolTable::Null)
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
-    Value alignment_v(params.element->getValue("alignment"));
+    const Value & alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         el->setPropertyValue("Alignment", alignment_v.asString());
-    Value items_v(params.element->getValue("items"));
+    const Value & items_v(params.element->getValue("items"));
     if (items_v != SymbolTable::Null) {
         el->setItems(items_v.asString());
     }
-    Value items_file_v(params.element->getValue("items_file"));
+    const Value & items_file_v(params.element->getValue("items_file"));
     if (items_file_v != SymbolTable::Null) {
         el->setItemFilename(items_file_v.asString());
     }
-    Value selected_v(params.element->getValue("selected"));
+    const Value & selected_v(params.element->getValue("selected"));
     if (selected_v != SymbolTable::Null) {
         el->setSelected(selected_v.asString());
     }
-    Value selind_v(params.element->getValue("selected_index"));
+    const Value & selind_v(params.element->getValue("selected_index"));
     if (selind_v != SymbolTable::Null) {
         long idx;
         if (selind_v.asInteger(idx)) {
             el->select(idx);
         }
     }
-    Value valignment_v(params.element->getValue("valign"));
+    const Value & valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         el->setPropertyValue("Vertical Alignment", valignment_v.asString());
     if (params.format_val != SymbolTable::Null)
@@ -280,7 +278,7 @@ void createImage(WidgetParams &params) {
     if (params.theme.get()) {
         el->setTheme(params.theme);
     }
-    const Value img_scale_val(params.element->getValue("scale"));
+    const Value & img_scale_val(params.element->getValue("scale"));
     double img_scale = 1.0f;
     if (img_scale_val != SymbolTable::Null)
         img_scale_val.asFloat(img_scale);
@@ -298,7 +296,7 @@ void createImage(WidgetParams &params) {
     if (params.tab_pos)
         el->setTabPosition(params.tab_pos);
     el->setInvertedVisibility(params.ivis);
-    const Value image_file_v((params.lp) ? params.lp->value()
+    const Value & image_file_v((params.lp) ? params.lp->value()
                                          : (params.element->getValue("image_file")));
     if (image_file_v != SymbolTable::Null) {
         std::string ifn = image_file_v.asString();
@@ -366,15 +364,15 @@ void createText(WidgetParams &params) {
     if (params.theme.get()) {
         textBox->setTheme(params.theme);
     }
-    const Value text_v((params.lp)                            ? params.lp->value()
+    const Value & text_v((params.lp)                            ? params.lp->value()
                        : (params.remote != SymbolTable::Null) ? ""
                                                               : params.element->getValue("text"));
     if (text_v != SymbolTable::Null)
         textBox->setValue(text_v.asString());
-    const Value alignment_v(params.element->getValue("alignment"));
+    const Value & alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         textBox->setPropertyValue("Alignment", alignment_v.asString());
-    const Value valignment_v(params.element->getValue("valign"));
+    const Value & valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
     textBox->setEnabled(true);
@@ -503,7 +501,7 @@ void createPlot(WidgetParams &params) {
         if (params.element->getValue("overlay_plots").asBoolean(should_overlay_plots))
             lp->overlay(should_overlay_plots);
     }
-    const Value monitors(params.element->getValue("monitors"));
+    const Value & monitors(params.element->getValue("monitors"));
     lp->setInvertedVisibility(params.ivis);
     if (monitors != SymbolTable::Null) {
         lp->setMonitors(params.gui->getUserWindow(), monitors.asString());
@@ -559,10 +557,10 @@ void createButton(WidgetParams &params) {
         b->setBorder(params.border.iValue);
     b->setInvertedVisibility(params.ivis);
     b->setWrap(params.wrap);
-    const Value alignment_v(params.element->getValue("alignment"));
+    const Value & alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         b->setPropertyValue("Alignment", alignment_v);
-    const Value valignment_v(params.element->getValue("valign"));
+    const Value & valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         b->setPropertyValue("Vertical Alignment", valignment_v);
     if (params.format_val != SymbolTable::Null)
@@ -638,10 +636,10 @@ void createComboBox(WidgetParams &params) {
     }
     if (params.font_size)
         el->setFontSize(params.font_size);
-    Value bg_colour(params.element->getValue("bg_color"));
+    const Value & bg_colour(params.element->getValue("bg_color"));
     if (bg_colour != SymbolTable::Null)
         el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-    Value text_colour(params.element->getValue("text_colour"));
+    const Value & text_colour(params.element->getValue("text_colour"));
     if (text_colour != SymbolTable::Null)
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
     if (params.format_val != SymbolTable::Null)

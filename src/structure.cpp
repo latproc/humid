@@ -15,6 +15,7 @@
 #include "linkmanager.h"
 #include "structure.h"
 #include "valuehelper.h"
+#include "widgetfactory.h"
 
 nanogui::Color colourFromProperty(Structure *element, const std::string &prop) {
     return colourFromProperty(element, prop.c_str());
@@ -35,6 +36,18 @@ nanogui::Color colourFromProperty(Structure *element, const char *prop) {
 std::list<Structure *> hm_structures;
 std::list<Structure *> builtin_structures;
 std::list<StructureClass *> hm_classes;
+
+Structure::~Structure() {
+    delete widget_params;
+}
+
+WidgetParams *Structure::widgetParams() {
+    return widget_params;
+}
+void Structure::setWidgetParams(WidgetParams *params) {
+    assert(!widget_params);
+    widget_params = params;
+}
 
 std::list<Structure *> Structure::findStructureClasses(const std::string &class_name) {
     std::list<Structure *> result;

@@ -211,7 +211,9 @@ endif ()
 	   OUTPUT ${settings_yacc_output})
 
 	# Add generated source to the list of sources
-	SET(SETTINGCHECK_PARSER src/settingslang.lpp src/namedobject.cpp src/settingslang.ypp ${settings_yacc_output} ${settings_lex_output})
+	SET(SETTINGCHECK_PARSER src/settingslang.lpp
+        src/namedobject.cpp src/settingslang.ypp
+        ${settings_yacc_output} ${settings_lex_output})
 
 	# Since the parser source does not exist yet when cmake is run, mark
 	# it as generated
@@ -273,24 +275,24 @@ endif()
 		  src/editorcombobox.cpp src/editorlist.cpp
 		  ${HEADERS})
 
-  add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp
-    src/linkmanager.cpp src/colourhelper.cpp
+add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp
+  src/linkmanager.cpp src/colourhelper.cpp
+  src/valuehelper.cpp
+)
+SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
+add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
+	src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+    src/colourhelper.cpp
     src/valuehelper.cpp
-  )
-  SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
-  add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
-  		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
-        src/colourhelper.cpp
-        src/valuehelper.cpp
-	)
+)
 
 if (USE_CLOCKWORK_SOURCE)
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} Clockwork ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
-  target_link_libraries(settingscheck Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  target_link_libraries(settingscheck nanogui Clockwork  ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 else()
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
-  target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  target_link_libraries(settingscheck nanogui ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 endif()
 

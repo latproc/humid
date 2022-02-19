@@ -17,6 +17,7 @@
 #include "structureswindow.h"
 #include "userwindowwin.h"
 #include "widgetfactory.h"
+#include <chrono>
 
 using namespace nanogui;
 
@@ -292,7 +293,7 @@ void UserWindow::fixLinks(LinkableProperty *lp) {
 void UserWindow::setStructure(Structure *s) {
     if (!s)
         return;
-
+    auto start = std::chrono::steady_clock::now();
     StructureClass *sc = findClass(s->getKind());
     if (s->getKind() != "SCREEN" && (!sc || sc->getBase() != "SCREEN"))
         return;
@@ -314,9 +315,11 @@ void UserWindow::setStructure(Structure *s) {
             }
         }
     }
+    auto t_save = std::chrono::steady_clock::now();
 
     clearSelections();
     clear();
+    auto t_clear = std::chrono::steady_clock::now();
 
     nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
     PropertyMonitor *pm = nullptr;
@@ -335,7 +338,22 @@ void UserWindow::setStructure(Structure *s) {
         drag_handle->setPropertyMonitor(pm);
         drag_handle->decRef();
     }
+    auto t_load = std::chrono::steady_clock::now();
     gui->performLayout();
+    auto end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> save_time = t_save - start;
+    std::chrono::duration<double> clear_time = t_clear - t_save;
+    std::chrono::duration<double> load_time = t_load - t_clear;
+    std::chrono::duration<double> layout_time = end - t_load;
+    std::chrono::duration<double> elapsed_seconds = end - start;
+    std::cout << "UserWindow::setStructure elapsed: "
+        << save_time.count() << " "
+        << clear_time.count() << " "
+        << load_time.count() << " "
+        << layout_time.count() << " "
+        << elapsed_seconds.count() << " "
+        << "\n";
+
 }
 
 NVGcontext *UserWindow::getNVGContext() { return gui->nvgContext(); }
@@ -458,44 +476,48 @@ void UserWindow::loadStructure(Structure *s) {
             }
 
             StructureClass *element_class = findClass(element->getKind());
+            if (!element_class) { continue; }
+#if 0
             if (false && !element_class) {
                 std::string kind = element->getKind();
                 StructureClass *element_class = findClass(kind);
                 param.machine->setStructureDefinition(element_class);
             }
-
-            WidgetParams params(s, window, element, gui, nanogui::Vector2i(0, 0));
-
-            if (element_class && element_class->isExtension("LABEL")) {
+#endif
+            WidgetParams *wp = element->widgetParams();
+            if (!wp) {
+                wp = new WidgetParams(s, window, element, gui, nanogui::Vector2i(0, 0));
+                element->setWidgetParams(wp);
+            }
+            WidgetParams &params = *wp;
+            params.update();
+            if (element_class->isExtension("LABEL")) {
                 createLabel(params);
             }
-            if (element_class && element_class->isExtension("LIST")) {
-                createList(params);
+            else if (element_class->isExtension("BUTTON") ||
+                                       element_class->isExtension("INDICATOR")) {
+                createButton(params);
             }
-            else if (element_class && element_class->isExtension("IMAGE")) {
-                createImage(params);
-            }
-            else if (element_class && element_class->isExtension("PROGRESS")) {
-                createProgress(params);
-            }
-            else if (element_class && element_class->isExtension("TEXT")) {
+            else if (element_class->isExtension("TEXT")) {
                 createText(params);
             }
-            else if (element_class && element_class->isExtension("PLOT")) {
+            else if (element_class->isExtension("IMAGE")) {
+                createImage(params);
+            }
+            else if (element_class->isExtension("PROGRESS")) {
+                createProgress(params);
+            }
+            else if (element_class->isExtension("PLOT")) {
                 createPlot(params);
             }
-            else if (element_class && element_class->isExtension("LIST")) {
+            else if (element_class->isExtension("LIST")) {
                 createList(params);
             }
-            else if (element_class && element_class->isExtension("FRAME")) {
+            else if (element_class->isExtension("FRAME")) {
                 createFrame(params);
             }
-            else if (element_class && element_class->isExtension("COMBOBOX")) {
+            else if (element_class->isExtension("COMBOBOX")) {
                 createComboBox(params);
-            }
-            else if (element_class && (element_class->isExtension("BUTTON") ||
-                                       element_class->isExtension("INDICATOR"))) {
-                createButton(params);
             }
         }
     }
