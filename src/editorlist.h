@@ -22,6 +22,7 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
     EditorList(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp,
                const std::string caption, const std::string &font = "sans", int fontSize = -1,
                int icon = 0);
+    ~EditorList();
 
     virtual nanogui::Widget *asWidget() override { return this; }
     virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
@@ -63,26 +64,18 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
     const std::string &selected() const;
     void setSelected(const std::string &sel);
     void reportSelectionChange();
+    void scroll_to(int index);
 
   protected:
+    class Impl;
+    Impl * impl = nullptr;
     nanogui::Color mBackgroundColor;
     nanogui::Color mTextColor;
     nanogui::VScrollPanel *palette_scroller;
     nanogui::Widget *palette_content;
-    std::vector<std::string> mItems;
-    std::string m_item_str;
-    std::string m_item_file;
-    std::string m_selected;
-    int selected_index = -1;
-#ifdef linux
-    time_t last_file_mod = 0;
-#else
-    timespec last_file_mod = {0, 0};
-#endif
     int alignment;
     int valign;
     bool wrap_text;
-    char item_delimiter = ';';
 };
 
 #endif
