@@ -68,10 +68,10 @@ EditorButton::HorizontalAlignment toHorizontalAlignment(int align) {
     if (align == static_cast<int>(EditorButton::HorizontalAlignment::Centre)) {
         return EditorButton::HorizontalAlignment::Centre;
     }
-    if (align == static_cast<int>(EditorButton::HorizontalAlignment::Left)) {
+    else if (align == static_cast<int>(EditorButton::HorizontalAlignment::Left)) {
         return EditorButton::HorizontalAlignment::Left;
     }
-    if (align == static_cast<int>(EditorButton::HorizontalAlignment::Right)) {
+    else if (align == static_cast<int>(EditorButton::HorizontalAlignment::Right)) {
         return EditorButton::HorizontalAlignment::Right;
     }
     return EditorButton::HorizontalAlignment::Centre;
@@ -118,10 +118,10 @@ EditorButton::VerticalAlignment toVerticalAlignment(int align) {
     if (align == static_cast<int>(EditorButton::VerticalAlignment::Top)) {
         return EditorButton::VerticalAlignment::Top;
     }
-    if (align == static_cast<int>(EditorButton::VerticalAlignment::Centre)) {
+    else if (align == static_cast<int>(EditorButton::VerticalAlignment::Centre)) {
         return EditorButton::VerticalAlignment::Centre;
     }
-    if (align == static_cast<int>(EditorButton::VerticalAlignment::Bottom)) {
+    else if (align == static_cast<int>(EditorButton::VerticalAlignment::Bottom)) {
         return EditorButton::VerticalAlignment::Bottom;
     }
     return EditorButton::VerticalAlignment::Centre;
@@ -310,54 +310,54 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
     if (res != SymbolTable::Null)
         return res;
 
-    if (prop == "Off text") {
+    else if (prop == "Off text") {
         return Value(caption(), Value::t_string);
     }
-    if (prop == "Image") {
+    else if (prop == "Image") {
         return image_name;
     }
-    if (prop == "On text") {
+    else if (prop == "On text") {
         return Value(on_caption, Value::t_string);
     }
-    if (prop == "Background Colour") {
+    else if (prop == "Background Colour") {
         nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
         nanogui::Button *btn = dynamic_cast<nanogui::Button *>(this);
         return Value(stringFromColour(backgroundColor()), Value::t_string);
     }
-    if (prop == "Command") {
+    else if (prop == "Command") {
         return Value(command(), Value::t_string);
     }
-    if (prop == "Behaviour") {
+    else if (prop == "Behaviour") {
         return flags();
     }
-    if (prop == "Alignment")
+    else if (prop == "Alignment")
         return fromHorizontalAlignment(alignment);
-    if (prop == "Vertical Alignment")
+    else if (prop == "Vertical Alignment")
         return fromVerticalAlignment(valign);
-    if (prop == "Wrap Text")
+    else if (prop == "Wrap Text")
         return wrap_text ? 1 : 0;
-    if (prop == "Border colouring") {
+    else if (prop == "Border colouring") {
         return static_cast<int>(border_colouring);
     }
-    if (prop == "Border style") {
+    else if (prop == "Border style") {
         return static_cast<int>(border_style);
     }
-    if (prop == "Border gradient dir") {
+    else if (prop == "Border gradient dir") {
         return static_cast<int>(border_grad_dir);
     }
-    if (prop == "Border grad bot") {
+    else if (prop == "Border grad bot") {
         return Value(stringFromColour(border_grad_bot), Value::t_string);
     }
-    if (prop == "Border grad top") {
+    else if (prop == "Border grad top") {
         return Value(stringFromColour(border_grad_top), Value::t_string);
     }
-    if (prop == "Background on colour") {
+    else if (prop == "Background on colour") {
         return Value(stringFromColour(bg_on_color), Value::t_string);
     }
-    if (prop == "Text colour") {
+    else if (prop == "Text colour") {
         return Value(stringFromColour(mTextColor), Value::t_string);
     }
-    if (prop == "Text on colour") {
+    else if (prop == "Text on colour") {
         return Value(stringFromColour(text_on_colour), Value::t_string);
     }
     return SymbolTable::Null;

@@ -169,22 +169,22 @@ Value EditorLabel::getPropertyValue(const std::string &prop) {
     Value res = EditorWidget::getPropertyValue(prop);
     if (res != SymbolTable::Null)
         return res;
-    if (prop == "Caption")
+    else if (prop == "Caption")
         return Value(caption(), Value::t_string);
-    if (prop == "Font Size")
+    else if (prop == "Font Size")
         return fontSize();
-    if (prop == "Text Colour") {
+    else if (prop == "Text Colour") {
         nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
         nanogui::Label *lbl = dynamic_cast<nanogui::Label *>(this);
         return Value(stringFromColour(mTextColor), Value::t_string);
     }
-    if (prop == "Alignment")
+    else if (prop == "Alignment")
         return alignment;
-    if (prop == "Vertical Alignment")
+    else if (prop == "Vertical Alignment")
         return valign;
-    if (prop == "Wrap Text")
+    else if (prop == "Wrap Text")
         return wrap_text ? 1 : 0;
-    if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
+    else if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
         return Value(stringFromColour(backgroundColor()), Value::t_string);
     }
 
@@ -196,16 +196,16 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     if (prop == "Caption") {
         setCaption(value);
     }
-    if (prop == "Remote") {
+    else if (prop == "Remote") {
         if (remote) {
             remote->link(new LinkableText(this));
         }
     }
-    if (prop == "Font Size") {
+    else if (prop == "Font Size") {
         int fs = std::atoi(value.c_str());
         setFontSize(fs);
     }
-    if (prop == "Alignment") {
+    else if (prop == "Alignment") {
         long align_int = 0;
         Value val(value);
         if (val.asInteger(align_int)) {
@@ -225,7 +225,7 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
                 alignment = defaultForProperty("alignment").iValue;
         }
     }
-    if (prop == "Vertical Alignment") {
+    else if (prop == "Vertical Alignment") {
         long v_align_int = 0;
         Value val(value);
         if (val.asInteger(v_align_int)) {
@@ -245,14 +245,14 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
                 valign = defaultForProperty("valign").iValue;
         }
     }
-    if (prop == "Wrap Text") {
+    else if (prop == "Wrap Text") {
         wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
-    if (prop == "Text Colour") {
+    else if (prop == "Text Colour") {
         getDefinition()->getProperties().add("text_colour", value);
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
-    if (prop == "Background Colour") {
+    else if (prop == "Background Colour") {
         getDefinition()->getProperties().add("bg_color", value);
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
