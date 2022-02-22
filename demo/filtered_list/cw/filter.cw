@@ -5,6 +5,19 @@ tempfile CONSTANT "/tmp/filtered.dat";
 script CONSTANT "scripts/filter";
 
 filter FilterMonitor;
+scroll_position VARIABLE(export: rw_reg) 0;
+scrollup ScrollButton(step: -4) scroll_position;
+scrolldown ScrollButton(step: 4) scroll_position;
+
+ScrollButton MACHINE scrollpos {
+  OPTION step 4;
+  OPTION export rw;
+
+  on STATE;
+  off INITIAL;
+
+  ENTER on { scrollpos := scrollpos + step; }
+}
 
 FilterMonitor MACHINE {
   OPTION filter "";

@@ -24,6 +24,49 @@
 #include <time.h>
 #include <utility>
 
+extern int debug;
+
+namespace {
+
+const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
+                                    const std::string &property) {
+    if (!links) {
+        return nullptr;
+    }
+    for (const auto &link : *links) {
+        if (link.property_name == property)
+            return &link;
+    }
+    return nullptr;
+}
+
+void send_property_updates(const std::string & connection_name, const std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> &links) {
+    for (const auto &link : links) {
+        std::stringstream ss;
+        std::string remote_machine = link.first->remote_name;
+        std::string remote_property;
+        auto separator_pos = remote_machine.rfind('.');
+        if (separator_pos == std::string::npos) {
+            remote_property = "VALUE";
+        }
+        else {
+            remote_property = remote_machine.substr(separator_pos + 1);
+            remote_machine = remote_machine.substr(0, separator_pos);
+        }
+        char *msg = MessageEncoding::encodeCommand("PROPERTY", remote_machine, remote_property,
+                                                    link.second->asString());
+        //ss << "PROPERTY " << remote_machine << " " << remote_property << " " << link.second << "";
+        EDITOR->gui()->queueMessage(connection_name, msg, [](std::string s) {
+            if (debug) {
+                std::cout << " Response: " << s << "\n";
+            }
+        });
+        delete msg;
+    }
+}
+
+}; // namespace
+
 class ListItemButton : public SelectableButton {
   public:
     ListItemButton(EditorGUI *screen, Palette *pal, const std::string label,
@@ -50,6 +93,70 @@ const std::map<std::string, std::string> &EditorList::reverse_property_map() con
     return structure_class->reverse_property_map();
 }
 
+class EditorList::Impl {
+public:
+    using PropertyLinks = std::vector<std::pair<const LinkManager::LinkInfo *, Value *>>;
+    Impl(EditorList &owner) : owner(owner) {
+    }
+
+    void report_selection_change() {
+        if (m_links.empty()) {
+            const auto *link = find_link(owner.remote_links, "selected");
+            if (link) {
+                m_links.push_back(std::make_pair(link, &m_selected));
+            }
+            link = find_link(owner.remote_links, "selected_index");
+            if (link) {
+                m_links.push_back(std::make_pair(link, &selected_index));
+            }
+        }
+        if (!m_links.empty()) {  send_property_updates(owner.connection_name, m_links); }
+    }
+
+    const PropertyLinks & links() const { return m_links; }
+    void setItemFilename(const std::string &filename);
+    int scroll_pos() {
+        return m_scroll_pos.iValue;
+    }
+
+    void set_scroll_pos(int pos, int min_pos, int max_pos) {
+        if (m_scroll_pos == pos) return;
+        if (pos < min_pos || pos > max_pos) {
+            if (pos < min_pos) pos = min_pos;
+            if (pos > max_pos) pos = max_pos;
+            m_scroll_pos = pos;
+            if (!owner.connection_name.empty() && owner.remote_links) {
+                std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> links;
+                const auto *scroll_pos_link = find_link(owner.remote_links, "scroll_pos");
+                if (scroll_pos_link) {
+                    links.push_back(std::make_pair(scroll_pos_link, &m_scroll_pos));
+                    send_property_updates(owner.connection_name, links);
+                }
+            }
+        }
+        else { m_scroll_pos = pos; }
+    }
+
+    const std::string & selected() { return m_selected.sValue; }
+
+    std::vector<std::string> mItems;
+    std::string m_item_str;
+    std::string m_item_file;
+    Value m_selected = Value("", Value::t_string);
+    Value selected_index = -1;
+#ifdef linux
+    time_t last_file_mod = 0;
+#else
+    timespec last_file_mod = {0, 0};
+#endif
+    char item_delimiter = ';';
+
+private:
+    EditorList &owner;
+    PropertyLinks m_links;
+    Value m_scroll_pos = 0;
+};
+
 EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam,
                        LinkableProperty *lp, const std::string caption, const std::string &font,
                        int fontSize, int icon)
@@ -62,6 +169,11 @@ EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam
     palette_content = new Widget(palette_scroller);
     palette_content->setLayout(new nanogui::GroupLayout(0, -2, 0, 0));
     palette_content->setFixedSize(Vector2i(width(), height()));
+    impl = new Impl(*this);
+}
+
+EditorList::~EditorList() {
+    delete impl;
 }
 
 bool EditorList::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
@@ -102,22 +214,22 @@ bool operator<(const timespec &t1, const timespec &t2) {
 } // namespace
 
 void EditorList::loadItems() {
-    if (m_item_file.empty()) {
-        loadItems(m_item_str);
+    if (impl->m_item_file.empty()) {
+        loadItems(impl->m_item_str);
         return;
     }
     struct stat file_stat;
-    int err = stat(m_item_file.c_str(), &file_stat);
+    int err = stat(impl->m_item_file.c_str(), &file_stat);
     if (err == -1) {
         return; // the file was tested and error logged when set
     }
 #ifdef linux
     if (last_file_mod < file_stat.st_mtime) {
 #else
-    if (last_file_mod < file_stat.st_mtimespec) {
+    if (impl->last_file_mod < file_stat.st_mtimespec) {
 #endif
         char contents[file_stat.st_size + 1];
-        std::ifstream in(m_item_file);
+        std::ifstream in(impl->m_item_file);
         in.read(contents, file_stat.st_size);
         contents[file_stat.st_size] = 0;
         in.close();
@@ -125,54 +237,9 @@ void EditorList::loadItems() {
     }
 }
 
-namespace {
-const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
-                                       const std::string &property) {
-    if (!links) {
-        return nullptr;
-    }
-    for (const auto &link : *links) {
-        if (link.property_name == property)
-            return &link;
-    }
-    return nullptr;
-}
-}; // namespace
-
 void EditorList::reportSelectionChange() {
     if (!connection_name.empty() && remote_links) {
-        std::vector<std::pair<const LinkManager::LinkInfo *, Value>> links;
-        const auto *selection_link = find_link(remote_links, "selected");
-        const auto *index_link = find_link(remote_links, "selected_index");
-        if (selection_link) {
-            links.push_back(std::make_pair(selection_link, Value(m_selected, Value::t_string)));
-        }
-        if (index_link) {
-            links.push_back(std::make_pair(index_link, selected_index));
-        }
-        for (const auto &link : links) {
-            std::stringstream ss;
-            std::string remote_machine = link.first->remote_name;
-            std::string remote_property;
-            auto separator_pos = remote_machine.rfind('.');
-            if (separator_pos == std::string::npos) {
-                remote_property = "VALUE";
-            }
-            else {
-                remote_property = remote_machine.substr(separator_pos + 1);
-                remote_machine = remote_machine.substr(0, separator_pos);
-            }
-            char *msg = MessageEncoding::encodeCommand("PROPERTY", remote_machine, remote_property,
-                                                       link.second);
-            //ss << "PROPERTY " << remote_machine << " " << remote_property << " " << link.second << "";
-            EDITOR->gui()->queueMessage(connection_name, msg, [](std::string s) {
-                extern int debug;
-                if (debug) {
-                    std::cout << " Response: " << s << "\n";
-                }
-            });
-            delete msg;
-        }
+        impl->report_selection_change();
     }
 }
 
@@ -181,7 +248,7 @@ void EditorList::performLayout(NVGcontext *ctx) {
     for (int i = palette_content->childCount(); i > 0;) {
         palette_content->removeChild(--i);
     }
-    for (const auto &item : mItems) {
+    for (const auto &item : impl->mItems) {
         Widget *cell = new Widget(palette_content);
         cell->setFixedSize(Vector2i(width() - 10, 30));
         SelectableButton *b = new ListItemButton(EDITOR->gui(), this, item, cell);
@@ -192,27 +259,30 @@ void EditorList::performLayout(NVGcontext *ctx) {
         b->setPassThrough(true);
         b->setCallback([this, item]() { setSelected(item); });
     }
-    int content_height = mItems.size() * 30;
+    int content_height = impl->mItems.size() * 30;
     palette_scroller->setFixedSize(Vector2i(width(), height()));
     palette_content->setFixedSize(
         Vector2i(width() - 5, content_height > height() ? content_height : content_height));
     Widget::performLayout(ctx);
+    if (!impl->mItems.empty()) {
+        scroll_to(impl->scroll_pos());
+    }
 }
 
 void EditorList::loadItems(const std::string &str) {
-    mItems.clear();
+    impl->mItems.clear();
     size_t start = 0;
     while (start != std::string::npos) {
-        auto end = str.find(item_delimiter, start);
+        auto end = str.find(impl->item_delimiter, start);
         if (end == std::string::npos) {
             auto item = str.substr(start);
             if (!item.empty()) {
-                mItems.push_back(item);
+                impl->mItems.push_back(item);
             }
             start = end;
         }
         else {
-            mItems.push_back(str.substr(start, end - start));
+            impl->mItems.push_back(str.substr(start, end - start));
             start = ++end;
         }
     }
@@ -220,12 +290,12 @@ void EditorList::loadItems(const std::string &str) {
 }
 
 void EditorList::setItems(const std::string &str) {
-    m_item_str = str;
-    item_delimiter = ';';
-    loadItems(m_item_str);
+    impl->m_item_str = str;
+    impl->item_delimiter = ';';
+    loadItems(impl->m_item_str);
 }
 
-void EditorList::setItemFilename(const std::string &filename) {
+void EditorList::Impl::setItemFilename(const std::string &filename) {
     if (!filename.empty() && filename == m_item_file) {
 #ifdef linux
         last_file_mod = 0; // force an update
@@ -252,31 +322,51 @@ void EditorList::setItemFilename(const std::string &filename) {
         last_file_mod = {0, 0}; // force a load
 #endif
     }
+}
+
+void EditorList::setItemFilename(const std::string &filename) {
+    impl->setItemFilename(filename);
     loadItems();
 }
 
-const std::string &EditorList::items_str() { return m_item_str; }
+const std::string &EditorList::items_str() { return impl->m_item_str; }
 
-const std::string &EditorList::item_filename() { return m_item_file; }
+const std::string &EditorList::item_filename() { return impl->m_item_file; }
 
-int EditorList::selectedIndex() const { return selected_index; }
+int EditorList::selectedIndex() const {
+    long index;
+    bool extracted_int = impl->selected_index.asInteger(index);
+    assert(extracted_int);
+    return index;
+}
 
 void EditorList::select(int index) {
-    if (index < 0 || index >= mItems.size()) {
-        selected_index = -1;
-        m_selected = "";
+    if (index < 0 || index >= impl->mItems.size()) {
+        impl->selected_index = -1;
+        impl->m_selected = Value("", Value::t_string);
         return;
     }
-    selected_index = index;
-    m_selected = mItems[index];
+    impl->selected_index = index;
+    impl->m_selected = Value(impl->mItems[index], Value::t_string);
     reportSelectionChange();
 }
 
-const std::string &EditorList::selected() const { return m_selected; }
+const std::string &EditorList::selected() const { return impl->selected(); }
+
+void EditorList::scroll_to(int index) {
+    std::cout << "scroll to: " << index << "\n";
+    int height = mSize.y();
+    int rows = height / 30;
+    int max_scroll = impl->mItems.size() - rows;
+    if (max_scroll < 0) max_scroll = 0;
+    impl->set_scroll_pos(index, 0, max_scroll);
+    index = impl->scroll_pos();
+    palette_scroller->setScroll(max_scroll == 0 ? 0.0f : 1.0f * index / max_scroll);
+}
 
 void EditorList::setSelected(const std::string &sel) {
     int i = 0;
-    for (const auto &item : mItems) {
+    for (const auto &item : impl->mItems) {
         if (item == sel) {
             select(i);
             return;
@@ -288,13 +378,13 @@ void EditorList::setSelected(const std::string &sel) {
 
 void EditorList::draw(NVGcontext *ctx) {
     // poll for file changes
-    if (!m_item_file.empty()) {
+    if (!impl->m_item_file.empty()) {
         struct stat file_stat;
-        int err = stat(m_item_file.c_str(), &file_stat);
+        int err = stat(impl->m_item_file.c_str(), &file_stat);
 #ifdef linux
         if (err == 0 && last_file_mod < file_stat.st_mtime) {
 #else
-        if (err == 0 && last_file_mod < file_stat.st_mtimespec) {
+        if (err == 0 && impl->last_file_mod < file_stat.st_mtimespec) {
 #endif
             // TODO: defer a loadItems()
         }
@@ -348,36 +438,38 @@ void EditorList::getPropertyNames(std::list<std::string> &names) {
     names.push_back("Background Colour");
     names.push_back("Selected");
     names.push_back("Selected Index");
+    names.push_back("Scroll Pos");
 }
 
 Value EditorList::getPropertyValue(const std::string &prop) {
     Value res = EditorWidget::getPropertyValue(prop);
     if (res != SymbolTable::Null)
         return res;
-    if (prop == "Items")
+    else if (prop == "Items")
         return Value(items_str(), Value::t_string);
-    if (prop == "Items File")
-        return Value(m_item_file, Value::t_string);
-    if (prop == "Font Size")
+    else if (prop == "Items File")
+        return Value(impl->m_item_file, Value::t_string);
+    else if (prop == "Font Size")
         return fontSize();
-    if (prop == "Text Colour") {
+    else if (prop == "Text Colour") {
         nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
         nanogui::Label *lbl = dynamic_cast<nanogui::Label *>(this);
         return Value(stringFromColour(mTextColor), Value::t_string);
     }
-    if (prop == "Alignment")
+    else if (prop == "Alignment")
         return alignment;
-    if (prop == "Vertical Alignment")
+    else if (prop == "Vertical Alignment")
         return valign;
-    if (prop == "Wrap Text")
+    else if (prop == "Wrap Text")
         return wrap_text ? 1 : 0;
-    if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
+    else if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
         return Value(stringFromColour(backgroundColor()), Value::t_string);
     }
-    if (prop == "Selected")
-        return Value(m_selected, Value::t_string);
-    if (prop == "Selected Index")
-        return selected_index;
+    else if (prop == "Scroll Pos") { return impl->scroll_pos(); }
+    else if (prop == "Selected")
+        return impl->m_selected;
+    else if (prop == "Selected Index")
+        return impl->selected_index;
 
     return SymbolTable::Null;
 }
@@ -387,25 +479,28 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
     if (prop == "Items") {
         setItems(value);
     }
-    if (prop == "Items File") {
+    else if (prop == "Items File") {
         setItemFilename(value);
     }
-    if (prop == "Selected") {
+    else if (prop == "Selected") {
         setSelected(value);
     }
-    if (prop == "Selected Index") {
+    else if (prop == "Selected Index") {
         select(std::atoi(value.c_str()));
     }
-    if (prop == "Remote") {
+    else if (prop == "Scroll Pos") {
+        scroll_to(std::atoi(value.c_str()));
+    }
+    else if (prop == "Remote") {
         if (remote) {
             remote->link(new LinkableText(this));
         }
     }
-    if (prop == "Font Size") {
+    else if (prop == "Font Size") {
         int fs = std::atoi(value.c_str());
         setFontSize(fs);
     }
-    if (prop == "Alignment") {
+    else if (prop == "Alignment") {
         long align_int = 0;
         Value val(value);
         if (val.asInteger(align_int)) {
@@ -425,7 +520,7 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
                 alignment = defaultForProperty("alignment").iValue;
         }
     }
-    if (prop == "Vertical Alignment") {
+    else if (prop == "Vertical Alignment") {
         long v_align_int = 0;
         Value val(value);
         if (val.asInteger(v_align_int)) {
@@ -445,14 +540,14 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
                 valign = defaultForProperty("valign").iValue;
         }
     }
-    if (prop == "Wrap Text") {
+    else if (prop == "Wrap Text") {
         wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
-    if (prop == "Text Colour") {
+    else if (prop == "Text Colour") {
         getDefinition()->getProperties().add("text_colour", value);
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
-    if (prop == "Background Colour") {
+    else if (prop == "Background Colour") {
         getDefinition()->getProperties().add("bg_color", value);
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
@@ -475,6 +570,9 @@ void EditorList::loadProperties(PropertyFormHelper *properties) {
         properties->addVariable<int>(
             "Selected Index", [&](int value) mutable { select(value); },
             [&]() -> int { return selectedIndex(); });
+        properties->addVariable<int>(
+            "Scroll Pos", [&](int value) mutable { scroll_to(value); },
+            [&]() -> int { return impl->scroll_pos(); });
         properties->addVariable<int>(
             "Alignment", [&](int value) mutable { alignment = value; },
             [&]() -> int { return alignment; });

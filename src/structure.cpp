@@ -133,6 +133,7 @@ static void prepare_class_properties(const std::string &class_name,
         properties["Font Size"] = "font_size";
         properties["Items"] = "items";
         properties["Items File"] = "items_file";
+        properties["Scroll Pos"] = "scroll_pos";
         properties["Selected"] = "selected";
         properties["Selected Index"] = "selected_index";
         properties["Text Colour"] = "text_colour";

@@ -245,6 +245,13 @@ void createList(WidgetParams &params) {
             el->select(idx);
         }
     }
+    const Value & scroll_pos_v(params.element->getValue("scroll_pos"));
+    if (scroll_pos_v != SymbolTable::Null) {
+        long idx;
+        if (scroll_pos_v.asInteger(idx)) {
+            el->scroll_to(idx);
+        }
+    }
     const Value & valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         el->setPropertyValue("Vertical Alignment", valignment_v.asString());
