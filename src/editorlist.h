@@ -63,8 +63,10 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
     void selectByIndex(int index);
     const std::string &selected() const;
     void setSelected(const std::string &sel);
+    void setUserSelected(const std::string &sel);
     void reportSelectionChange();
     void scroll_to(int index);
+    bool is_visible(int index);
 
   protected:
     class Impl;

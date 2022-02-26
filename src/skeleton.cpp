@@ -179,6 +179,7 @@ ConfirmDialog::ConfirmDialog(nanogui::Screen *screen, std::string msg)
 
 const int DEBUG_ALL = 255;
 #define DEBUG_BASIC (1 & debug)
+#define DEBUG_INCOMING (2 & debug)
 int debug = 0;
 int saved_debug = 0;
 
@@ -523,7 +524,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
     if (first_message_time == 0)
         first_message_time = mh.start_time;
 
-    if (DEBUG_BASIC)
+    if (DEBUG_INCOMING)
         std::cerr << "received: " << data << " from connection: " << name << "\n";
 
     std::list<Value> *message = 0;

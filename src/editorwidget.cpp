@@ -30,6 +30,8 @@
 #include "userwindow.h"
 
 extern Handle::Mode all_handles[];
+extern int debug;
+#define DEBUG_WIDGET (4 & debug)
 
 EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name, nanogui::Widget *w,
                            LinkableProperty *lp)
@@ -55,9 +57,29 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
         p = EDITOR->gui()->getUserWindow();
     }
     palette = p;
+    if (DEBUG_WIDGET) { std::cout << "created " << name << "\n"; }
 }
 
-EditorWidget::~EditorWidget() {}
+EditorWidget::~EditorWidget() {
+    if (DEBUG_WIDGET) { std::cout << "deleting " << name << "\n"; }
+    auto links = remote_links;
+    if (links) {
+        if (DEBUG_WIDGET)  { std::cout << "have " << links->size() << " links to remove\n"; }
+        for (auto & link : *links) {
+            if (DEBUG_WIDGET) std::cout << "unlinking from " << link.property_name << "\n";
+            auto property_links = LinkManager::instance().links(link.property_name);
+            if (property_links) { property_links->unlink(this); }
+            else {
+                if (DEBUG_WIDGET) { std::cout << "no property links found\n"; }
+                auto linkable_property = EDITOR->gui()->findLinkableProperty(link.remote_name);
+                if (linkable_property) {
+                    if (DEBUG_WIDGET) { std::cout << "found linkable property for " << link.property_name << "\n"; }
+                    linkable_property->unlink(this);
+                }
+            }
+        }
+    }
+}
 
 const std::string &EditorWidget::getValueFormat() { return format_string; }
 
@@ -354,7 +376,7 @@ void EditorWidget::setProperty(const std::string &prop, const std::string value)
 Value EditorWidget::getPropertyValue(const std::string &prop) {
     nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
     if (!w) {
-        std::cout << "Error: " << name << " does not seem to be a widget\n";
+        std::cerr << "Error: " << name << " does not seem to be a widget\n";
         return SymbolTable::Null;
     }
     if (prop == "Structure")
@@ -457,7 +479,7 @@ void EditorWidget::updateStructure() {
                 s->getProperties().add(mapped, v);
             }
             else {
-                std::cout << s->getName() << " setting unmapped property " << item << " to " << v
+                std::cerr << s->getName() << " setting unmapped property " << item << " to " << v
                           << "\n";
                 s->getProperties().add(item.c_str(), v);
             }

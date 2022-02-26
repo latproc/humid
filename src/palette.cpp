@@ -11,6 +11,8 @@
 
 Palette::Palette(PaletteType pt) : kind(pt) {}
 
+Palette::~Palette() = default;
+
 bool Palette::hasSelections() const { return selections.size() > 0; }
 void Palette::select(Selectable *w) {
     if (!w) { return; }
@@ -29,6 +31,7 @@ void Palette::clearSelections(Selectable *except) {
             if (sel != except && sel->isSelected())
                 sel->deselect();
         }
+        selections.clear();
     }
 }
 

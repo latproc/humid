@@ -47,6 +47,7 @@ extern long collect_history;
 extern const int DEBUG_ALL;
 extern int debug;
 #define DEBUG_BASIC (1 & debug)
+#define DEBUG_WIDGET (4 & debug)
 extern int run_only;
 extern std::list<Structure *> hm_structures;
 
@@ -152,7 +153,7 @@ bool EditorGUI::keyboardEvent(int key, int scancode, int action, int modifiers) 
             }
 
             if (w_user && w_user->structure()) {
-                std::cout << "detected key: " << key_name << "\n";
+                if (debug) { std::cout << "detected key: " << key_name << "\n"; }
                 std::string conn;
                 StructureClass *sc = w_user->structure()->getStructureDefinition();
                 if (sc) {
@@ -927,6 +928,7 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
     if (found == linkables.end()) {
         return LinkManager::instance().links(name);
     }
+    // std::cout << "EditorGUI found linkable " << name << " with " << (found->second ? found->second->num_links() : 0) << " links\n";
     return (*found).second;
 }
 
@@ -1070,7 +1072,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
             }
         }
     }
-    std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
+    if (DEBUG_WIDGET) std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
 }
 
 void EditorGUI::update(ClockworkClient::Connection *connection) {

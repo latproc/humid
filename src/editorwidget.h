@@ -46,13 +46,11 @@ class EditorWidget : public Selectable, public EditorObject, public Connectable 
                  LinkableProperty *lp);
     EditorWidget(NamedObject *owner, const std::string structure_name, const std::string &nam,
                  nanogui::Widget *w, LinkableProperty *lp);
-    ~EditorWidget();
+    virtual ~EditorWidget();
 
     static EditorWidget *create(const std::string kind);
 
     virtual nanogui::Widget *asWidget() { return nullptr; }
-
-    //nanogui::Widget *getWidget() { return widget; }
 
     virtual void getPropertyNames(std::list<std::string> &names);
     virtual void loadProperties(PropertyFormHelper *pfh);

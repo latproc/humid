@@ -17,6 +17,7 @@ class Palette {
 
     Palette(PaletteType pt = PT_MULTIPLE_SELECT);
     Palette(const Palette &orig);
+    virtual ~Palette();
     Palette &operator=(const Palette &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const Palette &other);

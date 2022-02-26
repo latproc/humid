@@ -15,6 +15,8 @@
 #include <nanogui/button.h>
 #include <nanogui/progressbar.h>
 
+extern int debug;
+
 LinkableProperty::LinkableProperty(const std::string group, int object_type,
                                    const std::string &name, const std::string &addr_str,
                                    const std::string &dtype, int dsize)
@@ -104,6 +106,10 @@ int LinkableProperty::address_group() const {
         return address_str.at(0) - '0';
 }
 
+int LinkableProperty::num_links() const {
+    return links.size();
+}
+
 void LinkableProperty::link(LinkableObject *lo) {
     links.remove(lo);
     links.push_back(lo);
@@ -123,11 +129,15 @@ void LinkableProperty::unlink(EditorObject *w) {
         else
             ++iter;
     }
-#ifdef TESTING
-    if (unlinked == 0) {
-        std::cout << "did not unlink " << w->getName() << "\n";
+    if (debug) {
+        if (unlinked == 0) {
+            std::cout << "nothing to unlink from " << w->getName() << "\n";
+        }
+        else {
+            std::cout << "unlinked " << unlinked << " from " << w->getName() << "\n";
+        }
     }
-#endif
+
 }
 
 void LinkableProperty::clear() {

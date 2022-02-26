@@ -16,29 +16,25 @@ class Palette;
 
 class Selectable {
   public:
-    Selectable(const Selectable &orig);
+    Selectable(Palette *pal);
+    Selectable(const Selectable &orig) = delete;
     Selectable &operator=(const Selectable &other);
     std::ostream &operator<<(std::ostream &out) const;
     bool operator==(const Selectable &other);
 
     virtual ~Selectable();
 
-    Selectable(Palette *pal);
     bool isSelected();
     void select();
     void deselect();
-    //nanogui::Widget *getWidget() const;
-    //nanogui::Button *getButton() const;
     virtual void justSelected();
     virtual void justDeselected();
-    //void setWidget(SelectableWidget *w);
-    //void setButton(SelectableButton *w);
 
   protected:
-    Palette *palette;
+    Palette *palette = nullptr;
     bool mSelected;
-    //nanogui::Widget *widget;
-    //nanogui::Button *button;
+  private:
+
 };
 
 std::ostream &operator<<(std::ostream &out, const Selectable &m);

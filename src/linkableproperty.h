@@ -42,6 +42,7 @@ class LinkableProperty : public EditorObject {
     int address_group() const;
     void link(LinkableObject *lo);
     void unlink(EditorObject *w);
+    int num_links() const;
     void clear();
     void save(std::ostream &out) const;
     void apply();

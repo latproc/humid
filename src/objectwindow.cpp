@@ -186,9 +186,7 @@ void ObjectWindow::loadItems(const std::string group, const std::string match) {
     boost::algorithm::split(tokens, match, boost::is_any_of(", "));
 
     int n = tokens.size();
-    for (auto s : tokens)
-        std::cout << s << " ";
-    std::cout << "\n";
+    // for (auto s : tokens) { std::cout << s << " "; } std::cout << "\n";
 
     bool within_group = group.length() > 0;
     for (auto item : gui->getLinkableProperties()) {

@@ -23,6 +23,8 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <utility>
+#include <chrono>
+#include "anchor.h"
 
 extern int debug;
 
@@ -96,7 +98,7 @@ const std::map<std::string, std::string> &EditorList::reverse_property_map() con
 class EditorList::Impl {
 public:
     using PropertyLinks = std::vector<std::pair<const LinkManager::LinkInfo *, Value *>>;
-    Impl(EditorList &owner) : owner(owner) {
+    Impl(EditorList &owner) : owner(owner), last_selected(std::chrono::steady_clock::now()) {
     }
 
     void report_selection_change() {
@@ -139,6 +141,26 @@ public:
 
     const std::string & selected() { return m_selected.sValue; }
 
+    // whatever the user selects overrides backend changes for a
+    // period of time.
+    void debounce_select(int index) {
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> debounce_duration = now - last_selected;
+        if (debounce_duration > std::chrono::duration<double>(0.200)) {
+            last_selected = now;
+            pending_index = index;
+        }
+    }
+
+    int debounced_index() {
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::duration<double> debounce_duration = now - last_selected;
+        if (debounce_duration > std::chrono::duration<double>(0.200)) {
+            pending_index = -1;
+        }
+        return pending_index;
+    }
+
     std::vector<std::string> mItems;
     std::string m_item_str;
     std::string m_item_file;
@@ -155,6 +177,8 @@ private:
     EditorList &owner;
     PropertyLinks m_links;
     Value m_scroll_pos = 0;
+    std::chrono::steady_clock::time_point last_selected;
+    int pending_index = -1;
 };
 
 EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam,
@@ -245,6 +269,7 @@ void EditorList::reportSelectionChange() {
 
 void EditorList::performLayout(NVGcontext *ctx) {
     using namespace nanogui;
+    clearSelections();
     for (int i = palette_content->childCount(); i > 0;) {
         palette_content->removeChild(--i);
     }
@@ -257,15 +282,19 @@ void EditorList::performLayout(NVGcontext *ctx) {
         b->setFixedSize(Vector2i(width() - 10, 29));
         b->setTheme(EDITOR->gui()->getTheme());
         b->setPassThrough(true);
-        b->setCallback([this, item]() { setSelected(item); });
+        b->setCallback([this, item]() { setUserSelected(item); });
     }
     int content_height = impl->mItems.size() * 30;
     palette_scroller->setFixedSize(Vector2i(width(), height()));
-    palette_content->setFixedSize(
-        Vector2i(width() - 5, content_height > height() ? content_height : content_height));
+    palette_content->setFixedSize(Vector2i(width() - 5, content_height));
     Widget::performLayout(ctx);
     if (!impl->mItems.empty()) {
-        scroll_to(impl->scroll_pos());
+        if (!impl->selected().empty()) {
+            setSelected(impl->selected());
+        }
+        else {
+            scroll_to(impl->scroll_pos());
+        }
     }
 }
 
@@ -344,10 +373,18 @@ void EditorList::selectByIndex(int index) {
     if (index < 0 || index >= impl->mItems.size()) {
         impl->selected_index = -1;
         impl->m_selected = Value("", Value::t_string);
+        impl->debounce_select(-1);
         clearSelections();
         reportSelectionChange();
         return;
     }
+    int last_selected_index = impl->debounced_index();
+    if (last_selected_index != -1 && last_selected_index != index) {
+        std::cout << "ignoring request to select " << index << "\n";
+        return;
+    }
+    impl->debounce_select(index);
+
     auto widget = palette_content->childAt(index);
     if (widget) {
         if (widget->childCount() == 1) {
@@ -356,6 +393,7 @@ void EditorList::selectByIndex(int index) {
                 sel->select();
                 impl->selected_index = index;
                 impl->m_selected = Value(impl->mItems[index], Value::t_string);
+                if (!is_visible(index)) { scroll_to(index); }
                 reportSelectionChange();
                 return;
             }
@@ -378,10 +416,33 @@ void EditorList::scroll_to(int index) {
     palette_scroller->setScroll(max_scroll == 0 ? 0.0f : 1.0f * index / max_scroll);
 }
 
+bool EditorList::is_visible(int index) {
+    if (index < 0) { return true; }
+    int height = mSize.y();
+    int rows = height / 30;
+    int max_scroll = impl->mItems.size() - rows;
+    if (index > max_scroll) index = max_scroll;
+    int current = (palette_scroller->scroll() * max_scroll);
+    return index >= current && index <= current + rows;
+}
+
 void EditorList::setSelected(const std::string &sel) {
     int i = 0;
     for (const auto &item : impl->mItems) {
         if (item == sel) {
+            selectByIndex(i);
+            return;
+        }
+        ++i;
+    }
+    selectByIndex(-1);
+}
+
+void EditorList::setUserSelected(const std::string &sel) {
+    int i = 0;
+    for (const auto &item : impl->mItems) {
+        if (item == sel) {
+            impl->debounce_select(i);
             selectByIndex(i);
             return;
         }
