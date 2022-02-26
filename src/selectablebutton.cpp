@@ -47,8 +47,8 @@ void SelectableButton::draw(NVGcontext *ctx) {
     if (mSelected) {
         nvgStrokeWidth(ctx, 4.0f);
         nvgBeginPath(ctx);
-        nvgRect(ctx, mPos.x() - 0.5f, mPos.y() - 0.5f, mSize.x() + 1, mSize.y() + 1);
-        nvgStrokeColor(ctx, nvgRGBA(80, 220, 0, 255));
+        nvgRect(ctx, mPos.x() - 0.5f, mPos.y() - 0.5f, mSize.x() + 1, mSize.y());
+        nvgStrokeColor(ctx, nvgRGBA(128, 128, 255, 255));
         nvgStroke(ctx);
     }
 }

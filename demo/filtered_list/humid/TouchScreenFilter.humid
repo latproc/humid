@@ -16,7 +16,7 @@ TouchFilter STRUCTURE EXTENDS SCREEN {
     text_colour: "#00000000",
     remote: "null",
     selected: $filter.selected,
-    pos_y: 102,
+    pos_y: 103,
     selected_index: $filter.selected_index,
     pos_x: 238,
     value_scale: 1.000000,
@@ -50,7 +50,7 @@ TouchFilter STRUCTURE EXTENDS SCREEN {
     border_grad_bot: "#333333",
     value_type: 0,
     behaviour: 1,
-    height: 60,
+    height: 58,
     border_grad_top: "#cccccc",
     border: 0
   );

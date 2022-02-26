@@ -242,7 +242,7 @@ void createList(WidgetParams &params) {
     if (selind_v != SymbolTable::Null) {
         long idx;
         if (selind_v.asInteger(idx)) {
-            el->select(idx);
+            el->selectByIndex(idx);
         }
     }
     const Value & scroll_pos_v(params.element->getValue("scroll_pos"));

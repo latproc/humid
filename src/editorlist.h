@@ -60,7 +60,7 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
     void setItemFilename(const std::string &filename);
     const std::string &item_filename();
     int selectedIndex() const;
-    void select(int index);
+    void selectByIndex(int index);
     const std::string &selected() const;
     void setSelected(const std::string &sel);
     void reportSelectionChange();

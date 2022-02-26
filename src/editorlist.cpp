@@ -254,7 +254,7 @@ void EditorList::performLayout(NVGcontext *ctx) {
         SelectableButton *b = new ListItemButton(EDITOR->gui(), this, item, cell);
         b->setCaption(item);
         b->setEnabled(true);
-        b->setFixedSize(Vector2i(width() - 10, 30));
+        b->setFixedSize(Vector2i(width() - 10, 29));
         b->setTheme(EDITOR->gui()->getTheme());
         b->setPassThrough(true);
         b->setCallback([this, item]() { setSelected(item); });
@@ -340,21 +340,35 @@ int EditorList::selectedIndex() const {
     return index;
 }
 
-void EditorList::select(int index) {
+void EditorList::selectByIndex(int index) {
     if (index < 0 || index >= impl->mItems.size()) {
         impl->selected_index = -1;
         impl->m_selected = Value("", Value::t_string);
+        clearSelections();
+        reportSelectionChange();
         return;
     }
-    impl->selected_index = index;
-    impl->m_selected = Value(impl->mItems[index], Value::t_string);
+    auto widget = palette_content->childAt(index);
+    if (widget) {
+        if (widget->childCount() == 1) {
+            SelectableButton *sel = dynamic_cast<SelectableButton*>(widget->childAt(0));
+            if (sel) {
+                sel->select();
+                impl->selected_index = index;
+                impl->m_selected = Value(impl->mItems[index], Value::t_string);
+                reportSelectionChange();
+                return;
+            }
+        }
+    }
+    impl->selected_index = -1;
+    impl->m_selected = Value("", Value::t_string);
     reportSelectionChange();
 }
 
 const std::string &EditorList::selected() const { return impl->selected(); }
 
 void EditorList::scroll_to(int index) {
-    std::cout << "scroll to: " << index << "\n";
     int height = mSize.y();
     int rows = height / 30;
     int max_scroll = impl->mItems.size() - rows;
@@ -368,12 +382,12 @@ void EditorList::setSelected(const std::string &sel) {
     int i = 0;
     for (const auto &item : impl->mItems) {
         if (item == sel) {
-            select(i);
+            selectByIndex(i);
             return;
         }
         ++i;
     }
-    select(-1);
+    selectByIndex(-1);
 }
 
 void EditorList::draw(NVGcontext *ctx) {
@@ -486,7 +500,7 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
         setSelected(value);
     }
     else if (prop == "Selected Index") {
-        select(std::atoi(value.c_str()));
+        selectByIndex(std::atoi(value.c_str()));
     }
     else if (prop == "Scroll Pos") {
         scroll_to(std::atoi(value.c_str()));
@@ -568,7 +582,7 @@ void EditorList::loadProperties(PropertyFormHelper *properties) {
             "Selected", [&](std::string value) mutable { setSelected(value); },
             [&]() -> std::string { return selected(); });
         properties->addVariable<int>(
-            "Selected Index", [&](int value) mutable { select(value); },
+            "Selected Index", [&](int value) mutable { selectByIndex(value); },
             [&]() -> int { return selectedIndex(); });
         properties->addVariable<int>(
             "Scroll Pos", [&](int value) mutable { scroll_to(value); },

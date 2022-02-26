@@ -13,6 +13,7 @@ Palette::Palette(PaletteType pt) : kind(pt) {}
 
 bool Palette::hasSelections() const { return selections.size() > 0; }
 void Palette::select(Selectable *w) {
+    if (!w) { return; }
     if (kind == PT_SINGLE_SELECT)
         clearSelections(w);
     selections.insert(w);

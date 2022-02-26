@@ -21,10 +21,8 @@ void Selectable::select() {
             palette->select(this);
         justSelected();
     }
-    else {
-        int x = 1; // already selected
-    }
 }
+
 void Selectable::deselect() {
     mSelected = false;
     if (palette)
