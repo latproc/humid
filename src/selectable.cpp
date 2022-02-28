@@ -7,12 +7,13 @@
 #include "palette.h"
 #include "selectablebutton.h"
 #include "selectablewidget.h"
-#include <iostream>
 #include <cassert>
+#include <iostream>
 
 Selectable::Selectable(Palette *pal) : palette(pal), mSelected(false) {
     if (pal) {
-        assert(pal->getType() == Palette::PT_MULTIPLE_SELECT || pal->getType() == Palette::PT_SINGLE_SELECT);
+        assert(pal->getType() == Palette::PT_MULTIPLE_SELECT ||
+               pal->getType() == Palette::PT_SINGLE_SELECT);
     }
 }
 

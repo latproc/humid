@@ -215,8 +215,14 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
     window->setVisible(false);
     extern int run_only;
     extern long full_screen_mode;
-    if (!run_only || !full_screen_mode) {
+    if (!run_only && !full_screen_mode) {
         window->setTitle("Panel Window");
+    }
+    else {
+        window->setTitle("");
+    }
+    if (!run_only || !full_screen_mode) {
+
         long window_x = gui->size().x() > width ? (gui->size().x() - width) / 2 : 0;
         long window_y = gui->size().y() > height ? (gui->size().y() - height) / 2 : 0;
         {
@@ -228,7 +234,6 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
         window->setPosition(nanogui::Vector2i(window_x, window_y));
     }
     else {
-        window->setTitle("");
         window->setPosition(nanogui::Vector2i(0, 0));
     }
     push(window);
@@ -346,14 +351,10 @@ void UserWindow::setStructure(Structure *s) {
     std::chrono::duration<double> load_time = t_load - t_clear;
     std::chrono::duration<double> layout_time = end - t_load;
     std::chrono::duration<double> elapsed_seconds = end - start;
-    std::cout << "UserWindow::setStructure elapsed: "
-        << save_time.count() << " "
-        << clear_time.count() << " "
-        << load_time.count() << " "
-        << layout_time.count() << " "
-        << elapsed_seconds.count() << " "
-        << "\n";
-
+    std::cout << "UserWindow::setStructure elapsed: " << save_time.count() << " "
+              << clear_time.count() << " " << load_time.count() << " " << layout_time.count() << " "
+              << elapsed_seconds.count() << " "
+              << "\n";
 }
 
 NVGcontext *UserWindow::getNVGContext() { return gui->nvgContext(); }
@@ -476,7 +477,9 @@ void UserWindow::loadStructure(Structure *s) {
             }
 
             StructureClass *element_class = findClass(element->getKind());
-            if (!element_class) { continue; }
+            if (!element_class) {
+                continue;
+            }
 #if 0
             if (false && !element_class) {
                 std::string kind = element->getKind();
@@ -495,7 +498,7 @@ void UserWindow::loadStructure(Structure *s) {
                 createLabel(params);
             }
             else if (element_class->isExtension("BUTTON") ||
-                                       element_class->isExtension("INDICATOR")) {
+                     element_class->isExtension("INDICATOR")) {
                 createButton(params);
             }
             else if (element_class->isExtension("TEXT")) {

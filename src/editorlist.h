@@ -70,7 +70,7 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
 
   protected:
     class Impl;
-    Impl * impl = nullptr;
+    Impl *impl = nullptr;
     nanogui::Color mBackgroundColor;
     nanogui::Color mTextColor;
     nanogui::VScrollPanel *palette_scroller;

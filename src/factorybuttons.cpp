@@ -23,6 +23,9 @@
 #include <iostream>
 #include <symboltable.h>
 
+extern int run_only;
+extern int full_screen_mode;
+
 StructureFactoryButton::StructureFactoryButton(EditorGUI *screen, const std::string type_str,
                                                Palette *pal, nanogui::Widget *parent,
                                                int object_type, const std::string &name,
@@ -265,7 +268,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
         lbl->setName(tag_name);
         lbl->setCaption("");
         lbl->setEnabled(true);
-        lbl->setTooltip(tag_name);
+        if (!run_only && !full_screen_mode) {
+            lbl->setTooltip(tag_name);
+        }
         lbl->setSize(Vector2i(object_width, object_height));
         LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
         if (lp)
@@ -283,7 +288,9 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
         textBox->setEditable(true);
         textBox->setSize(Vector2i(object_width, object_height));
         textBox->setFixedSize(Vector2i(object_width, object_height));
-        textBox->setTooltip(tag_name);
+        if (!run_only && !full_screen_mode) {
+            textBox->setTooltip(tag_name);
+        }
         //textBox->setDefaultValue("0");
         //textBox->setFontSize(16);
         //textBox->setFormat("[1-9][0-9]*");

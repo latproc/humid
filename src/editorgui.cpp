@@ -90,8 +90,9 @@ class EditorKeyboard {
 };
 EditorKeyboard *EditorKeyboard::instance_ = nullptr;
 
-EditorGUI::EditorGUI(int width, int height, bool full_screen)
-    : ClockworkClient(nanogui::Vector2i(width, height), "Humid", !full_screen, full_screen),
+EditorGUI::EditorGUI(int width, int height, bool full_screen, bool run_only)
+    : ClockworkClient(nanogui::Vector2i(width, height), full_screen || run_only ? "" : "Humid",
+                      !full_screen, full_screen),
       theme(0), state(GUIWELCOME), editor(0), w_toolbar(0), w_properties(0), w_theme(0), w_user(0),
       w_patterns(0), w_structures(0), w_connections(0), w_startup(0), w_screens(0), w_views(0),
       needs_update(false), sample_buffer_size(5000), project(0) {
@@ -153,7 +154,9 @@ bool EditorGUI::keyboardEvent(int key, int scancode, int action, int modifiers) 
             }
 
             if (w_user && w_user->structure()) {
-                if (debug) { std::cout << "detected key: " << key_name << "\n"; }
+                if (debug) {
+                    std::cout << "detected key: " << key_name << "\n";
+                }
                 std::string conn;
                 StructureClass *sc = w_user->structure()->getStructureDefinition();
                 if (sc) {
@@ -1072,7 +1075,8 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
             }
         }
     }
-    if (DEBUG_WIDGET) std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
+    if (DEBUG_WIDGET)
+        std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
 }
 
 void EditorGUI::update(ClockworkClient::Connection *connection) {

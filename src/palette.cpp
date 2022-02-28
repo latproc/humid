@@ -15,7 +15,9 @@ Palette::~Palette() = default;
 
 bool Palette::hasSelections() const { return selections.size() > 0; }
 void Palette::select(Selectable *w) {
-    if (!w) { return; }
+    if (!w) {
+        return;
+    }
     if (kind == PT_SINGLE_SELECT)
         clearSelections(w);
     selections.insert(w);

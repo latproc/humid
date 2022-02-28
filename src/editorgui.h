@@ -44,7 +44,7 @@ class ViewsWindow;
 class EditorGUI : public ClockworkClient {
   public:
     enum GuiState { GUIWELCOME, GUISELECTPROJECT, GUICREATEPROJECT, GUIWORKING, GUIEDITMODE };
-    EditorGUI(int width = 1024, int height = 768, bool full_screen = false);
+    EditorGUI(int width = 1024, int height = 768, bool full_screen = false, bool run_only = false);
 
     virtual void moveWindowToFront(nanogui::Window *window) override {
         if (!w_user || window != w_user->getWindow())

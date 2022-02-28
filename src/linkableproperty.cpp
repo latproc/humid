@@ -106,9 +106,7 @@ int LinkableProperty::address_group() const {
         return address_str.at(0) - '0';
 }
 
-int LinkableProperty::num_links() const {
-    return links.size();
-}
+int LinkableProperty::num_links() const { return links.size(); }
 
 void LinkableProperty::link(LinkableObject *lo) {
     links.remove(lo);
@@ -137,7 +135,6 @@ void LinkableProperty::unlink(EditorObject *w) {
             std::cout << "unlinked " << unlinked << " from " << w->getName() << "\n";
         }
     }
-
 }
 
 void LinkableProperty::clear() {

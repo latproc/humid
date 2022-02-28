@@ -57,23 +57,36 @@ EditorWidget::EditorWidget(NamedObject *owner, const std::string structure_name,
         p = EDITOR->gui()->getUserWindow();
     }
     palette = p;
-    if (DEBUG_WIDGET) { std::cout << "created " << name << "\n"; }
+    if (DEBUG_WIDGET) {
+        std::cout << "created " << name << "\n";
+    }
 }
 
 EditorWidget::~EditorWidget() {
-    if (DEBUG_WIDGET) { std::cout << "deleting " << name << "\n"; }
+    if (DEBUG_WIDGET) {
+        std::cout << "deleting " << name << "\n";
+    }
     auto links = remote_links;
     if (links) {
-        if (DEBUG_WIDGET)  { std::cout << "have " << links->size() << " links to remove\n"; }
-        for (auto & link : *links) {
-            if (DEBUG_WIDGET) std::cout << "unlinking from " << link.property_name << "\n";
+        if (DEBUG_WIDGET) {
+            std::cout << "have " << links->size() << " links to remove\n";
+        }
+        for (auto &link : *links) {
+            if (DEBUG_WIDGET)
+                std::cout << "unlinking from " << link.property_name << "\n";
             auto property_links = LinkManager::instance().links(link.property_name);
-            if (property_links) { property_links->unlink(this); }
+            if (property_links) {
+                property_links->unlink(this);
+            }
             else {
-                if (DEBUG_WIDGET) { std::cout << "no property links found\n"; }
+                if (DEBUG_WIDGET) {
+                    std::cout << "no property links found\n";
+                }
                 auto linkable_property = EDITOR->gui()->findLinkableProperty(link.remote_name);
                 if (linkable_property) {
-                    if (DEBUG_WIDGET) { std::cout << "found linkable property for " << link.property_name << "\n"; }
+                    if (DEBUG_WIDGET) {
+                        std::cout << "found linkable property for " << link.property_name << "\n";
+                    }
                     linkable_property->unlink(this);
                 }
             }

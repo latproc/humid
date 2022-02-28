@@ -37,13 +37,9 @@ std::list<Structure *> hm_structures;
 std::list<Structure *> builtin_structures;
 std::list<StructureClass *> hm_classes;
 
-Structure::~Structure() {
-    delete widget_params;
-}
+Structure::~Structure() { delete widget_params; }
 
-WidgetParams *Structure::widgetParams() {
-    return widget_params;
-}
+WidgetParams *Structure::widgetParams() { return widget_params; }
 void Structure::setWidgetParams(WidgetParams *params) {
     assert(!widget_params);
     widget_params = params;

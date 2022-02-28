@@ -182,17 +182,19 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
                 if (getRemote()) {
                     // a normal button is pressed and released
                     std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-                    gui->queueMessage(conn, msgon,
-                                      [](std::string s) {
-                                          extern int debug;
-                                          if (debug) { std::cout << ": " << s << "\n"; }
-                                        });
+                    gui->queueMessage(conn, msgon, [](std::string s) {
+                        extern int debug;
+                        if (debug) {
+                            std::cout << ": " << s << "\n";
+                        }
+                    });
                     std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-                    gui->queueMessage(conn, msgoff,
-                                      [](std::string s) {
-                                          extern int debug;
-                                          if (debug) { std::cout << ": " << s << "\n"; }
-                                        });
+                    gui->queueMessage(conn, msgoff, [](std::string s) {
+                        extern int debug;
+                        if (debug) {
+                            std::cout << ": " << s << "\n";
+                        }
+                    });
                 }
             }
         });
@@ -206,18 +208,22 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
                             conn,
                             gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state),
                             [](std::string s) {
-                                          extern int debug;
-                                          if (debug) { std::cout << ": " << s << "\n"; }
-                                        });
+                                extern int debug;
+                                if (debug) {
+                                    std::cout << ": " << s << "\n";
+                                }
+                            });
                     }
                     else
                         gui->queueMessage(conn,
-                                        gui->getIODSyncCommand(conn, getRemote()->getKind(),
+                                          gui->getIODSyncCommand(conn, getRemote()->getKind(),
                                                                  address(), (state) ? 1 : 0),
-                                        [](std::string s) {
-                                            extern int debug;
-                                            if (debug) { std::cout << ": " << s << "\n"; }
-                                        });
+                                          [](std::string s) {
+                                              extern int debug;
+                                              if (debug) {
+                                                  std::cout << ": " << s << "\n";
+                                              }
+                                          });
                 }
             }
         });

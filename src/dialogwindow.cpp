@@ -17,7 +17,7 @@ DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme)
     setFixedSize(Vector2i(gui->width() / 2, gui->height() / 2));
     setSize(Vector2i(180, 240));
     setPosition(Vector2i(gui->width() / 4, gui->height() / 4));
-    setTitle("Dialog");
+    setTitle("");
     setVisible(true);
 }
 

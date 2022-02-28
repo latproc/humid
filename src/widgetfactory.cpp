@@ -16,6 +16,9 @@
 #include "valuehelper.h"
 #include <nanogui/button.h>
 
+extern int run_only;
+extern long full_screen_mode;
+
 static bool stringEndsWith(const std::string &src, const std::string ending) {
     size_t l_src = src.length();
     size_t l_end = ending.length();
@@ -65,14 +68,10 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem, Edi
       vis(element->getValue("visibility")), scale_val(element->getValue("value_scale")),
       border(element->getValue("border")), auto_update(element->getValue("auto_update")),
       working_text(element->getValue("working_text")),
-      font_size_val(element->getValue("font_size")),
-      remote_name(element->getValue("remote")),
-      wrap_v(element->getValue("wrap")),
-      ivis_v(element->getValue("inverted_visibility")),
-      value_type_val(element->getValue("value_type")),
-      tab_pos_val(element->getValue("tab_pos")),
-      x_scale_val(element->getValue("x_scale")),
-      theme_name(element->getValue("theme")),
+      font_size_val(element->getValue("font_size")), remote_name(element->getValue("remote")),
+      wrap_v(element->getValue("wrap")), ivis_v(element->getValue("inverted_visibility")),
+      value_type_val(element->getValue("value_type")), tab_pos_val(element->getValue("tab_pos")),
+      x_scale_val(element->getValue("x_scale")), theme_name(element->getValue("theme")),
       kind(element->getKind()), offset(offset_) {
     update();
 }
@@ -107,7 +106,7 @@ void WidgetParams::update() {
 
     ivis = false;
     if (ivis_v != SymbolTable::Null)
-            ivis_v.asBoolean(ivis);
+        ivis_v.asBoolean(ivis);
     font_size = 0;
     if (font_size_val != SymbolTable::Null)
         font_size_val.asInteger(font_size);
@@ -217,42 +216,42 @@ void createList(WidgetParams &params) {
     }
     if (params.font_size)
         el->setFontSize(params.font_size);
-    const Value & bg_colour(params.element->getValue("bg_color"));
+    const Value &bg_colour(params.element->getValue("bg_color"));
     if (bg_colour != SymbolTable::Null)
         el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-    const Value & text_colour(params.element->getValue("text_colour"));
+    const Value &text_colour(params.element->getValue("text_colour"));
     if (text_colour != SymbolTable::Null)
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
-    const Value & alignment_v(params.element->getValue("alignment"));
+    const Value &alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         el->setPropertyValue("Alignment", alignment_v.asString());
-    const Value & items_v(params.element->getValue("items"));
+    const Value &items_v(params.element->getValue("items"));
     if (items_v != SymbolTable::Null) {
         el->setItems(items_v.asString());
     }
-    const Value & items_file_v(params.element->getValue("items_file"));
+    const Value &items_file_v(params.element->getValue("items_file"));
     if (items_file_v != SymbolTable::Null) {
         el->setItemFilename(items_file_v.asString());
     }
-    const Value & selected_v(params.element->getValue("selected"));
+    const Value &selected_v(params.element->getValue("selected"));
     if (selected_v != SymbolTable::Null) {
         el->setSelected(selected_v.asString());
     }
-    const Value & selind_v(params.element->getValue("selected_index"));
+    const Value &selind_v(params.element->getValue("selected_index"));
     if (selind_v != SymbolTable::Null) {
         long idx;
         if (selind_v.asInteger(idx)) {
             el->selectByIndex(idx);
         }
     }
-    const Value & scroll_pos_v(params.element->getValue("scroll_pos"));
+    const Value &scroll_pos_v(params.element->getValue("scroll_pos"));
     if (scroll_pos_v != SymbolTable::Null) {
         long idx;
         if (scroll_pos_v.asInteger(idx)) {
             el->scroll_to(idx);
         }
     }
-    const Value & valignment_v(params.element->getValue("valign"));
+    const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         el->setPropertyValue("Vertical Alignment", valignment_v.asString());
     if (params.format_val != SymbolTable::Null)
@@ -285,7 +284,7 @@ void createImage(WidgetParams &params) {
     if (params.theme.get()) {
         el->setTheme(params.theme);
     }
-    const Value & img_scale_val(params.element->getValue("scale"));
+    const Value &img_scale_val(params.element->getValue("scale"));
     double img_scale = 1.0f;
     if (img_scale_val != SymbolTable::Null)
         img_scale_val.asFloat(img_scale);
@@ -303,8 +302,8 @@ void createImage(WidgetParams &params) {
     if (params.tab_pos)
         el->setTabPosition(params.tab_pos);
     el->setInvertedVisibility(params.ivis);
-    const Value & image_file_v((params.lp) ? params.lp->value()
-                                         : (params.element->getValue("image_file")));
+    const Value &image_file_v((params.lp) ? params.lp->value()
+                                          : (params.element->getValue("image_file")));
     if (image_file_v != SymbolTable::Null) {
         std::string ifn = image_file_v.asString();
         el->setImageName(ifn);
@@ -371,15 +370,15 @@ void createText(WidgetParams &params) {
     if (params.theme.get()) {
         textBox->setTheme(params.theme);
     }
-    const Value & text_v((params.lp)                            ? params.lp->value()
-                       : (params.remote != SymbolTable::Null) ? ""
-                                                              : params.element->getValue("text"));
+    const Value &text_v((params.lp)                            ? params.lp->value()
+                        : (params.remote != SymbolTable::Null) ? ""
+                                                               : params.element->getValue("text"));
     if (text_v != SymbolTable::Null)
         textBox->setValue(text_v.asString());
-    const Value & alignment_v(params.element->getValue("alignment"));
+    const Value &alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         textBox->setPropertyValue("Alignment", alignment_v.asString());
-    const Value & valignment_v(params.element->getValue("valign"));
+    const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
     textBox->setEnabled(true);
@@ -412,10 +411,12 @@ void createText(WidgetParams &params) {
         textBox->working_text = params.working_text.asString();
     }
     textBox->setName(params.element->getName());
-    if (params.lp)
-        textBox->setTooltip(params.remote.asString());
-    else
-        textBox->setTooltip(params.element->getName());
+    if (!run_only && !full_screen_mode) {
+        if (params.lp)
+            textBox->setTooltip(params.remote.asString());
+        else
+            textBox->setTooltip(params.element->getName());
+    }
     if (params.lp)
         params.lp->link(new LinkableText(textBox));
     if (params.visibility)
@@ -508,7 +509,7 @@ void createPlot(WidgetParams &params) {
         if (params.element->getValue("overlay_plots").asBoolean(should_overlay_plots))
             lp->overlay(should_overlay_plots);
     }
-    const Value & monitors(params.element->getValue("monitors"));
+    const Value &monitors(params.element->getValue("monitors"));
     lp->setInvertedVisibility(params.ivis);
     if (monitors != SymbolTable::Null) {
         lp->setMonitors(params.gui->getUserWindow(), monitors.asString());
@@ -564,10 +565,10 @@ void createButton(WidgetParams &params) {
         b->setBorder(params.border.iValue);
     b->setInvertedVisibility(params.ivis);
     b->setWrap(params.wrap);
-    const Value & alignment_v(params.element->getValue("alignment"));
+    const Value &alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
         b->setPropertyValue("Alignment", alignment_v);
-    const Value & valignment_v(params.element->getValue("valign"));
+    const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         b->setPropertyValue("Vertical Alignment", valignment_v);
     if (params.format_val != SymbolTable::Null)
@@ -643,10 +644,10 @@ void createComboBox(WidgetParams &params) {
     }
     if (params.font_size)
         el->setFontSize(params.font_size);
-    const Value & bg_colour(params.element->getValue("bg_color"));
+    const Value &bg_colour(params.element->getValue("bg_color"));
     if (bg_colour != SymbolTable::Null)
         el->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
-    const Value & text_colour(params.element->getValue("text_colour"));
+    const Value &text_colour(params.element->getValue("text_colour"));
     if (text_colour != SymbolTable::Null)
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
     if (params.format_val != SymbolTable::Null)

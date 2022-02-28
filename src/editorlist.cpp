@@ -6,6 +6,7 @@
 //	3-clause BSD License in LICENSE.txt.
 
 #include "editorlist.h"
+#include "anchor.h"
 #include "colourhelper.h"
 #include "editor.h"
 #include "editorwidget.h"
@@ -13,6 +14,7 @@
 #include "propertyformhelper.h"
 #include "selectablebutton.h"
 #include "valuehelper.h"
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <nanogui/layout.h>
@@ -23,15 +25,13 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <utility>
-#include <chrono>
-#include "anchor.h"
 
 extern int debug;
 
 namespace {
 
 const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
-                                    const std::string &property) {
+                                       const std::string &property) {
     if (!links) {
         return nullptr;
     }
@@ -42,7 +42,9 @@ const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
     return nullptr;
 }
 
-void send_property_updates(const std::string & connection_name, const std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> &links) {
+void send_property_updates(
+    const std::string &connection_name,
+    const std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> &links) {
     for (const auto &link : links) {
         std::stringstream ss;
         std::string remote_machine = link.first->remote_name;
@@ -56,7 +58,7 @@ void send_property_updates(const std::string & connection_name, const std::vecto
             remote_machine = remote_machine.substr(0, separator_pos);
         }
         char *msg = MessageEncoding::encodeCommand("PROPERTY", remote_machine, remote_property,
-                                                    link.second->asString());
+                                                   link.second->asString());
         //ss << "PROPERTY " << remote_machine << " " << remote_property << " " << link.second << "";
         EDITOR->gui()->queueMessage(connection_name, msg, [](std::string s) {
             if (debug) {
@@ -96,10 +98,9 @@ const std::map<std::string, std::string> &EditorList::reverse_property_map() con
 }
 
 class EditorList::Impl {
-public:
+  public:
     using PropertyLinks = std::vector<std::pair<const LinkManager::LinkInfo *, Value *>>;
-    Impl(EditorList &owner) : owner(owner), last_selected(std::chrono::steady_clock::now()) {
-    }
+    Impl(EditorList &owner) : owner(owner), last_selected(std::chrono::steady_clock::now()) {}
 
     void report_selection_change() {
         if (m_links.empty()) {
@@ -112,20 +113,23 @@ public:
                 m_links.push_back(std::make_pair(link, &selected_index));
             }
         }
-        if (!m_links.empty()) {  send_property_updates(owner.connection_name, m_links); }
+        if (!m_links.empty()) {
+            send_property_updates(owner.connection_name, m_links);
+        }
     }
 
-    const PropertyLinks & links() const { return m_links; }
+    const PropertyLinks &links() const { return m_links; }
     void setItemFilename(const std::string &filename);
-    int scroll_pos() {
-        return m_scroll_pos.iValue;
-    }
+    int scroll_pos() { return m_scroll_pos.iValue; }
 
     void set_scroll_pos(int pos, int min_pos, int max_pos) {
-        if (m_scroll_pos == pos) return;
+        if (m_scroll_pos == pos)
+            return;
         if (pos < min_pos || pos > max_pos) {
-            if (pos < min_pos) pos = min_pos;
-            if (pos > max_pos) pos = max_pos;
+            if (pos < min_pos)
+                pos = min_pos;
+            if (pos > max_pos)
+                pos = max_pos;
             m_scroll_pos = pos;
             if (!owner.connection_name.empty() && owner.remote_links) {
                 std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> links;
@@ -136,10 +140,12 @@ public:
                 }
             }
         }
-        else { m_scroll_pos = pos; }
+        else {
+            m_scroll_pos = pos;
+        }
     }
 
-    const std::string & selected() { return m_selected.sValue; }
+    const std::string &selected() { return m_selected.sValue; }
 
     // whatever the user selects overrides backend changes for a
     // period of time.
@@ -173,7 +179,7 @@ public:
 #endif
     char item_delimiter = ';';
 
-private:
+  private:
     EditorList &owner;
     PropertyLinks m_links;
     Value m_scroll_pos = 0;
@@ -196,9 +202,7 @@ EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam
     impl = new Impl(*this);
 }
 
-EditorList::~EditorList() {
-    delete impl;
-}
+EditorList::~EditorList() { delete impl; }
 
 bool EditorList::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down,
                                   int modifiers) {
@@ -388,12 +392,14 @@ void EditorList::selectByIndex(int index) {
     auto widget = palette_content->childAt(index);
     if (widget) {
         if (widget->childCount() == 1) {
-            SelectableButton *sel = dynamic_cast<SelectableButton*>(widget->childAt(0));
+            SelectableButton *sel = dynamic_cast<SelectableButton *>(widget->childAt(0));
             if (sel) {
                 sel->select();
                 impl->selected_index = index;
                 impl->m_selected = Value(impl->mItems[index], Value::t_string);
-                if (!is_visible(index)) { scroll_to(index); }
+                if (!is_visible(index)) {
+                    scroll_to(index);
+                }
                 reportSelectionChange();
                 return;
             }
@@ -410,18 +416,22 @@ void EditorList::scroll_to(int index) {
     int height = mSize.y();
     int rows = height / 30;
     int max_scroll = impl->mItems.size() - rows;
-    if (max_scroll < 0) max_scroll = 0;
+    if (max_scroll < 0)
+        max_scroll = 0;
     impl->set_scroll_pos(index, 0, max_scroll);
     index = impl->scroll_pos();
     palette_scroller->setScroll(max_scroll == 0 ? 0.0f : 1.0f * index / max_scroll);
 }
 
 bool EditorList::is_visible(int index) {
-    if (index < 0) { return true; }
+    if (index < 0) {
+        return true;
+    }
     int height = mSize.y();
     int rows = height / 30;
     int max_scroll = impl->mItems.size() - rows;
-    if (index > max_scroll) index = max_scroll;
+    if (index > max_scroll)
+        index = max_scroll;
     int current = (palette_scroller->scroll() * max_scroll);
     return index >= current && index <= current + rows;
 }
@@ -540,7 +550,9 @@ Value EditorList::getPropertyValue(const std::string &prop) {
     else if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
         return Value(stringFromColour(backgroundColor()), Value::t_string);
     }
-    else if (prop == "Scroll Pos") { return impl->scroll_pos(); }
+    else if (prop == "Scroll Pos") {
+        return impl->scroll_pos();
+    }
     else if (prop == "Selected")
         return impl->m_selected;
     else if (prop == "Selected Index")

@@ -650,9 +650,7 @@ int main(int argc, const char **argv) {
             std::cout << "settings videomode: " << width << "x" << height
                       << " fullscreen:" << full_screen << "\n";
 
-            nanogui::ref<EditorGUI> app = (full_screen)
-                                              ? new EditorGUI(width, height, full_screen != 0)
-                                              : new EditorGUI(width, height);
+            nanogui::ref<EditorGUI> app = new EditorGUI(width, height, full_screen, run_only);
             ThemeManager::instance().setContext(app->nvgContext());
             for (auto settings : Structure::findStructureClasses("THEME")) {
                 ThemeManager::instance().addTheme(settings->getName(),

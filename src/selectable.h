@@ -33,8 +33,8 @@ class Selectable {
   protected:
     Palette *palette = nullptr;
     bool mSelected;
-  private:
 
+  private:
 };
 
 std::ostream &operator<<(std::ostream &out, const Selectable &m);

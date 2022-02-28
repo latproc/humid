@@ -21,6 +21,6 @@ else
   export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
 fi
 
-#${HUMID} --debug 1 humid/ &
+${HUMID} humid/ &
 ${CW} cw/
 

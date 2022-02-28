@@ -461,7 +461,7 @@ bool LinePlot::scrollEvent(const Vector2i &p, const Vector2f &rel) {
     double val = ts->getData()->getBufferValueAt(t_data);
     char buf[80];
     snprintf(buf, 80, "%s,%5.2lf", display_time(t_data).c_str(), val);
-    std::cout << buf << "\n";
+    // std::cout << buf << "\n";
     setTooltip(buf);
 
     x_scale += rel.y() / 2.0;
