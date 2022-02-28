@@ -248,7 +248,7 @@ void EditorList::loadItems() {
         return; // the file was tested and error logged when set
     }
 #ifdef linux
-    if (last_file_mod < file_stat.st_mtime) {
+    if (impl->last_file_mod < file_stat.st_mtime) {
 #else
     if (impl->last_file_mod < file_stat.st_mtimespec) {
 #endif
@@ -457,7 +457,7 @@ void EditorList::draw(NVGcontext *ctx) {
         struct stat file_stat;
         int err = stat(impl->m_item_file.c_str(), &file_stat);
 #ifdef linux
-        if (err == 0 && last_file_mod < file_stat.st_mtime) {
+        if (err == 0 && impl->last_file_mod < file_stat.st_mtime) {
 #else
         if (err == 0 && impl->last_file_mod < file_stat.st_mtimespec) {
 #endif
