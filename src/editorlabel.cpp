@@ -107,6 +107,11 @@ void EditorLabel::draw(NVGcontext *ctx) {
             valStr[i] = '*';
         }
     }
+    size_t break_pos = valStr.find("\\n");
+    while (break_pos != std::string::npos) {
+      valStr = valStr.replace(break_pos, 2, "\n");
+      break_pos = valStr.find("\\n");
+    }
 
     int pos_v = mPos.y();
     if (valign != 0) {
