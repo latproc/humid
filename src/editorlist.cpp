@@ -25,10 +25,39 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <utility>
+#include "thememanager.h"
 
 extern int debug;
 
 namespace {
+
+class CustomVScrollPanel : public nanogui::VScrollPanel {
+public:
+    CustomVScrollPanel(Widget *parent) : nanogui::VScrollPanel(parent) {}
+    
+    void draw(NVGcontext *ctx) {
+        if (mChildren.empty())
+            return;
+        Widget *child = mChildren[0];
+        child->setPosition(Vector2i(0, -mScroll*(mChildPreferredHeight - mSize.y())));
+        mChildPreferredHeight = child->preferredSize(ctx).y();
+        float scrollh = height() *
+            std::min(1.0f, height() / (float) mChildPreferredHeight);
+
+        if (mUpdateLayout)
+            child->performLayout(ctx);
+
+        nvgSave(ctx);
+        nvgTranslate(ctx, mPos.x(), mPos.y());
+        nvgIntersectScissor(ctx, 0, 0, mSize.x(), mSize.y());
+        if (child->visible())
+            child->draw(ctx);
+        nvgRestore(ctx);
+
+        if (mChildPreferredHeight <= mSize.y())
+            return;
+    }
+};
 
 const LinkManager::LinkInfo *find_link(const LinkManager::Links *links,
                                        const std::string &property) {
@@ -76,8 +105,19 @@ class ListItemButton : public SelectableButton {
     ListItemButton(EditorGUI *screen, Palette *pal, const std::string label,
                    nanogui::Widget *parent);
     nanogui::Widget *create(nanogui::Widget *container) const override { return nullptr; }
-
+    void setSelectionColour(const nanogui::Color &selectionColor) { mSelectionColor = selectionColor; }
+    void draw(NVGcontext *ctx) override {
+        if (mSelected) {
+            nvgStrokeWidth(ctx, 4.0f);
+            nvgBeginPath(ctx);
+            nvgRect(ctx, mPos.x() - 0.5f, mPos.y() - 0.5f, mSize.x() + 1, mSize.y());
+            nvgFillColor(ctx, mSelectionColor);
+            nvgFill(ctx);
+        }
+        nanogui::Button::draw(ctx);
+    }
   private:
+    nanogui::Color mSelectionColor = nanogui::Color(128, 128, 255, 255);
     EditorGUI *gui;
 };
 
@@ -100,7 +140,23 @@ const std::map<std::string, std::string> &EditorList::reverse_property_map() con
 class EditorList::Impl {
   public:
     using PropertyLinks = std::vector<std::pair<const LinkManager::LinkInfo *, Value *>>;
-    Impl(EditorList &owner) : owner(owner), last_selected(std::chrono::steady_clock::now()) {}
+    Impl(EditorList &owner) : owner(owner), last_selected(std::chrono::steady_clock::now()) {
+        list_theme = ThemeManager::instance().createTheme();
+        list_theme->incRef();
+        list_theme->mButtonGradientBotFocused = nanogui::Color(0, 0);
+        list_theme->mButtonGradientTopFocused = nanogui::Color(0, 0);
+        list_theme->mButtonGradientBotPushed = nanogui::Color(0, 0);
+        list_theme->mButtonGradientTopPushed = nanogui::Color(0, 0);
+        list_theme->mButtonGradientBotUnfocused = nanogui::Color(0, 0);
+        list_theme->mButtonGradientTopUnfocused = nanogui::Color(0, 0);
+        list_theme->mBorderLight = nanogui::Color(0, 0);
+        list_theme->mBorderDark = nanogui::Color(0, 0);
+    }
+    ~Impl() {
+        list_theme->decRef();
+    }
+    
+    nanogui::Theme *theme() { return list_theme; }
 
     void report_selection_change() {
         if (m_links.empty()) {
@@ -182,6 +238,7 @@ class EditorList::Impl {
   private:
     EditorList &owner;
     PropertyLinks m_links;
+    nanogui::Theme *list_theme = nullptr;
     Value m_scroll_pos = 0;
     std::chrono::steady_clock::time_point last_selected;
     int pending_index = -1;
@@ -193,7 +250,7 @@ EditorList::EditorList(NamedObject *owner, Widget *parent, const std::string nam
     : nanogui::Widget(parent), EditorWidget(owner, "LIST", nam, this, lp),
       mBackgroundColor(nanogui::Color(0, 0)), mTextColor(nanogui::Color(0, 0)),
       Palette(Palette::PT_SINGLE_SELECT), alignment(1), valign(1), wrap_text(true) {
-    palette_scroller = new nanogui::VScrollPanel(this);
+    palette_scroller = new CustomVScrollPanel(this);
     palette_scroller->setPosition(Vector2i(0, 0));
     palette_scroller->setFixedSize(Vector2i(width(), height()));
     palette_content = new Widget(palette_scroller);
@@ -279,12 +336,14 @@ void EditorList::performLayout(NVGcontext *ctx) {
     }
     for (const auto &item : impl->mItems) {
         Widget *cell = new Widget(palette_content);
-        cell->setFixedSize(Vector2i(width() - 10, 30));
-        SelectableButton *b = new ListItemButton(EDITOR->gui(), this, item, cell);
+        cell->setFixedSize(Vector2i(width(), 30));
+        ListItemButton *b = new ListItemButton(EDITOR->gui(), this, item, cell);
+        b->setTheme(impl->theme());
         b->setCaption(item);
         b->setEnabled(true);
-        b->setFixedSize(Vector2i(width() - 10, 29));
-        b->setTheme(EDITOR->gui()->getTheme());
+        b->setFixedSize(Vector2i(width(), 29));
+        b->setSelectionColour(mSelectionColor);
+        //b->setTheme(EDITOR->gui()->getTheme());
         b->setPassThrough(true);
         b->setCallback([this, item]() { setUserSelected(item); });
     }

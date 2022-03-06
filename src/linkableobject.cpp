@@ -20,12 +20,15 @@
 #include <nanogui/progressbar.h>
 
 extern std::string shortName(const std::string s);
+std::set<std::string> PropertyLinkTarget::readonly_properties = { "Selected Index" };
+
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string &property,
                                        const Value &default_value)
     : widget_(widget), property_name(property), default_value(default_value) {}
 
 void PropertyLinkTarget::update(const Value &value) {
-    if (widget_) {
+    if (widget_ && readonly_properties.count(property_name) == 0) {
+        std::cout << "setting " << property_name << " to " << value << "\n";
         widget_->setPropertyValue(property_name, value);
     }
 }

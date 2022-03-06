@@ -15,6 +15,7 @@
 #include <list>
 #include <ostream>
 #include <string>
+#include <set>
 
 class LinkableProperty;
 class Structure;
@@ -36,6 +37,7 @@ class PropertyLinkTarget : public LinkTarget {
     EditorWidget *widget() { return widget_; }
 
   private:
+    static std::set<std::string> readonly_properties;
     EditorWidget *widget_ = nullptr;
     std::string property_name;
     Value default_value;

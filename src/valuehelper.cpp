@@ -62,6 +62,7 @@ Value::Kind typeForProperty(const std::string &property) {
         property_types["scroll_pos"] = Value::t_integer;
         property_types["selected"] = Value::t_string;
         property_types["selected_index"] = Value::t_integer;
+        property_types["selection_colour"] = Value::t_string;
         property_types["tab_position"] = Value::t_integer;
         property_types["text"] = Value::t_string;
         property_types["text_colour"] = Value::t_string;
@@ -127,6 +128,7 @@ Value defaultForProperty(const std::string &property) {
         property_defaults["scroll_pos"] = 0;
         property_defaults["selected"] = "";
         property_defaults["selected_index"] = -1;
+        property_defaults["selection_colour"] = "0.5,0.5,1.0,1.0";
         property_defaults["tab_position"] = 0;
         property_defaults["text"] = "";
         property_defaults["text_colour"] = "0.2,0.2,0.2,1.0";

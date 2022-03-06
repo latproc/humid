@@ -124,16 +124,21 @@ class ThemeManager::Pimpl {
     }
 
     void setContext(NVGcontext *ctx) { context = ctx; }
-
-    nanogui::Theme *createTheme(Structure *settings) {
+    
+    nanogui::Theme *createTheme() {
         assert(context);
         if (context) {
             auto theme = new nanogui::Theme(context);
             setupTheme(theme);
-            fromStructure(theme, settings);
             return theme;
         }
         return nullptr;
+    }
+
+    nanogui::Theme *createTheme(Structure *settings) {
+        auto theme = createTheme();
+        fromStructure(theme, settings);
+        return theme;
     }
 };
 

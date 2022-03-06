@@ -9,6 +9,7 @@
 #include "helper.h"
 #include "namedobject.h"
 #include "widgetfactory.h"
+#include "thememanager.h"
 
 DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme)
     : nanogui::Window(screen), gui(screen) {
@@ -78,6 +79,13 @@ void DialogWindow::loadStructure(Structure *s) {
                     param.machine->setStructureDefinition(element_class);
                 }
                 auto properties = element->getProperties();
+                Value theme_v = element->getValue("theme");
+                if (theme_v != SymbolTable::Null) {
+                    auto theme = ThemeManager::instance().findTheme(theme_v.asString());
+                    if (theme) {
+                        setTheme(theme);
+                    }
+                }
                 Value vx = element->getValue("pos_x");
                 Value vy = element->getValue("pos_y");
                 Value w = element->getValue("width");

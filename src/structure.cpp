@@ -132,6 +132,7 @@ static void prepare_class_properties(const std::string &class_name,
         properties["Scroll Pos"] = "scroll_pos";
         properties["Selected"] = "selected";
         properties["Selected Index"] = "selected_index";
+        properties["Selection Colour"] = "selection_colour";
         properties["Text Colour"] = "text_colour";
         properties["Vertical Alignment"] = "valign";
         properties["Wrap Text"] = "wrap";

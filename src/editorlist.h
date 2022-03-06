@@ -52,6 +52,7 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
         mBackgroundColor = backgroundColor;
     }
     void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
+    void setSelectionColour(const nanogui::Color &selectionColor) { mSelectionColor = selectionColor; }
 
     void loadItems();
     void loadItems(const std::string &str);
@@ -73,6 +74,7 @@ class EditorList : public nanogui::Widget, public EditorWidget, public Palette {
     Impl *impl = nullptr;
     nanogui::Color mBackgroundColor;
     nanogui::Color mTextColor;
+    nanogui::Color mSelectionColor = nanogui::Color(128, 128, 255, 255);
     nanogui::VScrollPanel *palette_scroller;
     nanogui::Widget *palette_content;
     int alignment;

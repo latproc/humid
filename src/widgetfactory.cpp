@@ -251,6 +251,10 @@ void createList(WidgetParams &params) {
             el->scroll_to(idx);
         }
     }
+    const Value &sel_colour_v(params.element->getValue("selection_colour"));
+    if (sel_colour_v != SymbolTable::Null) {
+        el->setSelectionColour(colourFromProperty(params.element, "selection_colour"));
+    }
     const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
         el->setPropertyValue("Vertical Alignment", valignment_v.asString());
