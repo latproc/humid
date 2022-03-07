@@ -28,7 +28,6 @@ PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string &
 
 void PropertyLinkTarget::update(const Value &value) {
     if (widget_ && readonly_properties.count(property_name) == 0) {
-        std::cout << "setting " << property_name << " to " << value << "\n";
         widget_->setPropertyValue(property_name, value);
     }
 }
