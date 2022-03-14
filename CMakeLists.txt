@@ -96,7 +96,7 @@ set(HEADER_FILES
   ${Clockwork_INCLUDE_DIR}/Message.h
   )
 
-add_library (Clockwork
+set(SOURCE_FILES
   ${CLOCKWORK_DIR}/MessagingInterface.cpp
   ${CLOCKWORK_DIR}/MessageLog.cpp
   ${CLOCKWORK_DIR}/MessageEncoding.cpp
@@ -116,6 +116,15 @@ add_library (Clockwork
   ${CLOCKWORK_DIR}/watchdog.cpp
   ${HEADER_FILES}
 )
+if (EXISTS "${Clockwork_INCLUDE_DIR}/clock.h")
+        LIST (APPEND HEADER_FILES ${Clockwork_INCLUDE_DIR}/clock.h)
+        LIST (APPEND SOURCE_FILES ${Clockwork_INCLUDE_DIR}/clock.cpp)
+else()
+    message(STATUS "no clock.h found, steady-clock is not available")
+endif()
+
+add_library (Clockwork ${SOURCE_FILES})
+
 target_link_libraries(Clockwork ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
 target_include_directories(Clockwork PUBLIC ${ZeroMQ_INCLUDE_DIR} ${CURL_INCLUDE_DIRS})
 
