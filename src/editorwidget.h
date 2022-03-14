@@ -50,7 +50,8 @@ class EditorWidget : public Selectable, public EditorObject, public Connectable 
 
     static EditorWidget *create(const std::string kind);
 
-    virtual nanogui::Widget *asWidget() { return nullptr; }
+    virtual nanogui::Widget *asWidget() = 0;
+    virtual nanogui::Window *owningWindow();
 
     virtual void getPropertyNames(std::list<std::string> &names);
     virtual void loadProperties(PropertyFormHelper *pfh);

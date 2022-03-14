@@ -270,7 +270,6 @@ bool EditorButton::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool
 
     using namespace nanogui;
     if (editorMouseButtonEvent(this, p, button, down, modifiers)) {
-        //if (!is_toggle || (is_toggle && down))
         return nanogui::Button::mouseButtonEvent(p, button, down, modifiers);
     }
 

@@ -343,7 +343,6 @@ void EditorList::performLayout(NVGcontext *ctx) {
         b->setEnabled(true);
         b->setFixedSize(Vector2i(width(), 29));
         b->setSelectionColour(mSelectionColor);
-        //b->setTheme(EDITOR->gui()->getTheme());
         b->setPassThrough(true);
         b->setCallback([this, item]() { setUserSelected(item); });
     }

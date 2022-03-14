@@ -761,18 +761,25 @@ void EditorGUI::showDialog(bool show) {
         if (!w_dialog) {
             w_dialog = new DialogWindow(editor->gui(), mTheme);
             w_dialog->setVisible(false);
+            is_dialog_visible = false;
         }
         auto s = findScreen(dialog_name);
         if (s) {
             w_dialog->setStructure(s);
             w_dialog->setVisible(true);
+            is_dialog_visible = true;
         }
     }
     else if (w_dialog) {
         w_dialog->setVisible(false);
+        is_dialog_visible = false;
         w_dialog->dispose();
         w_dialog = nullptr;
     }
+}
+
+bool EditorGUI::dialogIsVisible() {
+    return is_dialog_visible;
 }
 
 bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

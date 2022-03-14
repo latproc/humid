@@ -72,6 +72,7 @@ class EditorGUI : public ClockworkClient {
     DialogWindow *getUserDialog();
     void setUserDialog(const std::string &dialog_name);
     void showDialog(bool show = true);
+    bool dialogIsVisible();
     nanogui::Window *getActiveWindow();
 
     nanogui::Window *getNamedWindow(const std::string name);
@@ -139,6 +140,7 @@ class EditorGUI : public ClockworkClient {
     unsigned int sample_buffer_size;
     EditorProject *project = nullptr;
     std::string dialog_name;
+    bool is_dialog_visible = false;
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorGUI &m);

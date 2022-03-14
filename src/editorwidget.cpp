@@ -94,6 +94,16 @@ EditorWidget::~EditorWidget() {
     }
 }
 
+nanogui::Window *EditorWidget::owningWindow() {
+    nanogui::Widget *w = asWidget();
+    while (w) {
+        nanogui::Window *window = dynamic_cast<nanogui::Window*>(w);
+        if (window) { return window; }
+        w = w->parent();
+    }
+    return nullptr;
+}
+
 const std::string &EditorWidget::getValueFormat() { return format_string; }
 
 void EditorWidget::setValueFormat(const std::string fmt) { format_string = fmt; }
@@ -160,6 +170,12 @@ bool EditorWidget::editorMouseButtonEvent(nanogui::Widget *widget, const nanogui
         if (EDITOR->getDragHandle())
             EDITOR->getDragHandle()->setVisible(false);
     }
+
+    if (EDITOR->gui()->dialogIsVisible()) {
+        auto window = owningWindow();
+        if (!window || !dynamic_cast<DialogWindow*>(window)) { return false; }
+    }
+
     return true; // caller should continue to call the default handler for the object
 }
 
@@ -168,6 +184,11 @@ bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui
     if (!EDITOR->isEditMode()) {
         EDITOR->getDragHandle()->setVisible(false);
         return true; // caller should continue to call the default handler for the object
+    }
+
+    if (EDITOR->gui()->dialogIsVisible()) {
+        auto window = owningWindow();
+        if (!window || !dynamic_cast<DialogWindow*>(window)) { return false; }
     }
 
     nanogui::Vector2d pt(p.x(), p.y());
@@ -213,6 +234,12 @@ bool EditorWidget::editorMouseMotionEvent(nanogui::Widget *widget, const nanogui
 }
 
 bool EditorWidget::editorMouseEnterEvent(nanogui::Widget *widget, const Vector2i &p, bool enter) {
+
+    if (EDITOR->gui()->dialogIsVisible()) {
+        auto window = owningWindow();
+        if (!window || !dynamic_cast<DialogWindow*>(window)) { return false; }
+    }
+
     if (enter)
         updateHandles(widget);
     else {
