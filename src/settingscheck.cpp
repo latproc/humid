@@ -30,6 +30,11 @@ int st_yylex(void);
 extern int st_yylineno;
 extern int st_yycharno;
 const char *st_yyfilename = 0;
+#include "editorwidget.h"
+const std::string & EditorWidget::getName() const { static std::string dummy = "dummy"; return dummy; }
+
+int LinkableProperty::num_links() const { return 0; }
+LinkableObject *LinkableProperty::widget_links(EditorObject *w) const { return nullptr; }
 
 const char *program_name;
 
