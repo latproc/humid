@@ -91,7 +91,7 @@ class EditorGUI : public ClockworkClient {
 
     void handleRawMessage(unsigned long time, void *data) override{};
     virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time,
-                                        const std::string &op, std::list<Value> *message) override;
+                                        const std::string &op, const MessageHeader &header, std::list<Value> *message) override;
 
     void needsUpdate() { needs_update = true; }
 

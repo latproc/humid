@@ -179,25 +179,28 @@ class EditorList::Impl {
     int scroll_pos() { return m_scroll_pos.iValue; }
 
     void set_scroll_pos(int pos, int min_pos, int max_pos) {
-        if (m_scroll_pos == pos)
-            return;
-        if (pos < min_pos || pos > max_pos) {
-            if (pos < min_pos)
-                pos = min_pos;
-            if (pos > max_pos)
-                pos = max_pos;
-            m_scroll_pos = pos;
-            if (!owner.connection_name.empty() && owner.remote_links) {
-                std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> links;
-                const auto *scroll_pos_link = find_link(owner.remote_links, "scroll_pos");
-                if (scroll_pos_link) {
-                    links.push_back(std::make_pair(scroll_pos_link, &m_scroll_pos));
-                    send_property_updates(owner.connection_name, links);
+        if (pos < min_pos) { pos = min_pos; }
+        if (pos > max_pos) { pos = max_pos; }
+        if (m_scroll_pos == pos) { return; }
+        m_scroll_pos = pos;
+        if (!owner.connection_name.empty() && owner.remote_links) {
+            std::vector<std::pair<const LinkManager::LinkInfo *, Value *>> links;
+            const auto *scroll_pos_link = find_link(owner.remote_links, "scroll_pos");
+            if (scroll_pos_link) {
+                auto link_object = LinkManager::instance().widget_links(&owner, "Scroll Pos");
+                if (link_object) {
+                    std::cout << "found a scroll pos link\n";
+                    if (link_object->property_link()) { std::cout << " scrollpos link: " << link_object->property_link()->property() << "\n"; }
                 }
+                else {
+                    std::cout << "no widget link for scrollpos\n";
+                }
+                links.push_back(std::make_pair(scroll_pos_link, &m_scroll_pos));
+                send_property_updates(owner.connection_name, links);
             }
-        }
-        else {
-            m_scroll_pos = pos;
+            else {
+                std::cout << "no scroll pos link\n";
+            }
         }
     }
 
@@ -440,12 +443,6 @@ void EditorList::selectByIndex(int index) {
         reportSelectionChange();
         return;
     }
-    int last_selected_index = impl->debounced_index();
-    if (last_selected_index != -1 && last_selected_index != index) {
-        std::cout << "ignoring request to select " << index << "\n";
-        return;
-    }
-    impl->debounce_select(index);
 
     auto widget = palette_content->childAt(index);
     if (widget) {

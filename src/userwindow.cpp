@@ -241,7 +241,7 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 
 void UserWindow::refresh() { window->performLayout(gui->nvgContext()); }
 
-void UserWindow::update(const Value &value) {
+void UserWindow::update(uint64_t msg_time, const Value &value) {
     if (!EDITOR->isEditMode()) {
         Structure *s = findScreen(value.asString());
         if (s)

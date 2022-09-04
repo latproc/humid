@@ -40,7 +40,7 @@ std::ostream &operator<<(std::ostream &out, const WidgetPropertyAnchor &wpa) {
 
 RemoteAnchor::~RemoteAnchor() {}
 Value RemoteAnchor::get() { return remote->value(); }
-void RemoteAnchor::set(Value v) { remote->setValue(v); }
+void RemoteAnchor::set(Value v) { remote->setValue(microsecs(), v); }
 std::ostream &RemoteAnchor::operator()(std::ostream &out) const {
     out << "REMOTE PROPERTY " << remote_name << ";";
     return out;

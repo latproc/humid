@@ -233,6 +233,13 @@ void createList(WidgetParams &params) {
     if (items_file_v != SymbolTable::Null) {
         el->setItemFilename(items_file_v.asString());
     }
+    const Value &scroll_pos_v(params.element->getValue("scroll_pos"));
+    if (scroll_pos_v != SymbolTable::Null) {
+        long idx;
+        if (scroll_pos_v.asInteger(idx)) {
+            el->scroll_to(idx);
+        }
+    }
     const Value &selected_v(params.element->getValue("selected"));
     if (selected_v != SymbolTable::Null) {
         el->setSelected(selected_v.asString());
@@ -242,13 +249,6 @@ void createList(WidgetParams &params) {
         long idx;
         if (selind_v.asInteger(idx)) {
             el->selectByIndex(idx);
-        }
-    }
-    const Value &scroll_pos_v(params.element->getValue("scroll_pos"));
-    if (scroll_pos_v != SymbolTable::Null) {
-        long idx;
-        if (scroll_pos_v.asInteger(idx)) {
-            el->scroll_to(idx);
         }
     }
     const Value &sel_colour_v(params.element->getValue("selection_colour"));

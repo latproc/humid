@@ -95,8 +95,20 @@ LinkManager &LinkManager::instance() {
 bool LinkManager::has_property(const std::string &property) const {
     return impl->has_property(property);
 }
+
 void LinkManager::add(const std::string &property, LinkableProperty *links) {
     impl->add(property, links);
+}
+
+LinkableObject *LinkManager::widget_links(EditorWidget *widget, const std::string &property) const {
+    LinkableProperty *prop = impl->links(property);
+    if (prop && prop->num_links()) {
+        return prop->widget_links(widget);
+    }
+    else {
+        std::cout << " no links for property " << property << " on " << widget->getName() << "\n";
+    }
+    return nullptr;
 }
 
 LinkableProperty *LinkManager::links(const std::string &property) const {

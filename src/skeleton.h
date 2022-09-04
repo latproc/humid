@@ -201,7 +201,7 @@ class ClockworkClient : public nanogui::Screen {
 
     virtual void handleRawMessage(unsigned long time, void *data){};
     virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time,
-                                        const std::string &op, std::list<Value> *message){};
+                                        const std::string &op, const MessageHeader &header, std::list<Value> *message){};
     virtual void update(ClockworkClient::Connection *connection);
 
     std::map<std::string, Connection *> getConnections() { return connections; }

@@ -24,7 +24,7 @@ class EditorObject;
 
 class LinkTarget {
   public:
-    virtual void update(const Value &value) = 0;
+    virtual void update(uint64_t msg_time, const Value &value) = 0;
     virtual ~LinkTarget() = default;
 };
 
@@ -32,8 +32,10 @@ class PropertyLinkTarget : public LinkTarget {
   public:
     PropertyLinkTarget(EditorWidget *widget, const std::string &property,
                        const Value &default_value);
-    void update(const Value &value);
+    void update(uint64_t msg_time, const Value &value);
+    void touch();
     virtual ~PropertyLinkTarget();
+    const std::string & property() { return property_name; }
     EditorWidget *widget() { return widget_; }
 
   private:
@@ -41,6 +43,7 @@ class PropertyLinkTarget : public LinkTarget {
     EditorWidget *widget_ = nullptr;
     std::string property_name;
     Value default_value;
+    uint64_t last_update = 0;
 };
 
 class LinkableObject {
@@ -49,10 +52,11 @@ class LinkableObject {
     LinkableObject();
     explicit LinkableObject(EditorObject *w);
     explicit LinkableObject(LinkTarget *target);
-    virtual void update(const Value &value);
+    virtual void update(uint64_t msg_time, const Value &value);
     EditorObject *linked();
     std::ostream &operator<<(std::ostream &out) const;
     static void unlink(const std::string &class_name, EditorWidget *);
+    PropertyLinkTarget *property_link() const;
 
   protected:
     EditorObject *widget = nullptr;
@@ -65,25 +69,25 @@ std::ostream &operator<<(std::ostream &out, const LinkableObject &m);
 class LinkableText : public LinkableObject {
   public:
     LinkableText(EditorObject *w);
-    void update(const Value &value) override;
+    void update(uint64_t msg_time, const Value &value) override;
 };
 
 class LinkableNumber : public LinkableObject {
   public:
     LinkableNumber(EditorObject *w);
-    void update(const Value &value) override;
+    void update(uint64_t msg_time, const Value &value) override;
 };
 
 class LinkableIndicator : public LinkableObject {
   public:
     LinkableIndicator(EditorObject *w);
-    void update(const Value &value) override;
+    void update(uint64_t msg_time, const Value &value) override;
 };
 
 class LinkableVisibility : public LinkableObject {
   public:
     LinkableVisibility(EditorObject *w);
-    void update(const Value &value) override;
+    void update(uint64_t msg_time, const Value &value) override;
 };
 
 #endif

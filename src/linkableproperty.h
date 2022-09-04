@@ -15,6 +15,7 @@
 #include <list>
 #include <ostream>
 #include <string>
+#include <stdint.h>
 
 class LinkableProperty : public EditorObject {
   public:
@@ -33,7 +34,7 @@ class LinkableProperty : public EditorObject {
     std::string addressStr() const;
     void setAddressStr(const std::string s);
     void setAddressStr(int grp, int addr);
-    void setValue(const Value &v);
+    void setValue(uint64_t send_time, const Value &v);
     Value &value();
     int dataSize() const;
     void setDataSize(int new_size);
@@ -42,6 +43,7 @@ class LinkableProperty : public EditorObject {
     int address_group() const;
     void link(LinkableObject *lo);
     void unlink(EditorObject *w);
+    LinkableObject *widget_links(EditorObject *w) const;
     int num_links() const;
     void clear();
     void save(std::ostream &out) const;

@@ -74,15 +74,15 @@ void LinkableProperty::setAddressStr(int grp, int addr) {
     modbus_address = addr;
 }
 
-void LinkableProperty::setValue(const Value &v) {
+void LinkableProperty::setValue(uint64_t msg_time, const Value &v) {
     current = v;
     for (auto link : links)
-        link->update(v);
+        link->update(msg_time, v);
 }
 
 void LinkableProperty::apply() {
     for (auto link : links) {
-        link->update(current);
+        link->update(microsecs(), current);
     }
 }
 
@@ -111,7 +111,20 @@ int LinkableProperty::num_links() const { return links.size(); }
 void LinkableProperty::link(LinkableObject *lo) {
     links.remove(lo);
     links.push_back(lo);
-    lo->update(value());
+    lo->update(microsecs(), value());
+}
+
+LinkableObject *LinkableProperty::widget_links(EditorObject *w) const {
+    auto iter = links.begin();
+    int unlinked = 0;
+    while (iter != links.end()) {
+        LinkableObject *link = *iter;
+        if (link->linked() == w) {
+            std::cout << "widget link\n";
+            return link;
+        }
+    }
+    return nullptr;
 }
 
 void LinkableProperty::unlink(EditorObject *w) {

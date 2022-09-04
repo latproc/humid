@@ -34,9 +34,14 @@ const char *filename = 0;
 class LinkableProperty;
 std::map<std::string, LinkableProperty *> remotes;
 
-/* dummy routins */
-void LinkableProperty::setValue(const Value &v) {}
+/* dummy routines */
+#include "editorwidget.h"
+void LinkableProperty::setValue(uint64_t msg_time, const Value &v) {}
 Value &LinkableProperty::value() { return current; }
+int LinkableProperty::num_links() const { return 0; }
+LinkableObject *LinkableProperty::widget_links(EditorObject *w) const { return nullptr; }
+std::string dummy_widget_name("dummy");
+const std::string & EditorWidget::getName() const { return dummy_widget_name; }
 
 const char *program_name;
 

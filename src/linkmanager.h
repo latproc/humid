@@ -19,6 +19,7 @@ class LinkManager {
     bool has_property(const std::string &property) const;
     void add(const std::string &property, LinkableProperty *links);
     LinkableProperty *links(const std::string &property) const;
+    LinkableObject *widget_links(EditorWidget *widget, const std::string &property) const;
 
     void add_pending(const std::string &remote_name, const std::string &class_name,
                      const std::string &widget_name, const std::string &property);

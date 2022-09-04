@@ -30,7 +30,7 @@ class UserWindow : public Skeleton, public Palette, public LinkableObject {
     void save(const std::string &path);
     void load(const std::string &path);
 
-    virtual void update(const Value &value) override;
+    virtual void update(uint64_t msg_time, const Value &value) override;
 
     CircularBuffer *getValues(const std::string name);
     CircularBuffer *addDataBuffer(const std::string name, CircularBuffer::DataType dt, size_t len);

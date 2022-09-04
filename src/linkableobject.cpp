@@ -24,22 +24,32 @@ std::set<std::string> PropertyLinkTarget::readonly_properties = { "Selected Inde
 
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string &property,
                                        const Value &default_value)
-    : widget_(widget), property_name(property), default_value(default_value) {}
+    : widget_(widget), property_name(property), default_value(default_value) {
+        std::cout << "Added property link " << property << " to " << widget->getName() << "\n";
+    }
 
-void PropertyLinkTarget::update(const Value &value) {
+void PropertyLinkTarget::update(uint64_t msg_time, const Value &value) {
     if (widget_ && readonly_properties.count(property_name) == 0) {
-        widget_->setPropertyValue(property_name, value);
+        if (last_update > msg_time) {
+            std::cout << "Warning: stale message to update property " << property_name << " to " << value << "\n";
+        }
+        else {
+            last_update = msg_time;
+            widget_->setPropertyValue(property_name, value);
+        }
     }
 }
 
-PropertyLinkTarget::~PropertyLinkTarget() = default;
+PropertyLinkTarget::~PropertyLinkTarget() {
+    std::cout << "removed property link " << property_name << " from " << widget_->getName() << "\n";
+}
 
 std::ostream &LinkableObject::operator<<(std::ostream &out) const { return out; }
 std::ostream &operator<<(std::ostream &out, const LinkableObject &m) { return m.operator<<(out); }
 
-void LinkableObject::update(const Value &v) {
+void LinkableObject::update(uint64_t msg_time, const Value &v) {
     if (target) {
-        target->update(v);
+        target->update(msg_time, v);
     }
 }
 
@@ -74,6 +84,15 @@ EditorObject *LinkableObject::linked() {
     return nullptr;
 }
 
+PropertyLinkTarget *LinkableObject::property_link() const {
+    return dynamic_cast<PropertyLinkTarget*>(target);
+}
+
+void PropertyLinkTarget::touch() {
+    std::cout << "touch\n";
+    last_update = microsecs();
+}
+
 void LinkableObject::unlink(const std::string &class_name, EditorWidget *widget) {
     auto link = LinkManager::instance().remote_links(class_name, widget->getName());
     if (link) {
@@ -89,7 +108,7 @@ void LinkableObject::unlink(const std::string &class_name, EditorWidget *widget)
 
 LinkableText::LinkableText(EditorObject *w) : LinkableObject(w) {}
 
-void LinkableText::update(const Value &value) {
+void LinkableText::update(uint64_t msg_time, const Value &value) {
     nanogui::TextBox *tb = dynamic_cast<nanogui::TextBox *>(widget);
     if (tb) {
         tb->setValue(value.asString());
@@ -110,7 +129,7 @@ void LinkableText::update(const Value &value) {
 
 LinkableNumber::LinkableNumber(EditorObject *w) : LinkableObject(w) {}
 
-void LinkableNumber::update(const Value &value) {
+void LinkableNumber::update(uint64_t msg_time, const Value &value) {
     EditorProgressBar *pb = dynamic_cast<EditorProgressBar *>(widget);
     if (pb) {
         if (value.kind == Value::t_integer)
@@ -121,7 +140,7 @@ void LinkableNumber::update(const Value &value) {
 }
 
 LinkableIndicator::LinkableIndicator(EditorObject *w) : LinkableObject(w) {}
-void LinkableIndicator::update(const Value &value) {
+void LinkableIndicator::update(uint64_t msg_time, const Value &value) {
     EditorButton *tb = dynamic_cast<EditorButton *>(widget);
     if (tb) {
         if (tb->flags() & nanogui::Button::SetOffButton) {
@@ -147,7 +166,7 @@ void LinkableIndicator::update(const Value &value) {
 }
 
 LinkableVisibility::LinkableVisibility(EditorObject *w) : LinkableObject(w) {}
-void LinkableVisibility::update(const Value &value) {
+void LinkableVisibility::update(uint64_t msg_time, const Value &value) {
     EditorWidget *ew = dynamic_cast<EditorWidget *>(widget);
     if (ew && ew->asWidget()) {
         if (Editor::instance()->isEditMode())

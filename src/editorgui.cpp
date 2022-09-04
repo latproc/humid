@@ -943,7 +943,7 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 }
 
 void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long now,
-                                       const std::string &op, std::list<Value> *message) {
+                                       const std::string &op, const MessageHeader &header, std::list<Value> *message) {
     if (op == "UPDATE") {
         if (!this->getUserWindow())
             return;
@@ -969,7 +969,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
             }
             else if (pos == 4) {
                 if (lp) {
-                    lp->setValue(v);
+                    lp->setValue(header.start_time, v);
                 }
                 if (buf) {
                     CircularBuffer::DataType dt = buf->getDataType();
@@ -998,6 +998,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 
 void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {
     int num_params = cJSON_GetArraySize(obj);
+    auto message_time = microsecs();
     if (num_params) {
         for (int i = 0; i < num_params; ++i) {
             cJSON *item = cJSON_GetArrayItem(obj, i);
@@ -1057,7 +1058,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
                         std::cout << prop_name << " change of address from " << lp->address()
                                   << " to " << addr << "\n";
                     lp->setAddressStr(group.iValue, addr.iValue);
-                    lp->setValue(value);
+                    lp->setValue(message_time, value);
 
                     //w_user->fixLinks(lp);
 
@@ -1128,7 +1129,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 
                                               public:
                                                 DialogNameTarget(EditorGUI *gui) : m_gui(gui) {}
-                                                void update(const Value &value) override {
+                                                void update(uint64_t msg_time, const Value &value) override {
                                                     m_gui->setUserDialog(value.asString());
                                                 }
                                             };
@@ -1151,7 +1152,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
                                               public:
                                                 DialogVisibilityTarget(EditorGUI *gui)
                                                     : m_gui(gui) {}
-                                                void update(const Value &value) override {
+                                                void update(uint64_t msg_time, const Value &value) override {
                                                     long visible;
                                                     if (value.asInteger(visible)) {
                                                         m_gui->showDialog(visible);
