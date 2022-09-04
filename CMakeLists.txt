@@ -55,6 +55,14 @@ FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono da
 set (CLOCKWORK_DIR /opt/latproc/iod/src)
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
 
+set (cw_extras "")
+if (EXISTS "${CLOCKWORK_DIR}/clock.h")
+    LIST (APPEND cw_extras "${CLOCKWORK_DIR}/clock.h")
+endif()
+if (EXISTS "${CLOCKWORK_DIR}/clock.cpp")
+    LIST (APPEND cw_extras "${CLOCKWORK_DIR}/clock.cpp")
+endif()
+
 set(HEADER_FILES
   ${CLOCKWORK_DIR}/MessagingInterface.h
   ${CLOCKWORK_DIR}/SocketMonitor.h
@@ -92,6 +100,7 @@ ${CLOCKWORK_DIR}/symboltable.cpp
 ${CLOCKWORK_DIR}/rate.cpp
 ${CLOCKWORK_DIR}/Message.cpp
 ${CLOCKWORK_DIR}/watchdog.cpp
+${cw_extras}
 ${HEADER_FILES}
 )
 target_link_libraries(Clockwork ${Boost_LIBRARIES} ${ZeroMQ_LIBRARY})
