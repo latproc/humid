@@ -30,7 +30,9 @@ class EditorTextBox : public nanogui::TextBox, public EditorWidget {
     virtual const std::map<std::string, std::string> &reverse_property_map() const override;
     virtual Value getPropertyValue(const std::string &prop) override;
     virtual void setProperty(const std::string &prop, const std::string value) override;
-    std::string getScaledValue(bool scaleUp);
+    std::string getScaledValue(bool scaleUp); // returns the value scaled up or down to the current scale
+    std::string getScaledValue(const std::string &, bool scaleUp); // returns the value in the given string
+                                                                   // scaled up or down to the current scale
     float getScaledFloat(bool scaleUp);
     int getScaledInteger(bool scaleUp);
 

@@ -146,37 +146,43 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
     return SymbolTable::Null;
 }
 
+std::string EditorTextBox::getScaledValue(const std::string &val_str, bool scaleUp) {
+    const char *p = val_str.c_str();
+    while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p == '0'))
+        ++p;
+    if (value_type == Value::t_integer && value_scale != 1.0f) {
+        long i_value = value_scale == 0.0
+                           ? 0
+                           : (std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
+        char buf[20];
+        if (format_string.empty())
+            snprintf(buf, 20, "%ld", i_value);
+        else
+            snprintf(buf, 20, format_string.c_str(), i_value);
+        return buf;
+    }
+    else if (value_type == Value::t_float) {
+        std::string v;
+        double f_value = value_scale == 0.0
+                             ? 0.0
+                             : (std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
+        char buf[20];
+        if (format_string.empty())
+            snprintf(buf, 20, "%5.3lf", f_value);
+        else
+            snprintf(buf, 20, format_string.c_str(), f_value);
+        return buf;
+    }
+    return val_str;
+}
+
 std::string EditorTextBox::getScaledValue(bool scaleUp) {
     if (value_scale != 1.0f && (value_type == Value::t_integer || value_type == Value::t_float)) {
-        const char *p = value().c_str();
-        while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p == '0'))
-            ++p;
-        if (value_type == Value::t_integer && value_scale != 1.0f) {
-            long i_value = value_scale == 0.0
-                               ? 0
-                               : (std::atol(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
-            char buf[20];
-            if (format_string.empty())
-                snprintf(buf, 20, "%ld", i_value);
-            else
-                snprintf(buf, 20, format_string.c_str(), i_value);
-            return buf;
-        }
-        else if (value_type == Value::t_float) {
-            std::string v;
-            double f_value = value_scale == 0.0
-                                 ? 0.0
-                                 : (std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale));
-            char buf[20];
-            if (format_string.empty())
-                snprintf(buf, 20, "%5.3lf", f_value);
-            else
-                snprintf(buf, 20, format_string.c_str(), f_value);
-            return buf;
-        }
+        return getScaledValue(value(), scaleUp);
     }
     return value();
 }
+
 /*
 int EditorTextBox::getScaledInteger(bool scaleUp) {
   if (value_type == Value::t_float) {
@@ -252,11 +258,12 @@ bool EditorTextBox::focusEvent(bool focused) {
         return res;
 
     if (mEditable) {
-        if (focused)
-            mValueTemp = getScaledValue(false);
-        else
-            mValue = mValueTemp;
-        mValue = getScaledValue(true);
+        auto val = getScaledValue(true);
+        std::cout << "got focus " << focused << ". val: " << val << " value(): " << value() << "\n";
+        if (focused) {
+            mValueTemp = val;
+        }
+        mValue = val;
     }
 
     return true;
