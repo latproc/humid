@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <iostream>
 #include "anchor.h"
 #include "linkableobject.h"
 #include "linkableproperty.h"

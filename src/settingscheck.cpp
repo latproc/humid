@@ -11,6 +11,7 @@
 #include <sstream>
 #include <boost/utility.hpp>
 #include <boost/filesystem.hpp>
+#include <iostream>
 #include <sys/stat.h>
 #ifdef __APPLE__
 #include <sys/dir.h>

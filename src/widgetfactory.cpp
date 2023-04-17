@@ -1,4 +1,5 @@
 #include "widgetfactory.h"
+#include <iostream>
 
 #include "editorlabel.h"
 #include "editorimageview.h"

@@ -9,6 +9,7 @@
 #include <nanogui/window.h>
 #include <map>
 #include <string>
+#include <iostream>
 
 #include "structure.h"
 #include "helper.h"

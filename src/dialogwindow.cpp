@@ -2,6 +2,7 @@
 
 #include <nanogui/theme.h>
 #include <nanogui/widget.h>
+#include <iostream>
 
 #include "dialogwindow.h"
 #include "editorgui.h"

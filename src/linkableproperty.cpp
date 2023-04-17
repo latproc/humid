@@ -7,6 +7,7 @@
 
 #include <nanogui/progressbar.h>
 #include <nanogui/button.h>
+#include <iostream>
 #include "linkableobject.h"
 #include "editorobject.h"
 #include "editorwidget.h"
@@ -28,7 +29,7 @@ LinkableProperty::LinkableProperty(const std::string group, int object_type,
 
 LinkableProperty::~LinkableProperty() {
 	if (links.size()) {
-		std::cout << "deleting linkable property " << name << " with " << links.size() << " links\n";
+		std::cerr << "deleting linkable property " << name << " with " << links.size() << " links\n";
 	}
 }
 
@@ -114,7 +115,7 @@ void LinkableProperty::unlink(EditorObject *w) {
     else
       ++iter;
   }
-  if (unlinked == 0) { std::cout << "did not unlink " << w->getName() << "\n";   }
+  if (unlinked == 0) { std::cerr << "did not unlink " << w->getName() << "\n";   }
 }
 
 void LinkableProperty::clear() {

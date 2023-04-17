@@ -5,6 +5,7 @@
 #include "editor.h"
 #include "editorwidget.h"
 #include "valuehelper.h"
+#include <iostream>
 
 LinkManager * LinkManager::_instance = nullptr;
 

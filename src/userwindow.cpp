@@ -1,3 +1,4 @@
+#include <iostream>
 #include "userwindowwin.h"
 #include "userwindow.h"
 #include "editorgui.h"
