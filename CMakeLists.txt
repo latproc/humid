@@ -35,7 +35,11 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     "MinSizeRel" "RelWithDebInfo")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wno-deprecated-register -Wno-deprecated-declarations -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+if (APPLE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
+endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused-parameter")
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
@@ -198,7 +202,7 @@ endif ()
 	#			OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.h
 	#	)
 
-find_package(Protobuf)
+    #find_package(Protobuf)
 if (Protobuf_INCLUDE_DIRS)
 	include_directories(${Protobuf_INCLUDE_DIRS})
 	include_directories(${CMAKE_CURRENT_BINARY_DIR})
