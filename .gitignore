@@ -49,6 +49,7 @@ Thumbs.db
 
 # Language-server/editor support
 tags
+.ccls-cache/
 
 #project build files
 build/
