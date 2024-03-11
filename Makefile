@@ -1,23 +1,27 @@
+ifndef JOBS
+    JOBS:=-j4
+endif
+
 all:	
 	[ -d "build" ] || mkdir build
-	cd build && cmake .. && make -j4
+	cd build && cmake .. && make $(JOBS)
 
 
 release:
 	[ -d "build" ] || mkdir build
 	[ -d "build/Release" ] || mkdir build/Release
-	cd build/Release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make -j 3
+	cd build/Release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make $(JOBS)
 
 release-install:
-	cd build/Release && make -j 6 install
+	cd build/Release && make $(JOBS) install
 
 debug:
 	[ -d "build" ] || mkdir build
 	[ -d "build/Debug" ] || mkdir build/Debug
-	cd build/Debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make -j
+	cd build/Debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make $(JOBS)
 
 debug-install:	debug
-	cd build/Debug && make -j install
+	cd build/Debug && make $(JOBS) install
 
 xcode:
 	[ -d "xcode" ] || mkdir xcode
