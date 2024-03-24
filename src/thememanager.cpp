@@ -10,7 +10,7 @@ ThemeManager *ThemeManager::theme_manager = nullptr;
 void set_prop(int &val, SymbolTable &st, const char *key) {
 	const Value &v = st.find(key);
 	if (!v.isNull()) {
-		long iValue;
+		int64_t iValue;
 		if (v.asInteger(iValue)) { val = static_cast<int>(iValue); }
 	}
 }

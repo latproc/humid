@@ -24,7 +24,7 @@ static bool stringEndsWith(const std::string &src, const std::string ending) {
 
 void fixElementPosition(nanogui::Widget *w, const Value & vx, const Value & vy) {
 	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-		long x, y;
+		int64_t x, y;
 		if (vx.asInteger(x) && vy.asInteger(y)) w->setPosition(nanogui::Vector2i(x,y));
 	}
 }
@@ -35,7 +35,7 @@ void fixElementPosition(nanogui::Widget *w, Structure *s) {
 
 void fixElementSize(nanogui::Widget *w, const Value & vx, const Value & vy) {
 	if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-		long x, y;
+		int64_t x, y;
 		if (vx.asInteger(x) && vy.asInteger(y)) {
 			w->setSize(nanogui::Vector2i(x,y));
 			w->setFixedSize(nanogui::Vector2i(x,y));
@@ -101,16 +101,20 @@ WidgetParams::WidgetParams(Structure *structure, Widget *w, Structure *elem,
 		if (ivis_v != SymbolTable::Null) ivis_v.asBoolean(ivis);
 	}
 	font_size = 0;
-	if (font_size_val != SymbolTable::Null) font_size_val.asInteger(font_size);
+    int64_t tmp;
+	if (font_size_val != SymbolTable::Null) font_size_val.asInteger(tmp);
+    font_size = tmp;
 
 	const Value value_type_val(element->getValue("value_type"));
 	value_type = -1;
-	if (value_type_val != SymbolTable::Null) value_type_val.asInteger(value_type);
+	if (value_type_val != SymbolTable::Null) value_type_val.asInteger(tmp);
+    value_type = tmp;
 	value_scale = 1.0f;
 	if (scale_val != SymbolTable::Null) scale_val.asFloat(value_scale);
 	tab_pos = 0;
 	const Value tab_pos_val(element->getValue("tab_pos"));
-	if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tab_pos);
+	if (tab_pos_val != SymbolTable::Null) tab_pos_val.asInteger(tmp);
+    tab_pos = tmp;
 	x_scale = 0;
 	const Value x_scale_val(element->getValue("x_scale"));
 	if (x_scale_val != SymbolTable::Null) x_scale_val.asFloat(x_scale);

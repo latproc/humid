@@ -182,7 +182,7 @@ bool Structure::isA(const std::string &seek) {
 
 long Structure::getIntProperty(const std::string name, int default_value) {
 	const Value &val = properties.find(name.c_str());
-	long res;
+	int64_t res;
 	if (val == SymbolTable::Null || !val.asInteger(res))
 		return default_value;
 	else
