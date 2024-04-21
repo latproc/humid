@@ -3,17 +3,21 @@
 find_library(
 	ClockworkClient_LIBRARY
 	PATHS 
-		/opt/latproc/iod/stage/lib
-		/opt/latproc/iod/build/Release
-		/opt/latproc/iod/build/Debug
-		/opt/latproc/iod/build
+        ${PROJECT_SOURCE_DIR}/clockwork/iod/stage/lib
+        #		/opt/latproc/iod/stage/lib
+        #/opt/latproc/iod/build/Release
+        #/opt/latproc/iod/build/Debug
+        #/opt/latproc/iod/build
 	NAMES cw_client Clockwork
 )
 
 find_path(
 	ClockworkClient_INCLUDE_DIR
 	ClientInterface.h
-	PATHS /opt/latproc/iod/stage /opt/latproc/iod/src
+	PATHS
+        ${PROJECT_SOURCE_DIR}/clockwork/iod/src
+        /opt/latproc/iod/stage
+        /opt/latproc/iod/src
 )
 
 include(FindPackageHandleStandardArgs)
