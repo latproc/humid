@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 
 #include "helper.h"
 #include "namedobject.h"
@@ -209,7 +210,7 @@ void collect_humid_files(boost::filesystem::path fp, std::list<boost::filesystem
 		for (path_vec::const_iterator iter(items.begin()); iter != items.end(); ++iter) {
 				if (is_regular_file(*iter) ) {
 						path fn(*iter);
-						std::string ext = boost::filesystem::extension(fn);
+						std::string ext = boost::filesystem::path(fn).extension().string();
 						if (ext == ".humid") files.push_back(fn);
 				}
 				else if (is_directory(fp)) {

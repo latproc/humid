@@ -213,7 +213,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 				errors.push_back(error.str());
 			}
 			if (is_regular_file(fp)) {
-				std::string ext = boost::filesystem::extension(fp);
+				std::string ext = boost::filesystem::path(fp).extension().string();
 			 	if (ext == ".humid") files.push_back(fp);
 			}
 			else if (is_directory(fp)) {
