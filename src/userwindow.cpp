@@ -161,8 +161,8 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setTheme(theme);
 	GLFWmonitor* primary = glfwGetPrimaryMonitor();
 	const GLFWvidmode* mode = glfwGetVideoMode(primary);
-	int64_t width = screen->size().x();
-	int64_t height = screen->size().y();
+	long width = screen->size().x();
+	long height = screen->size().y();
 	{
 		const Value width_v = EditorGUI::systemSettings()->getProperties().find("panel_width");
 		const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
@@ -179,8 +179,8 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	extern long full_screen_mode;
 	if (!run_only || !full_screen_mode) {
 		window->setTitle("Panel Window");
-		int64_t window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
-		int64_t window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
+		long window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
+		long window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
 		{
 			const Value x_v = EditorGUI::systemSettings()->getProperties().find("panel_left");
 			const Value y_v = EditorGUI::systemSettings()->getProperties().find("panel_top");
@@ -675,7 +675,7 @@ void UserWindow::loadProperties(PropertyFormHelper *properties) {
 			Structure *s = uw->structure();
 			if (s) {
 				const Value &v(s->getValue("screen_id"));
-				int64_t res = 0;
+				long res = 0;
 				if (v.asInteger(res)) return res;
 			}
 			return 0;
