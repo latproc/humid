@@ -1,3 +1,5 @@
+-include LocalMakefile
+
 ifndef JOBS
     JOBS:=-j4
 endif
