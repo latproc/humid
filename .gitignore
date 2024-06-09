@@ -61,6 +61,7 @@ ext/
 
 #local cmake settings
 LocalCMakeLists.txt
+LocalMakefile
 
 #editor files
 *.humid_
@@ -71,3 +72,4 @@ LocalCMakeLists.txt
 .test/
 junk/
 examples/
+
