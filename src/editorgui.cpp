@@ -908,7 +908,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 
 		int pos = 0;
 		std::string name;
-		int64_t val = 0;
+		long val = 0;
 		double dval = 0.0;
 		CircularBuffer *buf = 0;
 		LinkableProperty *lp = 0;
@@ -1020,7 +1020,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					if (collect_history) {
 						CircularBuffer *buf = getUserWindow()->getValues(prop_name);
 						if (buf) {
-							int64_t v;
+							long v;
 							double fv;
 							buf->clear();
 							if (value.asInteger(v))
@@ -1096,7 +1096,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
 											public:
 												DialogVisibilityTarget(EditorGUI *gui) : m_gui(gui) {}
 												void update(const Value &value) override {
-													int64_t visible;
+													long visible;
 													if (value.asInteger(visible)) {
 														m_gui->showDialog(visible);
 													}

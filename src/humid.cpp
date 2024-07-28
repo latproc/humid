@@ -309,7 +309,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		if (item->getName() != "Structures") {
 			const Value &vw(item->getProperties().find("w"));
 			const Value &vh(item->getProperties().find("h"));
-			int64_t w, h;
+			long w, h;
 			if (vw.asInteger(w) && vh.asInteger(h)) {
 				if (screen) {
 					screen->setSize(nanogui::Vector2i(w, h));
@@ -325,7 +325,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		{
 			const Value &vx(item->getProperties().find("x"));
 			const Value &vy(item->getProperties().find("y"));
-			int64_t x, y;
+			long x, y;
 			if (vx.asInteger(x) && vy.asInteger(y)) {
 				if (screen)
 					screen->setPosition(nanogui::Vector2i(x, y));
@@ -343,7 +343,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 			if (skel) {
 				const Value &sx(item->getProperties().find("sx")); // position when shrunk
 				const Value &sy(item->getProperties().find("sy")); // position when shrunk
-				int64_t x, y;
+				long x, y;
 				if (sx.asInteger(x) && sy.asInteger(y)) {
 					nanogui::Vector2i pos(x, y);
 					pos = fixPositionInWindow(pos, widget->size(), widget->parent()->size());
@@ -354,7 +354,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 			}
 		}
 
-		int64_t vis = 0;
+		long vis = 0;
 		const Value &vis_prop(item->getProperties().find("visible"));
 		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
 		{
@@ -605,12 +605,12 @@ int main(int argc, const char ** argv ) {
 			}
 
 			Value full_screen_v = EditorGUI::systemSettings()->getProperties().find("full_screen");
-			int64_t full_screen = 1;
+			long full_screen = 1;
 			full_screen_v.asInteger(full_screen);
 			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
 
-			int64_t width = mode->width;
-			int64_t height = mode->height;
+			long width = mode->width;
+			long height = mode->height;
 			std::cout << "intial videomode: " << width << "x" << height << "\n";
 			{
 				const Value width_v = EditorGUI::systemSettings()->getProperties().find("main_window_width");

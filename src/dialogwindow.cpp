@@ -78,7 +78,7 @@ void DialogWindow::loadStructure(Structure *s) {
 				Value vy = element->getValue("pos_y");
 				Value w = element->getValue("width");
 				Value h = element->getValue("height");
-				int64_t x, y;
+				long x, y;
 				if (vx.asInteger(x) && vy.asInteger(y)) {
 					offset = nanogui::Vector2i(x,y);
 				}
