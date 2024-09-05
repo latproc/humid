@@ -64,7 +64,7 @@ find_package(CURL REQUIRED)
 #set(BOOST_ROOT "/usr/local/")
 FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono date_time REQUIRED )
 
-set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork")
+set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork/iod/src")
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
 #set(Clockwork_INCLUDE_DIR /opt/latproc/iod/stage/include/clockwork)
 #set(ClockworkClient_LIBRARIES /opt/latproc/iod/stage/lib/libcw_client.a)
