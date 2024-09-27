@@ -348,9 +348,9 @@ Value EditorButton::getPropertyValue(const std::string &prop) {
         return flags();
     }
     else if (prop == "Alignment")
-        return fromHorizontalAlignment(alignment);
+        return Value{fromHorizontalAlignment(alignment), Value::t_string};
     else if (prop == "Vertical Alignment")
-        return fromVerticalAlignment(valign);
+        return Value{fromVerticalAlignment(valign), Value::t_string};
     else if (prop == "Wrap Text")
         return wrap_text ? 1 : 0;
     else if (prop == "Border colouring") {
@@ -395,19 +395,19 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         setCaption(value);
     }
     else if (prop == "Background Colour") {
-        getDefinition()->getProperties().add("bg_color", value);
+        getDefinition()->getProperties().add("bg_color", Value{value});
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
     else if (prop == "Background on colour") {
-        getDefinition()->getProperties().add("bg_on_color", value);
+        getDefinition()->getProperties().add("bg_on_color", Value{value});
         setOnColor(colourFromProperty(getDefinition(), "bg_on_color"));
     }
     else if (prop == "Text colour") {
-        getDefinition()->getProperties().add("text_colour", value);
+        getDefinition()->getProperties().add("text_colour", Value{value});
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
     else if (prop == "Text on colour") {
-        getDefinition()->getProperties().add("text_on_colour", value);
+        getDefinition()->getProperties().add("text_on_colour", Value{value});
         setOnTextColor(colourFromProperty(getDefinition(), "text_on_colour"));
     }
     else if (prop == "Alignment") {
@@ -415,7 +415,7 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         // horizontal alignments had incorrect numeric values. The following
         // ensures the symbolic name is saved instead of a bare integer.
         // for a time(?), reading toHorizintalAlignment(int) supports the old value
-        getDefinition()->getProperties().add("alignment", fromHorizontalAlignment(alignment));
+        getDefinition()->getProperties().add("alignment", Value{fromHorizontalAlignment(alignment)});
     }
     else if (prop == "Vertical Alignment")
         valign = toVerticalAlignment(value);
@@ -441,14 +441,14 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     }
     else if (prop == "Border colouring") {
         Value bc(value);
-        long bci = -1;
+        int64_t bci = -1;
         if (bc.asInteger(bci)) {
             getDefinition()->getProperties().add("border_colouring", bci);
             border_colouring = static_cast<BorderColouring>(bci);
         }
         else {
             if (value == "manual") {
-                getDefinition()->getProperties().add("border_colouring", 0);
+                getDefinition()->getProperties().add("border_colouring", Value{0});
                 border_colouring = BorderColouring::Manual;
             }
             else if (value == "auto") {
@@ -459,14 +459,14 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     }
     else if (prop == "Border gradient dir") {
         Value bgd(value);
-        long bgdi = -1;
+        int64_t bgdi = -1;
         if (bgd.asInteger(bgdi)) {
             getDefinition()->getProperties().add("border_grad_dir", bgdi);
             border_grad_dir = static_cast<BorderGradientDirection>(bgdi);
         }
         else {
             if (value == "down") {
-                getDefinition()->getProperties().add("border_grad_dir", 0);
+                getDefinition()->getProperties().add("border_grad_dir", Value{0});
                 border_grad_dir = BorderGradientDirection::Down;
             }
             else if (value == "right") {
@@ -493,16 +493,16 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
     }
     else if (prop == "Border style") {
         Value bs(value);
-        long bsi = -1;
+        int64_t bsi = -1;
         if (bs.asInteger(bsi)) {
-            getDefinition()->getProperties().add("border_style", value);
+            getDefinition()->getProperties().add("border_style", Value{value});
             border_style = static_cast<BorderStyle>(std::atoi(value.c_str()));
         }
         else {
             if (value == "none") {
                 border = 0;
-                getDefinition()->getProperties().add("border", 0);
-                getDefinition()->getProperties().add("border_style", 0);
+                getDefinition()->getProperties().add("border", Value{0});
+                getDefinition()->getProperties().add("border_style", Value{0});
                 border_style = BorderStyle::None;
             }
             else if (value == "shadow") {
@@ -516,11 +516,11 @@ void EditorButton::setProperty(const std::string &prop, const std::string value)
         }
     }
     else if (prop == "Border grad bot") {
-        getDefinition()->getProperties().add("border_grad_bot", value);
+        getDefinition()->getProperties().add("border_grad_bot", Value{value});
         border_grad_bot = colourFromProperty(getDefinition(), "bg_on_color");
     }
     else if (prop == "Border grad top") {
-        getDefinition()->getProperties().add("border_grad_top", value);
+        getDefinition()->getProperties().add("border_grad_top", Value{value});
         border_grad_top = colourFromProperty(getDefinition(), "bg_on_color");
     }
 }

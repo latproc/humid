@@ -164,7 +164,7 @@ SYMBOL PROPSEP value
 	delete $3;
 }
 | SYMBOL {
-	sts.properties.add($1, 0);
+	sts.properties.add($1, Value{0});
 }
 ;
 

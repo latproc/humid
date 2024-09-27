@@ -15,7 +15,7 @@ struct WidgetParams {
     Structure *element;
     LinkableProperty *lp;
     EditorGUI *gui;
-    long font_size;
+    int64_t font_size;
     const Value &format_val;
     const Value &connection;
     const Value &vis;
@@ -32,9 +32,9 @@ struct WidgetParams {
     const Value &x_scale_val;
     const Value &theme_name;
     Value remote;
-    long value_type;
+    int64_t value_type;
     //const Value &scale_val;
-    long tab_pos;
+    int64_t tab_pos;
     //const Value &border;
     LinkableProperty *visibility;
     const std::string &kind;

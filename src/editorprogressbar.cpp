@@ -144,11 +144,11 @@ void EditorProgressBar::setProperty(const std::string &prop, const std::string v
         }
     }
     else if (prop == "Foreground Colour") {
-        getDefinition()->getProperties().add("fg_color", value);
+        getDefinition()->getProperties().add("fg_color", Value{value});
         setColor(colourFromProperty(getDefinition(), "fg_color"));
     }
     else if (prop == "Background Colour") {
-        getDefinition()->getProperties().add("bg_color", value);
+        getDefinition()->getProperties().add("bg_color", Value{value});
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
     else if (prop == "Value") {

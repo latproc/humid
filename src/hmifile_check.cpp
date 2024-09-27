@@ -12,6 +12,7 @@
 #include <string.h>
 #include <string>
 #include <sys/stat.h>
+#include <iostream>
 #ifdef __APPLE__
 #include <sys/dir.h>
 #endif

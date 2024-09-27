@@ -759,61 +759,58 @@ bool setup_signals() {
     return true;
 }
 
+namespace {
+    template <typename T>
+    std::string encode(const char *command, int group, int addr, T value) {
+        return MessageEncoding::encodeCommand(command, Value{group}, Value{addr}, Value{value});
+    }
+}
+
 std::string ClockworkClient::getIODSyncCommand(const std::string &connection_name, int group,
                                                int addr, bool which) {
     int new_value = (which) ? 1 : 0;
-    char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+    std::string msg = encode("MODBUS", group, addr, new_value);
 
     if (DEBUG_BASIC)
         std::cerr << "IOD command: " << msg << "\n";
-    std::string s(msg);
-    free(msg);
-    return s;
+    return msg;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string &connection_name, int group,
                                                int addr, int new_value) {
-    char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+    std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
     //conn->sendIODMessage(msg);
     if (DEBUG_BASIC)
         std::cerr << "IOD command: " << msg << "\n";
-    std::string s(msg);
-    free(msg);
-    return s;
+    return msg;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string &connection_name, int group,
                                                int addr, unsigned int new_value) {
-    char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+    std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
     //conn->sendIODMessage(msg);
     if (DEBUG_BASIC)
         std::cerr << "IOD command: " << msg << "\n";
-    std::string s(msg);
-    free(msg);
 
-    return s;
+    return msg;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string &connection_name, int group,
                                                int addr, float new_value) {
-    char *msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+    std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
 
     if (DEBUG_BASIC)
         std::cerr << "IOD command: " << msg << "\n";
-    std::string s(msg);
-    free(msg);
-    return s;
+    return msg;
 }
 std::string ClockworkClient::getIODSyncCommand(const std::string &connection_name, int group,
                                                int addr, const char *new_value) {
-    char *msg =
+    std::string msg =
         MessageEncoding::encodeCommand("MODBUS", group, addr, Value(new_value, Value::t_string));
 
     if (DEBUG_BASIC)
         std::cerr << "IOD command: " << msg << "\n";
-    std::string s(msg);
-    free(msg);
-    return s;
+    return msg;
 }
 
 char *ClockworkClient::Connection::sendIOD(const char *msg) {

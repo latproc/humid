@@ -720,7 +720,7 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
         nanogui::Widget *w = item->create(window);
         if (w) {
             EditorWidget *ew = dynamic_cast<EditorWidget *>(w);
-            Parameter param(ew->getName());
+            Parameter param(Value{ew->getName()});
             ew->updateStructure();
             param.machine = ew->getDefinition();
             screen_sc->addLocal(param);
@@ -950,7 +950,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 
         int pos = 0;
         std::string name;
-        long val = 0;
+        int64_t val = 0;
         double dval = 0.0;
         CircularBuffer *buf = 0;
         LinkableProperty *lp = 0;
@@ -1065,7 +1065,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
                     if (collect_history) {
                         CircularBuffer *buf = getUserWindow()->getValues(prop_name);
                         if (buf) {
-                            long v;
+                            int64_t v;
                             double fv;
                             buf->clear();
                             if (value.asInteger(v))
@@ -1153,7 +1153,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection) {
                                                 DialogVisibilityTarget(EditorGUI *gui)
                                                     : m_gui(gui) {}
                                                 void update(uint64_t msg_time, const Value &value) override {
-                                                    long visible;
+                                                    int64_t visible;
                                                     if (value.asInteger(visible)) {
                                                         m_gui->showDialog(visible);
                                                     }

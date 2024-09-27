@@ -4,13 +4,14 @@
 #include "structure.h"
 #include <map>
 #include <symboltable.h>
+#include <iostream>
 
 ThemeManager *ThemeManager::theme_manager = nullptr;
 
 void set_prop(int &val, SymbolTable &st, const char *key) {
     const Value &v = st.find(key);
     if (!isNull(v)) {
-        long iValue;
+        int64_t iValue;
         if (v.asInteger(iValue)) {
             val = static_cast<int>(iValue);
         }
@@ -124,7 +125,7 @@ class ThemeManager::Pimpl {
     }
 
     void setContext(NVGcontext *ctx) { context = ctx; }
-    
+
     nanogui::Theme *createTheme() {
         assert(context);
         if (context) {

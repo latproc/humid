@@ -420,7 +420,7 @@ Value EditorWidget::getPropertyValue(const std::string &prop) {
         return SymbolTable::Null;
     }
     if (prop == "Structure")
-        return base;
+        return Value{base, Value::t_string};
     if (prop == "Horizontal Pos") {
         nanogui::Widget *w = dynamic_cast<nanogui::Widget *>(this);
         return (w) ? w->position().x() : 0;

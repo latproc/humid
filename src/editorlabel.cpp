@@ -211,7 +211,7 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
         setFontSize(fs);
     }
     else if (prop == "Alignment") {
-        long align_int = 0;
+        int64_t align_int = 0;
         Value val(value);
         if (val.asInteger(align_int)) {
             alignment = static_cast<int>(align_int);
@@ -231,7 +231,7 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
         }
     }
     else if (prop == "Vertical Alignment") {
-        long v_align_int = 0;
+        int64_t v_align_int = 0;
         Value val(value);
         if (val.asInteger(v_align_int)) {
             valign = static_cast<int>(v_align_int);
@@ -254,11 +254,11 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
         wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
     else if (prop == "Text Colour") {
-        getDefinition()->getProperties().add("text_colour", value);
+        getDefinition()->getProperties().add("text_colour", Value{value});
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
     else if (prop == "Background Colour") {
-        getDefinition()->getProperties().add("bg_color", value);
+        getDefinition()->getProperties().add("bg_color", Value{value});
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
 }

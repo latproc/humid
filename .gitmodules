@@ -4,3 +4,7 @@
 [submodule "lib/nanogui"]
 	path = lib/nanogui
 	url = https://github.com/latproc/nanogui.git
+[submodule "clockwork"]
+	path = clockwork
+	url = https://github.com/latproc/clockwork
+	branch = experimental-ethercat-wip

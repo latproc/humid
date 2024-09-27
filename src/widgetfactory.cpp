@@ -15,6 +15,7 @@
 #include "thememanager.h"
 #include "valuehelper.h"
 #include <nanogui/button.h>
+#include <iostream>
 
 extern int run_only;
 extern long full_screen_mode;
@@ -29,7 +30,7 @@ static bool stringEndsWith(const std::string &src, const std::string ending) {
 
 void fixElementPosition(nanogui::Widget *w, const Value &vx, const Value &vy) {
     if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-        long x, y;
+        int64_t x, y;
         if (vx.asInteger(x) && vy.asInteger(y))
             w->setPosition(nanogui::Vector2i(x, y));
     }
@@ -41,7 +42,7 @@ void fixElementPosition(nanogui::Widget *w, Structure *s) {
 
 void fixElementSize(nanogui::Widget *w, const Value &vx, const Value &vy) {
     if (vx != SymbolTable::Null && vx != SymbolTable::Null) {
-        long x, y;
+        int64_t x, y;
         if (vx.asInteger(x) && vy.asInteger(y)) {
             w->setSize(nanogui::Vector2i(x, y));
             w->setFixedSize(nanogui::Vector2i(x, y));
@@ -152,7 +153,7 @@ template <typename T> void prepare_remote_links(const WidgetParams &params, T *w
 void createLabel(WidgetParams &params) {
     const Value caption_v((params.lp) ? params.lp->value()
                           : (params.remote != SymbolTable::Null)
-                              ? ""
+                              ? Value{"", Value::t_string}
                               : params.element->getValue("caption"));
     EditorLabel *el = new EditorLabel(params.s, params.window, params.element->getName(), params.lp,
                                       (caption_v != SymbolTable::Null) ? caption_v.asString() : "");
@@ -177,10 +178,10 @@ void createLabel(WidgetParams &params) {
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
     Value alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
-        el->setPropertyValue("Alignment", alignment_v.asString());
+        el->setPropertyValue("Alignment", Value{alignment_v.asString(), Value::t_string});
     Value valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
-        el->setPropertyValue("Vertical Alignment", valignment_v.asString());
+        el->setPropertyValue("Vertical Alignment", Value{valignment_v.asString(), Value::t_string});
     if (params.format_val != SymbolTable::Null)
         el->setValueFormat(params.format_val.asString());
     if (params.value_type != -1)
@@ -224,7 +225,7 @@ void createList(WidgetParams &params) {
         el->setTextColor(colourFromProperty(params.element, "text_colour"));
     const Value &alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
-        el->setPropertyValue("Alignment", alignment_v.asString());
+        el->setPropertyValue("Alignment", Value{alignment_v.asString(), Value::t_string});
     const Value &items_v(params.element->getValue("items"));
     if (items_v != SymbolTable::Null) {
         el->setItems(items_v.asString());
@@ -235,7 +236,7 @@ void createList(WidgetParams &params) {
     }
     const Value &scroll_pos_v(params.element->getValue("scroll_pos"));
     if (scroll_pos_v != SymbolTable::Null) {
-        long idx;
+        int64_t idx;
         if (scroll_pos_v.asInteger(idx)) {
             el->scroll_to(idx);
         }
@@ -246,7 +247,7 @@ void createList(WidgetParams &params) {
     }
     const Value &selind_v(params.element->getValue("selected_index"));
     if (selind_v != SymbolTable::Null) {
-        long idx;
+        int64_t idx;
         if (selind_v.asInteger(idx)) {
             el->selectByIndex(idx);
         }
@@ -257,7 +258,7 @@ void createList(WidgetParams &params) {
     }
     const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
-        el->setPropertyValue("Vertical Alignment", valignment_v.asString());
+        el->setPropertyValue("Vertical Alignment", Value{valignment_v.asString(), Value::t_string});
     if (params.format_val != SymbolTable::Null)
         el->setValueFormat(params.format_val.asString());
     if (params.value_type != -1)
@@ -375,16 +376,16 @@ void createText(WidgetParams &params) {
         textBox->setTheme(params.theme);
     }
     const Value &text_v((params.lp)                            ? params.lp->value()
-                        : (params.remote != SymbolTable::Null) ? ""
+                        : (params.remote != SymbolTable::Null) ? Value{"", Value::t_string}
                                                                : params.element->getValue("text"));
     if (text_v != SymbolTable::Null)
         textBox->setValue(text_v.asString());
     const Value &alignment_v(params.element->getValue("alignment"));
     if (alignment_v != SymbolTable::Null)
-        textBox->setPropertyValue("Alignment", alignment_v.asString());
+        textBox->setPropertyValue("Alignment", Value{alignment_v.asString()});
     const Value &valignment_v(params.element->getValue("valign"));
     if (valignment_v != SymbolTable::Null)
-        textBox->setPropertyValue("Vertical Alignment", valignment_v.asString());
+        textBox->setPropertyValue("Vertical Alignment", Value{valignment_v.asString(), Value::t_string});
     textBox->setEnabled(true);
     textBox->setEditable(true);
     if (params.connection != SymbolTable::Null) {
@@ -541,7 +542,7 @@ void createButton(WidgetParams &params) {
     b->setTextColor(colourFromProperty(params.element, "text_colour"));
     b->setOnColor(colourFromProperty(params.element, "bg_on_color"));
     b->setOnTextColor(colourFromProperty(params.element, "text_on_colour"));
-    long enum_val;
+    int64_t enum_val;
     if (params.element->getValue("border_style").asInteger(enum_val)) {
         b->setBorderStyle(static_cast<EditorButton::BorderStyle>(enum_val));
     }

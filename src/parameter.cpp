@@ -9,7 +9,7 @@ Parameter::Parameter(Value v) : val(v), machine(0) { ; }
 Parameter::Parameter(const char *name, const SymbolTable &st)
     : val(name), properties(st), machine(0) {}
 std::ostream &Parameter::operator<<(std::ostream &out) const {
-    return out << val << "(" << properties << ")";
+    return out << val << std::string{"("} << properties << std::string{")"};
 }
 Parameter::Parameter(const Parameter &orig) {
     val = orig.val;

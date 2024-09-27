@@ -34,7 +34,7 @@ namespace {
 class CustomVScrollPanel : public nanogui::VScrollPanel {
 public:
     CustomVScrollPanel(Widget *parent) : nanogui::VScrollPanel(parent) {}
-    
+
     void draw(NVGcontext *ctx) {
         if (mChildren.empty())
             return;
@@ -86,15 +86,14 @@ void send_property_updates(
             remote_property = remote_machine.substr(separator_pos + 1);
             remote_machine = remote_machine.substr(0, separator_pos);
         }
-        char *msg = MessageEncoding::encodeCommand("PROPERTY", remote_machine, remote_property,
-                                                   link.second->asString());
+        std::string msg = MessageEncoding::encodeCommand("PROPERTY", Value{remote_machine}, Value{remote_property},
+                                                   Value{link.second->asString()});
         //ss << "PROPERTY " << remote_machine << " " << remote_property << " " << link.second << "";
         EDITOR->gui()->queueMessage(connection_name, msg, [](std::string s) {
             if (debug) {
                 std::cout << " Response: " << s << "\n";
             }
         });
-        delete msg;
     }
 }
 
@@ -155,7 +154,7 @@ class EditorList::Impl {
     ~Impl() {
         list_theme->decRef();
     }
-    
+
     nanogui::Theme *theme() { return list_theme; }
 
     void report_selection_change() {
@@ -242,7 +241,7 @@ class EditorList::Impl {
     EditorList &owner;
     PropertyLinks m_links;
     nanogui::Theme *list_theme = nullptr;
-    Value m_scroll_pos = 0;
+    Value m_scroll_pos = Value{0};
     std::chrono::steady_clock::time_point last_selected;
     int pending_index = -1;
 };
@@ -428,7 +427,7 @@ const std::string &EditorList::items_str() { return impl->m_item_str; }
 const std::string &EditorList::item_filename() { return impl->m_item_file; }
 
 int EditorList::selectedIndex() const {
-    long index;
+    int64_t index;
     bool extracted_int = impl->selected_index.asInteger(index);
     assert(extracted_int);
     return index;
@@ -643,7 +642,7 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
         setFontSize(fs);
     }
     else if (prop == "Alignment") {
-        long align_int = 0;
+        int64_t align_int = 0;
         Value val(value);
         if (val.asInteger(align_int)) {
             alignment = static_cast<int>(align_int);
@@ -663,7 +662,7 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
         }
     }
     else if (prop == "Vertical Alignment") {
-        long v_align_int = 0;
+        int64_t v_align_int = 0;
         Value val(value);
         if (val.asInteger(v_align_int)) {
             valign = static_cast<int>(v_align_int);
@@ -686,11 +685,11 @@ void EditorList::setProperty(const std::string &prop, const std::string value) {
         wrap_text = (value == "1" || value == "true" || value == "TRUE");
     }
     else if (prop == "Text Colour") {
-        getDefinition()->getProperties().add("text_colour", value);
+        getDefinition()->getProperties().add("text_colour", Value{value});
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
     else if (prop == "Background Colour") {
-        getDefinition()->getProperties().add("bg_color", value);
+        getDefinition()->getProperties().add("bg_color", Value{value});
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
 }

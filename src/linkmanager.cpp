@@ -5,6 +5,7 @@
 #include "valuehelper.h"
 #include <list>
 #include <map>
+#include <iostream>
 
 LinkManager *LinkManager::_instance = nullptr;
 

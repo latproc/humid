@@ -14,6 +14,7 @@
 #include "linkableobject.h"
 #include <nanogui/button.h>
 #include <nanogui/progressbar.h>
+#include <iostream>
 
 extern int debug;
 

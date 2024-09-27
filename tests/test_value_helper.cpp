@@ -21,7 +21,19 @@ TEST(ValueHelper, CanGetTypeForKnownProperty) {
 TEST(ValueHelper, CanGetDefaultForType) {
     auto value = defaultForType(Value::t_bool);
     EXPECT_EQ(value.kind, Value::t_bool);
-    EXPECT_EQ(value, false);
+    EXPECT_EQ(value.bValue, false);
+}
+
+TEST(Value, CanCreateFromBoolTrue) {
+    Value value(true);
+    EXPECT_EQ(value.kind, Value::t_bool);
+    EXPECT_EQ(value.bValue, true);
+}
+
+TEST(Value, CanCreateFromBoolFalse) {
+    Value value(false);
+    EXPECT_EQ(value.kind, Value::t_bool);
+    EXPECT_EQ(value.bValue, false);
 }
 
 } // namespace

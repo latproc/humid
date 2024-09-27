@@ -274,7 +274,7 @@ instantiation ';'
     }
     if (!found) {
 	    char *name = strdup(hps.current_machine->getName().c_str());
-        Parameter p(name);
+        Parameter p(Value{name});
         p.machine = hps.current_machine;
         hps.current_locals.push_back(p);
     }
@@ -433,7 +433,7 @@ SYMBOL PROPSEP value
 	delete $3;
 }
 | SYMBOL {
-	hps.properties.add($1, 0);
+	hps.properties.add($1, Value{0});
 }
 ;
 

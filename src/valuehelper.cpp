@@ -7,17 +7,17 @@ Value defaultForType(Value::Kind kind) {
     case Value::t_empty:
         return SymbolTable::Null;
     case Value::t_integer:
-        return 0;
+        return Value{0};
     case Value::t_string:
-        return "";
+        return Value{"", kind};
     case Value::t_bool:
-        return false;
+        return Value{false};
     case Value::t_symbol:
         return Value("", kind);
     case Value::t_dynamic:
         return SymbolTable::Null;
     case Value::t_float:
-        return 0.0;
+        return Value{0.0};
     default:;
     }
     return SymbolTable::Null;

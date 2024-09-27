@@ -133,11 +133,11 @@ void EditorComboBox::setProperty(const std::string &prop, const std::string valu
         }
     }
     if (prop == "Background Colour") {
-        getDefinition()->getProperties().add("bg_color", value);
+        getDefinition()->getProperties().add("bg_color", Value(value));
         setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
     }
     if (prop == "Text Colour") {
-        getDefinition()->getProperties().add("text_colour", value);
+        getDefinition()->getProperties().add("text_colour", Value(value));
         setTextColor(colourFromProperty(getDefinition(), "text_colour"));
     }
     if (prop == "Vertical Pos" || prop == "Horizontal Pos") {

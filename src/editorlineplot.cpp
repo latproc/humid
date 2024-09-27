@@ -137,7 +137,7 @@ void EditorLinePlot::setTriggerName(UserWindow *user_window, SampleTrigger::Even
         return;
     SampleTrigger *t = buf->getTrigger(evt);
     if (!t) {
-        t = new SampleTrigger(name, 0);
+        t = new SampleTrigger(name, Value{0});
         if (evt == SampleTrigger::START)
             t->setTriggerValue(start_trigger_value);
         else if (evt == SampleTrigger::STOP)
