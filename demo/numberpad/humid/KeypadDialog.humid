@@ -1,0 +1,7 @@
+dialog Keypad(
+    file_name: "KeypadDialog.humid",
+    screen_height: 720,
+    screen_id: 1,
+    screen_width: 1200,
+    visibility: "keypad_dialog.dialog.visible"
+  );
