@@ -17,7 +17,7 @@
 #include "nanogui/textbox.h"
 #include "nanogui/label.h"
 #include "editor.h"
-#include "editortextbox.h"
+#include "linkmanager.h"
 
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
@@ -124,7 +124,7 @@ void LinkableIndicator::update(const Value &value) {
                 tb->setPushed(value.iValue == 0);
             }
         }
-        else {  
+        else {
             if ( value.kind == Value::t_bool ) {
                 tb->setPushed(value.bValue);
             }
@@ -149,7 +149,7 @@ void LinkableVisibility::update(const Value &value) {
             if (value.asBoolean(vis)) {
                 if (!ew->invertedVisibility())
                     ew->asWidget()->setVisible(vis);
-                else 
+                else
                     ew->asWidget()->setVisible(!vis);
             }
             else ew->asWidget()->setVisible(true);

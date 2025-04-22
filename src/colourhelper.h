@@ -9,9 +9,26 @@
 
 #include <string>
 #include <nanogui/common.h>
-#include "structure.h"
+#include <valuehelper.h>
+#include <symboltable.h>
 
 nanogui::Color colourFromString(const std::string &colour);
 std::string stringFromColour(const nanogui::Color &colour);
-nanogui::Color colourFromProperty(Structure *s, const std::string &prop);
-nanogui::Color colourFromProperty(Structure *element, const char *prop);
+
+template<typename T>
+nanogui::Color colourFromProperty(T *element, const char *prop) {
+    Value colour(element->getValue(prop));
+    if (colour == SymbolTable::Null) {
+        colour = defaultForProperty(prop);
+    }
+    if (colour != SymbolTable::Null) {
+        return colourFromString(colour.asString());
+    }
+    return nanogui::Color(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
+template<typename T>
+nanogui::Color colourFromProperty(T *element, const std::string &prop) {
+    return colourFromProperty(element, prop.c_str());
+}
+

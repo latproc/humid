@@ -15,6 +15,7 @@
 #include "helper.h"
 #include "linkmanager.h"
 
+
 std::list<Structure *>hm_structures;
 std::list<Structure *>builtin_structures;
 std::list<StructureClass *> hm_classes;
@@ -241,7 +242,7 @@ const Value &Structure::getValue(const char *name) {
 				return SymbolTable::Null;
 			}
 		}
-		else { 
+		else {
 			std::cerr << "no class: " << getKind() << "\n";
 		}
 	}
@@ -320,7 +321,7 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 			}
 		}
 	}
-	bool res = writePropertyList(out, properties, 
+	bool res = writePropertyList(out, properties,
 					getStructureDefinition() ? &getStructureDefinition()->getDefaults() : nullptr, &link_map);
 	out << ";\n";
 	return res;

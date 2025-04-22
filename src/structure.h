@@ -12,11 +12,7 @@
 #include <vector>
 #include <symboltable.h>
 #include "namedobject.h"
-#include "viewlistcontroller.h"
-#include "editorobject.h"
 #include "linkableobject.h"
-#include "linkableproperty.h"
-#include "linkmanager.h"
 
 class Structure;
 

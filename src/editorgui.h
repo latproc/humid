@@ -27,6 +27,7 @@
 #include "themewindow.h"
 #include "dialogwindow.h"
 #include "cJSON.h"
+#include "viewlistcontroller.h"
 
 class StartupWindow;
 class PropertyWindow;
@@ -84,7 +85,7 @@ public:
 	void update(ClockworkClient::Connection *connection, bool allow_data_sync) override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
-	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, 
+	virtual void handleClockworkMessage(ClockworkClient::Connection *conn,
 		unsigned long time, const std::string &op, std::list<Value> *message) override;
 
 	void needsUpdate() { needs_update = true; }

@@ -20,16 +20,12 @@
 #include <nanogui/glutil.h>
 
 #include <iostream>
-#include <fstream>
 #include <locale>
 #include <string>
 #include <vector>
 #include <set>
 #include "propertymonitor.h"
-#include "draghandle.h"
 #include "skeleton.h"
-#include "panelscreen.h"
-#include "editorproject.h"
 #include "editorsettings.h"
 #include "editorgui.h"
 #include "thememanager.h"
@@ -39,7 +35,6 @@
 #include <cJSON.h>
 #include <MessageEncoding.h>
 #include <MessagingInterface.h>
-#include <signal.h>
 #include <SocketMonitor.h>
 #include <ConnectionManager.h>
 #include <circularbuffer.h>
@@ -69,7 +64,7 @@
 #include "viewswindow.h"
 #include "startupwindow.h"
 #include "editorwidget.h"
-#include "colourhelper.h"
+#include "editorgui.h"
 
 // settings file parser globals
 #define __MAIN__ 1
