@@ -36,7 +36,7 @@ endif()
 
 add_executable(test_colours test_colours.cpp ../src/colourhelper.cpp ../src/valuehelper.cpp)
 target_compile_definitions(test_colours PRIVATE TESTING=1 )
-target_link_libraries(test_colours gmock_main Clockwork ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES} pthread)
+target_link_libraries(test_colours gmock_main ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES} pthread)
 include_directories("${CLOCKWORK_DIR}")
 include_directories("${PROJECT_SOURCE_DIR}/src")
 include_directories("${PROJECT_SOURCE_DIR}/tests")
