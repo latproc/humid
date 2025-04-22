@@ -1,8 +1,31 @@
 MainScreen STRUCTURE EXTENDS SCREEN {
+  ShowHideBtn BUTTON(
+    alignment: centre,
+    behaviour: 6,
+    bg_color: "#c81e1ec8",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "Show Dialog",
+    connection: "CW",
+    font_size: 20,
+    height: 60,
+    inverted_visibility: false,
+    on_caption: "Hide Dialog",
+    pos_x: 29,
+    pos_y: 645,
+    remote: "P_DialogVisible",
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 149,
+    wrap: 0
+  );
 }
 Main MainScreen(
     file_name: "MainScreen.humid",
-    screen_height: 952,
+    screen_height: 720,
     screen_id: 2,
-    screen_width: 1920
+    screen_width: 1200
   );

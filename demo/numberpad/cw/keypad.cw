@@ -1,7 +1,7 @@
 # Keypad support
 
 P_Dialog VARIABLE (export:str, strlen:50) "dialog";
-P_DialogVisible VARIABLE(export: ro) 0;
+P_DialogVisible VARIABLE(export: rw) 0;
 
 dialog MessageBox(message: "Enter value");
 

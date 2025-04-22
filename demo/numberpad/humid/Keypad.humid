@@ -6,21 +6,21 @@ KeyButton STRUCTURE EXTENDS BUTTON {
 	OPTION border 1;
 	OPTION connection "CW";
 	OPTION font_size 36;
+	OPTION format "";
 	OPTION height 80;
+	OPTION image "";
 	OPTION inverted_visibility false;
+	OPTION tab_pos 0;
 	OPTION text_colour "0.0000,0.0000,0.0000,0.0000";
 	OPTION text_on_colour "0.2000,0.2000,0.2000,1.0000";
+	OPTION theme MainTheme;
 	OPTION valign centre;
 	OPTION value_scale 1.000000;
 	OPTION value_type 0;
-    OPTION visibility 1;
-    OPTION tab_pos 0;
-    OPTION x_scale 1.0;
-    OPTION theme MainTheme;
-    OPTION image "";
-    OPTION format "";
+	OPTION visibility 1;
 	OPTION width 80;
 	OPTION wrap 0;
+	OPTION x_scale 1.000000;
 }
 Keypad STRUCTURE EXTENDS SCREEN {
   DialogFrame FRAME(
@@ -39,6 +39,7 @@ Keypad STRUCTURE EXTENDS SCREEN {
     wrap: 0
   );
   btn_0 KeyButton(
+    alignment: centre,
     caption: "0",
     pos_x: 640,
     pos_y: 476,
@@ -46,66 +47,77 @@ Keypad STRUCTURE EXTENDS SCREEN {
     width: 180
   );
   btn_7 KeyButton(
+    alignment: centre,
     caption: "7",
     pos_x: 640,
     pos_y: 200,
     remote: "keypad_7"
   );
   btn_8 KeyButton(
+    alignment: centre,
     caption: "8",
     pos_x: 740,
     pos_y: 200,
     remote: "keypad_8"
   );
   btn_4 KeyButton(
+    alignment: centre,
     caption: "4",
     pos_x: 640,
     pos_y: 292,
     remote: "keypad_4"
   );
   Untitled_012 KeyButton(
+    alignment: centre,
     caption: "9",
     pos_x: 840,
     pos_y: 201,
     remote: "keypad_9"
   );
   btn_5 KeyButton(
+    alignment: centre,
     caption: "5",
     pos_x: 740,
     pos_y: 292,
     remote: "keypad_5"
   );
   btn_6 KeyButton(
+    alignment: centre,
     caption: "6",
     pos_x: 840,
     pos_y: 292,
     remote: "keypad_6"
   );
   btn_2 KeyButton(
+    alignment: centre,
     caption: "2",
     pos_x: 740,
     pos_y: 384,
     remote: "keypad_2"
   );
   btn_1 KeyButton(
+    alignment: centre,
     caption: "1",
     pos_x: 640,
     pos_y: 384,
     remote: "keypad_1"
   );
   btn_3 KeyButton(
+    alignment: centre,
     caption: "3",
     pos_x: 840,
     pos_y: 384,
     remote: "keypad_3"
   );
   btn_decimal KeyButton(
+    alignment: centre,
     caption: ".",
     pos_x: 841,
     pos_y: 476,
     remote: "keypad_period"
   );
   btn_ok KeyButton(
+    alignment: centre,
     caption: "OK",
     pos_x: 788,
     pos_y: 576,
@@ -113,18 +125,21 @@ Keypad STRUCTURE EXTENDS SCREEN {
     width: 132
   );
   btn_backspace KeyButton(
+    alignment: centre,
     caption: "BSPC",
     pos_x: 948,
     pos_y: 201,
     remote: "keypad_backspace"
   );
   btn_minus KeyButton(
+    alignment: centre,
     caption: "-",
     pos_x: 948,
     pos_y: 292,
     remote: "keypad_minus"
   );
   btn_cancel KeyButton(
+    alignment: centre,
     caption: "Cancel",
     pos_x: 949,
     pos_y: 576,
@@ -139,9 +154,9 @@ Keypad STRUCTURE EXTENDS SCREEN {
     height: 40,
     inverted_visibility: false,
     pos_x: 639,
-    pos_y: 95,
+    pos_y: 101,
     remote: "dialog.message",
-    text_colour: "0.0247,0.0000,0.9206,1.0000",
+    text_colour: "#0600ea",
     valign: 1,
     value_scale: 1.000000,
     value_type: 0,
