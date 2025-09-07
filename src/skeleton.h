@@ -171,7 +171,7 @@ public:
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 
 	virtual void drawAll() override;
-	virtual void idle(); // this routine is called after event processing and while idle
+	virtual void idle(bool gui_is_ready = true); // this routine is called after event processing and while idle
 
 	int lookupState(std::string &state);
 
@@ -192,7 +192,7 @@ public:
 
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time, const std::string &op, std::list<Value> *message) {};
-	virtual void update(ClockworkClient::Connection *connection);
+	virtual void update(ClockworkClient::Connection *connection, bool allow_data_sync);
 
 	std::map<std::string, Connection *>getConnections() { return connections; }
 

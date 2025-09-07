@@ -81,7 +81,7 @@ public:
 
 	GLuint getImageId(const char *, bool reload = false);
 	void freeImage(GLuint image_id);
-	void update(ClockworkClient::Connection *connection) override;
+	void update(ClockworkClient::Connection *connection, bool allow_data_sync) override;
 
 	void handleRawMessage(unsigned long time, void *data) override {};
 	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, 

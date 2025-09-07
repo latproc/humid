@@ -478,7 +478,7 @@ bool ClockworkClient::Connection::Ready() {
 	return sm && sm->setupStatus() == SubscriptionManager::e_done;
 }
 
-void ClockworkClient::idle() {
+void ClockworkClient::idle(bool gui_is_ready) {
 	using namespace nanogui;
 
 	boost::mutex::scoped_lock lock(update_mutex);
@@ -514,8 +514,9 @@ void ClockworkClient::idle() {
 				if (!subscription_manager) continue;
 
 				{
-					if (conn->Ready() && conn->update()) 
-						update(conn);
+					if (conn->Ready() && conn->update()) {
+						update(conn, gui_is_ready);
+					}
 					zmq::pollitem_t items[] = {
 						{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
 						{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
@@ -531,7 +532,7 @@ void ClockworkClient::idle() {
 						}
 						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
 							int loop_counter = 400;
-							if (conn->getStartupState() == sSTARTUP) conn->refreshData();
+							if (conn->getStartupState() == sSTARTUP && gui_is_ready) conn->refreshData();
 							conn->handleCommand(this);
 							while (loop_counter--) {
 								if (!conn->handleSubscriber()) break;
@@ -742,7 +743,7 @@ char *ClockworkClient::sendIODMessage(const std::string & connection_name, const
 	return 0;
 }
 
-void ClockworkClient::update(ClockworkClient::Connection *) { }
+void ClockworkClient::update(ClockworkClient::Connection *, bool allow_data_sync) { }
 
 void ClockworkClient::drawAll() {
 	idle();

@@ -1043,11 +1043,14 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 	std::cout << "Total linkable properties is now: " << linkables.size() << "\n";
 }
 
-void EditorGUI::update(ClockworkClient::Connection *connection) {
+void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_sync) {
 	if (connection->getStartupState() != sDONE && connection->getStartupState() != sRELOAD) {
 		// if the tag file is loaded, get initial values
 		if (/*linkables.size() && */ connection->getStartupState() == sINIT) {
-			if (connection) {
+			if (connection && !allow_data_sync) {
+				connection->setState(sDONE);
+			}
+			else if (connection) {
 				std::cout << "Sending data initialisation request\n";
 				connection->setState(sSENT);
 				queueMessage( connection->getName(), "MODBUS REFRESH",

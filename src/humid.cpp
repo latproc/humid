@@ -236,7 +236,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 	std::string base = "";
 	if (settings) base = settings->getProperties().find("project_base").asString();
 	assert(boost::filesystem::is_directory(base));
-	std::cout << "Project Base: " << base << "\n";
+	std::cout << "Project Base: " << base << "\n" <<std::flush;
 
 	/* load configuration from files named on the commandline */
 	int opened_file = 0;
@@ -313,12 +313,12 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 			if (vw.asInteger(w) && vh.asInteger(h)) {
 				if (screen) {
 					screen->setSize(nanogui::Vector2i(w, h));
-					std::cout << item->getName() << " screen size: " << w << "," << h << "\n";
+					std::cout << item->getName() << " screen size: " << w << "," << h << "\n" <<std::flush;
 				}
 				else {
 					widget->setSize(nanogui::Vector2i(w, h));
 					widget->setFixedSize(nanogui::Vector2i(w, h));
-					std::cout << item->getName() << " size: " << w << "," << h << "\n";
+					std::cout << item->getName() << " size: " << w << "," << h << "\n" <<std::flush;
 				}
 			}
 		}
@@ -358,7 +358,7 @@ bool applyWindowSettings(Structure *item, nanogui::Widget *widget) {
 		const Value &vis_prop(item->getProperties().find("visible"));
 		if (vis_prop != SymbolTable::Null && vis_prop.asInteger(vis))
 		{
-			if (!vis) std::cout << item->getName() << " is invisible\n";
+			if (!vis) std::cout << item->getName() << " is invisible\n" <<std::flush;
 			EDITOR->gui()->getViewManager().set(item->getName(), vis);
 		}
 		else
@@ -454,8 +454,8 @@ int main(int argc, const char ** argv ) {
 	program_name = strdup(basename(pn));
 	free(pn);
 
-	//std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n";
-	//std::string home_path(getenv("HOME"));
+std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n" <<std::flush;
+	std::string home_path(getenv("HOME"));
 	//assert(boost::filesystem::current_path().string().find(home_path) == 0);
 
 	zmq::context_t context;
@@ -522,7 +522,7 @@ int main(int argc, const char ** argv ) {
 	settings_files.push_back(fname);
 	loadSettingsFiles(settings_files);
 	for (auto item : st_structures) {
-		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n";
+		std::cout << "Loaded settings item: " << item->getName() << " : " << item->getKind() << "\n" <<std::flush;
 		structures[item->getName()] = item;
 	}
 	Structure::loadBuiltins();
@@ -534,12 +534,18 @@ int main(int argc, const char ** argv ) {
 
 	try {
 		nanogui::init();
-
+		std::cout << "nanogui initialised\n" <<std::flush;
 		GLFWmonitor* primary = glfwGetPrimaryMonitor();
-		const GLFWvidmode* mode = glfwGetVideoMode(primary);
-		int widthMM, heightMM;
-		glfwGetMonitorPhysicalSize(primary, &widthMM, &heightMM);
-		const double dpi = mode->width / (widthMM / 25.4);
+		const GLFWvidmode* mode = primary ? glfwGetVideoMode(primary) : nullptr;
+		if (primary) {
+			int widthMM, heightMM;
+			glfwGetMonitorPhysicalSize(primary, &widthMM, &heightMM);
+			const double dpi = mode->width / (widthMM / 25.4);
+		}
+		else {
+			full_screen_mode = 0;
+			std::cout << "no monitor\n" <<std::flush;
+		}
 
 		{
 			if (vm.count("source-file")) {
@@ -563,7 +569,7 @@ int main(int argc, const char ** argv ) {
 				for (auto sc : hm_classes) {
 					SymbolTable defaults = default_properties(sc);
 					if (!defaults.empty()) {
-						std::cout << "found defaults for " << sc->getName() << "\n";
+						std::cout << "found defaults for " << sc->getName() << "\n" <<std::flush;
 						sc->setDefaults(defaults);
 					}
 				}
@@ -609,9 +615,10 @@ int main(int argc, const char ** argv ) {
 			full_screen_v.asInteger(full_screen);
 			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
 
+		    if (primary) {
 			int64_t width = mode->width;
 			int64_t height = mode->height;
-			std::cout << "intial videomode: " << width << "x" << height << "\n";
+			std::cout << "intial videomode: " << width << "x" << height << "\n" <<std::flush;
 			{
 				const Value width_v = EditorGUI::systemSettings()->getProperties().find("main_window_width");
 				const Value height_v = EditorGUI::systemSettings()->getProperties().find("main_window_height");
@@ -625,7 +632,7 @@ int main(int argc, const char ** argv ) {
 				height_v.asInteger(height);
 			}
 			
-			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n";
+			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n" <<std::flush;
 
 			nanogui::ref<EditorGUI> app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)
@@ -643,12 +650,11 @@ int main(int argc, const char ** argv ) {
 				app->setTheme(main_theme);
 			}
 
-			app->createWindows();
+			//app->createWindows();
 
 			if (!EditorGUI::systemSettings()->getStructureDefinition()) {
 				EditorGUI::systemSettings()->setStructureDefinition(findClass("SYSTEM"));
 			}
-
 			Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 			if (remote_screen == SymbolTable::Null) {
 				EditorGUI::systemSettings()->getProperties().add("remote_screen", Value("P_Screen", Value::t_string));
@@ -679,8 +685,27 @@ int main(int argc, const char ** argv ) {
 					app->getScreensWindow()->select(active.asString());
 				}
 			}
+		    }
 
+		    if (primary) {
 			nanogui::mainloop();
+		    }
+		    else {
+			std::cout << "creating app\n" <<std::flush;
+			int width = 500;
+			int height = 500;
+			nanogui::ref<EditorGUI> app = new EditorGUI(width, height, false);
+
+			std::cout << "created app\n";
+			if (!EditorGUI::systemSettings()->getStructureDefinition()) {
+				EditorGUI::systemSettings()->setStructureDefinition(findClass("SYSTEM"));
+			}
+			std::cout << "running main loop\n";
+			    for (;;) {
+				app->idle(false);
+				usleep(1000000);
+			    }
+		    }
 		}
 
 		nanogui::shutdown();
