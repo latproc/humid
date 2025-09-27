@@ -134,6 +134,17 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 		s->getProperties().add("width",256);
 		s->getProperties().add("height",32);
 
+	    cell = new Widget(palette_content);
+	    cell->setFixedSize(Vector2i(button_width+4,35));
+	    b = new StructureFactoryButton(gui, "TABLE", this, cell, 0, "TABLE", "");
+	    b->setEnabled(true);
+	    b->setFixedSize(Vector2i(button_width, 30));
+	    b->setPosition(Vector2i(2,2));
+	    s = new Structure(nullptr, "Start_Table", "TABLE");
+	    starters["TABLE"] = s;
+	    s->getProperties().add("width",300);
+	    s->getProperties().add("height",60);
+
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "FRAME", this, cell, 0, "FRAME", "");

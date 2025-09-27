@@ -40,6 +40,10 @@ bool EditorLabel::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool 
 
     using namespace nanogui;
 
+    if (button == GLFW_MOUSE_BUTTON_LEFT && down && mCallback.has_value()) {
+        (*mCallback)();
+    }
+
     if (editorMouseButtonEvent(this, p, button, down, modifiers))
         return nanogui::Label::mouseButtonEvent(p, button, down, modifiers);
 

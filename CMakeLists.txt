@@ -22,7 +22,7 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 if (APPLE)
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
 	INCLUDE_DIRECTORIES(${NANO_GUI_BUILD_DIR}/include)
@@ -62,7 +62,9 @@ find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
 
 #set(BOOST_ROOT "/usr/local/")
-FIND_PACKAGE(Boost COMPONENTS system thread program_options filesystem chrono date_time REQUIRED )
+set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
+FIND_PACKAGE(Boost COMPONENTS thread program_options filesystem chrono date_time REQUIRED )
 
 set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork/iod/src")
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
@@ -119,6 +121,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
 		  src/editorframe.h src/keypad.h src/valuehelper.h
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
+		src/EditorTable.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
@@ -126,7 +129,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 
 # based on yacc instructions from Andy Cedilnik 2002.
 
-set (FLEX_EXECUTABLE lex)
+set (FLEX_EXECUTABLE flex)
 if (BISON_EXECUTABLE)
 else()
 	set (BISON_EXECUTABLE bison)
@@ -246,6 +249,7 @@ endif()
 		  src/widgetfactory.cpp src/dialogwindow.cpp
 		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+          src/EditorTable.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})

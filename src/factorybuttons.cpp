@@ -17,6 +17,7 @@
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
 #include "editorframe.h"
+#include "editortable.h"
 #include "editorgui.h"
 #include "factorybuttons.h"
 #include "structureswindow.h"
@@ -94,6 +95,13 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 			return false;
 		});
 		result = eb;
+	}
+	else if (sc->getName() == "TABLE") {
+	    EditorTable *et = new EditorTable(parent, window, generated_name, nullptr, nullptr);
+	    et->setDefinition(s);
+	    et->setName(et->getName());
+	    if (s) s->setName(et->getName());
+	    result = et;
 	}
 	else if (sc->getName() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank.png");

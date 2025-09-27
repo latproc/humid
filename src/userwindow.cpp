@@ -426,7 +426,10 @@ void UserWindow::loadStructure(Structure *s) {
 			if (element_class &&element_class->isExtension("TEXT")) {
 				createText(params);
 			}
-			else if (element_class && element_class->isExtension("PLOT")) {
+		    if (element_class &&element_class->isExtension("TABLE")) {
+		        createTable(params);
+		    }
+		    else if (element_class && element_class->isExtension("PLOT")) {
 				createPlot(params);
 			}
 			else if (element_class && element_class->isExtension("FRAME")) {

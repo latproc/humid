@@ -103,6 +103,12 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Background Colour"] = "bg_color";
 		properties["Value"] = "value";
 	}
+	else if (class_name == "TABLE") {
+	    properties["Font Size"] = "font_size";
+	    properties["Alignment"] = "alignment";
+		properties["Vertical Alignment"] = "valign";
+	    properties["Selected Row"] = "selected_row";
+	}
 }
 
 StructureClass::StructureClass(const std::string class_name)
@@ -394,7 +400,10 @@ void Structure::loadBuiltins() {
 	sc = new StructureClass("TEXT", "");
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
-	const std::string keypad = R"()";
+    sc = new StructureClass("TABLE", "");
+    sc->setBuiltIn();
+    hm_classes.push_back(sc);
+    const std::string keypad = R"()";
 }
 
 bool StructureClass::isExtension(const std::string & seek) {

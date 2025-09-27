@@ -8,6 +8,7 @@
 #include "editorlineplot.h"
 #include "editorbutton.h"
 #include "editorframe.h"
+#include "editortable.h"
 #include <nanogui/button.h>
 #include "helper.h"
 #include "linkmanager.h"
@@ -185,6 +186,35 @@ void createLabel(WidgetParams &params) {
 	if (params.visibility) el->setVisibilityLink(params.visibility);
 	prepare_remote_links(params, el);
 	el->setChanged(false);
+}
+
+void createTable(WidgetParams &params) {
+	EditorTable *et = new EditorTable(params.s, params.window, params.element->getName(), params.lp, nullptr);
+	et->setName(params.element->getName());
+	et->setDefinition(params.element);
+	if (params.theme.get()) { et->setTheme(params.theme); }
+	setElementPosition(params, et, params.element);
+	fixElementSize( et, params.element);
+	if (params.connection != SymbolTable::Null) {
+		et->setRemoteName(params.remote.asString());
+		et->setConnection(params.connection.asString());
+	}
+	if (params.font_size) et->setFontSize(params.font_size);
+	Value alignment_v(params.element->getValue("alignment"));
+	if (alignment_v != SymbolTable::Null) et->setPropertyValue("Alignment", alignment_v.asString());
+	Value valignment_v(params.element->getValue("valign"));
+	if (valignment_v != SymbolTable::Null) et->setPropertyValue("Vertical Alignment", valignment_v.asString());
+	if (params.format_val != SymbolTable::Null) et->setValueFormat(params.format_val.asString());
+	if (params.value_type != -1) et->setValueType(params.value_type);
+	if (params.value_scale != 1.0) et->setValueScale( params.value_scale );
+	if (params.tab_pos) et->setTabPosition(params.tab_pos);
+	if (params.lp)
+		params.lp->link(new LinkableText(et));
+	if (params.border != SymbolTable::Null) et->setBorder(params.border.iValue);
+	et->setInvertedVisibility(params.ivis);
+	if (params.visibility) et->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, et);
+	et->setChanged(false);
 }
 
 void createImage(WidgetParams &params) {

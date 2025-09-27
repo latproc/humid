@@ -645,7 +645,7 @@ std:cout << "running from the " << boost::filesystem::current_path().string() <<
 				app->setTheme(main_theme);
 			}
 
-			//app->createWindows();
+			app->createWindows();
 
 			if (!EditorGUI::systemSettings()->getStructureDefinition()) {
 				EditorGUI::systemSettings()->setStructureDefinition(findClass("SYSTEM"));

@@ -460,7 +460,15 @@ void EditorWidget::loadProperties(PropertyFormHelper* properties) {
     properties->addVariable<std::string> (
       "Structure",
       [&,w](const std::string value) { },
-      [&,w]()->std::string{ return getDefinition()->getKind(); });
+      [&,w]()->std::string {
+          auto defn = getDefinition();
+          if (defn) {
+              return getDefinition()->getKind();
+          }
+          else {
+              assert(false);
+          }
+      });
     properties->addVariable<int> (
       "Horizontal Pos",
       [&,w](int value) mutable{

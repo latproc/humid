@@ -12,6 +12,8 @@
 #include <string>
 #include <nanogui/label.h>
 #include "editorwidget.h"
+#include <functional>
+#include <optional>
 
 class EditorLabel : public nanogui::Label, public EditorWidget {
 
@@ -44,12 +46,16 @@ public:
     void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
     void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
 
+    void setCallback(std::function<void()> cb) { mCallback = std::move(cb); }
+
 protected:
     nanogui::Color mBackgroundColor;
     nanogui::Color mTextColor;
 	int alignment;
 	int valign;
 	bool wrap_text;
+
+    std::optional<std::function<void()>> mCallback;
 };
 
 #endif
