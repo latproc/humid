@@ -20,15 +20,16 @@ NamedObject::NamedObject(NamedObject *owner) : _named(false), parent(owner) {
 
 NamedObject::~NamedObject() {
 	if (!parent) {
-    auto found = global_objects.find(name);
-    if (found != global_objects.end()) {
-      assert((*found).second == this);
-      global_objects.erase( found );
-    }
-    else
-      std::cerr << "Error: global object " << name << " was never registered\n";
-  }
-  else parent->remove(name);
+        auto found = global_objects.find(name);
+        if (found != global_objects.end()) {
+            assert((*found).second == this);
+            global_objects.erase( found );
+        }
+        else {
+            std::cerr << "Error: global object " << name << " was never registered\n";
+        }
+	}
+    else { parent->remove(name); }
 }
 
 void addNamedObjectToMap(NamedObject *no, Dict &dict) {

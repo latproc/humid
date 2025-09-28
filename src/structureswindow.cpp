@@ -20,6 +20,7 @@
 
 extern std::list<Structure *>hm_structures;
 extern std::list<StructureClass *> hm_classes;
+std::map<std::string, Structure *>StructuresWindow::starters;
 
 StructuresWindow *StructuresWindow::instance_;
 
@@ -31,7 +32,6 @@ StructuresWindow *StructuresWindow::create(EditorGUI *screen, nanogui::Theme *th
 StructuresWindow *StructuresWindow::instance() {
     return instance_;
 }
-
 
 StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : Skeleton(screen), gui(screen) {
 	using namespace nanogui;
@@ -159,8 +159,15 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 }
 
-Structure *StructuresWindow::createStructure(const std::string kind) {
+Structure *StructuresWindow::createStructure(const std::string &kind) {
 	StructureClass *sc = findClass(kind);
-	if (sc) return sc->instantiate(nullptr);
-	return 0;
+	if (sc) {
+	    auto s = sc->instantiate(nullptr);
+	    auto defaults = starters.find(kind);
+	    if (defaults != starters.end()) {
+	        s->setProperties(defaults->second->getProperties());
+	    }
+	    return s;
+	}
+	return nullptr;
 }

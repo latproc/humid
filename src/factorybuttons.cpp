@@ -38,7 +38,7 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	StructureClass *sc = findClass(getClass());
 	assert(sc);
 	Structure *parent = gui->getUserWindow()->structure();
-	Structure *s = sc->instantiate(parent);
+	Structure *s = StructuresWindow::createStructure(getClass());
 	assert(s);
 	int object_width = (s) ? s->getIntProperty("width", 80) : 80;
 	int object_height = (s) ? s->getIntProperty("height", 60) : 60;

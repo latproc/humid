@@ -91,6 +91,8 @@ void EditorTable::rebuild() {
                                       mLinkedOption, text);
         label->setBackgroundColor(nanogui::Color(0,0,0,0));
         label->setCallback([this, index]() { setSelectedRow(index); });
+        label->setPropertyValue("Alignment", "1");
+        label->setPropertyValue("Vertical Alignment", "1");
 
         mRows.push_back(label);
     }
@@ -123,7 +125,6 @@ const std::map<std::string, std::string> & EditorTable::reverse_property_map() c
 }
 
 Value EditorTable::getPropertyValue(const std::string &prop) {
-    if (prop == "selectedRow") { return Value(mSelectedRow); }
     Value res = EditorWidget::getPropertyValue(prop);
     if (res != SymbolTable::Null)
         return res;

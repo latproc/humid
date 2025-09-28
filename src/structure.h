@@ -88,7 +88,7 @@ protected:
 class Structure : public NamedObject {
 public:
 	Structure(Structure *owner, const std::string sname, const std::string skind);
-	virtual ~Structure() {}
+	virtual ~Structure() = default;
 	std::list<Parameter> parameters;
 	void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
 	StructureClass *getStructureDefinition() { return class_definition; }
