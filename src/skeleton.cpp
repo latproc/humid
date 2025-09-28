@@ -38,6 +38,11 @@
 #include "resourcemanager.h"
 #include "editorsettings.h"
 
+#include <sys/stat.h>
+
+std::string table_font{"sans"};
+std::string table_header_font{"sans-bold"};
+
 long collect_history = 0;
 extern Structure *system_settings;
 #define DEBUG_BASIC ( 1 & debug)
@@ -239,6 +244,83 @@ nanogui::Vector2i WindowStagger::pos() {
 		return pos;
 }
 
+// Platform-specific includes for getExecutablePath
+#if defined(__linux__)
+#include <unistd.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+#include <limits.h>
+#include <libgen.h>
+
+// Helper function: Get the path to the executable
+static std::string getExecutablePath() {
+#if defined(__linux__)
+    char buf[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len != -1) {
+        buf[len] = '\0';
+        return std::string(buf);
+    }
+    return "";
+#elif defined(__APPLE__)
+    char buf[PATH_MAX];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0) {
+        // Resolve symlinks, etc.
+        char real[PATH_MAX];
+        if (realpath(buf, real))
+            return std::string(real);
+        else
+            return std::string(buf);
+    }
+    return "";
+#else
+    // Not implemented for other platforms
+    return "";
+#endif
+}
+
+// Helper function: Get the fonts directory based on the executable path
+static std::string getFontsDir() {
+    std::string exePath = getExecutablePath();
+    if (exePath.empty()) {
+        return "";
+    }
+    // Copy to buffer for dirname
+    char exePathBuf[PATH_MAX];
+    strncpy(exePathBuf, exePath.c_str(), sizeof(exePathBuf));
+    exePathBuf[sizeof(exePathBuf)-1] = '\0';
+    char* dir = dirname(exePathBuf); // Get parent dir (bin)
+    if (!dir) return "";
+    // Copy again to buffer, as dirname may modify the buffer
+    char binParentBuf[PATH_MAX];
+    strncpy(binParentBuf, dir, sizeof(binParentBuf));
+    binParentBuf[sizeof(binParentBuf)-1] = '\0';
+    char* parent = dirname(binParentBuf); // Parent of bin
+    if (!parent) return "";
+    std::string fontsDir = std::string(parent) + "/lib/fonts/";
+    return fontsDir;
+}
+
+bool load_font(NVGcontext *ctx, const std::string &name, const std::string &font) {
+    std::string fontsDir = getFontsDir();
+    std::string font_path;
+    if (!fontsDir.empty()) {
+        font_path = fontsDir + font + ".ttf";
+    } else {
+        font_path = "../fonts/roboto/static/" + font + ".ttf";
+    }
+    std::ifstream font_file(font_path);
+    if (!font_file.good()) {
+        std::cerr << "Error: Font file not found: " << font_path << std::endl;
+        return false;
+    } else {
+        nvgCreateFont(ctx, name.c_str(), font_path.c_str());
+    }
+    return true;
+}
+
 ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
 : nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0),
@@ -253,6 +335,13 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		std::cout << "setting monitor resolution: " << size.x() << "," << size.y() << "\n";
 		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
 	}
+    nvgContext();
+    if (load_font(nvgContext(), "mono", "RobotoMono-Medium.ttf")) {
+        table_font = "mono";
+    }
+    if (load_font(nvgContext(), "mono-bold", "RobotoMono-Bold.ttf")) {
+        table_header_font = "mono-bold";
+    }
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {

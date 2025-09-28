@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.5)
 project("Humid")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
+set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/stage")
 
 if (EXISTS "${PROJECT_SOURCE_DIR}/LocalCMakeLists.txt")
 	message("Including local CMake settings")
@@ -48,9 +49,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
+set_target_properties(nanogui PROPERTIES
+		INSTALL_RPATH "@loader_path/../lib"
+		BUILD_WITH_INSTALL_RPATH TRUE)
 include_directories(lib/nanogui/include)
 include_directories(${NANOGUI_EXTRA_INCS})
 add_definitions(${NANOGUI_EXTRA_DEFS})
+install(TARGETS nanogui LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 include_directories("/usr/local/include")
 include_directories("/opt/local/include")
@@ -112,8 +117,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/editorobject.h src/linkableobject.h src/editorgui.h
 		  src/factorybuttons.h src/editor.h src/connectable.h
 		  src/editorwidget.h src/editorbutton.h src/editortextbox.h src/editorlabel.h
-		  src/editorimageview.h src/editorlineplot.h src/editorprogressbar.h
-		  src/structureswindow.h src/themewindow.h src/propertywindow.h
+		  src/editorimageview.h src/editorlineplot.h src/editorprogressbar.h src/structureswindow.h src/themewindow.h src/propertywindow.h
 		  src/helper.h src/curl_helper.h src/screenswindow.h
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
 		  src/resourcemanager.h src/viewswindow.h src/listpanel.h
@@ -254,6 +258,8 @@ endif()
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
 
+  install(TARGETS humid RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
+
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp src/linkmanager.cpp)
   target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
@@ -262,6 +268,8 @@ endif()
   		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
 	)
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+
+  install(TARGETS hmifile_check RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 
 
   # Copy icons for example application

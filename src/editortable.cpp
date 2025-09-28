@@ -69,6 +69,7 @@ EditorTable::EditorTable(NamedObject *owner,
 }
 
 void EditorTable::rebuildHeader() {
+    extern std::string table_header_font;
     if (!header) {
         header = new EditorLabel(getParent(), mContainer,
                        "header",
@@ -77,6 +78,7 @@ void EditorTable::rebuildHeader() {
         header->setPropertyValue("Alignment", "0");
         header->setPropertyValue("Vertical Alignment", "1");
         header->setBorder(1);
+        header->setFont(table_header_font);
     }
 
     // Build header text from mHeaderSpec
@@ -151,6 +153,7 @@ void EditorTable::setSelectedRow(int index) {
 }
 
 void EditorTable::rebuild() {
+    extern std::string table_font;
     assert(header);
     header->incRef(); // retain the header row
     clearChildren(mContainer);
@@ -217,6 +220,7 @@ void EditorTable::rebuild() {
         label->setPropertyValue("Alignment", "0");
         label->setPropertyValue("Vertical Alignment", "1");
         label->setBorder(0);
+        label->setFont(table_font);
 
         mRows.push_back(label);
     }
