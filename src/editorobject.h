@@ -8,10 +8,8 @@
 #ifndef __EditorObject_h__
 #define __EditorObject_h__
 
-#include <ostream>
-#include <string>
-#include <value.h>
 #include "namedobject.h"
+#include <string>
 
 class LinkableProperty;
 class PropertyLink;
@@ -19,15 +17,15 @@ class PropertyLink;
 
 class EditorObject : public NamedObject {
 	public:
-		EditorObject(NamedObject *owner) {}
+		explicit EditorObject(NamedObject *owner) : NamedObject(owner, "untitled") {}
 		EditorObject(NamedObject *owner, const std::string &name) : NamedObject(owner, name), changed_(true) {}
 		EditorObject(NamedObject *owner, const char *name) : NamedObject(owner, name) {}
-		virtual ~EditorObject() { }
+		~EditorObject() override = default;
 		void setChanged(bool which) { changed_ = which; }
-		bool changed() { return changed_; }
-        std::ostream &operator<<(std::ostream &out) const;
+		bool changed() const { return changed_; }
+        std::ostream &operator<<(std::ostream &out) const override;
 	protected:
-		bool changed_;
+		bool changed_ = false;
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorObject &m);

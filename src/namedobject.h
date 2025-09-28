@@ -44,10 +44,10 @@ protected:
     std::string name;
 	static std::map<std::string, NamedObject*>global_objects;
 	static unsigned int user_object_sequence;
+    virtual std::ostream &operator<<(std::ostream &out) const;
 private:
    NamedObject(const NamedObject &orig);
    NamedObject &operator=(const NamedObject &other);
-   std::ostream &operator<<(std::ostream &out) const;
    bool operator==(const NamedObject &other);
 };
 
