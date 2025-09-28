@@ -108,6 +108,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	    properties["Alignment"] = "alignment";
 		properties["Vertical Alignment"] = "valign";
 	    properties["Selected Row"] = "selected_row";
+	    properties["Header"] = "header";
 	}
 }
 
