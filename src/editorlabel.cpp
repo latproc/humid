@@ -71,26 +71,26 @@ void EditorLabel::draw(NVGcontext *ctx) {
     NVGcolor textColor = mTextColor.w() == 0 ? mColor : mTextColor;
 
     if (mBackgroundColor != nanogui::Color(0,0)) {
-      nvgBeginPath(ctx);
-      if (border == 0)
-        nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
-      else {
-      int a = border / 2+1;
-        nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a, mSize.x()-2*a,
-                 mSize.y()-2*a, mTheme->mButtonCornerRadius);
-      }
-      nvgFillColor(ctx, nanogui::Color(mBackgroundColor));
-      nvgFill(ctx);
+        nvgBeginPath(ctx);
+        if (border == 0)
+            nvgRect(ctx, mPos.x() + 1, mPos.y() + 1.0f, mSize.x() - 2, mSize.y() - 2);
+        else {
+            int a = border / 2+1;
+            nvgRoundedRect(ctx, mPos.x() + a, mPos.y() + a, mSize.x()-2*a,
+                     mSize.y()-2*a, mTheme->mButtonCornerRadius);
+        }
+        nvgFillColor(ctx, nanogui::Color(mBackgroundColor));
+        nvgFill(ctx);
     }
 
     if (border > 0) {
-      nvgBeginPath(ctx);
-      nvgStrokeWidth(ctx, border);
-      int a = border / 2;
-      nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, mSize.x() - 2*a,
-                    mSize.y() - 2*a, mTheme->mButtonCornerRadius);
-      nvgStrokeColor(ctx, mTheme->mBorderMedium);
-      nvgStroke(ctx);
+        nvgBeginPath(ctx);
+        nvgStrokeWidth(ctx, border);
+        int a = border / 2;
+        nvgRoundedRect(ctx, mPos.x() + a, mPos.y()+a, mSize.x() - 2*a,
+                      mSize.y() - 2*a, mTheme->mButtonCornerRadius);
+        nvgStrokeColor(ctx, mTheme->mBorderMedium);
+        nvgStroke(ctx);
     }
 
 
@@ -99,10 +99,15 @@ void EditorLabel::draw(NVGcontext *ctx) {
     nvgFillColor(ctx, textColor);
     int align = NVG_ALIGN_LEFT;
     int alignv = NVG_ALIGN_TOP;
-    if (alignment == 1)
-      align = NVG_ALIGN_CENTER;
-    else if (alignment == 2)
-      align = NVG_ALIGN_RIGHT;
+    int pos_h = mPos.x();
+    if (alignment == 1) {
+        align = NVG_ALIGN_CENTER;
+        pos_h += mSize.x() / 2;
+    }
+    else if (alignment == 2) {
+        align = NVG_ALIGN_RIGHT;
+        pos_h += mSize.x();
+    }
 
     int pos_v = mPos.y();
     if (valign == 1) {
@@ -149,7 +154,7 @@ void EditorLabel::draw(NVGcontext *ctx) {
         nvgTextBox(ctx, mPos.x(), pos_v, mFixedSize.x(), valStr.c_str(), nullptr);
     } else {
         nvgTextAlign(ctx, align | alignv);
-        nvgText(ctx, mPos.x(), mPos.y() + mSize.y() * 0.5f, valStr.c_str(), nullptr);
+        nvgText(ctx, pos_h , pos_v, valStr.c_str(), nullptr);
     }
     if (mSelected)
       drawSelectionBorder(ctx, mPos, mSize);
@@ -208,7 +213,9 @@ void EditorLabel::setProperty(const std::string &prop, const std::string value) 
     int fs = std::atoi(value.c_str());
     setFontSize(fs);
   }
-  if (prop == "Alignment") alignment = std::atoi(value.c_str());
+  if (prop == "Alignment") {
+      alignment = std::atoi(value.c_str());
+  }
   if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
   if (prop == "Wrap Text") {
     wrap_text = (value == "1" || value == "true" || value == "TRUE");
