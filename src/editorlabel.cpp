@@ -99,14 +99,15 @@ void EditorLabel::draw(NVGcontext *ctx) {
     nvgFillColor(ctx, textColor);
     int align = NVG_ALIGN_LEFT;
     int alignv = NVG_ALIGN_TOP;
-    int pos_h = mPos.x();
+    int padding = 1;
+    int pos_h = mPos.x() + padding;
     if (alignment == 1) {
         align = NVG_ALIGN_CENTER;
         pos_h += mSize.x() / 2;
     }
     else if (alignment == 2) {
         align = NVG_ALIGN_RIGHT;
-        pos_h += mSize.x();
+        pos_h += mSize.x() - 2 * padding;
     }
 
     int pos_v = mPos.y();
