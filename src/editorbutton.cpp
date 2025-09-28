@@ -20,6 +20,10 @@
 #include "resourcemanager.h"
 #include "helper.h"
 #include "colourhelper.h"
+#include "skeleton.h"
+
+extern int debug;
+#define DEBUG_BASIC ( 1 & debug)
 
 std::string stripEscapes(const std::string &s);
 
@@ -120,22 +124,28 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
     std::string cmd = command();
     setCallback([&,this, gui, conn, cmd] {
       if (cmd.length()) {
-          std::cout << name << " sending " << cmd << " to " << conn << "\n";
+          if (DEBUG_BASIC) { std::cout << name << " sending " << cmd << " to " << conn << "\n"; }
           gui->queueMessage(conn, cmd,
             [](std::string s){std::cout << " Response: " << s << "\n"; });
       }
       else if (flags() & nanogui::Button::RemoteButton) {
         // a remote button is reset remotely
         std::string msgon = gui->getIODSyncCommand(conn, 0, address(), pushed() ? 1 : 0);
-            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgon, [](std::string s) {
+                if (DEBUG_BASIC) { std::cout << ": " << s << "\n"; }
+            });
       }
       if (flags() & nanogui::Button::NormalButton && !(flags() & nanogui::Button::RemoteButton)) {
         if (getRemote()) {
             // a normal button is pressed and released
             std::string msgon = gui->getIODSyncCommand(conn, 0, address(), 1);
-            gui->queueMessage(conn, msgon, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgon, [](std::string s) {
+                if (DEBUG_BASIC) { std::cout << ": " << s << "\n"; }
+            });
             std::string msgoff = gui->getIODSyncCommand(conn, 0, address(), 0);
-            gui->queueMessage(conn, msgoff, [](std::string s){std::cout << ": " << s << "\n"; });
+            gui->queueMessage(conn, msgoff, [](std::string s) {
+                if (DEBUG_BASIC) { std::cout << ": " << s << "\n"; }
+            });
           }
       }
 
@@ -146,11 +156,15 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
         if ( !(flags() & nanogui::Button::NormalButton ) )  {
           if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(), state), [](std::string s) {
+                  if (DEBUG_BASIC) { std::cout << s << "\n"; }
+              });
           }
           else
             gui->queueMessage(conn,
-              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(),(state)?1:0), [](std::string s){std::cout << s << "\n"; });
+              gui->getIODSyncCommand(conn, getRemote()->getKind(), address(),(state)?1:0), [](std::string s) {
+                  if (DEBUG_BASIC) { std::cout << s << "\n"; }
+              });
         }
       }
     });

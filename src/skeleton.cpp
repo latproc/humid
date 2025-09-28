@@ -40,6 +40,7 @@
 
 long collect_history = 0;
 extern Structure *system_settings;
+#define DEBUG_BASIC ( 1 & debug)
 
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
 using namespace nanogui;
@@ -419,7 +420,7 @@ zmq::socket_t* ClockworkClient::Connection::getCommandSocket() const {
 bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
 	if (command_state == WaitingCommand && !messages.empty()) {
 		std::string msg = messages.front().first;
-		std::cerr << name << " sending " << msg << "\n";
+		if (DEBUG_BASIC) { std::cerr << name << " sending " << msg << "\n"; }
 		safeSend(*cmd_interface, msg.c_str(), msg.length());
 		command_state = WaitingResponse;
 	}
