@@ -299,7 +299,7 @@ static std::string getFontsDir() {
     binParentBuf[sizeof(binParentBuf)-1] = '\0';
     char* parent = dirname(binParentBuf); // Parent of bin
     if (!parent) return "";
-    std::string fontsDir = std::string(parent) + "/lib/fonts/";
+    std::string fontsDir = std::string(parent) + "/lib/fonts";
     return fontsDir;
 }
 
@@ -307,10 +307,11 @@ bool load_font(NVGcontext *ctx, const std::string &name, const std::string &font
     std::string fontsDir = getFontsDir();
     std::string font_path;
     if (!fontsDir.empty()) {
-        font_path = fontsDir + font + ".ttf";
+        font_path = fontsDir + '/' + font;
     } else {
-        font_path = "../fonts/roboto/static/" + font + ".ttf";
+        font_path = "../lib/fonts/roboto/static/" + font;
     }
+    std::cout << "loading font " << font_path << "\n";
     std::ifstream font_file(font_path);
     if (!font_file.good()) {
         std::cerr << "Error: Font file not found: " << font_path << std::endl;
