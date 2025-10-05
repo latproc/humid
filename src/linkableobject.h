@@ -81,5 +81,11 @@ class LinkableVisibility : public LinkableObject {
 		void update(const Value &value) override;
 };
 
+class LinkableJson : public LinkableObject {
+    public:
+        LinkableJson(EditorObject *w);
+        void update(const Value &value) override;
+};
+
 
 #endif

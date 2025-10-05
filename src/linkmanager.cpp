@@ -52,12 +52,14 @@ public:
             else {
                 class_pending_properties[widget_name] = std::list<LinkInfo>();
                 class_pending_properties[widget_name].push_back({remote, property});
+                std::cout << "Added pending link " << remote << " " << class_name << " " << widget_name << " " << property << "\n";
             }
         }
         else {
             pending_links[class_name] = std::map<std::string, std::list<LinkInfo> >();
             pending_links[class_name][widget_name] = std::list<LinkInfo>();
             pending_links[class_name][widget_name].push_back({remote, property});
+            std::cout << "Added pending link " << remote << " " << class_name << " " << widget_name << " " << property << "\n";
         }
     }
 

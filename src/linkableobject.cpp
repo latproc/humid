@@ -5,19 +5,20 @@
 //	All rights reserved. Use of this source code is governed by the
 //	3-clause BSD License in LICENSE.txt.
 
-#include <iostream>
-#include <nanogui/progressbar.h>
-#include <nanogui/button.h>
 #include "linkableobject.h"
-#include "editorobject.h"
-#include "editorwidget.h"
-#include "editorbutton.h"
-#include "editorprogressbar.h"
-#include "editorimageview.h"
-#include "nanogui/textbox.h"
-#include "nanogui/label.h"
 #include "editor.h"
+#include "editorbutton.h"
+#include "editorimageview.h"
+#include "editorobject.h"
+#include "editorprogressbar.h"
+#include "editortable.h"
+#include "editorwidget.h"
 #include "linkmanager.h"
+#include "nanogui/label.h"
+#include "nanogui/textbox.h"
+#include <iostream>
+#include <nanogui/button.h>
+#include <nanogui/progressbar.h>
 
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
@@ -157,3 +158,48 @@ void LinkableVisibility::update(const Value &value) {
     }
 }
 
+LinkableJson::LinkableJson(EditorObject *w) : LinkableObject(w) { }
+
+void LinkableJson::update(const Value &value) {
+    EditorTable *et = dynamic_cast<EditorTable*>(widget);
+    if (!et) return;
+
+    // Expecting a JSON string inside Value
+    if (value.kind != Value::t_string) {
+        std::cerr << "LinkableJson::update(): wrong type: " << value.kind << " " << value << "\n";
+        return;
+    }
+    cJSON *json = cJSON_Parse(value.sValue.c_str());
+    if (!json || !cJSON_IsObject(json)) {
+        if (json) cJSON_Delete(json);
+        return;
+    }
+
+    // Header update
+    cJSON *header = cJSON_DetachItemFromObject(json, "header");
+    if (header && cJSON_IsArray(header)) {
+        et->setHeader(header);
+    }
+    else if (header) {
+        auto rows_str = cJSON_PrintUnformatted(header);
+        assert(rows_str);
+        std::cout << "Unexpected JSON header format: " << rows_str << "\n";
+        free(rows_str);
+        cJSON_Delete(header);
+    }
+
+    // Rows update
+    cJSON *rows = cJSON_DetachItemFromObject(json, "rows");
+    if (rows && cJSON_IsArray(rows)) {
+        et->setData(rows);
+    }
+    else if (rows) {
+        auto rows_str = cJSON_PrintUnformatted(rows);
+        assert(rows_str);
+        std::cout << "Unexpected JSON rows format: " << rows_str << "\n";
+        free(rows_str);
+        cJSON_Delete(rows);
+    }
+
+    cJSON_Delete(json); // safe: detached nodes not freed
+}

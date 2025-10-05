@@ -201,15 +201,16 @@ void createTable(WidgetParams &params) {
 	}
 	if (params.font_size) et->setFontSize(params.font_size);
 	Value alignment_v(params.element->getValue("alignment"));
-	if (alignment_v != SymbolTable::Null) et->setPropertyValue("Alignment", alignment_v.asString());
+	if (alignment_v != SymbolTable::Null) { et->setPropertyValue("Alignment", alignment_v.asString()); }
 	Value valignment_v(params.element->getValue("valign"));
 	if (valignment_v != SymbolTable::Null) et->setPropertyValue("Vertical Alignment", valignment_v.asString());
 	if (params.format_val != SymbolTable::Null) et->setValueFormat(params.format_val.asString());
 	if (params.value_type != -1) et->setValueType(params.value_type);
 	if (params.value_scale != 1.0) et->setValueScale( params.value_scale );
 	if (params.tab_pos) et->setTabPosition(params.tab_pos);
-	if (params.lp)
-		params.lp->link(new LinkableText(et));
+	if (params.lp) {
+	    params.lp->link(new LinkableJson(et));
+	}
 	if (params.border != SymbolTable::Null) et->setBorder(params.border.iValue);
 	et->setInvertedVisibility(params.ivis);
 	if (params.visibility) et->setVisibilityLink(params.visibility);

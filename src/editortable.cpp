@@ -1,8 +1,9 @@
-#include <nanogui/widget.h>
-#include <helper.h>
-#include "propertyformhelper.h"
 #include "colourhelper.h"
 #include "editor.h"
+#include "linkmanager.h"
+#include "propertyformhelper.h"
+#include <helper.h>
+#include <nanogui/widget.h>
 
 #include <iostream>
 
@@ -110,8 +111,16 @@ void EditorTable::rebuildHeader() {
 }
 
 void EditorTable::setData(cJSON *data) {
+    if (mData) { cJSON_Delete(mData); }
     mData = data;
     rebuild();
+}
+
+void EditorTable::setHeader(cJSON *header) {
+    if (!header) { return; }
+    if (mHeaderSpec) { cJSON_Delete(mHeaderSpec); }
+    mHeaderSpec = header;
+    rebuildHeader();
 }
 
 void EditorTable::clearSelection() {
@@ -124,7 +133,7 @@ void EditorTable::clearSelection() {
 
 void EditorTable::setSelectedRow(int index) {
     // Ignore index 0 (header)
-    if (index == 0 || index < 0 || index >= (int)mRows.size())
+    if (index <= 0 || index >= (int)mRows.size())
         return;
 
     // If clicked row is already selected, deselect it
@@ -133,8 +142,6 @@ void EditorTable::setSelectedRow(int index) {
             mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(0,0,0,0));
         }
         mSelectedRow = -1;
-        if (mLinkedOption)
-            mLinkedOption->setValue(-1);
         return;
     }
 
@@ -146,10 +153,6 @@ void EditorTable::setSelectedRow(int index) {
     // Select new row
     mSelectedRow = index;
     mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(200,200,255,255));
-
-    // Store zero-based data row (excluding header) in mLinkedOption if present
-    if (mLinkedOption)
-        mLinkedOption->setValue(mSelectedRow - 1);
 }
 
 void EditorTable::rebuild() {
@@ -176,12 +179,12 @@ void EditorTable::rebuild() {
             int column = 0;
             for (cJSON *col = mHeaderSpec->child; col; col = col->next) {
                 assert(cJSON_IsObject(col));
-                cJSON *label = cJSON_GetObjectItem(col, "label");
+                cJSON *fldname = cJSON_GetObjectItem(col, "field");
                 cJSON *width = cJSON_GetObjectItem(col, "width");
                 int w = (width && cJSON_IsNumber(width)) ? width->valueint : 10;
                 std::string field;
-                if (label && cJSON_IsString(label)) {
-                    cJSON *field_val = cJSON_IsObject((item)) ? cJSON_GetObjectItem(item, label->valuestring) : cJSON_GetArrayItem(item, column++);
+                if (fldname && cJSON_IsString(fldname)) {
+                    cJSON *field_val = cJSON_IsObject((item)) ? cJSON_GetObjectItem(item, fldname->valuestring) : cJSON_GetArrayItem(item, column++);
                     if (field_val && cJSON_IsString(field_val) && field_val->valuestring) {
                         field = field_val->valuestring;
                     } else if (field_val) {
@@ -216,7 +219,6 @@ void EditorTable::rebuild() {
                                       "row_" + std::to_string(index),
                                       mLinkedOption, text);
         label->setBackgroundColor(nanogui::Color(0,0,0,0));
-        label->setCallback([this, index]() { setSelectedRow(index); });
         label->setPropertyValue("Alignment", "0");
         label->setPropertyValue("Vertical Alignment", "1");
         label->setBorder(0);
@@ -279,7 +281,7 @@ void EditorTable::setProperty(const std::string &prop, const std::string value) 
     EditorWidget::setProperty(prop, value);
     if (prop == "Remote") {
         if (remote) {
-            remote->link(new LinkableText(this));
+            remote->link(new LinkableJson(this));
         }
     }
     if (prop == "Font Size") {
@@ -348,7 +350,7 @@ void EditorTable::loadProperties(PropertyFormHelper* properties) {
         this->setRemoteName(value);
         if (remote) remote->unlink(this);
         remote = lp;
-        if (lp) { lp->link(new LinkableText(this)); }
+        if (lp) { lp->link(new LinkableJson(this)); }
         //properties->refresh();
       },
       [&]()->std::string{
@@ -379,29 +381,64 @@ void EditorTable::loadProperties(PropertyFormHelper* properties) {
 
 }
 
-bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int button, bool down, int modifiers) {
 
     using namespace nanogui;
 
-    if (editorMouseButtonEvent(this, p, button, down, modifiers)) {
-        return true;
+    if (!editorMouseButtonEvent(this, mouse_pos, button, down, modifiers)) {
+        return false;
     }
+    Vector2i top_left = mouse_pos - mPos;
+
+    auto select_row_remote = [&](int index) {
+        // Store zero-based data row (excluding header) in mLinkedOption if present
+        if (!getDefinition()) { return; }
+        if (!getParent()) {
+            std::cout << "No parent for " << getName() << " when selecting row" << std::endl;
+            return;
+        }
+        assert(getDefinition());
+        assert(getParent());
+        auto *structure = dynamic_cast<Structure*>(getParent());
+        if (!structure) {
+            std::cout << "No structure for " << getName() << " when selecting row" << std::endl;
+        }
+        assert(structure);
+        auto & kind = structure->getStructureDefinition()->getName();
+        auto remote_links = LinkManager::instance().remote_links(kind, this->getName());
+        if (remote_links) for (auto & link_info : *remote_links) {
+            if (link_info.property_name != "selected_row") {
+                std::cout << "Skipping link " << link_info.property_name << std::endl;
+                continue;
+            }
+            auto linkable_property = EDITOR->gui()->findLinkableProperty(link_info.remote_name);
+            if (linkable_property) {
+                const std::string &conn = getRemote()->group();
+                std::cout << "Sending " << link_info.remote_name << " " << link_info.property_name << " " << index << std::endl;
+                EDITOR->gui()->queueMessage(conn,
+                    EDITOR->gui()->getIODSyncCommand(conn, getRemote()->getKind(), linkable_property->address(), index), [](std::string s) {
+                });
+                break;
+            }
+        }
+
+    };
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && down) {
         bool found = false;
         for (size_t i = 1; i < mRows.size(); ++i) {
             auto *label = mRows[i];
-            nanogui::Vector2i pos = label->absolutePosition();
+            nanogui::Vector2i pos = label->position();
             nanogui::Vector2i size = label->size();
-            if (p.x() >= pos.x() && p.x() <= pos.x() + size.x() &&
-                p.y() >= pos.y() && p.y() <= pos.y() + size.y()) {
-                setSelectedRow((int)i);
+            if (top_left.x() >= pos.x() && top_left.x() <= pos.x() + size.x() &&
+                top_left.y() >= pos.y() && top_left.y() <= pos.y() + size.y()) {
+                select_row_remote((int)i);
                 found = true;
                 break;
             }
         }
         if (!found) {
-            clearSelection();
+            select_row_remote(-1);
         }
     }
 

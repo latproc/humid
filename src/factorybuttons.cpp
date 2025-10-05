@@ -70,37 +70,50 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 	}
 	else if (sc->getName() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();
-		EditorTextBox *eb = new EditorTextBox(parent, window, generated_name, nullptr);
-		eb->setDefinition(s);
-		s->setName(eb->getName());
-		eb->setEditable(true);
-		eb->setCallback( [eb, gui](const std::string &value)->bool{
-			const std::string &conn(eb->getRemote()->group());
-			if (!eb->getRemote()) return true;
+		EditorTextBox *et = new EditorTextBox(parent, window, generated_name, nullptr);
+		et->setDefinition(s);
+		s->setName(et->getName());
+		et->setEditable(true);
+		et->setCallback( [et, gui](const std::string &value)->bool{
+			const std::string &conn(et->getRemote()->group());
+			if (!et->getRemote()) return true;
 			char *rest = 0;
 			{
 				long val = strtol(value.c_str(),&rest,10);
 				if (*rest == 0) {
-					gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, eb->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn,
+					    gui->getIODSyncCommand(conn, 4,
+					        et->getRemote()->address(),
+					        (int)val),
+					        [](std::string s){std::cout << s << "\n"; }
+					);
 					return true;
 				}
 			}
 			{
 				double val = strtod(value.c_str(),&rest);
 				if (*rest == 0)  {
-					gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, eb->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
+					gui->queueMessage(conn,
+					    gui->getIODSyncCommand(conn, 4,
+					        et->getRemote()->address(),
+					        (float)val),
+					        [](std::string s){std::cout << s << "\n"; }
+					);
 					return true;
 				}
 			}
 			return false;
 		});
-		result = eb;
+		result = et;
 	}
 	else if (sc->getName() == "TABLE") {
 	    EditorTable *et = new EditorTable(parent, window, generated_name, nullptr, nullptr);
 	    et->setDefinition(s);
 	    et->setName(et->getName());
 	    if (s) s->setName(et->getName());
+	    if (et->getRemote()) {
+	        et->getRemote()->link(new LinkableJson(et));
+	    }
 	    result = et;
 	}
 	else if (sc->getName() == "IMAGE") {

@@ -19,7 +19,7 @@ public:
                 cJSON *data);
 
     nanogui::Widget *asWidget() override { return this; }
-    bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
+    bool mouseButtonEvent(const nanogui::Vector2i &top_left, int button, bool down, int modifiers) override;
 
     bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
 
@@ -27,6 +27,8 @@ public:
 
     void setData(cJSON *data);
     cJSON *data() const { return mData; }
+
+    void setHeader(cJSON *header);
 
     void setSelectedRow(int index);
     int selectedRow() const { return mSelectedRow; }
