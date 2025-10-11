@@ -6,7 +6,7 @@ endif
 
 all:	
 	[ -d "build" ] || mkdir build
-	cd build && cmake .. && make $(JOBS)
+	cd build && cmake .. && make $(JOBS) && make install
 
 
 release:
