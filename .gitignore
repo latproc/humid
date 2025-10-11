@@ -72,4 +72,4 @@ LocalMakefile
 .test/
 junk/
 examples/
-
+doc/*.png
