@@ -325,25 +325,33 @@ void createText(WidgetParams &params) {
 		if (!textBox->getRemote()) return true;
 		const std::string &conn = textBox->getRemote()->group();
 		char *rest = 0;
-		{
-			long val = strtol(value.c_str(),&rest,10);
-			if (*rest == 0) {
-				params.gui->queueMessage(conn,
-						params.gui->getIODSyncCommand(conn,
-						textBox->getRemote()->address_group(),
-						textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
-					[](std::string s){std::cout << s << "\n"; });
-				return true;
+		int value_type = textBox->getValueType();
+		if (value_type == Value::t_integer || value_type == Value::t_float) {
+			{
+				long val = strtol(value.c_str(),&rest,10);
+				if (*rest == 0) {
+					params.gui->queueMessage(conn,
+							params.gui->getIODSyncCommand(conn,
+							textBox->getRemote()->address_group(),
+							textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
+						[](std::string s){std::cout << s << "\n"; });
+					return true;
+				}
+			}
+			{
+				double val = strtod(value.c_str(),&rest);
+				if (*rest == 0)  {
+					params.gui->queueMessage(conn,
+						params.gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
+							textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
+					return true;
+				}
 			}
 		}
-		{
-			double val = strtod(value.c_str(),&rest);
-			if (*rest == 0)  {
-				params.gui->queueMessage(conn,
-					params.gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
-						textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
-				return true;
-			}
+		else if (value_type == Value::t_string) {
+			params.gui->queueMessage(conn,  params.gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), value.c_str()),
+						   [](const std::string & s){std::cout << s << "\n"; });
+			return true;
 		}
 		return false;
 	});
