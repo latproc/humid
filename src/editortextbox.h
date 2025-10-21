@@ -34,6 +34,11 @@ public:
 	float getScaledFloat(bool scaleUp);
 	int getScaledInteger(bool scaleUp);
 
+	const nanogui::Color &backgroundColor() { return mBackgroundColor; }
+	const nanogui::Color &textColor() { return mTextColor; }
+	void setBackgroundColor(const nanogui::Color &backgroundColor) { mBackgroundColor = backgroundColor; }
+	void setTextColor(const nanogui::Color &textColor) { mTextColor = textColor; }
+
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 
 	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
@@ -45,6 +50,8 @@ public:
 	MatrixXd handle_coordinates;
 	int valign;
 	bool wrap_text;
+	nanogui::Color mBackgroundColor;
+	nanogui::Color mTextColor;
 };
 
 #endif

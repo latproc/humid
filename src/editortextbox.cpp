@@ -11,6 +11,7 @@
 #include <nanogui/widget.h>
 #include <nanogui/entypo.h>
 #include "editor.h"
+#include "colourhelper.h"
 
 #include "editortextbox.h"
 #include "propertyformhelper.h"
@@ -29,7 +30,8 @@ const std::map<std::string, std::string> & EditorTextBox::reverse_property_map()
 }
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(0), wrap_text(false) {
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(1), wrap_text(false)
+{
 }
 
 bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -62,9 +64,11 @@ void EditorTextBox::getPropertyNames(std::list<std::string> &names) {
 	EditorWidget::getPropertyNames(names);
   names.push_back("Text");
   names.push_back("Font Size");
+  names.push_back("Text Colour");
   names.push_back("Alignment");
   names.push_back("Vertical Alignment");
   names.push_back("Wrap Text");
+  names.push_back("Background Colour");
 }
 
 void EditorTextBox::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
@@ -77,9 +81,15 @@ Value EditorTextBox::getPropertyValue(const std::string &prop) {
     return res;
   if (prop == "Text") return Value(value(), Value::t_string);
   else if (prop == "Font Size") return fontSize();
-  else if (prop == "Alignment") return (int)alignment();
+    if (prop == "Text Colour") {
+        return Value(stringFromColour(mTextColor), Value::t_string);
+    }
+    else if (prop == "Alignment") return (int)alignment();
   else if (prop == "Vertical Alignment") return valign;
   else if (prop == "Wrap Text") return wrap_text ? 1 : 0;
+  else if (prop == "Background Colour" && backgroundColor() != mTheme->mTransparent) {
+    return Value(stringFromColour(backgroundColor()), Value::t_string);
+  }
   return SymbolTable::Null;
 }
 
@@ -160,7 +170,15 @@ void EditorTextBox::setProperty(const std::string &prop, const std::string value
   }
   else if (prop == "Vertical Alignment") valign = std::atoi(value.c_str());
   else if (prop == "Wrap Text") {
-    wrap_text = (value == "1" || value == "true" || value == "TRUE");
+      wrap_text = (value == "1" || value == "true" || value == "TRUE");
+  }
+  if (prop == "Text Colour") {
+    getDefinition()->getProperties().add("text_colour", value);
+    setTextColor(colourFromProperty(getDefinition(), "text_colour"));
+  }
+  if (prop == "Background Colour") {
+    getDefinition()->getProperties().add("bg_color", value);
+    setBackgroundColor(colourFromProperty(getDefinition(), "bg_color"));
   }
 }
 
@@ -180,20 +198,37 @@ bool EditorTextBox::focusEvent(bool focused) {
     return true;
 }
 
+namespace {
+    nanogui::Color faded(nanogui::Color colour, float fade)  {
+        nanogui::Color fadedColour(colour);
+        colour.w() = fade;
+        return fadedColour;
+    }
+}
+
 void EditorTextBox::draw(NVGcontext* ctx) {
   using namespace nanogui;
 
     Widget::draw(ctx);
+    nanogui::Color bg_colour = mBackgroundColor;
+    if (mBackgroundColor.w() == 0) {
+        bg_colour = Color(255, 32);
+    }
+    nanogui::Color text_colour = mTextColor;
+    if (mTextColor.w() == 0) {
+        text_colour = mTheme ? mTheme->mTextColor : Color(0, 48);
+    }
+
 
     NVGpaint bg = nvgBoxGradient(ctx,
         mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, Color(255, 32), Color(32, 32));
+        3, 4, bg_colour, faded(bg_colour, 0.5));
     NVGpaint fg1 = nvgBoxGradient(ctx,
         mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, Color(150, 32), Color(32, 32));
+        3, 4, bg_colour, faded(bg_colour, 0.5));
     NVGpaint fg2 = nvgBoxGradient(ctx,
         mPos.x() + 1, mPos.y() + 1 + 1.0f, mSize.x() - 2, mSize.y() - 2,
-        3, 4, nvgRGBA(255, 0, 0, 100), nvgRGBA(255, 0, 0, 50));
+        3, 4, text_colour, faded(text_colour, 0.5));
 
     nvgBeginPath(ctx);
     if (border)
@@ -214,7 +249,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
       nvgStrokeWidth(ctx, border);
       nvgRoundedRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, mSize.x() - border,
                    mSize.y() - border, 2.5f);
-      nvgStrokeColor(ctx, Color(0, 48));
+      nvgStrokeColor(ctx, text_colour);
       nvgStroke(ctx);
       nvgStrokeWidth(ctx, 1.0);
   }
@@ -263,7 +298,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
         /* up button */ {
             bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Top;
-            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? text_colour : mTheme->mDisabledTextColor);
             auto icon = utf8(ENTYPO_ICON_CHEVRON_UP);
             nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
             Vector2f iconPos(mPos.x() + 4.f,
@@ -273,7 +308,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
         /* down button */ {
             bool hover = mMouseFocus && spinArea(mMousePos) == SpinArea::Bottom;
-            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+            nvgFillColor(ctx, (mEnabled && (hover || spinning)) ? text_colour : mTheme->mDisabledTextColor);
             auto icon = utf8(ENTYPO_ICON_CHEVRON_DOWN);
             nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_MIDDLE);
             Vector2f iconPos(mPos.x() + 4.f,
@@ -317,7 +352,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 
     nvgFontSize(ctx, fontSize());
     nvgFillColor(ctx,
-                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+                 mEnabled ? text_colour : mTheme->mDisabledTextColor);
 
     // clip visible text area
     float clipX = mPos.x() + xSpacing + spinArrowsWidth - 1.0f;
@@ -434,7 +469,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
         }
 
      nvgFillColor(ctx,
-                 mEnabled ? mTheme->mTextColor : mTheme->mDisabledTextColor);
+                 mEnabled ? text_colour : mTheme->mDisabledTextColor);
         // draw text with offset
         nvgText(ctx, drawPos.x(), drawPos.y(), valStr.c_str(), nullptr);
         nvgTextBounds(ctx, drawPos.x(), drawPos.y(), valStr.c_str(),
@@ -453,6 +488,7 @@ void EditorTextBox::draw(NVGcontext* ctx) {
 void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
   EditorWidget::loadProperties(properties);
   nanogui::Widget *w = dynamic_cast<nanogui::Widget*>(this);
+  EditorTextBox *tb = dynamic_cast<EditorTextBox*>(this);
   if (w) {
     properties->addVariable<std::string> (
       "Text",
@@ -471,7 +507,15 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
       "Wrap Text",
       [&](bool value) mutable{ wrap_text = value; },
       [&]()->bool{ return wrap_text; });
-    properties->addGroup("Remote");
+      properties->addVariable<nanogui::Color> (
+        "Text Colour",
+        [&,tb](const nanogui::Color &value) mutable{ tb->setTextColor(value); },
+        [&,tb]()->const nanogui::Color &{ return tb->textColor(); });
+      properties->addVariable<nanogui::Color> (
+        "Background Colour",
+        [&,tb](const nanogui::Color &value) mutable{ tb->setBackgroundColor(value); },
+        [&,tb]()->const nanogui::Color &{ return tb->backgroundColor(); });
+      properties->addGroup("Remote");
     properties->addVariable<std::string> (
       "Remote object",
       [&,this,properties](std::string value) {

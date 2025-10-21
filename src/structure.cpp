@@ -74,9 +74,11 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	else if (class_name == "TEXT") {
 		properties["Text"] = "text";
 		properties["Font Size"] = "font_size";
+		properties["Text Colour"] = "text_colour";
 		properties["Alignment"] = "alignment";
 		properties["Vertical Alignment"] = "valign";
 		properties["Wrap Text"] = "wrap";
+		properties["Background Colour"] = "bg_color";
 	}
 	else if (class_name == "LABEL") {
 		properties["Caption"] = "caption";

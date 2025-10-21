@@ -309,6 +309,12 @@ void createText(WidgetParams &params) {
 	setElementPosition(params, textBox, params.element);
 	fixElementSize( textBox, params.element);
 	if (params.font_size) textBox->setFontSize(params.font_size);
+	Value bg_colour(params.element->getValue("bg_color"));
+	if (bg_colour != SymbolTable::Null)
+		textBox->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
+	Value text_colour(params.element->getValue("text_colour"));
+	if (text_colour != SymbolTable::Null)
+		textBox->setTextColor(colourFromProperty(params.element, "text_colour"));
 	if (params.tab_pos) textBox->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) textBox->setBorder(params.border.iValue);
 	textBox->setName(params.element->getName());
