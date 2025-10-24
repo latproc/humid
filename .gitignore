@@ -55,6 +55,7 @@ tags
 build/
 xcode/
 .build/
+.idea/
 
 #external projects
 ext/
@@ -73,3 +74,4 @@ LocalMakefile
 junk/
 examples/
 doc/*.png
+stage/
