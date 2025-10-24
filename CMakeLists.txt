@@ -130,7 +130,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
 		  src/editorframe.h src/keypad.h src/valuehelper.h
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
-		src/EditorTable.h
+		  src/editortable.h
   )
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
@@ -258,7 +258,7 @@ endif()
 		  src/widgetfactory.cpp src/dialogwindow.cpp
 		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
-          src/EditorTable.cpp
+		  src/editortable.cpp
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
