@@ -13,7 +13,7 @@
 #include <nanogui/label.h>
 #include "editorwidget.h"
 #include <functional>
-#include <optional>
+#include <boost/optional.hpp>
 
 class EditorLabel : public nanogui::Label, public EditorWidget {
 
@@ -55,7 +55,7 @@ protected:
 	int valign;
 	bool wrap_text;
 
-    std::optional<std::function<void()>> mCallback;
+    boost::optional<std::function<void()>> mCallback;
 };
 
 #endif

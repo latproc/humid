@@ -23,7 +23,7 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 if (APPLE)
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
 	INCLUDE_DIRECTORIES(${NANO_GUI_BUILD_DIR}/include)
@@ -60,7 +60,7 @@ set_target_properties(nanogui PROPERTIES
 include_directories(lib/nanogui/include)
 include_directories(${NANOGUI_EXTRA_INCS})
 add_definitions(${NANOGUI_EXTRA_DEFS})
-install(TARGETS nanogui LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
+#install(TARGETS nanogui LIBRARY DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)
 
 include_directories("/usr/local/include")
 include_directories("/opt/local/include")
