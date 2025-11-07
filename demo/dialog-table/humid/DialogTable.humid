@@ -1,0 +1,77 @@
+DialogTable STRUCTURE EXTENDS SCREEN {
+  DialogFrame FRAME(
+    border: 1,
+    font_size: 20,
+    height: 600,
+    inverted_visibility: false,
+    pos_x: 200,
+    pos_y: 60,
+    text_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 800,
+    wrap: 0
+  );
+  Title LABEL(
+    alignment: centre,
+    border: 0,
+    caption: "Select a person",
+    font_size: 32,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 200,
+    pos_y: 70,
+    text_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 800,
+    wrap: 0
+  );
+  PeopleTable TABLE(
+    alignment: 0,
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    height: 360,
+    inverted_visibility: false,
+    pos_x: 240,
+    pos_y: 160,
+    remote: "people_table_exporter.value",
+    selected_row: $people_table_exporter.selected_row,
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 720
+  );
+  Close BUTTON(
+    alignment: centre,
+    behaviour: 1,
+    bg_color: "#c81e1ec8",
+    bg_on_color: "#d63d3d",
+    border: 1,
+    caption: "Close",
+    connection: "CW",
+    font_size: 24,
+    height: 60,
+    inverted_visibility: false,
+    pos_x: 440,
+    pos_y: 480,
+    remote: "P_DialogVisible",
+    text_colour: "#00000000",
+    text_on_colour: "#00000000",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 280,
+    wrap: 0
+  );
+}
+dialog_table DialogTable(
+    file_name: "DialogTable.humid",
+    screen_height: 720,
+    screen_id: 1,
+    screen_width: 1200,
+    visibility: 1
+  );

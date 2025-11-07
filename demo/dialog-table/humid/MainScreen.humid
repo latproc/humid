@@ -1,0 +1,64 @@
+MainScreen STRUCTURE EXTENDS SCREEN {
+  ToggleDialog BUTTON(
+    alignment: centre,
+    behaviour: 6,
+    bg_color: "#3482f7",
+    bg_on_color: "#00000000",
+    border: 1,
+    caption: "Show / Hide Table",
+    connection: "CW",
+    font_size: 28,
+    height: 80,
+    inverted_visibility: false,
+    pos_x: 450,
+    pos_y: 520,
+    remote: "P_DialogVisible",
+    text_colour: "#ffffff",
+    text_on_colour: "#ffffff",
+    valign: centre,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 300,
+    wrap: 0
+  );
+  SelectionLabel LABEL(
+    alignment: 0,
+    border: 0,
+    caption: "Selected row",
+    font_size: 24,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 440,
+    pos_y: 200,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 320,
+    wrap: 1
+  );
+  SelectedRowValue LABEL(
+    alignment: 0,
+    border: 1,
+    caption: "-1",
+    connection: "CW",
+    font_size: 24,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 780,
+    pos_y: 200,
+    remote: "people_table_exporter.selected_row",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 120,
+    wrap: 1
+  );
+}
+MainScreenView MainScreen(
+    file_name: "MainScreen.humid",
+    screen_height: 720,
+    screen_id: 2,
+    screen_width: 1200
+  );
