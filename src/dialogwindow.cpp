@@ -11,14 +11,15 @@
 #include "namedobject.h"
 #include "widgetfactory.h"
 
-DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme) : nanogui::Window(screen), gui(screen) {
-	using namespace nanogui;
-	setTheme(theme);
-	setFixedSize(Vector2i(gui->width()/2, gui->height()/2));
-	setSize(Vector2i(180,240));
-	setPosition(Vector2i(gui->width()/4, gui->height()/4));
-	setTitle("Dialog");
-	setVisible(true);
+DialogWindow::DialogWindow(EditorGUI *screen, nanogui::Theme *theme)
+    : nanogui::Window(screen), gui(screen) {
+    using namespace nanogui;
+    setTheme(theme);
+    setFixedSize(Vector2i(gui->width() / 2, gui->height() / 2));
+    setSize(Vector2i(180, 240));
+    setPosition(Vector2i(gui->width() / 4, gui->height() / 4));
+    setTitle("");
+    setVisible(true);
 }
 
 void DialogWindow::clear() {
@@ -112,26 +113,29 @@ void DialogWindow::loadStructure(Structure *s) {
 			}
 
 			WidgetParams params(s, this, element, gui, offset);
-
-			if (element_class &&element_class->isExtension("LABEL")) {
-				createLabel(params);
-			}
-			if (element_class &&element_class->isExtension("IMAGE")) {
-				createImage(params);
-			}
-			if (element_class &&element_class->isExtension("PROGRESS")) {
-				createProgress(params);
-			}
-			if (element_class &&element_class->isExtension("TEXT")) {
-				createText(params);
-			}
-			else if (element_class && element_class->isExtension("PLOT")) {
-				createPlot(params);
-			}
-			else if (element_class && (element_class->isExtension("BUTTON") || element_class->isExtension("INDICATOR"))) {
-				createButton(params);
-			}
-		}
-	}
+            if (element_class && element_class->isExtension("LABEL")) {
+                createLabel(params);
+            }
+            else if (element_class && element_class->isExtension("IMAGE")) {
+                createImage(params);
+            }
+            else if (element_class && element_class->isExtension("PROGRESS")) {
+                createProgress(params);
+            }
+            else if (element_class && element_class->isExtension("TEXT")) {
+                createText(params);
+            }
+            else if (element_class && element_class->isExtension("PLOT")) {
+                createPlot(params);
+            }
+            else if (element_class && element_class->isExtension("TABLE")) {
+                createTable(params);
+            }
+            else if (element_class && (element_class->isExtension("BUTTON") ||
+                                       element_class->isExtension("INDICATOR"))) {
+                createButton(params);
+            }
+        }
+    }
 }
 
