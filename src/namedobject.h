@@ -36,6 +36,7 @@ public:
     static void forgetGlobal(const std::string &name);
     static std::map<std::string, NamedObject*> &globals() { return global_objects; }
     bool named() { return _named; }
+    NamedObject *find(const std::string &name);
 
 protected:
     bool _named;

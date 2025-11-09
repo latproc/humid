@@ -144,7 +144,7 @@ void NamedObject::setParent(NamedObject *o) {
 
 std::map<std::string, NamedObject*> &NamedObject::siblings() {
 	if (!parent) return global_objects;
-  assert(& parent->child_objects != &global_objects);
+    assert(& parent->child_objects != &global_objects);
 	return parent->child_objects;
 }
 
@@ -161,4 +161,10 @@ bool NamedObject::changeName(NamedObject *o, const std::string &oldname, const s
 	found = siblings.find(oldname);
 	if (found != siblings.end()) siblings.erase(found);
 	return true;
+}
+
+NamedObject *NamedObject::find(const std::string &name) {
+	auto found = child_objects.find(name);
+	if (found != child_objects.end()) return (*found).second;
+	return nullptr;
 }

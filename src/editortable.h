@@ -31,6 +31,9 @@ public:
     void setHeader(cJSON *header);
 
     void setSelectedRow(int index);
+
+    EditorLabel *find_or_create_label(int index, std::string text);
+
     int selectedRow() const { return mSelectedRow; }
     void clearSelection();
 

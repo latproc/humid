@@ -34,7 +34,7 @@ DialogTable STRUCTURE EXTENDS SCREEN {
     border: 1,
     connection: "CW",
     font_size: 20,
-    height: 360,
+    height: 300,
     inverted_visibility: false,
     pos_x: 240,
     pos_y: 160,

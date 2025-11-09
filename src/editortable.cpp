@@ -8,7 +8,13 @@
 #include <iostream>
 
 // Helper to remove all children from a widget
-static void clearChildren(nanogui::Widget *w) {
+static void clearChildren(NamedObject *parent, nanogui::Widget *w) {
+    if (parent) {
+        while (!parent->locals().empty()) {
+            std::cout << "Removing local " << parent->locals().begin()->first << std::endl;
+            parent->remove(parent->locals().begin()->first);
+        }
+    }
     while (w->childCount() > 0) {
         w->removeChild(0);
     }
@@ -155,11 +161,46 @@ void EditorTable::setSelectedRow(int index) {
     mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(200,200,255,255));
 }
 
+EditorLabel *EditorTable::find_or_create_label(int index, std::string text) {
+    EditorLabel *label = nullptr;
+    auto name = std::string("row_") + std::to_string(index);
+    label = nullptr;
+    auto parent = getParent();
+    if (parent) {
+        if (auto obj = parent->find(name)) {
+            label = dynamic_cast<EditorLabel*>(obj);
+            if (!label) {
+                std::cerr << "Existing " << name << " is not a label\n";
+            }
+        }
+    }
+    if (!label) {
+        auto found = global_objects.find(name);
+        if (found != global_objects.end()) {
+            label = dynamic_cast<EditorLabel*>(found->second);
+            if (!label) {
+                std::cerr << "Existing global " << name << " is not a label\n";
+            }
+        }
+    }
+
+    if (!label) {
+        label = new EditorLabel(getParent(), mContainer,
+                                "row_" + std::to_string(index),
+                                mLinkedOption, text);
+    }
+    return label;
+}
+
 void EditorTable::rebuild() {
     extern std::string table_font;
     assert(header);
     header->incRef(); // retain the header row
-    clearChildren(mContainer);
+    clearChildren(getParent(), mContainer);
+    mContainer->setFixedHeight(height());
+    mContainer->setFixedWidth(width());
+    mScroll->setFixedHeight(height());
+    mScroll->setFixedWidth(width());
     mRows.clear();
     mContainer->addChild(header);
     mRows.push_back(header);
@@ -215,9 +256,7 @@ void EditorTable::rebuild() {
             }
         }
 
-        auto *label = new EditorLabel(getParent(), mContainer,
-                                      "row_" + std::to_string(index),
-                                      mLinkedOption, text);
+        EditorLabel *label = find_or_create_label(index, text);
         label->setBackgroundColor(nanogui::Color(0,0,0,0));
         label->setPropertyValue("Alignment", "0");
         label->setPropertyValue("Vertical Alignment", "1");
