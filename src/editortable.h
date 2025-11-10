@@ -17,6 +17,7 @@ public:
                 const std::string nam,
                 LinkableProperty *lp,
                 cJSON *data);
+    ~EditorTable();
 
     nanogui::Widget *asWidget() override { return this; }
     bool mouseButtonEvent(const nanogui::Vector2i &top_left, int button, bool down, int modifiers) override;
@@ -32,7 +33,7 @@ public:
 
     void setSelectedRow(int index);
 
-    EditorLabel *find_or_create_label(int index, std::string text);
+    EditorLabel *find_or_create_label(const std::string & name, const std::string & text);
 
     int selectedRow() const { return mSelectedRow; }
     void clearSelection();

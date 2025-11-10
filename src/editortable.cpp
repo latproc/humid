@@ -8,15 +8,24 @@
 #include <iostream>
 
 // Helper to remove all children from a widget
-static void clearChildren(NamedObject *parent, nanogui::Widget *w) {
+static void clearChildren(NamedObject *parent, nanogui::Widget *w, const std::string &prefix) {
     if (parent) {
-        while (!parent->locals().empty()) {
-            std::cout << "Removing local " << parent->locals().begin()->first << std::endl;
-            parent->remove(parent->locals().begin()->first);
+        int count = 0;
+        for (auto iter = parent->locals().begin(); iter != parent->locals().end(); ) {
+            auto name = iter->first;
+            auto widget =  dynamic_cast<nanogui::Widget*>(iter->second);
+            auto curr = iter++;
+            if (name.substr(0, prefix.size()) == prefix) {
+                std::cout << "Removing local " << name << std::endl;
+                ++count;
+                parent->locals().erase(curr);
+                if (widget) {
+                    w->removeChild(widget);
+                    std::cout << "removed widget\n";
+                }
+            }
         }
-    }
-    while (w->childCount() > 0) {
-        w->removeChild(0);
+        std::cout << "Removed " << count << " children\n";
     }
 }
 
@@ -36,7 +45,9 @@ EditorTable::EditorTable(NamedObject *owner,
     setLayout(new nanogui::BoxLayout(
         nanogui::Orientation::Vertical, nanogui::Alignment::Fill, 0, 0));
 
+    mHeaderSpec = cJSON_CreateArray();
     mData = cJSON_CreateArray();
+#if 0
     // Example object rows matching the header spec
     {
         cJSON *row = cJSON_CreateObject();
@@ -58,15 +69,13 @@ EditorTable::EditorTable(NamedObject *owner,
         cJSON_AddItemToArray(row, cJSON_CreateString("99"));
         cJSON_AddItemToArray(mData, row);
     }
-
-    // Special case: row as a plain string
+    // row as a plain string
     cJSON_AddItemToArray(mData, cJSON_CreateString("This is a plain string row"));
-    mHeaderSpec = cJSON_Parse("[{\"label\":\"Name\", \"width\":40},{\"label\":\"Value\", \"width\":30}]");
-    auto str = cJSON_Print(mHeaderSpec);
-    std::cout << str << std::endl;
-    free(str);
     assert(mHeaderSpec);
     assert(cJSON_IsArray(mHeaderSpec));
+    cJSON_Delete(mHeaderSpec);
+    mHeaderSpec = cJSON_Parse(R"([{"field":"Name","label":"Name", "width":40},{"field":"Value","label":"Value", "width":30}])");
+#endif
     mScroll = new nanogui::VScrollPanel(this);
     mContainer = new nanogui::Widget(mScroll);
     mContainer->setLayout(new nanogui::BoxLayout(
@@ -75,18 +84,27 @@ EditorTable::EditorTable(NamedObject *owner,
     rebuild();
 }
 
+EditorTable::~EditorTable() {
+    if (mHeaderSpec) { cJSON_Delete(mHeaderSpec); }
+    if (mData) { cJSON_Delete(mData); }
+    clearChildren(this, mContainer, "");
+}
+
 void EditorTable::rebuildHeader() {
     extern std::string table_header_font;
-    if (!header) {
-        header = new EditorLabel(getParent(), mContainer,
-                       "header",
-                       mLinkedOption, "TEST");
-        header->setBackgroundColor(nanogui::Color(220,220,0,0));
-        header->setPropertyValue("Alignment", "0");
-        header->setPropertyValue("Vertical Alignment", "1");
-        header->setBorder(1);
-        header->setFont(table_header_font);
+    header = find_or_create_label("header", "");
+    assert(header);
+    if (mRows.size() == 0) {
+        mRows.push_back(header);
     }
+    else {
+        mRows[0] = header;
+    }
+    header->setBackgroundColor(nanogui::Color(220,220,0,0));
+    header->setPropertyValue("Alignment", "0");
+    header->setPropertyValue("Vertical Alignment", "1");
+    header->setBorder(1);
+    header->setFont(table_header_font);
 
     // Build header text from mHeaderSpec
     std::string headerText;
@@ -122,10 +140,9 @@ void EditorTable::setData(cJSON *data) {
     rebuild();
 }
 
-void EditorTable::setHeader(cJSON *header) {
-    if (!header) { return; }
+void EditorTable::setHeader(cJSON *header_spec) {
     if (mHeaderSpec) { cJSON_Delete(mHeaderSpec); }
-    mHeaderSpec = header;
+    mHeaderSpec = header_spec;
     rebuildHeader();
 }
 
@@ -139,8 +156,9 @@ void EditorTable::clearSelection() {
 
 void EditorTable::setSelectedRow(int index) {
     // Ignore index 0 (header)
-    if (index <= 0 || index >= (int)mRows.size())
+    if (index <= 0 || index >= (int)mRows.size()) {
         return;
+    }
 
     // If clicked row is already selected, deselect it
     if (mSelectedRow == index) {
@@ -151,7 +169,7 @@ void EditorTable::setSelectedRow(int index) {
         return;
     }
 
-    // Deselect previous row if valid
+    // Deselect previous row
     if (mSelectedRow >= 0 && mSelectedRow < (int)mRows.size()) {
         mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(0,0,0,0));
     }
@@ -161,19 +179,22 @@ void EditorTable::setSelectedRow(int index) {
     mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(200,200,255,255));
 }
 
-EditorLabel *EditorTable::find_or_create_label(int index, std::string text) {
+EditorLabel *EditorTable::find_or_create_label(const std::string & name, const std::string & text) {
     EditorLabel *label = nullptr;
-    auto name = std::string("row_") + std::to_string(index);
     label = nullptr;
-    auto parent = getParent();
-    if (parent) {
-        if (auto obj = parent->find(name)) {
-            label = dynamic_cast<EditorLabel*>(obj);
-            if (!label) {
-                std::cerr << "Existing " << name << " is not a label\n";
-            }
+
+    if (auto obj = find(name)) {
+        label = dynamic_cast<EditorLabel*>(obj);
+        if (!label) {
+            std::cerr << "Existing " << name << " is not a label\n";
         }
     }
+    if (label) {
+        std::cerr << "Found existing " << name << "\n";
+        label->setCaption(text.c_str());
+        return label;
+    }
+#if 0
     if (!label) {
         auto found = global_objects.find(name);
         if (found != global_objects.end()) {
@@ -183,27 +204,24 @@ EditorLabel *EditorTable::find_or_create_label(int index, std::string text) {
             }
         }
     }
+#endif
 
-    if (!label) {
-        label = new EditorLabel(getParent(), mContainer,
-                                "row_" + std::to_string(index),
-                                mLinkedOption, text);
-    }
+    label = new EditorLabel(this, mContainer, name, mLinkedOption, text);
+    assert(label);
     return label;
 }
 
 void EditorTable::rebuild() {
     extern std::string table_font;
     assert(header);
-    header->incRef(); // retain the header row
-    clearChildren(getParent(), mContainer);
     mContainer->setFixedHeight(height());
     mContainer->setFixedWidth(width());
     mScroll->setFixedHeight(height());
     mScroll->setFixedWidth(width());
+    clearChildren(this, mContainer, "row_");
     mRows.clear();
-    mContainer->addChild(header);
     mRows.push_back(header);
+    mSelectedRow = -1;
 
     if (!mData || !cJSON_IsArray(mData))
         return;
@@ -256,7 +274,7 @@ void EditorTable::rebuild() {
             }
         }
 
-        EditorLabel *label = find_or_create_label(index, text);
+        EditorLabel *label = find_or_create_label(std::string("row_") + std::to_string(index), text);
         label->setBackgroundColor(nanogui::Color(0,0,0,0));
         label->setPropertyValue("Alignment", "0");
         label->setPropertyValue("Vertical Alignment", "1");
@@ -505,7 +523,7 @@ void EditorTable::draw(NVGcontext *ctx) {
     mContainer->performLayout(ctx);
     nanogui::Widget::draw(ctx);
     nvgBeginPath(ctx);
-    nvgStrokeWidth(ctx, 1.0);
+    nvgStrokeWidth(ctx, this->border);
     nvgMoveTo(ctx, mPos.x(), mPos.y() + mSize.y());
     nvgLineTo(ctx, mPos.x() + mSize.x(), mPos.y() + mSize.y());
     nvgLineTo(ctx, mPos.x() + mSize.x(), mPos.y());
