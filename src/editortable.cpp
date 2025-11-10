@@ -103,8 +103,9 @@ void EditorTable::rebuildHeader() {
     header->setBackgroundColor(nanogui::Color(220,220,0,0));
     header->setPropertyValue("Alignment", "0");
     header->setPropertyValue("Vertical Alignment", "1");
-    header->setBorder(1);
+    header->setBorder(border);
     header->setFont(table_header_font);
+    header->setFontSize(fontSize());
 
     // Build header text from mHeaderSpec
     std::string headerText;
@@ -280,6 +281,8 @@ void EditorTable::rebuild() {
         label->setPropertyValue("Vertical Alignment", "1");
         label->setBorder(0);
         label->setFont(table_font);
+        label->setFontSize(fontSize());
+        label->setFixedWidth(width());
 
         mRows.push_back(label);
     }
@@ -520,14 +523,15 @@ bool EditorTable::mouseEnterEvent(const Vector2i &p, bool enter) {
 
 void EditorTable::draw(NVGcontext *ctx) {
     mContainer->setFixedSize({this->width(), this->height()});
+    mContainer->setPosition(Vector2i(1,1));
     mContainer->performLayout(ctx);
     nanogui::Widget::draw(ctx);
+    nvgStrokeWidth(ctx, border);
     nvgBeginPath(ctx);
-    nvgStrokeWidth(ctx, this->border);
-    nvgMoveTo(ctx, mPos.x(), mPos.y() + mSize.y());
-    nvgLineTo(ctx, mPos.x() + mSize.x(), mPos.y() + mSize.y());
-    nvgLineTo(ctx, mPos.x() + mSize.x(), mPos.y());
-    nvgLineTo(ctx, mPos.x(), mPos.y());
+    nvgRect(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y());
+    nvgStrokeColor(ctx, nvgRGBA(0, 0, 0, 255));
+    nvgStroke(ctx);
+
     if (mSelected)
         drawSelectionBorder(ctx, mPos, mSize);
     else if (EDITOR->isEditMode()) {
