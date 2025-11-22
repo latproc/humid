@@ -49,9 +49,9 @@ PeopleTableExport MACHINE {
 
 PeopleTable MACHINE exporter{
   OPTION header_json JSON_VALUE [
-      {"label": "Name", "width": 30},
-      {"label": "Age", "width": 10},
-      {"label": "City", "width": 20}
+      {"field": "Name", "label": "Name", "width": 30},
+      {"field": "Age", "label": "Age", "width": 10},
+      {"field": "City", "label": "City", "width": 20}
     ];
 
   COMMAND sync {
@@ -71,6 +71,7 @@ PeopleData MACHINE exporter {
     ITEM ${rows} OF exporter.data := people_json;
   }
 }
+
 
 people_table_exporter PeopleTableExport;
 people_table PeopleTable people_table_exporter;
