@@ -466,10 +466,17 @@ bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int butto
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && down) {
         bool found = false;
+
+        float scroll_offset = 0.0f;
+        if (mRows.size() > 1) {
+            size_t scrollable_pixels = mRows.size() * (mRows[1]->size().y() + 2) - size().y(); // labels have padding
+            scroll_offset = scrollable_pixels * mScroll->scroll();
+       }
+
         for (size_t i = 1; i < mRows.size(); ++i) {
-            auto *label = mRows[i];
-            nanogui::Vector2i pos = label->position();
-            nanogui::Vector2i size = label->size();
+            const auto *label = mRows[i];
+            nanogui::Vector2i pos = label->position() - Vector2i(0, std::round(scroll_offset)+1);
+            nanogui::Vector2i size = label->size() + Vector2i(0, 2); // padding compensation
             if (top_left.x() >= pos.x() && top_left.x() <= pos.x() + size.x() &&
                 top_left.y() >= pos.y() && top_left.y() <= pos.y() + size.y()) {
                 setSelectedRow((int)i);
