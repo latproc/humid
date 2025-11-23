@@ -37,6 +37,7 @@ public:
 
     int selectedRow() const { return mSelectedRow; }
     void clearSelection();
+    void update_remote_selection(int index);
 
     // EditorWidget overrides
     void getPropertyNames(std::list<std::string> &names) override;

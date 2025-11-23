@@ -16,16 +16,13 @@ static void clearChildren(NamedObject *parent, nanogui::Widget *w, const std::st
             auto widget =  dynamic_cast<nanogui::Widget*>(iter->second);
             auto curr = iter++;
             if (name.substr(0, prefix.size()) == prefix) {
-                std::cout << "Removing local " << name << std::endl;
                 ++count;
                 parent->locals().erase(curr);
                 if (widget) {
                     w->removeChild(widget);
-                    std::cout << "removed widget\n";
                 }
             }
         }
-        std::cout << "Removed " << count << " children\n";
     }
 }
 
@@ -153,6 +150,7 @@ void EditorTable::clearSelection() {
         mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(0,0,0,0));
     }
     mSelectedRow = -1;
+    update_remote_selection(mSelectedRow);
 }
 
 void EditorTable::setSelectedRow(int index) {
@@ -161,23 +159,16 @@ void EditorTable::setSelectedRow(int index) {
         return;
     }
 
-    // If clicked row is already selected, deselect it
-    if (mSelectedRow == index) {
+    if (mSelectedRow != index) {
+        // Deselect previous row
         if (mSelectedRow >= 0 && mSelectedRow < (int)mRows.size()) {
             mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(0,0,0,0));
         }
-        mSelectedRow = -1;
-        return;
+        // Select new row
+        mSelectedRow = index;
+        mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(200,200,255,255));
+        update_remote_selection(mSelectedRow);
     }
-
-    // Deselect previous row
-    if (mSelectedRow >= 0 && mSelectedRow < (int)mRows.size()) {
-        mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(0,0,0,0));
-    }
-
-    // Select new row
-    mSelectedRow = index;
-    mRows[mSelectedRow]->setBackgroundColor(nanogui::Color(200,200,255,255));
 }
 
 EditorLabel *EditorTable::find_or_create_label(const std::string & name, const std::string & text) {
@@ -191,21 +182,9 @@ EditorLabel *EditorTable::find_or_create_label(const std::string & name, const s
         }
     }
     if (label) {
-        std::cerr << "Found existing " << name << "\n";
         label->setCaption(text.c_str());
         return label;
     }
-#if 0
-    if (!label) {
-        auto found = global_objects.find(name);
-        if (found != global_objects.end()) {
-            label = dynamic_cast<EditorLabel*>(found->second);
-            if (!label) {
-                std::cerr << "Existing global " << name << " is not a label\n";
-            }
-        }
-    }
-#endif
 
     label = new EditorLabel(this, mContainer, name, mLinkedOption, text);
     assert(label);
@@ -441,15 +420,7 @@ void EditorTable::loadProperties(PropertyFormHelper* properties) {
 
 }
 
-bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int button, bool down, int modifiers) {
-
-    using namespace nanogui;
-
-    if (!editorMouseButtonEvent(this, mouse_pos, button, down, modifiers)) {
-        return false;
-    }
-    Vector2i top_left = mouse_pos - mPos;
-
+void EditorTable::update_remote_selection(int index) {
     auto select_row_remote = [&](int index) {
         // Store zero-based data row (excluding header) in mLinkedOption if present
         if (!getDefinition()) { return; }
@@ -465,24 +436,33 @@ bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int butto
         }
         assert(structure);
         auto & kind = structure->getStructureDefinition()->getName();
-        auto remote_links = LinkManager::instance().remote_links(kind, this->getName());
+        auto remote_links = LinkManager::instance().remote_links(kind, this->EditorWidget::getName());
         if (remote_links) for (auto & link_info : *remote_links) {
             if (link_info.property_name != "selected_row") {
-                std::cout << "Skipping link " << link_info.property_name << std::endl;
                 continue;
             }
             auto linkable_property = EDITOR->gui()->findLinkableProperty(link_info.remote_name);
             if (linkable_property) {
                 const std::string &conn = getRemote()->group();
-                std::cout << "Sending " << link_info.remote_name << " " << link_info.property_name << " " << index << std::endl;
                 EDITOR->gui()->queueMessage(conn,
-                    EDITOR->gui()->getIODSyncCommand(conn, getRemote()->getKind(), linkable_property->address(), index), [](std::string s) {
-                });
+                                            EDITOR->gui()->getIODSyncCommand(conn, getRemote()->getKind(), linkable_property->address(), index), [](std::string s) {
+                                            });
                 break;
             }
         }
 
     };
+    select_row_remote(index);
+}
+
+bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int button, bool down, int modifiers) {
+
+    using namespace nanogui;
+
+    if (!editorMouseButtonEvent(this, mouse_pos, button, down, modifiers)) {
+        return false;
+    }
+    Vector2i top_left = mouse_pos - mPos;
 
     if (button == GLFW_MOUSE_BUTTON_LEFT && down) {
         bool found = false;
@@ -492,13 +472,13 @@ bool EditorTable::mouseButtonEvent(const nanogui::Vector2i &mouse_pos, int butto
             nanogui::Vector2i size = label->size();
             if (top_left.x() >= pos.x() && top_left.x() <= pos.x() + size.x() &&
                 top_left.y() >= pos.y() && top_left.y() <= pos.y() + size.y()) {
-                select_row_remote((int)i);
+                setSelectedRow((int)i);
                 found = true;
                 break;
             }
         }
         if (!found) {
-            select_row_remote(-1);
+            setSelectedRow(-1);
         }
     }
 
