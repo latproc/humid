@@ -151,8 +151,8 @@ void EditorButton::setupButtonCallbacks(LinkableProperty *lp, EditorGUI *egui) {
 
     });
     setChangeCallback([&,this,gui, conn] (bool state) {
-      const std::string &conn = getRemote()->group();
       if (getRemote()) {
+        const std::string &conn = getRemote()->group();
         if ( !(flags() & nanogui::Button::NormalButton ) )  {
           if (flags() & nanogui::Button::SetOnButton || flags() & nanogui::Button::SetOffButton) { 
             gui->queueMessage(conn,
