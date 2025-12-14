@@ -43,9 +43,10 @@ endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 if (USE_ASAN)
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+    message(STATUS "ASAN build")
+	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,undefined")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address,undefined")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address,undefined")
 endif()
 if (APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-register")
@@ -71,6 +72,8 @@ find_package(ZeroMQ REQUIRED)
 find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
 
+message(STATUS "Found clockwork: ${ClockworkClient_LIBRARIES}")
+
 #set(BOOST_ROOT "/usr/local/")
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
@@ -86,24 +89,7 @@ enable_testing()
 add_subdirectory(tests)
 endif()
 
-set(HEADER_FILES
-  ${Clockwork_INCLUDE_DIR}/MessagingInterface.h
-  ${Clockwork_INCLUDE_DIR}/SocketMonitor.h
-  ${Clockwork_INCLUDE_DIR}/ConnectionManager.h
-  ${Clockwork_INCLUDE_DIR}/MessageLog.h
-  ${Clockwork_INCLUDE_DIR}/MessageEncoding.h
-  ${Clockwork_INCLUDE_DIR}/MessageHeader.h
-  ${Clockwork_INCLUDE_DIR}/regular_expressions.h
-  ${Clockwork_INCLUDE_DIR}/Logger.h
-  ${Clockwork_INCLUDE_DIR}/anet.h
-  ${Clockwork_INCLUDE_DIR}/cJSON.h
-  ${Clockwork_INCLUDE_DIR}/DebugExtra.h
-  ${Clockwork_INCLUDE_DIR}/value.h
-  ${Clockwork_INCLUDE_DIR}/symboltable.h
-  ${Clockwork_INCLUDE_DIR}/rate.h
-  ${Clockwork_INCLUDE_DIR}/watchdog.h
-  ${Clockwork_INCLUDE_DIR}/Message.h
-  )
+set(Clockwork_INCLUDE_DIR "${CLOCKWORK_DIR}")
 
 include_directories("${ClockworkClient_INCLUDE_DIR}")
 
@@ -113,7 +99,7 @@ include_directories("${ClockworkClient_INCLUDE_DIR}")
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skeleton.h
-		  src/structure.h src/parameter.h src/hmilang.h src/lineplot.h src/circularbuffer.h
+		  src/structure.h  src/hmilang.h src/lineplot.h src/circularbuffer.h
 		  src/propertylist.h src/gltexture.h src/uiitem.h
 		  src/selectable.h src/palette.h src/selectablewidget.h
 		  src/selectablebutton.h src/userwindow.h src/sampletrigger.h
@@ -163,7 +149,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/clockwork/iod/src/Parameter.h
 	   OUTPUT ${hmi_yacc_output})
 
 	# Add generated source to the list of sources
@@ -197,7 +183,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/parameter.h
+		DEPENDS   ${Clockwork_INCLUDE_DIR}/Parameter.h
 	   OUTPUT ${settings_yacc_output})
 
 	# Add generated source to the list of sources

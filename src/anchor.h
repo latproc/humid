@@ -24,9 +24,9 @@ public:
 	virtual ~Command() {}
 };
 
-class Action {
+class AnchorAction {
 public:
-	Action(std::string name, std::list<Parameter> &params, std::list<Command *> &commands) {}
+	AnchorAction(std::string name, std::list<HmiParameter> &params, std::list<Command *> &commands) {}
 protected:
 	std::list<Command *>steps;
 };
@@ -104,13 +104,13 @@ std::ostream &operator<<(std::ostream &out, const KeyAnchor &);
 
 class ActionAnchor : public Anchor {
 	public:
-		ActionAnchor(Action*a) : action(a) {}
+		ActionAnchor(AnchorAction*a) : action(a) {}
 		virtual ~ActionAnchor() {}
 		virtual Value get() override{ return SymbolTable::Null; }
 		virtual void set(Value v) override {};
     virtual std::ostream &operator()(std::ostream &out) const override;
 private:
-	Action *action;
+	AnchorAction *action;
 };
 std::ostream &operator<<(std::ostream &out, const ActionAnchor &);
 

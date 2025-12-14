@@ -14,7 +14,6 @@
 #include "value.h"
 #include "editorobject.h"
 #include "circularbuffer.h"
-#include "parameter.h"
 
 class LinkableProperty;
 class Structure;

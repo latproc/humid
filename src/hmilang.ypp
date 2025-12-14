@@ -32,8 +32,8 @@ extern std::list<std::string>error_messages;
 struct HumidParserState {
 	Value current_value;
 	SymbolTable properties;
-	std::list<Parameter> current_parameters;
-	std::list<Parameter> current_locals;
+	std::list<HmiParameter> current_parameters;
+	std::list<HmiParameter> current_locals;
 	std::list<std::string> current_name_list;
 	std::list<SymbolTable> property_stack;
 	std::list<Command*> command_list;
@@ -81,7 +81,7 @@ static char *timeout_message_name = 0;
 	const char *symbol;
 	const char *pVal;
 	Value *val;
-	Parameter *param;
+	HmiParameter *param;
 	ClassExtension *extension;
 	Anchor *anchor;
 };
@@ -246,7 +246,7 @@ basic_anchor
 destination_anchor:
 basic_anchor
 | ACTION SYMBOL parameters
-{ $$ = new ActionAnchor(new Action($2, hps.current_parameters, hps.command_list)); }
+{ $$ = new ActionAnchor(new AnchorAction($2, hps.current_parameters, hps.command_list)); }
 ;
 
 machine_instantiation:
@@ -262,7 +262,7 @@ instantiation ';'
 {
     bool found = false;
     // check for duplicate names in local variables
-    BOOST_FOREACH(Parameter &p, hps.current_locals) {
+    BOOST_FOREACH(HmiParameter &p, hps.current_locals) {
         if (p.val.kind == Value::t_symbol && p.val.sValue == hps.current_machine->getName()) {
             std::stringstream ss;
             ss << "## - Error: " << yyfilename << ":" << yylineno
@@ -275,7 +275,7 @@ instantiation ';'
     }
     if (!found) {
 	    char *name = strdup(hps.current_machine->getName().c_str());
-        Parameter p(name);
+        HmiParameter p(name);
         p.machine = hps.current_machine;
         hps.current_locals.push_back(p);
     }
@@ -368,16 +368,16 @@ SYMBOL
 parameter:
 value {
 	hps.current_value = *$1;
-	hps.current_parameters.push_back(Parameter(*$1));
-	$$ = new Parameter(*$1);
+	hps.current_parameters.push_back(HmiParameter(*$1));
+	$$ = new HmiParameter(*$1);
 	delete $1;
 }
 | SYMBOL property_block {
 	hps.current_value = $1;
 	hps.properties = hps.property_stack.back();
 	hps.property_stack.pop_back();
-	hps.current_parameters.push_back(Parameter($1, hps.properties));
-	$$ = new Parameter($1, hps.properties);
+	hps.current_parameters.push_back(HmiParameter($1, hps.properties));
+	$$ = new HmiParameter($1, hps.properties);
 	hps.properties.clear();
 }
 | {}

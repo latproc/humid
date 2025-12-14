@@ -5,14 +5,14 @@
 #include <value.h>
 #include "parameter.h"
 
-Parameter::Parameter(Value v) : val(v), machine(0) {
+HmiParameter::HmiParameter(Value v) : val(v), machine(0) {
 	;
 }
-Parameter::Parameter(const char *name, const SymbolTable &st) : val(name), properties(st), machine(0) { }
-std::ostream &Parameter::operator<< (std::ostream &out)const {
+HmiParameter::HmiParameter(const char *name, const SymbolTable &st) : val(name), properties(st), machine(0) { }
+std::ostream &HmiParameter::operator<< (std::ostream &out)const {
 	return out << val << "(" << properties << ")";
 }
-Parameter::Parameter(const Parameter &orig) {
+HmiParameter::HmiParameter(const HmiParameter &orig) {
 	val = orig.val; machine = orig.machine; properties = orig.properties;
 	real_name = orig.real_name;
 

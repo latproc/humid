@@ -703,7 +703,7 @@ void EditorGUI::createStructures(const nanogui::Vector2i &p, std::set<Selectable
 		nanogui::Widget *w = item->create(window);
 		if (w) {
 			EditorWidget *ew = dynamic_cast<EditorWidget*>(w);
-			Parameter param(ew->getName());
+			HmiParameter param(ew->getName());
 			ew->updateStructure();
 			param.machine = ew->getDefinition();
 			screen_sc->addLocal(param);

@@ -13,6 +13,7 @@
 #include <nanogui/theme.h>
 #include <nanogui/tabwidget.h>
 #include <nanogui/common.h>
+#include "DebugExtra.h"
 #if defined(_WIN32)
 #include <windows.h>
 #endif
@@ -33,38 +34,26 @@
 #include <libgen.h>
 #include <zmq.hpp>
 #include <cJSON.h>
-#include <MessageEncoding.h>
 #include <MessagingInterface.h>
-#include <SocketMonitor.h>
 #include <ConnectionManager.h>
 #include <circularbuffer.h>
 #include <symboltable.h>
 #include <Logger.h>
-#include <DebugExtra.h>
+#include <Channel.h>
 
 #include <boost/thread.hpp>
-#include <boost/thread/condition.hpp>
-#include <boost/thread/mutex.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
-#include "palette.h"
 #include "selectablebutton.h"
 #include "userwindow.h"
 #include "editor.h"
-#include "structureswindow.h"
-#include "objectwindow.h"
-#include "patternswindow.h"
 #include "themewindow.h"
 #include "propertywindow.h"
 #include "helper.h"
-#include "screenswindow.h"
-#include "toolbar.h"
+#include <screenswindow.h>
 #include "propertyformhelper.h"
-#include "viewswindow.h"
-#include "startupwindow.h"
 #include "editorwidget.h"
-#include "editorgui.h"
 
 // settings file parser globals
 #define __MAIN__ 1
@@ -448,13 +437,15 @@ int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
 	free(pn);
-
-std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n" <<std::flush;
+	Logger::instance();
+	NB_MSG << "starting\n";
+    DebugExtra::instance();
+    std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n" <<std::flush;
 	std::string home_path(getenv("HOME"));
 	//assert(boost::filesystem::current_path().string().find(home_path) == 0);
 
-	zmq::context_t context;
-	MessagingInterface::setContext(&context);
+	zmq::context_t *context_ptr = new zmq::context_t();
+	MessagingInterface::setContext(context_ptr);
 
 	Logger::instance();
 	Logger::instance()->setLevel(Logger::Debug);
@@ -590,7 +581,7 @@ std:cout << "running from the " << boost::filesystem::current_path().string() <<
 					Structure *conn = new Structure(nullptr, "Remote", "CONNECTION");
 					conn->getProperties().add("host", hostname.c_str());
 					conn->getProperties().add("port", cw_port);
-					Parameter p(conn->getName());
+					HmiParameter p(conn->getName());
 					p.machine = conn;
 					psc->addLocal(p);
 				}
@@ -716,6 +707,7 @@ std:cout << "running from the " << boost::filesystem::current_path().string() <<
 #endif
 		return -1;
 	}
+	MessagingInterface::abort();
 
 	return 0;
 }

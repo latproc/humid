@@ -29,7 +29,7 @@ extern std::list<std::string>error_messages;
 struct STParserState {
 	Value current_value;
 	SymbolTable properties;
-	std::list<Parameter> current_parameters;
+	std::list<HmiParameter> current_parameters;
 	std::list<std::string> current_name_list;
 	std::list<SymbolTable> property_stack;
 	Structure *current_machine;
@@ -52,7 +52,7 @@ static char *timeout_message_name = 0;
 	const char *symbol;
 	const char *pVal;
 	Value *val;
-	Parameter *param;
+	HmiParameter *param;
 };
 
 %token <iVal> INTEGER
@@ -129,16 +129,16 @@ parameter
 parameter:
 value {
 	sts.current_value = *$1;
-	sts.current_parameters.push_back(Parameter(*$1));
-	$$ = new Parameter(*$1);
+	sts.current_parameters.push_back(HmiParameter(*$1));
+	$$ = new HmiParameter(*$1);
 	delete $1;
 }
 | SYMBOL property_block {
 	sts.current_value = $1;
 	sts.properties = sts.property_stack.back();
 	sts.property_stack.pop_back();
-	sts.current_parameters.push_back(Parameter($1, sts.properties));
-	$$ = new Parameter($1, sts.properties);
+	sts.current_parameters.push_back(HmiParameter($1, sts.properties));
+	$$ = new HmiParameter($1, sts.properties);
 	sts.properties.clear();
 }
 | {}

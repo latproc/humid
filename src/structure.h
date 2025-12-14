@@ -20,10 +20,10 @@ class ClassExtension {
 public:
 	ClassExtension(const char *en) : name(en) { }
 	const std::string getName() { return name; }
-	std::vector<Parameter> &getParameters() { return parameters; }
+	std::vector<HmiParameter> &getParameters() { return parameters; }
 private:
 	std::string name;
-	std::vector<Parameter> parameters;
+	std::vector<HmiParameter> parameters;
 };
 
 bool writePropertyList(std::ostream &out, const SymbolTable &table, const SymbolTable *defaults ,const std::map<std::string, std::string> * links = nullptr);
@@ -41,16 +41,16 @@ public:
 	void setProperties(const SymbolTable &other) { properties = other; }
 	SymbolTable &getInternalProperties() { return internal_properties; }
 
-	std::vector<Parameter> &getParameters() { return parameters; }
+	std::vector<HmiParameter> &getParameters() { return parameters; }
 	std::map<std::string, Value> &getOptions() { return options; }
-	std::list<Parameter> &getLocals() { return locals; }
+	std::list<HmiParameter> &getLocals() { return locals; }
 	void setDefinitionLocation(const std::string fnam, int lineno) {
 		internal_properties.add("file_name", Value(fnam, Value::t_string));
 	}
 	void setDefaults(const SymbolTable &props) { defaults.add(props); }
 	SymbolTable &getDefaults() { return defaults; }
 
-	void addLocal(Parameter item) { locals.push_back(item); }
+	void addLocal(HmiParameter item) { locals.push_back(item); }
 
 	virtual void addProperty(const char *name);
 	virtual void addProperty(const std::string &name);
@@ -77,8 +77,8 @@ protected:
 	SymbolTable internal_properties;
 	SymbolTable properties;
 	SymbolTable defaults;
-	std::vector<Parameter> parameters;
-	std::list<Parameter> locals;
+	std::vector<HmiParameter> parameters;
+	std::list<HmiParameter> locals;
 	std::map<std::string, Value> options;
 	std::set<std::string> local_properties;
 	std::set<std::string> property_names;
@@ -89,7 +89,7 @@ class Structure : public NamedObject {
 public:
 	Structure(Structure *owner, const std::string sname, const std::string skind);
 	virtual ~Structure() = default;
-	std::list<Parameter> parameters;
+	std::list<HmiParameter> parameters;
 	void setStructureDefinition(StructureClass *sc) { class_definition = sc; }
 	StructureClass *getStructureDefinition() { return class_definition; }
 	// set the location of the instance of the structure (not its class)

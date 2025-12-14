@@ -13,7 +13,6 @@
 #include "value.h"
 #include "editorobject.h"
 #include "circularbuffer.h"
-#include "parameter.h"
 #include "linkableobject.h"
 
 class LinkableProperty : public EditorObject {
