@@ -45,6 +45,7 @@ std::string table_header_font{"sans-bold"};
 
 long collect_history = 0;
 extern Structure *system_settings;
+extern int debug;
 #define DEBUG_BASIC ( 1 & debug)
 
 Skeleton::Skeleton(nanogui::Screen *screen) : window(0) {
@@ -540,8 +541,9 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	}
 	if (first_message_time == 0) first_message_time = mh.start_time;
 
-	if (DEBUG_BASIC)
+	if (DEBUG_BASIC) {
 		std::cerr << "received: "<<data<<" from connection: " << name << "\n";
+	}
 
 	std::list<Value> *message = 0;
 
@@ -607,6 +609,7 @@ void ClockworkClient::idle(bool gui_is_ready) {
 				{
 					if (conn->Ready() && conn->update()) {
 						update(conn, gui_is_ready);
+						if (reported_error) { reported_error = false; }
 					}
 					zmq::pollitem_t items[] = {
 						{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
@@ -616,7 +619,7 @@ void ClockworkClient::idle(bool gui_is_ready) {
 
 					try {
 						if (!subscription_manager->checkConnections(items, 3, *conn->iosh_cmd)) {
-							if (debug) {
+							if (debug && !reported_error) {
 								std::cerr << conn->getName() << ": no connection to iod\n";
 								reported_error = true;
 							}
@@ -778,7 +781,7 @@ std::string ClockworkClient::getIODSyncCommand(const std::string & connection_na
 		return msg;
 }
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, const char *new_value) {
-	std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
+	std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, Value(new_value, Value::t_string));
 		if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 		return msg;
 }

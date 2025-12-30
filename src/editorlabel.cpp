@@ -123,27 +123,32 @@ void EditorLabel::draw(NVGcontext *ctx) {
     std::string valStr(mCaption);
     float scale = value_scale;
     if (scale == 0.0f) scale = 1.0f;
-    if (format_string.length()) {
-      if (value_type == Value::t_integer) {// integer
+    auto format_type = value_type;
+    if (value_type == Value::t_empty) {
+      format_type = inferred_type(valStr.c_str());
+    }
+
+    if (!format_string.empty()) {
+      if (format_type == Value::t_integer) {// integer
         char buf[20];
         long val = std::atol(valStr.c_str());
         snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
         valStr = buf;
       }
-      else if (value_type == Value::t_float) {
+      else if (format_type == Value::t_float) {
         char buf[20];
         float val = std::atof(valStr.c_str());
         snprintf(buf, 20, format_string.c_str(), val / scale);
         valStr = buf;       
       }
     } 
-    else if (value_type == Value::t_float) {
+    else if (format_type == Value::t_float) {
         char buf[20];
         float val = std::atof(valStr.c_str());
         snprintf(buf, 20, "%5.3f", val / scale);
         valStr = buf;       
     }
-    else if (value_type == Value::t_integer) {
+    else if (format_type == Value::t_integer) {
         char buf[20];
         long val = std::atol(valStr.c_str());
         snprintf(buf, 20, "%ld", (long)(val / scale));

@@ -332,32 +332,37 @@ void createText(WidgetParams &params) {
 		const std::string &conn = textBox->getRemote()->group();
 		char *rest = 0;
 		int value_type = textBox->getValueType();
-		if (value_type == Value::t_integer || value_type == Value::t_float) {
-			{
-				long val = strtol(value.c_str(),&rest,10);
-				if (*rest == 0) {
-					params.gui->queueMessage(conn,
-							params.gui->getIODSyncCommand(conn,
-							textBox->getRemote()->address_group(),
-							textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
-						[](std::string s){std::cout << s << "\n"; });
-					return true;
-				}
-			}
-			{
-				double val = strtod(value.c_str(),&rest);
-				if (*rest == 0)  {
-					params.gui->queueMessage(conn,
-						params.gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
-							textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
-					return true;
-				}
+		 auto format_type = value_type;
+		if (value_type == Value::t_empty) {
+			format_type = inferred_type(value.c_str());
+		}
+		if (format_type == Value::t_integer) {
+			long val = strtol(value.c_str(),&rest,10);
+			if (*rest == 0) {
+				params.gui->queueMessage(conn,
+						params.gui->getIODSyncCommand(conn,
+						textBox->getRemote()->address_group(),
+						textBox->getRemote()->address(), (int)(val * textBox->valueScale()) ),
+					[](std::string s){std::cout << s << "\n"; });
+				return true;
 			}
 		}
-		else if (value_type == Value::t_string) {
+		else if (format_type == Value::t_float) {
+			double val = strtod(value.c_str(),&rest);
+			if (*rest == 0)  {
+				params.gui->queueMessage(conn,
+					params.gui->getIODSyncCommand(conn, textBox->getRemote()->address_group(),
+						textBox->getRemote()->address(), (float)(val * textBox->valueScale())) , [](std::string s){std::cout << s << "\n"; });
+				return true;
+			}
+		}
+		else if (format_type == Value::t_string || format_type == Value::t_symbol) {
 			params.gui->queueMessage(conn,  params.gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), value.c_str()),
 						   [](const std::string & s){std::cout << s << "\n"; });
 			return true;
+		}
+		else {
+			std::cout << "Unsupported value type " << value_type << ": " << value<< "\n";
 		}
 		return false;
 	});

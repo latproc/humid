@@ -87,6 +87,17 @@ std::string extn(const std::string s) {
 	return s;
 }
 
+Value::Kind inferred_type(const std::string &value) {
+	double d;
+	long i;
+	char * remaining = nullptr;
+	i = strtol(value.c_str(), &remaining, 10);
+	if (remaining && !*remaining) { return Value::t_integer; }
+	d =  strtod(value.c_str(), &remaining);
+	if (remaining && !*remaining) {return Value::t_float; }
+	return Value::t_string;
+}
+
 StructureClass *findClass(const std::string &name) {
 		StructureClass *sc = nullptr;
 		for (auto item : hm_classes) {

@@ -30,8 +30,7 @@ const std::map<std::string, std::string> & EditorTextBox::reverse_property_map()
 }
 
 EditorTextBox::EditorTextBox(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, int icon)
-    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(1), wrap_text(false)
-{
+    : TextBox(parent), EditorWidget(owner, "TEXT", nam, this, lp), valign(1), wrap_text(false) {
 }
 
 bool EditorTextBox::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
@@ -107,7 +106,6 @@ std::string EditorTextBox::getScaledValue(bool scaleUp) {
       return buf;
     }
     else if (value_type == Value::t_float) {
-      std::string v;
       double f_value = std::atof(p) * ((scaleUp) ? value_scale : 1.0f / value_scale);
       char buf[20];
       if (format_string.empty())
@@ -192,7 +190,8 @@ bool EditorTextBox::focusEvent(bool focused) {
         if (focused)
             mValueTemp = getScaledValue(false);
         else
-            mValue =  mValueTemp; mValue = getScaledValue(true);
+            mValue =  mValueTemp; // FIXME: What was intended here?
+        mValue = getScaledValue(true);
     }
 
     return true;
@@ -370,27 +369,31 @@ void EditorTextBox::draw(NVGcontext* ctx) {
       if (scale == 0.0f) scale = 1.0f;
       const char *p = valStr.c_str();
       while (*p && ((!isdigit(*p) && *p != '.' && *p != '-') || *p=='0')) ++p;
+      auto format_type = value_type;
+      if (value_type == Value::t_empty) {
+          format_type = inferred_type(valStr);
+      }
       if (format_string.length()) {
-        if (value_type == Value::t_integer) {// integer
+        if (format_type == Value::t_integer) {// integer
           char buf[20];
           long val = std::atol(p);
           snprintf(buf, 20, format_string.c_str(), (long)(val / scale));
           valStr = buf;
         }
-        else if (value_type == Value::t_float) {
+        else if (format_type == Value::t_float) {
           char buf[20];
           float val = std::atof(p);
           snprintf(buf, 20, format_string.c_str(), val / scale);
           valStr = buf;       
         }
       }
-      else if (value_type == Value::t_float) {
+      else if (format_type == Value::t_float) {
         char buf[20];
         float val = std::atof(p);
         snprintf(buf, 20, "%5.3f", val / scale);
         valStr = buf;       
       }
-      else if (value_type == Value::t_integer) {
+      else if (format_type == Value::t_integer) {
         char buf[20];
         long val = std::atol(p);
         snprintf(buf, 20, "%ld", (long)(val / scale));
@@ -492,7 +495,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
   if (w) {
     properties->addVariable<std::string> (
       "Text",
-      [&](std::string value) { setProperty("Text", value); },
+      [&](const std::string & value) { setProperty("Text", value); },
       [&]()->std::string{ return getPropertyValue("Text").asString(); });
 
     properties->addVariable<int> (
@@ -518,7 +521,7 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
       properties->addGroup("Remote");
     properties->addVariable<std::string> (
       "Remote object",
-      [&,this,properties](std::string value) {
+      [&,this,properties](const std::string & value) {
         LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
         this->setRemoteName(value);
         if (remote) remote->unlink(this);
@@ -536,14 +539,14 @@ void EditorTextBox::loadProperties(PropertyFormHelper* properties) {
       });
     properties->addVariable<std::string> (
       "Connection",
-      [&,this,properties](std::string value) {
+      [&,this,properties](const std::string & value) {
         if (remote) remote->setGroup(value); else setConnection(value);
        },
       [&]()->std::string{ return remote ? remote->group() : getConnection(); });
 
     properties->addVariable<std::string> (
       "Visibility",
-      [&,this,properties](std::string value) {
+      [&,this,properties](const std::string & value) {
         LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
         if (visibility) visibility->unlink(this);
         visibility = lp;

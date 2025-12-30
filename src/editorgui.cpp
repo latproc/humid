@@ -905,7 +905,6 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long now, const std::string &op, std::list<Value> *message) {
 	if (op == "UPDATE") {
 		if (!this->getUserWindow()) return;
-
 		int pos = 0;
 		std::string name;
 		int64_t val = 0;
@@ -1054,7 +1053,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 				std::cout << "Sending data initialisation request\n";
 				connection->setState(sSENT);
 				queueMessage( connection->getName(), "MODBUS REFRESH",
-					[this, connection](std::string s) {
+					[this, connection](const std::string & s) {
 						if (s != "failed") {
 							cJSON *obj = cJSON_Parse(s.c_str());
 							if (!obj) {

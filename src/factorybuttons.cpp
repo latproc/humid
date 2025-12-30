@@ -78,52 +78,53 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 			const std::string &conn(et->getRemote()->group());
 			if (!et->getRemote()) return true;
 			char *rest = 0;
-            int value_type = et->getValueType();
-            if (value_type == Value::t_integer || value_type == Value::t_float)
-            {
-    			{
-    				long val = strtol(value.c_str(),&rest,10);
-    				if (*rest == 0) {
-    					gui->queueMessage(conn,
-    					    gui->getIODSyncCommand(conn, 4,
-    					        et->getRemote()->address(),
-    					        (int)val),
-    					        [](const std::string & s){std::cout << s << "\n"; }
-    					);
-    					return true;
-    				}
-    			}
-    			{
-    				double val = strtod(value.c_str(),&rest);
-    				if (*rest == 0)  {
-    					gui->queueMessage(conn,
-    					    gui->getIODSyncCommand(conn, 4,
-    					        et->getRemote()->address(),
-    					        (float)val),
-    					        [](const std::string & s){std::cout << s << "\n"; }
-    					);
-    					return true;
-    				}
-    			}
-            }
+			int value_type = et->getValueType();
+			if (value_type == Value::t_empty) {
+				value_type = inferred_type(value.c_str());
+			}
+			if (value_type == Value::t_integer)
+			{
+				long val = strtol(value.c_str(),&rest,10);
+				if (*rest == 0) {
+					gui->queueMessage(conn,
+						gui->getIODSyncCommand(conn, 4,
+							et->getRemote()->address(),
+							(int)val),
+							[](const std::string & s){std::cout << s << "\n"; }
+					);
+					return true;
+				}
+			}
+			else if (value_type == Value::t_float) {
+				double val = strtod(value.c_str(),&rest);
+				if (*rest == 0)  {
+					gui->queueMessage(conn,
+						gui->getIODSyncCommand(conn, 4,
+							et->getRemote()->address(),
+							(float)val),
+							[](const std::string & s){std::cout << s << "\n"; }
+					);
+					return true;
+				}
+			}
 			else if (value_type == Value::t_string) {
 				gui->queueMessage(conn,  gui->getIODSyncCommand(conn, 4, et->getRemote()->address(), value.c_str()),
-                               [](const std::string & s){std::cout << s << "\n"; });
-                return true;
-            }
+							   [](const std::string & s){std::cout << s << "\n"; });
+				return true;
+			}
 			return false;
 		});
 		result = et;
 	}
 	else if (sc->getName() == "TABLE") {
-	    EditorTable *et = new EditorTable(parent, window, generated_name, nullptr, nullptr);
-	    et->setDefinition(s);
-	    et->setName(et->getName());
-	    if (s) s->setName(et->getName());
-	    if (et->getRemote()) {
-	        et->getRemote()->link(new LinkableJson(et));
-	    }
-	    result = et;
+		EditorTable *et = new EditorTable(parent, window, generated_name, nullptr, nullptr);
+		et->setDefinition(s);
+		et->setName(et->getName());
+		if (s) s->setName(et->getName());
+		if (et->getRemote()) {
+			et->getRemote()->link(new LinkableJson(et));
+		}
+		result = et;
 	}
 	else if (sc->getName() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank.png");
@@ -295,22 +296,30 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setCallback( [textBox, gui, lp](const std::string &value)->bool{
 				char *rest = 0;
 				const std::string &conn(textBox->getRemote()->group());
+				int value_type = textBox->getValueType();
+				if (value_type == Value::t_empty) {
+					value_type = inferred_type(value.c_str());
+					std::cout << "inferred type: " << value_type << "\n";
+				}
+				if (value_type == Value::t_integer)
 				{
 					long val = strtol(value.c_str(),&rest,10);
 					if (*rest == 0) {
-						gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (int)val), [](std::string s){std::cout << s << "\n"; });
+						gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (int)val), [](const std::string & s){std::cout << s << "\n"; });
 						return true;
 					}
+				 }
+				else if (value_type == Value::t_float) {
+					 double val = strtod(value.c_str(),&rest);
+					 if (*rest == 0)  {
+						 gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (float)val), [](const std::string & s){std::cout << s << "\n"; });
+						 return true;
+					 }
 				}
-				{
-					double val = strtod(value.c_str(),&rest);
-					if (*rest == 0)  {
-						gui->queueMessage(conn, gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), (float)val), [](std::string s){std::cout << s << "\n"; });
-						return true;
-					}
+				else if (value_type == Value::t_string || lp->dataType() == CircularBuffer::STR) {
+					gui->queueMessage(conn,  gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), value.c_str()), [](const std::string & s){std::cout << s << "\n"; });
+					return true;
 				}
-				if (lp->dataType() == CircularBuffer::STR)
-					gui->queueMessage(conn,  gui->getIODSyncCommand(conn, 4, textBox->getRemote()->address(), value.c_str()), [](std::string s){std::cout << s << "\n"; });
 				return false;
 			});
 			result = textBox;

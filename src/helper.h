@@ -23,6 +23,7 @@ std::string escapeQuotes(const std::string &s);
 std::string stripChar(const std::string &s, char ch);
 std::string shortName(const std::string s);
 std::string extn(const std::string s);
+Value::Kind inferred_type(const std::string &value);
 
 StructureClass *findClass(const std::string &name);
 Structure *firstScreen();

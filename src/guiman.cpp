@@ -955,7 +955,7 @@ public:
 							memcpy(data, update.data(), len);
 							data[len] = 0;
 
-							if (DEBUG_BASIC) std::cout << "received: "<<data<<" from clockwork\n";
+							if (DEBUG_BASIC) std::cerr << "received: "<<data<<" from clockwork\n";
 
 							std::list<Value> *message = 0;
 
