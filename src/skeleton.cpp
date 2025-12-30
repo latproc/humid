@@ -762,14 +762,12 @@ std::string ClockworkClient::getIODSyncCommand(const std::string & connection_na
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, int new_value) {
 	std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//conn->sendIODMessage(msg);
 	if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 	return msg;
 }
 
 std::string ClockworkClient::getIODSyncCommand(const std::string & connection_name, int group, int addr, unsigned int new_value) {
 	std::string msg = MessageEncoding::encodeCommand("MODBUS", group, addr, new_value);
-	//conn->sendIODMessage(msg);
 	if (DEBUG_BASIC) std::cerr << "IOD command: " << msg << "\n";
 	return msg;
 }
@@ -785,12 +783,6 @@ std::string ClockworkClient::getIODSyncCommand(const std::string & connection_na
 		return msg;
 }
 
-char *ClockworkClient::Connection::sendIOD(const char *msg) {
-	if (!Ready()) return 0;
-	std::string s(msg);
-	return sendIODMessage(s);
-}
-
 char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 	if (!Ready()) return 0;
 
@@ -803,22 +795,6 @@ char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 
 		return strdup("IOD interface not ready\n");
 	}
-}
-
-char *ClockworkClient::sendIOD(const std::string & connection_name, int group, int addr, int new_value) {
-	Connection *conn = findConnection(connection_name, connections);
-	std::string s(getIODSyncCommand(connection_name, group, addr, new_value));
-	if (DEBUG_BASIC) std::cerr << "sendIOD sending " << s << "\n";
-	if (conn)
-		return conn->sendIODMessage(s);
-	return 0;
-}
-
-char *ClockworkClient::sendIODMessage(const std::string & connection_name, const std::string &s) {
-	Connection *conn = findConnection(connection_name, connections);
-	if (conn)
-		return conn->sendIODMessage(s);
-	return 0;
 }
 
 void ClockworkClient::update(ClockworkClient::Connection *, bool allow_data_sync) { }
