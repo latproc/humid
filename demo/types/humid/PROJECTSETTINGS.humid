@@ -1,0 +1,12 @@
+PROJECTSETTINGS STRUCTURE(
+    asset_path: "."
+  ) {
+  CW CONNECTION(
+    channel: PANEL_CHANNEL,
+    host: localhost,
+    port: 5555
+  );
+}
+ProjectSettings PROJECTSETTINGS(
+    asset_path: "."
+  );

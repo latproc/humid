@@ -1,0 +1,175 @@
+MainScreen STRUCTURE EXTENDS SCREEN {
+  Untitled_007 LABEL(
+    alignment: 1,
+    border: 1,
+    caption: "INTEGER",
+    connection: "CW",
+    font_size: 20,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 119,
+    pos_y: 82,
+    remote: "shared.to_humid",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 152,
+    wrap: 1
+  );
+  Untitled_009 LABEL(
+    alignment: 2,
+    border: 0,
+    caption: "Input:",
+    font_size: 20,
+    height: 36,
+    inverted_visibility: false,
+    pos_x: 34,
+    pos_y: 129,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 80,
+    wrap: 1
+  );
+  Untitled_011 TEXT(
+    alignment: 1,
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    height: 37,
+    inverted_visibility: false,
+    pos_x: 119,
+    pos_y: 128,
+    remote: "shared.from_humid",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 152,
+    wrap: 0
+  );
+  Untitled_003 LABEL(
+    alignment: 1,
+    border: 1,
+    connection: "CW",
+    font_size: 20,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 276,
+    pos_y: 81,
+    remote: "shared.humid_value",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 2,
+    width: 171,
+    wrap: 1
+  );
+  Untitled_004 LABEL(
+    alignment: 1,
+    border: 1,
+    caption: "0",
+    connection: "CW",
+    font_size: 20,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 454,
+    pos_y: 81,
+    remote: "shared.humid_int_value",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 1,
+    width: 125,
+    wrap: 1
+  );
+  Untitled_006 LABEL(
+    alignment: 1,
+    border: 1,
+    caption: "0.000000",
+    connection: "CW",
+    font_size: 20,
+    height: 40,
+    inverted_visibility: false,
+    pos_x: 587,
+    pos_y: 80,
+    remote: "shared.humid_float_value",
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 100,
+    wrap: 1
+  );
+  Untitled_008 LABEL(
+    alignment: 1,
+    border: 0,
+    caption: "Value",
+    font_size: 24,
+    height: 29,
+    inverted_visibility: false,
+    pos_x: 279,
+    pos_y: 47,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 165,
+    wrap: 1
+  );
+  Untitled_010 LABEL(
+    alignment: 1,
+    border: 0,
+    caption: "Class",
+    font_size: 24,
+    height: 31,
+    inverted_visibility: false,
+    pos_x: 122,
+    pos_y: 46,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 146,
+    wrap: 1
+  );
+  Untitled_005 LABEL(
+    alignment: 1,
+    border: 0,
+    caption: "Int value",
+    font_size: 20,
+    height: 29,
+    inverted_visibility: false,
+    pos_x: 457,
+    pos_y: 46,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 121,
+    wrap: 1
+  );
+  Untitled_012 LABEL(
+    alignment: 1,
+    border: 0,
+    caption: "float value",
+    font_size: 20,
+    height: 31,
+    inverted_visibility: false,
+    pos_x: 588,
+    pos_y: 44,
+    text_colour: "#00000000",
+    valign: 1,
+    value_scale: 1.000000,
+    value_type: 0,
+    width: 100,
+    wrap: 1
+  );
+}
+MainScreenView MainScreen(
+    file_name: "MainScreen.humid",
+    screen_height: 720,
+    screen_width: 1200
+  );
