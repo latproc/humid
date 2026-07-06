@@ -3,11 +3,9 @@
 find_library(
 	ClockworkClient_LIBRARY
 	PATHS 
+        ${CMAKE_BINARY_DIR}/clockwork_build
+        ${CMAKE_BINARY_DIR}/clockwork_stage/lib
         ${PROJECT_SOURCE_DIR}/clockwork/iod/stage/lib
-        #		/opt/latproc/iod/stage/lib
-        #/opt/latproc/iod/build/Release
-        #/opt/latproc/iod/build/Debug
-        #/opt/latproc/iod/build
 	NAMES cw_client Clockwork
 )
 

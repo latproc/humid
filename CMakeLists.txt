@@ -23,6 +23,8 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
+option(NANOGUI_USE_GLES "Use OpenGL ES 3.0 instead of desktop OpenGL?" OFF)
+
 set(CMAKE_CXX_STANDARD 14)
 if (APPLE)
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
@@ -55,6 +57,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
+if (NANOGUI_USE_GLES)
+  target_compile_definitions(nanogui-obj PRIVATE NANOGUI_GLES)
+endif()
 set_target_properties(nanogui PROPERTIES
 		INSTALL_RPATH "@loader_path/../lib"
 		BUILD_WITH_INSTALL_RPATH TRUE)
@@ -68,7 +73,33 @@ include_directories("/opt/local/include")
 #LINK_DIRECTORIES("/usr/local/lib")
 #LINK_DIRECTORIES("/opt/local/lib")
 
+option(BUILD_CLOCKWORK_CLIENT "Build Clockwork client library from submodule" ON)
+if (BUILD_CLOCKWORK_CLIENT AND EXISTS "${PROJECT_SOURCE_DIR}/clockwork/iod/CMakeLists.txt")
+	set(CLOCKWORK_BUILD_DIR "${CMAKE_BINARY_DIR}/clockwork_build")
+
+	add_custom_target(clockwork_client ALL
+		COMMAND ${CMAKE_COMMAND}
+			-S "${PROJECT_SOURCE_DIR}/clockwork/iod"
+			-B "${CLOCKWORK_BUILD_DIR}"
+			-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+			-DRUN_TESTS=OFF
+			# Stub out optional deps not needed for cw_client library
+			-DMODBUS_INCLUDE_DIR=/dummy -DMODBUS_LIBRARIES=modbus
+			-DMosquitto_LIBRARY=mosquitto -DMosquitto_INCLUDE_DIR=/dummy
+		COMMAND ${CMAKE_COMMAND} --build "${CLOCKWORK_BUILD_DIR}" --target cw_client
+		COMMENT "Building Clockwork client library"
+	)
+endif()
+
 find_package(ZeroMQ REQUIRED)
+
+if (BUILD_CLOCKWORK_CLIENT AND EXISTS "${PROJECT_SOURCE_DIR}/clockwork/iod/CMakeLists.txt")
+	set(CLOCKWORK_BUILD_DIR "${CMAKE_BINARY_DIR}/clockwork_build")
+	# Pre-set cache so find_library/find_path find the build-tree output
+	set(ClockworkClient_LIBRARY "${CLOCKWORK_BUILD_DIR}/libcw_client.a" CACHE FILEPATH "Clockwork client library path")
+	set(ClockworkClient_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/clockwork/iod/src" CACHE PATH "Clockwork include path")
+endif()
+
 find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
 
@@ -249,16 +280,26 @@ endif()
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
 
+  if (TARGET clockwork_client)
+    add_dependencies(humid clockwork_client)
+  endif()
+
   install(TARGETS humid RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp src/linkmanager.cpp)
   target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  if (TARGET clockwork_client)
+    add_dependencies(settingscheck clockwork_client)
+  endif()
 
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
   		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
 	)
   target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  if (TARGET clockwork_client)
+    add_dependencies(hmifile_check clockwork_client)
+  endif()
 
   install(TARGETS hmifile_check RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 

@@ -7,7 +7,11 @@
 
 #include <iostream>
 
+#if defined(NANOGUI_GLES)
+#define NANOVG_GLES3_IMPLEMENTATION
+#else
 #define NANOVG_GL3_IMPLEMENTATION
+#endif
 #include <nanogui/common.h>
 #include <nanogui/opengl.h>
 #include <nanogui/glutil.h>
