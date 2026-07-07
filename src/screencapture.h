@@ -9,5 +9,6 @@
 #include <string>
 
 bool writeFramebufferToPng(const std::string &filename, int width, int height);
+bool writeFramebufferRegionToPng(const std::string &filename, int x, int y, int width, int height);
 
 #endif

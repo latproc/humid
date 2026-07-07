@@ -4,6 +4,7 @@
 */
 
 #include <iostream>
+#include <cmath>
 #include <boost/algorithm/string.hpp>
 #include <nanogui/common.h>
 #include <regular_expressions.h>
@@ -1230,7 +1231,15 @@ void EditorGUI::tryCaptureFrame() {
 		return;
 	}
 
-	capture_written = writeFramebufferToPng(capture_path, mFBSize.x(), mFBSize.y());
+	auto *panel_window = w_user ? w_user->getWindow() : nullptr;
+	if (!panel_window) return;
+
+	const int px = int(std::round(panel_window->position().x() * pixelRatio()));
+	const int py = int(std::round((size().y() - (panel_window->position().y() + panel_window->size().y())) * pixelRatio()));
+	const int pw = int(std::round(panel_window->size().x() * pixelRatio()));
+	const int ph = int(std::round(panel_window->size().y() * pixelRatio()));
+
+	capture_written = writeFramebufferRegionToPng(capture_path, px, py, pw, ph);
 	if (capture_written) {
 		nanogui::leave();
 	}

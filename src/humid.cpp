@@ -626,6 +626,12 @@ int main(int argc, const char ** argv ) {
 				const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
 				width_v.asInteger(width);
 				height_v.asInteger(height);
+				if (width == mode->width && height == mode->height) {
+					const Value alt_width_v = EditorGUI::systemSettings()->getProperties().find("w");
+					const Value alt_height_v = EditorGUI::systemSettings()->getProperties().find("h");
+					alt_width_v.asInteger(width);
+					alt_height_v.asInteger(height);
+				}
 			}
 			
 			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n" <<std::flush;
