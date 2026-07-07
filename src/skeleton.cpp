@@ -804,5 +804,12 @@ void ClockworkClient::update(ClockworkClient::Connection *, bool allow_data_sync
 
 void ClockworkClient::drawAll() {
 	idle();
-	Screen::drawAll();
+	glClearColor(mBackground[0], mBackground[1], mBackground[2], mBackground[3]);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	drawContents();
+	drawWidgets();
+	afterFrameRendered();
+
+	glfwSwapBuffers(glfwWindow());
 }

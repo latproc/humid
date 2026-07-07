@@ -40,6 +40,7 @@
 #include "userwindowwin.h"
 #include "linkmanager.h"
 #include "thememanager.h"
+#include "screencapture.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -96,6 +97,14 @@ EditorGUI::EditorGUI(int width, int height, bool full_screen)
 	sample_buffer_size(5000), project(0)
 {
 	old_size = mSize;
+}
+
+void EditorGUI::configureCapture(const std::string &path, const std::string &screen_name) {
+	capture_enabled = !path.empty();
+	capture_path = path;
+	capture_screen_name = screen_name;
+	capture_frames_remaining = -1;
+	capture_written = false;
 }
 
 Structure *EditorGUI::getSettings() {
@@ -1065,11 +1074,13 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 								w_objects->rebuildWindow();
 								if (w_user && getState() == GUIWORKING) {
 									w_user->setStructure(w_user->structure());
-									const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-									if (remote_screen != SymbolTable::Null) {
-										LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-										if (lp) {
-											lp->link(getUserWindow());
+									if (!shouldIgnoreRemoteScreen()) {
+										const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+										if (remote_screen != SymbolTable::Null) {
+											LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+											if (lp) {
+												lp->link(getUserWindow());
+											}
 										}
 									}
 									const Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
@@ -1168,4 +1179,63 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 		}
 	}
 */
+}
+
+bool EditorGUI::connectionsReadyForCapture() {
+	if (!capture_enabled) return false;
+	const size_t expected_connections = expectedCaptureConnectionCount();
+	if (expected_connections > 0 && connections.size() < expected_connections) return false;
+	if (expected_connections == 0 && connections.empty()) return true;
+
+	for (const auto &item : connections) {
+		auto *connection = item.second;
+		if (!connection || !connection->Ready()) return false;
+		const auto state = connection->getStartupState();
+		if (state != sDONE) return false;
+	}
+	return true;
+}
+
+size_t EditorGUI::expectedCaptureConnectionCount() {
+	auto *project_settings = findStructure("ProjectSettings");
+	if (!project_settings) return 0;
+	auto *settings_class = project_settings->getStructureDefinition();
+	if (!settings_class) return 0;
+
+	size_t count = 0;
+	for (const auto &local : settings_class->getLocals()) {
+		if (local.machine) ++count;
+	}
+	return count;
+}
+
+bool EditorGUI::activeScreenReadyForCapture() {
+	if (!w_user || !w_user->structure()) return false;
+	const Value active = EditorGUI::systemSettings()->getProperties().find("active_screen");
+	if (active == SymbolTable::Null || active.asString().empty()) return false;
+	return w_user->structure()->getName() == active.asString();
+}
+
+void EditorGUI::tryCaptureFrame() {
+	if (!capture_enabled || capture_written) return;
+	if (!connectionsReadyForCapture()) return;
+	if (!activeScreenReadyForCapture()) return;
+
+	if (capture_frames_remaining < 0) {
+		capture_frames_remaining = 1;
+		return;
+	}
+	if (capture_frames_remaining > 0) {
+		--capture_frames_remaining;
+		return;
+	}
+
+	capture_written = writeFramebufferToPng(capture_path, mFBSize.x(), mFBSize.y());
+	if (capture_written) {
+		nanogui::leave();
+	}
+}
+
+void EditorGUI::afterFrameRendered() {
+	tryCaptureFrame();
 }

@@ -79,6 +79,8 @@ const char *filename = 0;
 
 long full_screen_mode = 0;
 int run_only = 0;
+std::string capture_file_name;
+std::string capture_screen_name;
 
 extern long collect_history;
 
@@ -465,6 +467,8 @@ int main(int argc, const char ** argv ) {
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
+	("capture", po::value<std::string>(&capture_file_name)->default_value(""), "write a PNG capture to this file and exit")
+	("screen", po::value<std::string>(&capture_screen_name)->default_value(""), "set the active screen for this run")
 	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
@@ -497,6 +501,9 @@ int main(int argc, const char ** argv ) {
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();
+	if (vm.count("capture")) capture_file_name = vm["capture"].as<std::string>();
+	if (vm.count("screen")) capture_screen_name = vm["screen"].as<std::string>();
+	if (!capture_file_name.empty()) run_only = 1;
 	if (DEBUG_BASIC) std::cout << "Debugging\n";
 
 	std::string home(".");
@@ -569,6 +576,9 @@ int main(int argc, const char ** argv ) {
 			if (!EditorGUI::systemSettings()) {
 				EditorGUI::systemSettings(system_class->instantiate(nullptr, "System"));
 			}
+			if (!capture_screen_name.empty()) {
+				EditorGUI::systemSettings()->getProperties().add("active_screen", Value(capture_screen_name, Value::t_string));
+			}
 
 			// if necessary create a project settings structure to store the
 			// nominated connection details
@@ -623,6 +633,9 @@ int main(int argc, const char ** argv ) {
 			nanogui::ref<EditorGUI> app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);
+			if (!capture_file_name.empty()) {
+				app->configureCapture(capture_file_name, capture_screen_name);
+			}
 			ThemeManager::instance().setContext(app->nvgContext());
 			for (auto settings : Structure::findStructureClasses("THEME")) {
 				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
@@ -649,9 +662,11 @@ int main(int argc, const char ** argv ) {
 				remote_screen = EditorGUI::systemSettings()->getProperties().find("remote_screen");
 			}
 			{
-				LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
-				if (lp) {
-					lp->link(app->getUserWindow());
+				if (!app->shouldIgnoreRemoteScreen()) {
+					LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
+					if (lp) {
+						lp->link(app->getUserWindow());
+					}
 				}
 			}
 			Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));

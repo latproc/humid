@@ -116,6 +116,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
 		  src/editorframe.h src/keypad.h src/valuehelper.h
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
+		  src/screencapture.h
 		  src/editortable.h
   )
 
@@ -244,6 +245,7 @@ endif()
 		  src/widgetfactory.cpp src/dialogwindow.cpp
 		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+		  src/screencapture.cpp
 		  src/editortable.cpp
 		  ${HEADERS})
 
