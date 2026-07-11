@@ -13,8 +13,15 @@
 # Build: cmake -B build_pi \
 #            -DCMAKE_TOOLCHAIN_FILE=cmake/Toolchain-RaspberryPi.cmake \
 #            -DNANOGUI_USE_GLES=ON \
+#            -DGLFW_BUILD_WAYLAND=ON \
+#            -DGLFW_BUILD_X11=ON \
 #            -DCMAKE_BUILD_TYPE=Release
 #        cmake --build build_pi
+#
+# The Raspberry Pi sysroot must contain the Wayland development packages
+# (libwayland-dev and libxkbcommon-dev) as well as the X11 development packages.
+# GLFW selects Wayland automatically when it is available at runtime and falls
+# back to X11 otherwise.
 #
 set(CMAKE_SYSTEM_NAME Linux)
 set(CMAKE_SYSTEM_PROCESSOR aarch64)
