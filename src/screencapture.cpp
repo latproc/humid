@@ -56,6 +56,26 @@ bool writeFramebufferToPng(const std::string &filename, int width, int height) {
 
 bool writeFramebufferRegionToPng(const std::string &filename, int x, int y, int width, int height) {
 	if (x < 0 || y < 0 || width <= 0 || height <= 0) {
+		GLint viewport[4] = {0, 0, 0, 0};
+		glGetIntegerv(GL_VIEWPORT, viewport);
+
+		const int viewport_x = viewport[0];
+		const int viewport_y = viewport[1];
+		const int viewport_w = viewport[2];
+		const int viewport_h = viewport[3];
+
+		const int x0 = std::max(x, viewport_x);
+		const int y0 = std::max(y, viewport_y);
+		const int x1 = std::min(x + width, viewport_x + viewport_w);
+		const int y1 = std::min(y + height, viewport_y + viewport_h);
+
+		x = x0;
+		y = y0;
+		width = x1 - x0;
+		height = y1 - y0;
+	}
+
+	if (width <= 0 || height <= 0) {
 		std::cerr << "Capture failed: invalid framebuffer region " << x << "," << y << " " << width << "x" << height << "\n";
 		return false;
 	}

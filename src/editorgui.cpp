@@ -100,12 +100,15 @@ EditorGUI::EditorGUI(int width, int height, bool full_screen)
 	old_size = mSize;
 }
 
-void EditorGUI::configureCapture(const std::string &path, const std::string &screen_name) {
+void EditorGUI::configureCapture(const std::string &path, const std::string &screen_name, int timeout_seconds) {
 	capture_enabled = !path.empty();
 	capture_path = path;
 	capture_screen_name = screen_name;
+	capture_started_at = std::chrono::steady_clock::now();
+	capture_timeout_seconds = timeout_seconds > 0 ? timeout_seconds : 60;
 	capture_frames_remaining = -1;
 	capture_written = false;
+	capture_timed_out = false;
 }
 
 Structure *EditorGUI::getSettings() {
@@ -1210,6 +1213,12 @@ size_t EditorGUI::expectedCaptureConnectionCount() {
 	return count;
 }
 
+bool EditorGUI::captureDeadlineExceeded() const {
+	if (!capture_enabled || capture_written || capture_timed_out) return false;
+	const auto deadline = capture_started_at + std::chrono::seconds(capture_timeout_seconds);
+	return std::chrono::steady_clock::now() >= deadline;
+}
+
 bool EditorGUI::activeScreenReadyForCapture() {
 	if (!w_user || !w_user->structure()) return false;
 	const Value active = EditorGUI::systemSettings()->getProperties().find("active_screen");
@@ -1234,10 +1243,14 @@ void EditorGUI::tryCaptureFrame() {
 	auto *panel_window = w_user ? w_user->getWindow() : nullptr;
 	if (!panel_window) return;
 
-	const int px = int(std::round(panel_window->position().x() * pixelRatio()));
-	const int py = int(std::round((size().y() - (panel_window->position().y() + panel_window->size().y())) * pixelRatio()));
-	const int pw = int(std::round(panel_window->size().x() * pixelRatio()));
-	const int ph = int(std::round(panel_window->size().y() * pixelRatio()));
+	const nanogui::Vector2i panel_pos = panel_window->absolutePosition();
+	const nanogui::Vector2i panel_size = panel_window->size();
+	const float scale = pixelRatio();
+
+	const int px = int(std::round(panel_pos.x() * scale));
+	const int py = int(std::round((size().y() - (panel_pos.y() + panel_size.y())) * scale));
+	const int pw = int(std::round(panel_size.x() * scale));
+	const int ph = int(std::round(panel_size.y() * scale));
 
 	capture_written = writeFramebufferRegionToPng(capture_path, px, py, pw, ph);
 	if (capture_written) {
@@ -1246,5 +1259,11 @@ void EditorGUI::tryCaptureFrame() {
 }
 
 void EditorGUI::afterFrameRendered() {
+	if (captureDeadlineExceeded()) {
+		capture_timed_out = true;
+		std::cerr << "Capture timed out after " << capture_timeout_seconds << " seconds\n";
+		nanogui::leave();
+		return;
+	}
 	tryCaptureFrame();
 }
