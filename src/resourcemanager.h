@@ -13,6 +13,7 @@
 
 #include <map>
 #include <assert.h>
+#include <cstdint>
 #include <iostream>
 
 class ResourceManager {
