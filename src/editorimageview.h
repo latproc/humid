@@ -38,11 +38,14 @@ public:
 
 	void setImageName(const std::string new_name, bool reload = false);
 	const std::string &imageName() const;
+	void setInteractive(bool value);
+	bool interactive() const { return image_interactive; }
 
 	void refresh();
 
 protected:
 	std::string image_name;
+	bool image_interactive = false;
 	bool need_redraw;
 };
 

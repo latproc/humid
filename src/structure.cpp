@@ -99,6 +99,7 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 	else if (class_name == "IMAGE") {
 		properties["Image File"] = "image_file";
 		properties["Scale"] = "scale";
+		properties["Interactive"] = "interactive";
 	}
 	else if (class_name == "PROGRESS") {
 		properties["Foreground Colour"] = "fg_color";
