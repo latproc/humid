@@ -95,6 +95,7 @@ void loadFiles(std::list<std::string> &files) {
                 yycharno = 1;
                 yyfilename = filename;
                 yyparse();
+                cleanup_hmi_lexer_tokens();
                 fclose(yyin);
             }
             else
@@ -114,6 +115,7 @@ void loadFiles(std::list<std::string> &files) {
             yylineno = 1;
             yycharno = 1;
             yyparse();
+            cleanup_hmi_lexer_tokens();
         }
         f_iter++;
     }

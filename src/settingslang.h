@@ -11,6 +11,7 @@
 #include "structure.h"
 
 void yyerror(const char *str);
+void cleanup_settings_lexer_tokens();
 
 #ifndef __MAIN__
 extern int line_num;

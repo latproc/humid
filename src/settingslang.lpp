@@ -4,6 +4,7 @@
 */
 %{
 	#include <stdlib.h>
+	#include <vector>
 	#include "settingslang.h"
 	#include "settingslang.tab.hpp"
 	void st_yyerror(const char *);
@@ -15,6 +16,13 @@
 	int st_yycharno;
 
 	static void st_append_char(int ch);
+
+	static std::vector<char *> st_token_allocations;
+
+	static char *st_remember_token(char *token) {
+		st_token_allocations.push_back(token);
+		return token;
+	}
 %}
 
 %option prefix="st_yy" 
@@ -29,7 +37,7 @@
 \n              { st_yylineno++; st_yycharno = 1; }
 
 [A-Za-z][A-Za-z0-9_.]*       {
-	st_yylval.sVal = strdup(st_yytext);
+	st_yylval.sVal = st_remember_token(strdup(st_yytext));
 	return SYMBOL;
 }
 
@@ -71,7 +79,7 @@
 	*st_bufp = 0;
 }
 <PATTERNSTR>\\`    { st_append_char('`'); }
-<PATTERNSTR>`      { BEGIN 0; st_yylval.sVal = st_buf; st_buf = NULL; return PATTERN; }
+<PATTERNSTR>`      { BEGIN 0; st_yylval.sVal = st_remember_token(st_buf); st_buf = NULL; return PATTERN; }
 <PATTERNSTR>\\[0-3][0-7][0-7] { unsigned char ch = ((st_yytext[1]-'0')*8 + st_yytext[2]-'0')*8+st_yytext[3]-'0'; st_append_char(ch);  }
 <PATTERNSTR>\r		{ st_append_char('\r');  }
 <PATTERNSTR>\t		{ st_append_char('\t');}
@@ -93,7 +101,7 @@ st_bufp = st_buf;
 <STRING>\\t		{ st_append_char('\t'); }
 <STRING>\\[0-3][0-7][0-7] { unsigned char ch = ((st_yytext[1]-'0')*8 + st_yytext[2]-'0')*8+st_yytext[3]-'0'; st_append_char(ch); }
 <STRING>\\\"	{ /*"*/ st_append_char('\"'); }
-<STRING>\"		{ /*"*/ BEGIN 0; st_yylval.sVal = st_buf; st_buf = NULL; return STRINGVAL; }
+<STRING>\"		{ /*"*/ BEGIN 0; st_yylval.sVal = st_remember_token(st_buf); st_buf = NULL; return STRINGVAL; }
 <STRING>\n		{ st_append_char('\n'); st_yylineno++; st_yycharno=1; }
 <STRING>.		{ st_append_char(*st_yytext); }
 
@@ -128,6 +136,17 @@ st_bufp = st_buf;
 %%
 int st_yywrap(void) {
 	return 1;
+}
+
+void cleanup_settings_lexer_tokens() {
+	for (char *token : st_token_allocations) {
+		free(token);
+	}
+	st_token_allocations.clear();
+	if (st_buf) {
+		free(st_buf);
+		st_buf = NULL;
+	}
 }
 
 static void st_append_char(int ch)

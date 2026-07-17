@@ -274,8 +274,7 @@ instantiation ';'
         }
     }
     if (!found) {
-	    char *name = strdup(hps.current_machine->getName().c_str());
-        HmiParameter p(name);
+        HmiParameter p(hps.current_machine->getName().c_str());
         p.machine = hps.current_machine;
         hps.current_locals.push_back(p);
     }

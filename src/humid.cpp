@@ -253,6 +253,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 					yycharno = 1;
 					yyfilename = fname.c_str();
 					yyparse();
+					cleanup_hmi_lexer_tokens();
 					fclose(yyin);
 				}
 				else
@@ -273,6 +274,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 			yylineno = 1;
 			yycharno = 1;
 			yyparse();
+			cleanup_hmi_lexer_tokens();
 		}
 		f_iter++;
 	}
@@ -412,6 +414,7 @@ void loadSettingsFiles(std::list<std::string> &files) {
 				st_yycharno = 1;
 				st_yyfilename = filename;
 				st_yyparse();
+				cleanup_settings_lexer_tokens();
 				fclose(st_yyin);
 			}
 			else
@@ -431,6 +434,7 @@ void loadSettingsFiles(std::list<std::string> &files) {
 			st_yylineno = 1;
 			st_yycharno = 1;
 			st_yyparse();
+			cleanup_settings_lexer_tokens();
 		}
 		f_iter++;
 	}
