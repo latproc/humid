@@ -138,6 +138,7 @@ endif ()
 	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/hmilang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 	   OUTPUT ${hmi_lex_output})
 
@@ -172,6 +173,7 @@ endif ()
 	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/settingslang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 	   OUTPUT ${settings_lex_output})
 
