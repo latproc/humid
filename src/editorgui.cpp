@@ -61,9 +61,8 @@ ResourceManager::Factory resource_manager_factory;
 
 class Texture {
 public:
-	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
+	explicit Texture(GLTexture tex) : texture(std::move(tex)) {}
 	GLTexture texture;
-	GLTexture::handleType data;
 };
 std::map<std::string, Texture*> texture_cache;
 std::map<GLuint, std::string> loaded_textures;
@@ -235,9 +234,11 @@ void EditorGUI::freeImage(GLuint image_id) {
 	auto found = loaded_textures.find(image_id);
 	if (found != loaded_textures.end()) {
 		std::string tex_name = (*found).second;
+		loaded_textures.erase(found);
 		auto found_tex = texture_cache.find(tex_name);
 		if (found_tex != texture_cache.end()) {
 			Texture *tex = (*found_tex).second;
+			texture_cache.erase(found_tex);
 			delete tex;
 			//std::cout << "remaining textures: " << texture_cache.size() << " (" << loaded_textures.size() << ")\n";
 		}
@@ -280,14 +281,13 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	else if (reload || found == texture_cache.end()) {
 		if (found != texture_cache.end()) {
 			Texture *old = (*found).second;
+			texture_cache.erase(found);
 			if (old->texture.texture()) {
 				int texture_id = old->texture.texture();
 				assert(texture_id);
+				loaded_textures.erase(texture_id);
 				int refs = ResourceManager::release(texture_id);
-				if (refs == 0 ) {
-					texture_cache.erase(found);
-				}
-				else {
+				if (refs != 0) {
 					// there are image views that still reference this image but we have been asked to
 					// reload the cached value. We hand this over to a texture resource manager
 					// and let it remove the object once the last release occurs
@@ -305,7 +305,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			auto tex_data = tex.load(name);
 			GLuint res = tex.texture();
 			if (res) {
-				texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+				texture_cache[tex_name] = new Texture(std::move(tex));
 				loaded_textures[res] = tex_name;
 				ResourceManager::manage(res);
 			}
@@ -345,6 +345,7 @@ void cleanupTextureCache() {
 			Texture *texture = (*remove).second;
 			GLuint tex = (*remove).second->texture.texture();
 			texture_cache.erase(texture_cache.find(texture->texture.textureName()));
+			loaded_textures.erase(tex);
 			ResourceManager::release(tex);
 			delete texture;
 			remove = to_remove.erase(remove);
