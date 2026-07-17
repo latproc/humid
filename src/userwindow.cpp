@@ -360,6 +360,9 @@ void UserWindow::clear() {
 		if (ew && ew->getRemote()) {
 			ew->getRemote()->unlink(ew);
 		}
+		if (ew) {
+			ew->setVisibilityLink(nullptr);
+		}
 		if (ew && sc) { LinkableObject::unlink(sc->getName(), ew); }
 		window->removeChild(idx);
 	}

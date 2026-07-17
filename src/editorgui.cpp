@@ -766,6 +766,7 @@ void EditorGUI::showDialog(bool show) {
 	}
 	else if (w_dialog) {
 		w_dialog->setVisible(false);
+		w_dialog->clear();
 		w_dialog->dispose();
 		w_dialog = nullptr;
 	}
