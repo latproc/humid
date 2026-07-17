@@ -1132,6 +1132,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 								}
 
 							}
+							cJSON_Delete(obj);
 							connection->setState(sRELOAD);
 						}
 						else
