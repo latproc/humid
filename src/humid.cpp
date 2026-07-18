@@ -79,6 +79,9 @@ const char *filename = 0;
 
 long full_screen_mode = 0;
 int run_only = 0;
+std::string capture_file_name;
+std::string capture_screen_name;
+int capture_timeout_seconds = 60;
 
 extern long collect_history;
 
@@ -250,6 +253,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 					yycharno = 1;
 					yyfilename = fname.c_str();
 					yyparse();
+					cleanup_hmi_lexer_tokens();
 					fclose(yyin);
 				}
 				else
@@ -270,6 +274,7 @@ bool loadProjectFiles(std::list<std::string> &files_and_directories) {
 			yylineno = 1;
 			yycharno = 1;
 			yyparse();
+			cleanup_hmi_lexer_tokens();
 		}
 		f_iter++;
 	}
@@ -409,6 +414,7 @@ void loadSettingsFiles(std::list<std::string> &files) {
 				st_yycharno = 1;
 				st_yyfilename = filename;
 				st_yyparse();
+				cleanup_settings_lexer_tokens();
 				fclose(st_yyin);
 			}
 			else
@@ -428,6 +434,7 @@ void loadSettingsFiles(std::list<std::string> &files) {
 			st_yylineno = 1;
 			st_yycharno = 1;
 			st_yyparse();
+			cleanup_settings_lexer_tokens();
 		}
 		f_iter++;
 	}
@@ -464,7 +471,11 @@ int main(int argc, const char ** argv ) {
 	("cwport",po::value<int>(&cw_port)->default_value(5555), "clockwork port (5555)")
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
+	("fullscreen", po::value<long>(&full_screen_mode), "alias for --full_screen")
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
+	("capture", po::value<std::string>(&capture_file_name)->default_value(""), "write a PNG capture to this file and exit")
+	("screen", po::value<std::string>(&capture_screen_name)->default_value(""), "set the active screen for this run")
+	("capture_timeout", po::value<int>(&capture_timeout_seconds)->default_value(60), "force capture mode to exit after this many seconds")
 	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
@@ -497,6 +508,10 @@ int main(int argc, const char ** argv ) {
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();
+	if (vm.count("capture")) capture_file_name = vm["capture"].as<std::string>();
+	if (vm.count("screen")) capture_screen_name = vm["screen"].as<std::string>();
+	if (vm.count("capture_timeout")) capture_timeout_seconds = vm["capture_timeout"].as<int>();
+	if (!capture_file_name.empty()) run_only = 1;
 	if (DEBUG_BASIC) std::cout << "Debugging\n";
 
 	std::string home(".");
@@ -569,6 +584,9 @@ int main(int argc, const char ** argv ) {
 			if (!EditorGUI::systemSettings()) {
 				EditorGUI::systemSettings(system_class->instantiate(nullptr, "System"));
 			}
+			if (!capture_screen_name.empty()) {
+				EditorGUI::systemSettings()->getProperties().add("active_screen", Value(capture_screen_name, Value::t_string));
+			}
 
 			// if necessary create a project settings structure to store the
 			// nominated connection details
@@ -600,7 +618,9 @@ int main(int argc, const char ** argv ) {
 			int64_t full_screen = 1;
 			full_screen_v.asInteger(full_screen);
 			if (vm.count("full_screen")) full_screen = vm["full_screen"].as<long>();
+			if (vm.count("fullscreen")) full_screen = vm["fullscreen"].as<long>();
 
+			nanogui::ref<EditorGUI> app;
 		    if (primary) {
 			int64_t width = mode->width;
 			int64_t height = mode->height;
@@ -616,13 +636,22 @@ int main(int argc, const char ** argv ) {
 				const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
 				width_v.asInteger(width);
 				height_v.asInteger(height);
+				if (width == mode->width && height == mode->height) {
+					const Value alt_width_v = EditorGUI::systemSettings()->getProperties().find("w");
+					const Value alt_height_v = EditorGUI::systemSettings()->getProperties().find("h");
+					alt_width_v.asInteger(width);
+					alt_height_v.asInteger(height);
+				}
 			}
 			
 			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n" <<std::flush;
 
-			nanogui::ref<EditorGUI> app = (full_screen)
+			app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);
+			if (!capture_file_name.empty()) {
+				app->configureCapture(capture_file_name, capture_screen_name, capture_timeout_seconds);
+			}
 			ThemeManager::instance().setContext(app->nvgContext());
 			for (auto settings : Structure::findStructureClasses("THEME")) {
 				ThemeManager::instance().addTheme(settings->getName(), ThemeManager::instance().createTheme(settings));
@@ -649,9 +678,11 @@ int main(int argc, const char ** argv ) {
 				remote_screen = EditorGUI::systemSettings()->getProperties().find("remote_screen");
 			}
 			{
-				LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
-				if (lp) {
-					lp->link(app->getUserWindow());
+				if (!app->shouldIgnoreRemoteScreen()) {
+					LinkableProperty *lp = app->findLinkableProperty(remote_screen.asString());
+					if (lp) {
+						lp->link(app->getUserWindow());
+					}
 				}
 			}
 			Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
@@ -677,6 +708,10 @@ int main(int argc, const char ** argv ) {
 
 		    if (primary) {
 			nanogui::mainloop();
+			if (app->captureTimedOut()) {
+				nanogui::shutdown();
+				return EXIT_FAILURE;
+			}
 		    }
 		    else {
 			std::cout << "creating app\n" <<std::flush;

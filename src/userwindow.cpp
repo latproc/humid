@@ -168,6 +168,12 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 		const Value height_v = EditorGUI::systemSettings()->getProperties().find("panel_height");
 		width_v.asInteger(width);
 		height_v.asInteger(height);
+		if (width == screen->size().x() && height == screen->size().y()) {
+			const Value alt_width_v = EditorGUI::systemSettings()->getProperties().find("w");
+			const Value alt_height_v = EditorGUI::systemSettings()->getProperties().find("h");
+			alt_width_v.asInteger(width);
+			alt_height_v.asInteger(height);
+		}
 	}
 
 	mDefaultSize.x() = width;
@@ -177,7 +183,7 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	window->setVisible(false);
 	extern int run_only;
 	extern long full_screen_mode;
-	if (!run_only || !full_screen_mode) {
+	if (!run_only) {
 		window->setTitle("Panel Window");
 		int64_t window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
 		int64_t window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
@@ -191,7 +197,18 @@ UserWindow::UserWindow(EditorGUI *screen, nanogui::Theme *theme, UserWindowWin *
 	}
 	else {
 		window->setTitle("");
-		window->setPosition(nanogui::Vector2i(0,0));
+		if (full_screen_mode) {
+			window->setPosition(nanogui::Vector2i(0,0));
+		}
+		else {
+			int64_t window_x = gui->size().x() > width ? (gui->size().x() - width)/2 : 0;
+			int64_t window_y = gui->size().y() > height ? (gui->size().y() - height)/2 : 0;
+			const Value x_v = EditorGUI::systemSettings()->getProperties().find("panel_left");
+			const Value y_v = EditorGUI::systemSettings()->getProperties().find("panel_top");
+			x_v.asInteger(window_x);
+			y_v.asInteger(window_y);
+			window->setPosition(nanogui::Vector2i(window_x, window_y));
+		}
 	}
 	push(window);
 }
@@ -342,6 +359,9 @@ void UserWindow::clear() {
 		EditorWidget *ew = dynamic_cast<EditorWidget*>(no);
 		if (ew && ew->getRemote()) {
 			ew->getRemote()->unlink(ew);
+		}
+		if (ew) {
+			ew->setVisibilityLink(nullptr);
 		}
 		if (ew && sc) { LinkableObject::unlink(sc->getName(), ew); }
 		window->removeChild(idx);
@@ -697,4 +717,3 @@ Value UserWindow::getPropertyValue(const std::string &prop) {
 	if (prop == "Channel") return current_screen->getProperties().lookup("channel");
 	return SymbolTable::Null;
 }
-

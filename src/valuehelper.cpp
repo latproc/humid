@@ -35,6 +35,7 @@ Value::Kind typeForProperty(const std::string &property) {
 	if (property == "image") { return Value::t_string; }
 	if (property == "image_alpha") { return Value::t_float; }
 	if (property == "image_file") { return Value::t_string; }
+	if (property == "interactive") { return Value::t_bool; }
 	if (property == "inverted_visibility") { return Value::t_bool; }
 	if (property == "on_caption") { return Value::t_string; }
 	if (property == "text_on_colour") { return Value::t_string; }
@@ -82,6 +83,7 @@ Value defaultForProperty(const std::string &property) {
 	if (property == "image") { return {}; }
 	if (property == "image_alpha") { return 1.0; }
 	if (property == "image_file") { return {}; }
+	if (property == "interactive") { return false; }
 	if (property == "inverted_visibility") { return false; }
 	if (property == "on_caption") { return ""; }
 	if (property == "overlay_plots") { return true; }

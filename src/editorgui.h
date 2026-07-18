@@ -8,6 +8,7 @@
 
 #include <ostream>
 #include <string>
+#include <chrono>
 #include <nanogui/common.h>
 #include <nanogui/widget.h>
 #include <nanogui/window.h>
@@ -110,8 +111,18 @@ public:
 		return linkables;
 	}
 	void processModbusInitialisation(const std::string group_name, cJSON *obj);
+	void configureCapture(const std::string &path, const std::string &screen_name, int timeout_seconds);
+	bool shouldIgnoreRemoteScreen() const { return capture_enabled; }
+	bool captureTimedOut() const { return capture_timed_out; }
 
 private:
+	void afterFrameRendered() override;
+	bool connectionsReadyForCapture();
+	bool activeScreenReadyForCapture();
+	size_t expectedCaptureConnectionCount();
+	bool captureDeadlineExceeded() const;
+	void tryCaptureFrame();
+
 	static Structure *system_settings;
 	std::recursive_mutex linkables_mutex;
 	std::map<std::string, LinkableProperty*>linkables;
@@ -139,6 +150,14 @@ private:
 	unsigned int sample_buffer_size;
 	EditorProject *project = nullptr;
   std::string dialog_name;
+	std::string capture_path;
+	std::string capture_screen_name;
+	std::chrono::steady_clock::time_point capture_started_at;
+	int capture_timeout_seconds = 60;
+	int capture_frames_remaining = -1;
+	bool capture_enabled = false;
+	bool capture_written = false;
+	bool capture_timed_out = false;
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorGUI &m);

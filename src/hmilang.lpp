@@ -4,6 +4,7 @@
 */
 %{
 	#include <stdlib.h>
+	#include <vector>
 	#include "hmilang.h"
 	#include "hmilang.tab.hpp"
 	#include "linkableobject.h"
@@ -17,6 +18,13 @@
 	int yycharno;
 
 	void append_char(int ch);
+
+	static std::vector<char *> token_allocations;
+
+	static char *remember_token(char *token) {
+		token_allocations.push_back(token);
+		return token;
+	}
 %}
 
 %x STRING
@@ -184,7 +192,7 @@ WITH                return WITH;
 WITHIN              return WITHIN;
 
 [$]{0,1}[A-Za-z][A-Za-z0-9_.]*       {
-	yylval.sVal = strdup(yytext);
+	yylval.sVal = remember_token(strdup(yytext));
 	return SYMBOL;
 }
 
@@ -251,7 +259,7 @@ WITHIN              return WITHIN;
 	*bufp = 0;
 }
 <PATTERNSTR>\\`    { append_char('`'); }
-<PATTERNSTR>`      { BEGIN 0; yylval.sVal = buf; buf = NULL; return PATTERN; }
+<PATTERNSTR>`      { BEGIN 0; yylval.sVal = remember_token(buf); buf = NULL; return PATTERN; }
 <PATTERNSTR>\\[0-3][0-7][0-7] { unsigned char ch = ((yytext[1]-'0')*8 + yytext[2]-'0')*8+yytext[3]-'0'; append_char(ch);  }
 <PATTERNSTR>\r		{ append_char('\r');  }
 <PATTERNSTR>\t		{ append_char('\t');}
@@ -273,7 +281,7 @@ bufp = buf;
 <STRING>\\t		{ append_char('\t'); }
 <STRING>\\[0-3][0-7][0-7] { unsigned char ch = ((yytext[1]-'0')*8 + yytext[2]-'0')*8+yytext[3]-'0'; append_char(ch); }
 <STRING>\\\"	{ /*"*/ append_char('\"'); }
-<STRING>\"		{ /*"*/ BEGIN 0; yylval.sVal = buf; buf = NULL; return STRINGVAL; }
+<STRING>\"		{ /*"*/ BEGIN 0; yylval.sVal = remember_token(buf); buf = NULL; return STRINGVAL; }
 <STRING>\n		{ append_char('\n'); yylineno++; yycharno=1; }
 <STRING>.		{ append_char(*yytext); }
 
@@ -308,6 +316,17 @@ bufp = buf;
 %%
 int yywrap(void) {
 	return 1;
+}
+
+void cleanup_hmi_lexer_tokens() {
+	for (char *token : token_allocations) {
+		free(token);
+	}
+	token_allocations.clear();
+	if (buf) {
+		free(buf);
+		buf = NULL;
+	}
 }
 
 void append_char(int ch)

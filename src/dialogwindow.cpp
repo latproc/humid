@@ -31,6 +31,9 @@ void DialogWindow::clear() {
         if (ew && ew->getRemote()) {
             ew->getRemote()->unlink(ew);
         }
+        if (ew) {
+            ew->setVisibilityLink(nullptr);
+        }
         if (ew && sc) {
             LinkableObject::unlink(sc->getName(), ew);
         }
@@ -143,4 +146,3 @@ void DialogWindow::loadStructure(Structure *s) {
         }
     }
 }
-

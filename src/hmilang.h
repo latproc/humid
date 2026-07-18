@@ -13,6 +13,7 @@
 #include "linkableproperty.h"
 
 void yyerror(const char *str);
+void cleanup_hmi_lexer_tokens();
 
 #ifndef __MAIN__
 class LinkedProperty;

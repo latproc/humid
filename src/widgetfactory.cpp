@@ -229,6 +229,10 @@ void createImage(WidgetParams &params) {
 	const Value img_scale_val(params.element->getValue("scale"));
 	double img_scale = 1.0f;
 	if (img_scale_val != SymbolTable::Null) img_scale_val.asFloat(img_scale);
+	bool image_interactive = false;
+	const Value image_interactive_val(params.element->getValue("interactive"));
+	if (image_interactive_val != SymbolTable::Null)
+		image_interactive_val.asBoolean(image_interactive);
 	setElementPosition(params, el, params.element);
 	fixElementSize( el, params.element);
 	if (params.font_size) el->setFontSize(params.font_size);
@@ -236,6 +240,7 @@ void createImage(WidgetParams &params) {
 	if (params.value_type != -1) el->setValueType(params.value_type);
 	if (params.value_scale != 1.0) el->setValueScale( params.value_scale );
 	el->setScale( img_scale );
+	el->setInteractive(image_interactive);
 	if (params.tab_pos) el->setTabPosition(params.tab_pos);
 	el->setInvertedVisibility(params.ivis);
 	const Value image_file_v( (params.lp) ? params.lp->value() : (params.element->getValue("image_file")));
@@ -471,6 +476,5 @@ void createFrame(WidgetParams &params) {
 		params.lp->link(new LinkableNumber(ep));
 	if (params.visibility) ep->setVisibilityLink(params.visibility);
 }
-
 
 

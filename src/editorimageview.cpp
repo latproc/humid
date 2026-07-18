@@ -28,6 +28,7 @@ const std::map<std::string, std::string> & EditorImageView::reverse_property_map
 EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp, GLuint image_id, int icon)
 : ImageView(parent, image_id), EditorWidget(owner, "IMAGE", nam, this, lp) {
       if (mImageID) ResourceManager::manage(mImageID);
+      setInteractive(false);
 }
 
 EditorImageView::~EditorImageView() {
@@ -123,6 +124,12 @@ void EditorImageView::setImageName(const std::string new_name, bool reload) {
 
 const std::string &EditorImageView::imageName() const { return image_name; }
 
+void EditorImageView::setInteractive(bool value) {
+    image_interactive = value;
+    setFixedOffset(!value);
+    setFixedScale(!value);
+}
+
 void EditorImageView::refresh() {
     need_redraw = true;
 }
@@ -131,6 +138,7 @@ void EditorImageView::getPropertyNames(std::list<std::string> &names) {
     EditorWidget::getPropertyNames(names);
     names.push_back("Image File");
     names.push_back("Scale");
+    names.push_back("Interactive");
 }
 
 void EditorImageView::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
@@ -145,6 +153,8 @@ Value EditorImageView::getPropertyValue(const std::string &prop) {
     return Value(imageName(), Value::t_string);
   else if (prop == "Scale")
     return scale();
+  else if (prop == "Interactive")
+    return image_interactive;
   return SymbolTable::Null;
 }
 
@@ -164,6 +174,15 @@ void EditorImageView::setProperty(const std::string &prop, const std::string val
   else if (prop == "Scale") {
     setScale(std::atof(value.c_str()));
   }
+  else if (prop == "Interactive") {
+    Value interactive_value(value);
+    bool interactive = false;
+    if (interactive_value.asBoolean(interactive) || value == "1" || value == "0") {
+      if (value == "1" || value == "0")
+        interactive = value == "1";
+      setInteractive(interactive);
+    }
+  }
 }
 
 
@@ -178,6 +197,9 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
     properties->addVariable<float> ("Scale",
                   [&](float value) mutable{ setScale(value); center(); },
                   [&]()->float { return scale();  });
+    properties->addVariable<bool> ("Interactive",
+                  [&](bool value) mutable{ setInteractive(value); },
+                  [&]()->bool { return interactive(); });
     properties->addGroup("Remote");
     properties->addVariable<std::string> (
       "Remote object",
@@ -214,4 +236,3 @@ void EditorImageView::loadProperties(PropertyFormHelper* properties) {
       [&]()->std::string{ return visibility ? visibility->tagName() : ""; });
   }
 }
-

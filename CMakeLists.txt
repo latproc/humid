@@ -147,6 +147,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/startupwindow.h src/widgetfactory.h src/dialogwindow.h
 		  src/editorframe.h src/keypad.h src/valuehelper.h
 		  src/linkmanager.h src/thememanager.h src/colourhelper.h
+		  src/screencapture.h
 		  src/editortable.h
   )
 
@@ -168,6 +169,7 @@ endif ()
 	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/hmilang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 	   OUTPUT ${hmi_lex_output})
 
@@ -202,6 +204,7 @@ endif ()
 	   COMMAND ${FLEX_EXECUTABLE}
 	   ARGS -o${CMAKE_BINARY_DIR}/settingslang.yy.cpp
 	   ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 	   OUTPUT ${settings_lex_output})
 
@@ -275,6 +278,7 @@ endif()
 		  src/widgetfactory.cpp src/dialogwindow.cpp
 		  src/editorframe.cpp src/keypad.cpp src/valuehelper.cpp
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+		  src/screencapture.cpp
 		  src/editortable.cpp
 		  ${HEADERS})
 

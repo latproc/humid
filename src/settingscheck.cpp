@@ -87,6 +87,7 @@ void loadFiles(std::list<std::string> &files) {
                 st_yycharno = 1;
                 st_yyfilename = filename;
                 st_yyparse();
+                cleanup_settings_lexer_tokens();
                 fclose(st_yyin);
             }
             else
@@ -106,6 +107,7 @@ void loadFiles(std::list<std::string> &files) {
             st_yylineno = 1;
             st_yycharno = 1;
             st_yyparse();
+            cleanup_settings_lexer_tokens();
         }
         f_iter++;
     }

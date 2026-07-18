@@ -193,6 +193,7 @@ public:
 	virtual void handleRawMessage(unsigned long time, void *data) {};
 	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time, const std::string &op, std::list<Value> *message) {};
 	virtual void update(ClockworkClient::Connection *connection, bool allow_data_sync);
+	virtual void afterFrameRendered() {}
 
 	std::map<std::string, Connection *>getConnections() { return connections; }
 

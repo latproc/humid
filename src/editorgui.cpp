@@ -4,6 +4,7 @@
 */
 
 #include <iostream>
+#include <cmath>
 #include <boost/algorithm/string.hpp>
 #include <nanogui/common.h>
 #include <regular_expressions.h>
@@ -40,6 +41,7 @@
 #include "userwindowwin.h"
 #include "linkmanager.h"
 #include "thememanager.h"
+#include "screencapture.h"
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;
@@ -59,9 +61,8 @@ ResourceManager::Factory resource_manager_factory;
 
 class Texture {
 public:
-	Texture(GLTexture tex, GLTexture::handleType dat) : texture( std::move(tex)), data(std::move(dat)) {}
+	explicit Texture(GLTexture tex) : texture(std::move(tex)) {}
 	GLTexture texture;
-	GLTexture::handleType data;
 };
 std::map<std::string, Texture*> texture_cache;
 std::map<GLuint, std::string> loaded_textures;
@@ -96,6 +97,17 @@ EditorGUI::EditorGUI(int width, int height, bool full_screen)
 	sample_buffer_size(5000), project(0)
 {
 	old_size = mSize;
+}
+
+void EditorGUI::configureCapture(const std::string &path, const std::string &screen_name, int timeout_seconds) {
+	capture_enabled = !path.empty();
+	capture_path = path;
+	capture_screen_name = screen_name;
+	capture_started_at = std::chrono::steady_clock::now();
+	capture_timeout_seconds = timeout_seconds > 0 ? timeout_seconds : 60;
+	capture_frames_remaining = -1;
+	capture_written = false;
+	capture_timed_out = false;
 }
 
 Structure *EditorGUI::getSettings() {
@@ -222,9 +234,11 @@ void EditorGUI::freeImage(GLuint image_id) {
 	auto found = loaded_textures.find(image_id);
 	if (found != loaded_textures.end()) {
 		std::string tex_name = (*found).second;
+		loaded_textures.erase(found);
 		auto found_tex = texture_cache.find(tex_name);
 		if (found_tex != texture_cache.end()) {
 			Texture *tex = (*found_tex).second;
+			texture_cache.erase(found_tex);
 			delete tex;
 			//std::cout << "remaining textures: " << texture_cache.size() << " (" << loaded_textures.size() << ")\n";
 		}
@@ -267,14 +281,13 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	else if (reload || found == texture_cache.end()) {
 		if (found != texture_cache.end()) {
 			Texture *old = (*found).second;
+			texture_cache.erase(found);
 			if (old->texture.texture()) {
 				int texture_id = old->texture.texture();
 				assert(texture_id);
+				loaded_textures.erase(texture_id);
 				int refs = ResourceManager::release(texture_id);
-				if (refs == 0 ) {
-					texture_cache.erase(found);
-				}
-				else {
+				if (refs != 0) {
 					// there are image views that still reference this image but we have been asked to
 					// reload the cached value. We hand this over to a texture resource manager
 					// and let it remove the object once the last release occurs
@@ -292,7 +305,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			auto tex_data = tex.load(name);
 			GLuint res = tex.texture();
 			if (res) {
-				texture_cache[tex_name] = new Texture( std::move(tex), std::move(tex_data));
+				texture_cache[tex_name] = new Texture(std::move(tex));
 				loaded_textures[res] = tex_name;
 				ResourceManager::manage(res);
 			}
@@ -332,6 +345,7 @@ void cleanupTextureCache() {
 			Texture *texture = (*remove).second;
 			GLuint tex = (*remove).second->texture.texture();
 			texture_cache.erase(texture_cache.find(texture->texture.textureName()));
+			loaded_textures.erase(tex);
 			ResourceManager::release(tex);
 			delete texture;
 			remove = to_remove.erase(remove);
@@ -752,6 +766,7 @@ void EditorGUI::showDialog(bool show) {
 	}
 	else if (w_dialog) {
 		w_dialog->setVisible(false);
+		w_dialog->clear();
 		w_dialog->dispose();
 		w_dialog = nullptr;
 	}
@@ -1065,11 +1080,13 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 								w_objects->rebuildWindow();
 								if (w_user && getState() == GUIWORKING) {
 									w_user->setStructure(w_user->structure());
-									const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-									if (remote_screen != SymbolTable::Null) {
-										LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-										if (lp) {
-											lp->link(getUserWindow());
+									if (!shouldIgnoreRemoteScreen()) {
+										const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+										if (remote_screen != SymbolTable::Null) {
+											LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+											if (lp) {
+												lp->link(getUserWindow());
+											}
 										}
 									}
 									const Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
@@ -1116,6 +1133,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 								}
 
 							}
+							cJSON_Delete(obj);
 							connection->setState(sRELOAD);
 						}
 						else
@@ -1168,4 +1186,87 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 		}
 	}
 */
+}
+
+bool EditorGUI::connectionsReadyForCapture() {
+	if (!capture_enabled) return false;
+	const size_t expected_connections = expectedCaptureConnectionCount();
+	if (expected_connections > 0 && connections.size() < expected_connections) return false;
+	if (expected_connections == 0 && connections.empty()) return true;
+
+	for (const auto &item : connections) {
+		auto *connection = item.second;
+		if (!connection || !connection->Ready()) return false;
+		const auto state = connection->getStartupState();
+		if (state != sDONE) return false;
+	}
+	return true;
+}
+
+size_t EditorGUI::expectedCaptureConnectionCount() {
+	auto *project_settings = findStructure("ProjectSettings");
+	if (!project_settings) return 0;
+	auto *settings_class = project_settings->getStructureDefinition();
+	if (!settings_class) return 0;
+
+	size_t count = 0;
+	for (const auto &local : settings_class->getLocals()) {
+		if (local.machine) ++count;
+	}
+	return count;
+}
+
+bool EditorGUI::captureDeadlineExceeded() const {
+	if (!capture_enabled || capture_written || capture_timed_out) return false;
+	const auto deadline = capture_started_at + std::chrono::seconds(capture_timeout_seconds);
+	return std::chrono::steady_clock::now() >= deadline;
+}
+
+bool EditorGUI::activeScreenReadyForCapture() {
+	if (!w_user || !w_user->structure()) return false;
+	const Value active = EditorGUI::systemSettings()->getProperties().find("active_screen");
+	if (active == SymbolTable::Null || active.asString().empty()) return false;
+	return w_user->structure()->getName() == active.asString();
+}
+
+void EditorGUI::tryCaptureFrame() {
+	if (!capture_enabled || capture_written) return;
+	if (!connectionsReadyForCapture()) return;
+	if (!activeScreenReadyForCapture()) return;
+
+	if (capture_frames_remaining < 0) {
+		capture_frames_remaining = 1;
+		return;
+	}
+	if (capture_frames_remaining > 0) {
+		--capture_frames_remaining;
+		return;
+	}
+
+	auto *panel_window = w_user ? w_user->getWindow() : nullptr;
+	if (!panel_window) return;
+
+	const nanogui::Vector2i panel_pos = panel_window->absolutePosition();
+	const nanogui::Vector2i panel_size = panel_window->size();
+	const float scale = pixelRatio();
+
+	const int px = int(std::round(panel_pos.x() * scale));
+	const int py = int(std::round((size().y() - (panel_pos.y() + panel_size.y())) * scale));
+	const int pw = int(std::round(panel_size.x() * scale));
+	const int ph = int(std::round(panel_size.y() * scale));
+
+	capture_written = writeFramebufferRegionToPng(capture_path, px, py, pw, ph);
+	if (capture_written) {
+		nanogui::leave();
+	}
+}
+
+void EditorGUI::afterFrameRendered() {
+	if (captureDeadlineExceeded()) {
+		capture_timed_out = true;
+		std::cerr << "Capture timed out after " << capture_timeout_seconds << " seconds\n";
+		nanogui::leave();
+		return;
+	}
+	tryCaptureFrame();
 }
