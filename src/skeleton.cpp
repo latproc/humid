@@ -563,7 +563,7 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	else {
 		std::cerr << "failed to decode command " << data << "\n";
 	}
-	free(data);
+	delete[] data;
 	return res;
 }
 
