@@ -1148,9 +1148,10 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 			}
 		}
 	}
-	if (connection->getStartupState() == sDONE) {
-		if (connection->needsRefresh()) {
-			connection->setNeedsRefresh(false);
+	// Peer reconnect: re-arm data sync whenever a refresh was requested.
+	if (connection->needsRefresh()) {
+		connection->setNeedsRefresh(false);
+		if (connection->getStartupState() != sINIT && connection->getStartupState() != sSENT) {
 			connection->setState(sINIT);
 		}
 	}

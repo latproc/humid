@@ -191,19 +191,27 @@ struct timeval start;
 class SetupDisconnectMonitor : public EventResponder {
 
 public:
+	explicit SetupDisconnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
+		if (connection) {
+			connection->noteDisconnected(addr_);
+		}
 	}
+private:
+	ClockworkClient::Connection *connection;
 };
 
 class SetupConnectMonitor : public EventResponder {
 
 public:
-  SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
+	explicit SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-    connection->setNeedsRefresh(true);
+		if (connection) {
+			connection->noteConnected(addr_);
+		}
 	}
 private:
-  ClockworkClient::Connection *connection;
+	ClockworkClient::Connection *connection;
 };
 
 uint64_t get_diff_in_microsecs(struct timeval *now, struct timeval *then) {
@@ -434,12 +442,13 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 		SubscriptionManager *sm = new SubscriptionManager(chn.asString().c_str(),
 			eCLOCKWORK, host.asString().c_str(), port);
 			sm->configureSetupConnection(host.asString().c_str(), port);
-		 SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor;
+		SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor(conn);
 		SetupConnectMonitor *connect_responder = new SetupConnectMonitor(conn);
 		sm->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
 		sm->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
 		sm->setupConnections();
 		conn->setResponder(connect_responder);
+		conn->setDisconnectResponder(disconnect_responder);
 		conn->setSubscription(sm);
 		usleep(1000);
 		{
@@ -567,6 +576,41 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	return res;
 }
 
+void ClockworkClient::Connection::resetCommandPath() {
+	// ZMQ REQ sockets stuck waiting for a reply cannot recover; rebuild after peer loss.
+	if (cmd_interface) {
+		delete cmd_interface;
+		cmd_interface = nullptr;
+	}
+	command_state = WaitingCommand;
+}
+
+void ClockworkClient::Connection::noteDisconnected(const char *addr) {
+	std::cerr << name << " DISCONNECTED from " << host_name << ":" << port;
+	if (addr && *addr) {
+		std::cerr << " (" << addr << ")";
+	}
+	std::cerr << std::endl;
+	resetCommandPath();
+	messages.clear();
+	first_message_time = 0;
+	setNeedsRefresh(false);
+	setState(sINIT); // re-init data once peer is back
+}
+
+void ClockworkClient::Connection::noteConnected(const char *addr) {
+	std::cerr << name << " CONNECTED to " << host_name << ":" << port;
+	if (addr && *addr) {
+		std::cerr << " (" << addr << ")";
+	}
+	std::cerr << std::endl;
+	setNeedsRefresh(true);
+	// Force MODBUS REFRESH path when setup completes again.
+	if (startup == sDONE || startup == sRELOAD || startup == sSENT) {
+		setState(sINIT);
+	}
+}
+
 bool ClockworkClient::Connection::Ready() { 
 	return sm && sm->setupStatus() == SubscriptionManager::e_done;
 }
@@ -626,7 +670,13 @@ void ClockworkClient::idle(bool gui_is_ready) {
 						}
 						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
 							int loop_counter = 400;
-							if (conn->getStartupState() == sSTARTUP && gui_is_ready) conn->refreshData();
+							// After peer reconnect, re-run data init (sSTARTUP was unused in practice).
+							if (gui_is_ready && (conn->getStartupState() == sSTARTUP || conn->needsRefresh())) {
+								if (conn->needsRefresh()) {
+									conn->setNeedsRefresh(false);
+								}
+								conn->refreshData(); // sINIT -> EditorGUI sends MODBUS REFRESH
+							}
 							conn->handleCommand(this);
 							while (loop_counter--) {
 								if (!conn->handleSubscriber()) break;

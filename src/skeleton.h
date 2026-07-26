@@ -130,6 +130,11 @@ public:
 		void setNeedsRefresh(bool which) { needs_refresh = which; }
 		bool needsRefresh() { return needs_refresh; }
 
+		// Peer link lifecycle (iod restart / network blip)
+		void noteDisconnected(const char *addr = nullptr);
+		void noteConnected(const char *addr = nullptr);
+		void resetCommandPath();
+
 		bool Ready();
 
 	protected:
