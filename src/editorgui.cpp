@@ -52,6 +52,7 @@ extern int debug;
 #define DEBUG_BASIC ( 1 & debug)
 extern int run_only;
 extern std::list<Structure *>hm_structures;
+extern std::list<std::string> source_files;
 
 void setupTheme(nanogui::Theme *theme);
 
@@ -599,7 +600,7 @@ void EditorGUI::setState(EditorGUI::GuiState s) {
 				done = true;
 				break;
 			case GUISELECTPROJECT:
-				if (hm_structures.size()>1) { // files were specified on the commandline
+				if (!source_files.empty()) { // project files were specified on the command line
 					getStartupWindow()->setVisible(false);
 					getScreensWindow()->update();
 
