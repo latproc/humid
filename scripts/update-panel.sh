@@ -64,11 +64,25 @@ log "Host: $(hostname)  Branch: $BRANCH  Jobs: $JOBS  Force submodules: $FORCE_S
 # --- git / submodule -------------------------------------------------------
 
 if [[ "$DO_PULL" -eq 1 ]]; then
-  log "Checkout and pull $BRANCH"
+  log "Checkout and update $BRANCH"
   git fetch origin
   git checkout "$BRANCH"
-  # allow local dirty .gitmodules / nanogui noise; pull only advances branch tip
-  git pull --ff-only origin "$BRANCH" || git pull --ff-only
+  if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
+    # Panel deploy: discard local humid commits/divergence and match origin.
+    # (Panels often have old local commits or an unset pull.rebase policy.)
+    if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+      log "Reset humid to origin/$BRANCH (panel deploy mode)"
+      git reset --hard "origin/$BRANCH"
+      # Drop untracked junk that blocks checkout only if it is not a local build tree
+      # (do not clean build/ or stage/)
+    else
+      die "origin/$BRANCH not found after fetch"
+    fi
+  else
+    # Developer mode: only fast-forward; never invent a merge policy.
+    git pull --ff-only origin "$BRANCH" || \
+      die "cannot fast-forward $BRANCH (divergent local commits?). Use default --force-submodules on panels, or rebase/merge manually."
+  fi
 fi
 
 PIN="$(git rev-parse ":clockwork" 2>/dev/null || git ls-tree HEAD clockwork | awk '{print $3}')"
