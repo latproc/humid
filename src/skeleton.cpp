@@ -444,8 +444,8 @@ ClockworkClient::Connection *ClockworkClient::setupConnection(Structure *s_conn)
 			sm->configureSetupConnection(host.asString().c_str(), port);
 		SetupDisconnectMonitor *disconnect_responder = new SetupDisconnectMonitor(conn);
 		SetupConnectMonitor *connect_responder = new SetupConnectMonitor(conn);
-		sm->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
-		sm->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+		sm->addSetupResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+		sm->addSetupResponder(ZMQ_EVENT_CONNECTED, connect_responder);
 		sm->setupConnections();
 		conn->setResponder(connect_responder);
 		conn->setDisconnectResponder(disconnect_responder);

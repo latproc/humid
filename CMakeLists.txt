@@ -80,6 +80,18 @@ set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
 FIND_PACKAGE(Boost COMPONENTS thread program_options filesystem chrono date_time REQUIRED )
 
+# Ubuntu 18.04 production panels may have Boost 1.74 headers together with a
+# header-only date_time compatibility library. Clockwork still uses the legacy
+# greg_month string symbols, which remain available in the co-installed 1.65
+# library. Append it after the normal Boost libraries when it is present.
+find_library(Boost_DATE_TIME_LEGACY_LIBRARY
+  NAMES boost_date_time.so.1.65.1 libboost_date_time.so.1.65.1
+  PATHS /usr/lib/x86_64-linux-gnu
+  NO_DEFAULT_PATH)
+if (Boost_DATE_TIME_LEGACY_LIBRARY)
+  list(APPEND Boost_LIBRARIES ${Boost_DATE_TIME_LEGACY_LIBRARY})
+endif()
+
 set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork/iod/src")
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
 #set(Clockwork_INCLUDE_DIR /opt/latproc/iod/stage/include/clockwork)

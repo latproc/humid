@@ -882,8 +882,8 @@ public:
 				subscription_manager->configureSetupConnection(host.c_str(), cw_out);
 				disconnect_responder = new SetupDisconnectMonitor;
 				connect_responder = new SetupConnectMonitor;
-				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
-				subscription_manager->monit_setup->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+			subscription_manager->addSetupResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+			subscription_manager->addSetupResponder(ZMQ_EVENT_CONNECTED, connect_responder);
 				subscription_manager->setupConnections();
 				program_state = s_running;
 			}
@@ -1298,6 +1298,5 @@ int main(int argc, const char ** argv ) {
 
 	return 0;
 }
-
 
 
