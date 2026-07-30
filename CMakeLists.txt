@@ -88,7 +88,8 @@ endif()
 #set(BOOST_ROOT "/usr/local/")
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/cmake/Modules/")
-FIND_PACKAGE(Boost COMPONENTS thread program_options filesystem chrono date_time REQUIRED )
+# context: cw_client json_expression uses boost::context::fiber
+FIND_PACKAGE(Boost COMPONENTS thread program_options filesystem chrono date_time context REQUIRED )
 
 # Ubuntu 18.04 production panels may have Boost 1.74 headers together with a
 # header-only date_time compatibility library. Clockwork still uses the legacy

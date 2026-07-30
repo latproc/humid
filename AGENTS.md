@@ -33,16 +33,22 @@ proof that it builds or runs on these panels.
   such as `addSetupResponder()` so construction and access use one compiled
   class layout.
 
-### Boost Date-Time
+### Boost
 
+- Clockwork `cw_client` needs **Boost.Context** headers (`boost/context/fiber.hpp`)
+  for JSON expression parsing. Thin panel images often have Boost libs but not
+  `libboost-context-dev`. Install e.g. `apt-get install -y libboost-context-dev`
+  (or `libboost-context1.65-dev` on Bionic). `update-panel.sh` tries this.
 - Some panels have Boost 1.74 headers and a small/header-only
   `libboost_date_time.so.1.74.0` that does not export the legacy
   `boost::gregorian::greg_month` string symbols used by Clockwork.
 - Those panels also provide `libboost_date_time.so.1.65.1`, which supplies the
   required symbols.
-- Humid's CMake appends the 1.65.1 compatibility library when it is installed.
+- Humid's CMake appends the 1.65.1 compatibility library when it is present.
   Do not remove that fallback without checking the exported symbols on every
   supported production OS.
+- Humid links Boost `context` as well as thread/filesystem/etc., because the
+  static `libcw_client.a` pulls in fiber symbols.
 
 ### CMake
 

@@ -161,8 +161,35 @@ find_cmake() {
   printf '%s %s\n' "$best" "$best_ver"
 }
 
+# Ensure Boost.Context headers (fiber.hpp) for json_expression in cw_client.
+ensure_boost_context_headers() {
+  local inc
+  for inc in /usr/include /usr/local/include; do
+    if [[ -f "$inc/boost/context/fiber.hpp" ]]; then
+      ok "boost/context/fiber.hpp present ($inc)"
+      return 0
+    fi
+  done
+  log "boost/context/fiber.hpp missing — trying apt install libboost-context-dev"
+  if command -v apt-get >/dev/null 2>&1; then
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get install -y libboost-context-dev \
+      || apt-get install -y libboost-context1.65-dev \
+      || apt-get install -y libboost-context1.74-dev \
+      || true
+  fi
+  for inc in /usr/include /usr/local/include; do
+    if [[ -f "$inc/boost/context/fiber.hpp" ]]; then
+      ok "boost/context/fiber.hpp installed ($inc)"
+      return 0
+    fi
+  done
+  die "boost/context/fiber.hpp still missing. On this panel run: apt-get install -y libboost-context-dev"
+}
+
 if [[ "$DO_BUILD" -eq 1 ]]; then
   log "Build + install libcw_client from submodule"
+  ensure_boost_context_headers
   CMAKE_INFO="$(find_cmake)" || die "no cmake found on PATH"
   read -r CMAKE_CMD CMAKE_VER <<<"$CMAKE_INFO"
   log "Using cmake $CMAKE_VER ($CMAKE_CMD)"
