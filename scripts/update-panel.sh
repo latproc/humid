@@ -139,6 +139,18 @@ ok "ConnectionManager.h exposes addSetupResponder"
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
   log "Build + install libcw_client from submodule"
+  # Drop CMake caches that were generated under a different tree path
+  # (e.g. /opt/humid_next → /opt/humid copy/rename).
+  for cache in clockwork/iod/build/Release/CMakeCache.txt \
+               clockwork/iod/build/CMakeCache.txt \
+               clockwork/iod/build/Debug/CMakeCache.txt; do
+    if [[ -f "$cache" ]] && ! grep -q "$ROOT/clockwork/iod" "$cache" 2>/dev/null; then
+      log "Removing stale CMake cache $cache (path mismatch)"
+      rm -f "$cache"
+      # Also drop the sibling CMakeFiles so cmake fully reconfigures
+      rm -rf "$(dirname "$cache")/CMakeFiles"
+    fi
+  done
   # Ensure objects rebuild after pin moves (make can think Release is current)
   rm -f clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o \
         clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o \
@@ -180,10 +192,14 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
 
   log "Configure and build humid (prefer submodule client)"
   mkdir -p build
-  # Drop stale cache entries that pointed at /opt/latproc on older panels
-  if [[ -f build/CMakeCache.txt ]] && grep -q '/opt/latproc' build/CMakeCache.txt 2>/dev/null; then
-    log "Clearing CMakeCache (contained /opt/latproc)"
-    rm -f build/CMakeCache.txt
+  # Drop stale cache from old tree paths or /opt/latproc client selection
+  if [[ -f build/CMakeCache.txt ]]; then
+    if grep -qE '/opt/latproc|/opt/humid_next' build/CMakeCache.txt 2>/dev/null || \
+       ! grep -q "$ROOT" build/CMakeCache.txt 2>/dev/null; then
+      log "Clearing humid CMakeCache (stale path or latproc)"
+      rm -f build/CMakeCache.txt
+      rm -rf build/CMakeFiles
+    fi
   fi
 
   (
