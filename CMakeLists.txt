@@ -74,6 +74,16 @@ find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
 
 message(STATUS "Found clockwork: ${ClockworkClient_LIBRARIES}")
+message(STATUS "Clockwork includes: ${ClockworkClient_INCLUDE_DIR}")
+# Guard against stale CMake cache / LocalCMakeLists pointing at /opt/latproc
+# while sources expect the submodule client API (e.g. addSetupResponder).
+if (ClockworkClient_LIBRARIES AND NOT ClockworkClient_LIBRARIES MATCHES "clockwork/iod")
+  message(WARNING
+    "Clockwork client is not from the humid submodule:\n"
+    "  ${ClockworkClient_LIBRARIES}\n"
+    "After 'cd clockwork/iod && make client-install', reconfigure so humid "
+    "uses clockwork/iod/stage/lib/libcw_client.a")
+endif()
 
 #set(BOOST_ROOT "/usr/local/")
 set (CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR})

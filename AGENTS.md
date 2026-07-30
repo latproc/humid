@@ -56,10 +56,17 @@ proof that it builds or runs on these panels.
 After a Clockwork client or public-header change:
 
 1. Build and stage the Clockwork client from the checked-out submodule:
-   `cmake --build clockwork/iod/build --target install_client -- -j4`
+   `cd clockwork/iod && make client-install`
+   (or `cmake --build clockwork/iod/build/Release --target install_client`)
 2. Reconfigure Humid from `build/` with `cmake ..`.
-3. Rebuild Humid: `cmake --build build --target humid -- -j4`.
-4. Rebuild the checker separately:
+   Confirm the log shows the **submodule** client, not `/opt/latproc`:
+   `Found clockwork: .../clockwork/iod/stage/lib/libcw_client.a`
+   If it still shows `/opt/latproc/...`, clear the cache and reconfigure:
+   `rm -f build/CMakeCache.txt` then `cmake ..` again from `build/`.
+   Also check for a local override in `LocalCMakeLists.txt` (gitignored).
+3. Rebuild Humid: `cmake --build build --target humid -- -j4`
+   (or top-level `make`, which reconfigures and installs to `stage/bin`).
+4. Rebuild the checker separately if not covered by `make`:
    `cmake --build build --target hmifile_check -- -j4`.
 5. Run `hmifile_check` against the deployed screen files.
 
