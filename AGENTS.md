@@ -51,7 +51,32 @@ proof that it builds or runs on these panels.
 - This CMake accepts one `--target` per `cmake --build` invocation. Build
   `humid` and `hmifile_check` in separate commands.
 
-## Required Build Order
+## Panel fleet update (preferred)
+
+On each panel (or via SSH), use the script so submodule dirt and `/opt/latproc`
+cache issues are handled consistently:
+
+```bash
+cd /opt/humid
+./scripts/update-panel.sh
+# or: make panel-update
+```
+
+From a laptop after pushing humid:
+
+```bash
+./scripts/update-panels.sh -p 2222 root@172.29.52.10 root@172.29.53.11
+./scripts/update-panels.sh --hosts-file panels.txt -- --restart
+```
+
+The script: pulls `cw-no-ec-tools-compatiblity`, force-checks out the pinned
+clockwork commit (discards local submodule dirt by default), verifies
+`addSetupResponder` exists, runs `make client-install`, reconfigures humid
+against `clockwork/iod/stage/lib/libcw_client.a`, builds and installs.
+Use `--keep-local` to refuse submodule reset. Use `--restart` to kill humid
+after install; add `--start-cmd '...'` if you want it started again.
+
+## Required Build Order (manual)
 
 After a Clockwork client or public-header change:
 

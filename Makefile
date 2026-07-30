@@ -8,6 +8,14 @@ all:
 	[ -d "build" ] || mkdir build
 	cd build && cmake .. && make $(JOBS) && make install
 
+# Full panel update: pull branch, force clockwork pin, client-install, humid.
+# See scripts/update-panel.sh --help
+panel-update:
+	./scripts/update-panel.sh --jobs $(subst -j,,$(JOBS))
+
+panel-update-restart:
+	./scripts/update-panel.sh --jobs $(subst -j,,$(JOBS)) --restart
+
 
 release:
 	[ -d "build" ] || mkdir build
