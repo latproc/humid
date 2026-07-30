@@ -128,41 +128,28 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   CLIENT_LIB="$ROOT/clockwork/iod/stage/lib/libcw_client.a"
   [[ -f "$CLIENT_LIB" ]] || die "missing $CLIENT_LIB after client-install"
 
-  # Confirm the new API is in the built objects. Prefer the .o (reliable on all
-  # nm variants); fall back to the .a and strings(1) — some Debian nm builds
-  # are awkward with archives and previously false-failed this check.
+  # Confirm the new API is in the built objects.
+  # Use grep -a on the binary (symbol name is in the object). Do not use
+  # `nm | grep -q` under pipefail: grep -q closes the pipe on match, nm gets
+  # SIGPIPE, and the check false-fails even when the symbol exists.
   has_setup_responder_sym() {
     local f="$1"
     [[ -f "$f" ]] || return 1
-    if command -v nm >/dev/null 2>&1; then
-      nm "$f" 2>/dev/null | grep -q 'addSetupResponder' && return 0
-      nm -A "$f" 2>/dev/null | grep -q 'addSetupResponder' && return 0
-      nm -C "$f" 2>/dev/null | grep -q 'addSetupResponder' && return 0
-    fi
-    if command -v objdump >/dev/null 2>&1; then
-      objdump -t "$f" 2>/dev/null | grep -q 'addSetupResponder' && return 0
-    fi
-    if command -v strings >/dev/null 2>&1; then
-      strings "$f" 2>/dev/null | grep -q 'addSetupResponder' && return 0
-    fi
-    return 1
+    grep -aF 'addSetupResponder' "$f" >/dev/null 2>&1
   }
 
   SYM_OK=0
   for o in \
-    clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o \
-    clockwork/iod/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o
+    "$ROOT/clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+    "$ROOT/clockwork/iod/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+    "$CLIENT_LIB"
   do
     if has_setup_responder_sym "$o"; then
       SYM_OK=1
-      ok "ConnectionManager.cpp.o contains addSetupResponder ($o)"
+      ok "built client contains addSetupResponder ($(basename "$o"))"
       break
     fi
   done
-  if [[ "$SYM_OK" -eq 0 ]] && has_setup_responder_sym "$CLIENT_LIB"; then
-    SYM_OK=1
-    ok "libcw_client.a contains addSetupResponder"
-  fi
   if [[ "$SYM_OK" -eq 0 ]]; then
     die "built client lacks addSetupResponder (header ok, object/lib check failed). On the panel run: nm clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o | grep Setup"
   fi
