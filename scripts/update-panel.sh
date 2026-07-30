@@ -62,26 +62,24 @@ log "Humid root: $ROOT"
 log "Host: $(hostname)  Branch: $BRANCH  Jobs: $JOBS  Force submodules: $FORCE_SUBMODULES"
 
 # --- git / submodule -------------------------------------------------------
+# Never use plain `git pull` on panels: it recurses nested submodules (SOEM,
+# eigen, glfw, …) and dies on missing dirs / forced-away refs. Humid client
+# build only needs the top-level clockwork pin (+ existing nanogui tree).
 
 if [[ "$DO_PULL" -eq 1 ]]; then
-  log "Checkout and update $BRANCH"
-  git fetch origin
-  git checkout "$BRANCH"
+  log "Checkout and update $BRANCH (no recursive submodule fetch)"
+  git -c fetch.recurseSubmodules=no fetch origin
+  git checkout "$BRANCH" 2>/dev/null || git checkout -B "$BRANCH" "origin/$BRANCH"
   if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
-    # Panel deploy: discard local humid commits/divergence and match origin.
-    # (Panels often have old local commits or an unset pull.rebase policy.)
     if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
       log "Reset humid to origin/$BRANCH (panel deploy mode)"
       git reset --hard "origin/$BRANCH"
-      # Drop untracked junk that blocks checkout only if it is not a local build tree
-      # (do not clean build/ or stage/)
     else
       die "origin/$BRANCH not found after fetch"
     fi
   else
-    # Developer mode: only fast-forward; never invent a merge policy.
-    git pull --ff-only origin "$BRANCH" || \
-      die "cannot fast-forward $BRANCH (divergent local commits?). Use default --force-submodules on panels, or rebase/merge manually."
+    git -c fetch.recurseSubmodules=no pull --ff-only origin "$BRANCH" || \
+      die "cannot fast-forward $BRANCH. On panels use default force mode, or fix divergence manually."
   fi
 fi
 
@@ -89,35 +87,45 @@ PIN="$(git rev-parse ":clockwork" 2>/dev/null || git ls-tree HEAD clockwork | aw
 [[ -n "$PIN" ]] || die "cannot read clockwork submodule pin from humid"
 log "Humid pins clockwork at $PIN"
 
-log "Sync submodule URLs"
-git submodule sync --recursive
+log "Sync top-level submodule URLs"
+git submodule sync clockwork 2>/dev/null || true
+git submodule sync lib/nanogui 2>/dev/null || true
 
 if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
-  log "Reset local submodule dirt (panel deploy mode)"
-  # Only reset the clockwork working tree; nanogui nested noise is common and
-  # usually irrelevant to the humid client link.
+  log "Reset local clockwork dirt (panel deploy mode)"
   if [[ -e clockwork/.git || -f clockwork/.git ]]; then
-    git -C clockwork reset --hard HEAD || true
-    git -C clockwork clean -fd || true
+    git -C clockwork reset --hard HEAD 2>/dev/null || true
+    git -C clockwork clean -fd 2>/dev/null || true
   fi
 fi
 
-log "Checkout pinned submodules"
-if ! git submodule update --init --recursive --force; then
-  if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
-    log "submodule update failed; forcing clockwork pin $PIN"
-    git -C clockwork fetch origin || true
-    git -C clockwork checkout -f "$PIN"
+log "Checkout pinned clockwork (top-level only)"
+# Do not --recursive: nested iod/ext/* and nanogui/ext/* often break on panels.
+if ! git submodule update --init --force clockwork; then
+  log "submodule update clockwork failed; fetching pin directly"
+  git -C clockwork fetch origin 2>/dev/null || \
+    git -C clockwork fetch https://github.com/latproc/clockwork.git 2>/dev/null || true
+  git -C clockwork checkout -f "$PIN" || git -C clockwork reset --hard "$PIN"
+fi
+# Ensure exact pin even if update left an old dirty HEAD
+if [[ -e clockwork/.git || -f clockwork/.git ]]; then
+  git -C clockwork fetch origin "$PIN" 2>/dev/null || \
+    git -C clockwork fetch origin 2>/dev/null || true
+  git -C clockwork checkout -f "$PIN" 2>/dev/null || \
     git -C clockwork reset --hard "$PIN"
-    git -C clockwork clean -fd
-  else
-    die "submodule update failed (local changes?). Re-run with --force-submodules"
-  fi
+  git -C clockwork clean -fd 2>/dev/null || true
+fi
+
+# nanogui: best-effort top-level only (existing tree is enough if already built)
+if git ls-tree HEAD lib/nanogui >/dev/null 2>&1; then
+  log "Checkout pinned lib/nanogui (top-level only, nested optional)"
+  git submodule update --init --force lib/nanogui 2>/dev/null || \
+    log "WARNING: lib/nanogui submodule update failed; using existing tree if present"
 fi
 
 CW_HEAD="$(git -C clockwork rev-parse HEAD)"
 log "clockwork HEAD: $(git -C clockwork log -1 --oneline)"
-[[ "$CW_HEAD" == "$PIN"* || "$CW_HEAD" == "$PIN" ]] || \
+[[ "$CW_HEAD" == "$PIN" || "$CW_HEAD" == "$PIN"* ]] || \
   die "clockwork HEAD $CW_HEAD does not match humid pin $PIN"
 
 CM_HDR="clockwork/iod/src/ConnectionManager.h"
