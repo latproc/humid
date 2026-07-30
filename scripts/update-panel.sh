@@ -137,8 +137,39 @@ ok "ConnectionManager.h exposes addSetupResponder"
 
 # --- clockwork client ------------------------------------------------------
 
+# Prefer the newest cmake on PATH for clockwork (panels range from 3.5 to 3.x).
+find_cmake() {
+  local c ver best="" best_ver="0.0.0"
+  version_ge() { # $1 >= $2 ?
+    printf '%s\n%s\n' "$2" "$1" | sort -V | head -1 | grep -qx "$2"
+  }
+  for c in "${CMAKE_BIN:-}" cmake cmake3 \
+      /usr/local/bin/cmake /usr/bin/cmake3 /opt/cmake/bin/cmake; do
+    [[ -z "$c" ]] && continue
+    command -v "$c" >/dev/null 2>&1 || [[ -x "$c" ]] || continue
+    c="$(command -v "$c" 2>/dev/null || echo "$c")"
+    ver="$("$c" --version 2>/dev/null | head -1 | sed -n 's/.* \([0-9][0-9.]*\).*/\1/p')"
+    [[ -n "$ver" ]] || continue
+    if version_ge "$ver" "$best_ver"; then
+      best="$c"
+      best_ver="$ver"
+    fi
+  done
+  if [[ -z "$best" ]]; then
+    return 1
+  fi
+  printf '%s %s\n' "$best" "$best_ver"
+}
+
 if [[ "$DO_BUILD" -eq 1 ]]; then
   log "Build + install libcw_client from submodule"
+  CMAKE_INFO="$(find_cmake)" || die "no cmake found on PATH"
+  read -r CMAKE_CMD CMAKE_VER <<<"$CMAKE_INFO"
+  log "Using cmake $CMAKE_VER ($CMAKE_CMD)"
+  # Clockwork client supports 3.5+; warn if somehow older
+  case "$CMAKE_VER" in
+    2.*|3.0*|3.1*|3.2*|3.3*|3.4*) die "cmake $CMAKE_VER is too old (need >= 3.5)" ;;
+  esac
   # Drop CMake caches that were generated under a different tree path
   # (e.g. /opt/humid_next → /opt/humid copy/rename).
   for cache in clockwork/iod/build/Release/CMakeCache.txt \
@@ -157,7 +188,17 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
         clockwork/iod/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o \
         clockwork/iod/build/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o 2>/dev/null || true
 
-  ( cd clockwork/iod && make client-install JOBS="-j${JOBS}" )
+  # Invoke cmake directly (iod Makefile hardcodes "cmake" which may be 3.5.1
+  # while a newer binary exists elsewhere; also avoids make client quirks).
+  (
+    set -e
+    cd clockwork/iod
+    mkdir -p build/Release
+    cd build/Release
+    "$CMAKE_CMD" -DCMAKE_BUILD_TYPE=Release -DRUN_TESTS=OFF ../..
+    "$CMAKE_CMD" --build . --target cw_client -- -j"${JOBS}"
+    "$CMAKE_CMD" --build . --target install_client -- -j"${JOBS}"
+  )
 
   CLIENT_LIB="$ROOT/clockwork/iod/stage/lib/libcw_client.a"
   [[ -f "$CLIENT_LIB" ]] || die "missing $CLIENT_LIB after client-install"

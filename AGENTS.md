@@ -46,10 +46,13 @@ proof that it builds or runs on these panels.
 
 ### CMake
 
-- Production CMake is 3.10. Do not assume `cmake -S ... -B ...` is supported.
-  Use an out-of-tree directory and run `cmake ..` from it.
-- This CMake accepts one `--target` per `cmake --build` invocation. Build
-  `humid` and `hmifile_check` in separate commands.
+- Panels range from CMake **3.5.1** (old Ubuntu) to **3.10+**. Clockwork
+  `iod/CMakeLists.txt` accepts 3.5+ for client-install; gate newer-only APIs.
+- Do not assume `cmake -S ... -B ...` is supported. Use an out-of-tree
+  directory and run `cmake ..` from it.
+- Older CMake accepts one `--target` per `cmake --build` invocation. Build
+  `humid` and `hmifile_check` in separate commands when needed.
+- `scripts/update-panel.sh` picks the newest `cmake`/`cmake3` on PATH.
 
 ## Panel fleet update (preferred)
 
