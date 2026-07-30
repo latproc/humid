@@ -4,6 +4,10 @@
 # `cd clockwork/iod && make client-install`). Do not silently pick an
 # unrelated tree such as /opt/latproc: mismatched headers vs libcw_client.a
 # cause compile errors (e.g. missing addSetupResponder) or runtime crashes.
+#
+# Source work for CHANNEL/ZMQ client fixes: clockwork branch
+# prod-client-zmq-fix (line C). Pin that commit in the submodule; see
+# docs/CLOCKWORK_CLIENT_BRANCHES.md.
 
 set(_ClockworkClient_LIB_HINT "${PROJECT_SOURCE_DIR}/clockwork/iod/stage/lib")
 set(_ClockworkClient_INC_HINT "${PROJECT_SOURCE_DIR}/clockwork/iod/src")
@@ -28,11 +32,16 @@ if (NOT ClockworkClient_LIBRARY)
 endif()
 
 # Legacy fallback only when the submodule client has not been staged yet.
+# Prefer client-zmq line (C) paths before generic /opt/latproc if present.
 if (NOT ClockworkClient_LIBRARY)
   find_library(
     ClockworkClient_LIBRARY
     NAMES cw_client Clockwork
     PATHS
+      /opt/latproc-client-zmq/iod/stage/lib
+      /opt/latproc-client-zmq/iod/build/Release
+      /opt/latproc-client-zmq/iod/build/Debug
+      /opt/latproc-client-zmq/iod/build
       /opt/latproc/iod/stage/lib
       /opt/latproc/iod/build/Release
       /opt/latproc/iod/build/Debug
@@ -58,6 +67,8 @@ if (NOT ClockworkClient_INCLUDE_DIR)
     ClockworkClient_INCLUDE_DIR
     ClientInterface.h
     PATHS
+      /opt/latproc-client-zmq/iod/stage
+      /opt/latproc-client-zmq/iod/src
       /opt/latproc/iod/stage
       /opt/latproc/iod/src)
 endif()

@@ -27,7 +27,13 @@ proof that it builds or runs on these panels.
 - Newer macOS/dev systems have cppzmq with `init()` + `check_event()`.
 - Clockwork `SocketMonitor` selects the API at compile time; do not force
   only one path. Prefer the abortable `check_event` loop when available.
-- Track Clockwork humid-client fixes on `prod-experimental-mqtt-fix`.
+- Track Clockwork humid-client / CHANNEL / ZMQ fixes on
+  **`prod-client-zmq-fix`** (clockwork line **C**, `scope: client-zmq`).
+  Pin the tested commit in the `clockwork/` submodule from this Humid branch
+  (`cw-no-ec-tools-compatiblity`). Port shared sources to plant lines A/B as
+  needed. Details: [docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md).
+  Do **not** treat `prod-experimental-mqtt-fix` as the client trunk anymore
+  (it remains plant `iod_sdo` / line A).
 - Humid must not dereference public `SubscriptionManager` implementation
   fields such as `monit_setup`. Register callbacks through Clockwork methods
   such as `addSetupResponder()` so construction and access use one compiled
@@ -90,6 +96,10 @@ renamed trees (`/opt/humid_next`). Use `--keep-local` to refuse resets.
 Use `--restart` / `--start-cmd` only when intentional.
 
 Clockwork panel-client work tracks **`prod-experimental-mqtt-fix`**.
+
+New client library work: land on clockwork **`prod-client-zmq-fix`**, then
+advance this Humid submodule pin (see
+[docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md)).
 
 ## Required Build Order (manual)
 

@@ -2,12 +2,18 @@ To build this project:
 
   git clone https://github.com/latproc/humid.git
   cd humid
+  git checkout cw-no-ec-tools-compatiblity   # panel fleet branch
   git submodule init
   git submodule update
   cd lib/nanogui
   git submodule init
   git submodule update
   cd ../..
+  # Stage Clockwork client from the pinned submodule (required on panels):
+  #   (cd clockwork/iod && make client-install)
+  # Prefer that over /opt/latproc. CHANNEL/ZMQ client source work lives on
+  # clockwork branch prod-client-zmq-fix — see docs/CLOCKWORK_CLIENT_BRANCHES.md
+  # and AGENTS.md (./scripts/update-panel.sh on panels).
   make debug
 
 The built programs will be in build/Debug.
