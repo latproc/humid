@@ -166,10 +166,12 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   CMAKE_INFO="$(find_cmake)" || die "no cmake found on PATH"
   read -r CMAKE_CMD CMAKE_VER <<<"$CMAKE_INFO"
   log "Using cmake $CMAKE_VER ($CMAKE_CMD)"
-  # Clockwork client supports 3.5+; warn if somehow older
-  case "$CMAKE_VER" in
-    2.*|3.0*|3.1*|3.2*|3.3*|3.4*) die "cmake $CMAKE_VER is too old (need >= 3.5)" ;;
-  esac
+  # Clockwork client supports 3.5+. Do not use 3.1* patterns — that also
+  # matches 3.10.x (Bionic's cmake).
+  version_ge() { printf '%s\n%s\n' "$2" "$1" | sort -V | head -1 | grep -qx "$2"; }
+  if ! version_ge "$CMAKE_VER" "3.5"; then
+    die "cmake $CMAKE_VER is too old (need >= 3.5)"
+  fi
   # Drop CMake caches that were generated under a different tree path
   # (e.g. /opt/humid_next → /opt/humid copy/rename).
   for cache in clockwork/iod/build/Release/CMakeCache.txt \
