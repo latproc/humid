@@ -193,7 +193,10 @@ class SetupDisconnectMonitor : public EventResponder {
 public:
 	explicit SetupDisconnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-		if (connection) {
+		// Setup REQ flaps during CHANNEL recovery (EFSM recreate). Only treat a
+		// disconnect as "connection lost" when we were fully online (e_done),
+		// otherwise the UI and data-init state thrash on every intermediate bounce.
+		if (connection && connection->Ready()) {
 			connection->noteDisconnected(addr_);
 		}
 	}
@@ -206,6 +209,9 @@ class SetupConnectMonitor : public EventResponder {
 public:
 	explicit SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
+		// Setup TCP connect is a useful progress signal and flags data refresh once
+		// CHANNEL reaches e_done (see needsRefresh / sINIT in idle). Disconnect is
+		// gated on Ready() so mid-recovery REQ recreates do not wipe state.
 		if (connection) {
 			connection->noteConnected(addr_);
 		}
