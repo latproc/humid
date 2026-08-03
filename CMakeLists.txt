@@ -23,7 +23,7 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-option(NANOGUI_USE_GLES "Use OpenGL ES 3.0 instead of desktop OpenGL?" OFF)
+option(NANOGUI_USE_GLES "Use OpenGL ES 3.0 instead of desktop OpenGL?" ON)
 
 set(CMAKE_CXX_STANDARD 14)
 if (APPLE)
