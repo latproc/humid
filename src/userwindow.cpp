@@ -309,6 +309,7 @@ void UserWindow::setStructure( Structure *s) {
 	  drag_handle->decRef();
 	}
 	gui->performLayout();
+	gui->requestRedraw();
 }
 
 NVGcontext* UserWindow::getNVGContext() { return gui->nvgContext(); }

@@ -340,7 +340,8 @@ bool load_font(NVGcontext *ctx, const std::string &name, const std::string &font
 ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &caption, bool resizeable, bool fullscreen)
 : nanogui::Screen(size, caption, resizeable, fullscreen),
 	window(0),
-	window_stagger(this) {
+	window_stagger(this),
+	needs_frame_redraw(true) {
 	gettimeofday(&start, 0);
 	extern int full_screen_mode;
 	if (full_screen_mode) {
@@ -351,6 +352,10 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		std::cout << "setting monitor resolution: " << size.x() << "," << size.y() << "\n";
 		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
 	}
+	// NanoGUI constructs windows with glfwSwapInterval(0). Enabling vsync
+	// avoids free-running presents when the refresh timer posts events faster
+	// than the display, which matters on lower-power panel GPUs.
+	glfwSwapInterval(1);
     nvgContext();
     if (load_font(nvgContext(), "mono", "RobotoMono-Medium.ttf")) {
         table_font = "mono";
@@ -361,7 +366,8 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {
-
+	if (action != GLFW_RELEASE)
+		requestRedraw();
 	if (Screen::keyboardEvent(key, scancode, action, modifiers))
 		return true;
 /*
@@ -375,6 +381,19 @@ bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modif
 	}
 */
 	return false;
+}
+
+bool ClockworkClient::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) {
+	// Motion with a button held (drag) needs continuous frames; plain hover
+	// only needs a redraw when the pointer actually moves.
+	if (button != 0 || rel.x() != 0 || rel.y() != 0)
+		requestRedraw();
+	return Screen::mouseMotionEvent(p, rel, button, modifiers);
+}
+
+bool ClockworkClient::scrollEvent(const nanogui::Vector2i &p, const nanogui::Vector2f &rel) {
+	requestRedraw();
+	return Screen::scrollEvent(p, rel);
 }
 
 void cleanupTextureCache();
@@ -395,18 +414,14 @@ void ClockworkClient::draw(NVGcontext *ctx) {
 }
 
 bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+	using namespace nanogui;
+	requestRedraw();
 
-		using namespace nanogui;
-
-		nanogui::Vector2i wp(p - window->position());
-
-		if (window->contains(p)) {
-			return window->mouseButtonEvent(p, button, down, modifiers);
-		}
-		else {
-			return Screen::mouseButtonEvent(p, button, down, modifiers);
-		}
+	if (window && window->contains(p)) {
+		return window->mouseButtonEvent(p, button, down, modifiers);
 	}
+	return Screen::mouseButtonEvent(p, button, down, modifiers);
+}
 
 ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
@@ -699,7 +714,6 @@ void ClockworkClient::idle(bool gui_is_ready) {
 						std::cerr << "polling connection: " << conn->getName() << " " << ex.what() << "\n";
 					}
 				}
-				usleep(10);
 			}
 		}
 	}
@@ -859,7 +873,12 @@ char *ClockworkClient::Connection::sendIODMessage(const std::string &s) {
 void ClockworkClient::update(ClockworkClient::Connection *, bool allow_data_sync) { }
 
 void ClockworkClient::drawAll() {
+	// Always service Clockwork; only pay for NanoVG/GL when UI state changed.
 	idle();
+	if (!needs_frame_redraw)
+		return;
+	needs_frame_redraw = false;
+
 	glClearColor(mBackground[0], mBackground[1], mBackground[2], mBackground[3]);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 

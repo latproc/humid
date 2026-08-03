@@ -83,6 +83,9 @@ int run_only = 0;
 std::string capture_file_name;
 std::string capture_screen_name;
 int capture_timeout_seconds = 60;
+// NanoGUI default is 50ms (~20fps continuous redraw). Panel HMIs do not need
+// that rate; 100ms cuts idle GPU load while remaining responsive to updates.
+int mainloop_refresh_ms = 100;
 
 extern long collect_history;
 
@@ -481,6 +484,8 @@ int main(int argc, const char ** argv ) {
 	("capture", po::value<std::string>(&capture_file_name)->default_value(""), "write a PNG capture to this file and exit")
 	("screen", po::value<std::string>(&capture_screen_name)->default_value(""), "set the active screen for this run")
 	("capture_timeout", po::value<int>(&capture_timeout_seconds)->default_value(60), "force capture mode to exit after this many seconds")
+	("refresh", po::value<int>(&mainloop_refresh_ms)->default_value(100),
+		"UI idle refresh period in milliseconds (default 100; 0 disables timer redraws)")
 	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
@@ -516,6 +521,8 @@ int main(int argc, const char ** argv ) {
 	if (vm.count("capture")) capture_file_name = vm["capture"].as<std::string>();
 	if (vm.count("screen")) capture_screen_name = vm["screen"].as<std::string>();
 	if (vm.count("capture_timeout")) capture_timeout_seconds = vm["capture_timeout"].as<int>();
+	if (vm.count("refresh")) mainloop_refresh_ms = vm["refresh"].as<int>();
+	if (mainloop_refresh_ms < 0) mainloop_refresh_ms = 0;
 	if (!capture_file_name.empty()) run_only = 1;
 	if (DEBUG_BASIC) std::cout << "Debugging\n";
 
@@ -712,7 +719,10 @@ int main(int argc, const char ** argv ) {
 		    }
 
 		    if (primary) {
-			nanogui::mainloop();
+			std::cout << "mainloop refresh: " << mainloop_refresh_ms << " ms"
+				  << (mainloop_refresh_ms == 0 ? " (event-driven only)" : "")
+				  << "\n" << std::flush;
+			nanogui::mainloop(mainloop_refresh_ms);
 			if (app->captureTimedOut()) {
 				nanogui::shutdown();
 				return EXIT_FAILURE;

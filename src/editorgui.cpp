@@ -134,6 +134,8 @@ nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
 
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
+	if (action != GLFW_RELEASE)
+		requestRedraw();
 	if (EDITOR->isEditMode()) {
 		return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
 	}
@@ -781,6 +783,7 @@ void EditorGUI::showDialog(bool show) {
 bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
 
 	using namespace nanogui;
+	requestRedraw();
 
 	nanogui::Window *window = w_user->getWindow();
 	if (!window || !window->visible()) return Screen::mouseButtonEvent(p, button, down, modifiers);
@@ -863,6 +866,7 @@ bool EditorGUI::resizeEvent(const Vector2i &new_size) {
 	if (old_size == new_size) {
 		return false;
 	}
+	requestRedraw();
 	nanogui::Window * windows[] = {
 		this->getStructuresWindow()->getWindow(),
 		this->getPropertyWindow()->getWindow(),
@@ -947,6 +951,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 			else if (pos == 4) {
 				if (lp) {
 					lp->setValue(v);
+					requestRedraw();
 				}
 				if (buf) {
 					CircularBuffer::DataType dt = buf->getDataType();
@@ -1034,6 +1039,7 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 						std::cout << prop_name << " change of address from " << lp->address() << " to " << addr << "\n";
 					lp->setAddressStr(group.iValue, addr.iValue);
 					lp->setValue(value);
+					requestRedraw();
 
 					//w_user->fixLinks(lp);
 
@@ -1168,6 +1174,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 						w_user->getWindow()->requestFocus();
 						w_user->clearSelections();
 						w_user->setStructure(s);
+						requestRedraw();
 						std::cout << "Loaded active screen " << active << "\n";
 						if (connection->getStartupState() == sRELOAD) connection->setState(sDONE);
 					}
@@ -1276,4 +1283,7 @@ void EditorGUI::afterFrameRendered() {
 		return;
 	}
 	tryCaptureFrame();
+	// Capture needs consecutive painted frames; keep requesting redraw until done.
+	if (capture_enabled && !capture_written && !capture_timed_out)
+		requestRedraw();
 }

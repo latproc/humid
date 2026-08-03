@@ -174,9 +174,16 @@ public:
 	virtual void draw(NVGcontext *ctx) override;
 
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
+	virtual bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button, int modifiers) override;
+	virtual bool scrollEvent(const nanogui::Vector2i &p, const nanogui::Vector2f &rel) override;
 
 	virtual void drawAll() override;
 	virtual void idle(bool gui_is_ready = true); // this routine is called after event processing and while idle
+
+	// Request a full GPU frame. The main loop still runs idle() every wake to
+	// service Clockwork, but skips clear/draw/swap when nothing needs painting.
+	void requestRedraw() { needs_frame_redraw = true; }
+	bool needsRedraw() const { return needs_frame_redraw; }
 
 	int lookupState(std::string &state);
 
@@ -212,6 +219,7 @@ protected:
 	nanogui::ref<nanogui::Window> property_window;
 	WindowStagger window_stagger;
 	std::list< std::pair<GLuint, uint64_t> > deferred_texture_cleanup;
+	bool needs_frame_redraw;
 };
 
 
