@@ -24,6 +24,59 @@ if(APPLE AND NANOGUI_BUILD_SHARED)
 	set(CMAKE_MACOSX_RPATH ON)
 endif()
 
+# ---------------------------------------------------------------------------
+# Platform auto-detection (build time)
+# OpenGL ES is preferred on ARM / Raspberry Pi; desktop OpenGL elsewhere.
+# Override any time with -DNANOGUI_USE_GLES=ON|OFF.
+# Wayland vs X11 is selected by GLFW at *run* time when both are built.
+# ---------------------------------------------------------------------------
+set(_HUMID_IS_ARM FALSE)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64|ARM64|armv[0-9]|arm)")
+  set(_HUMID_IS_ARM TRUE)
+endif()
+
+set(_HUMID_IS_RPI FALSE)
+if(CMAKE_TOOLCHAIN_FILE MATCHES "RaspberryPi")
+  set(_HUMID_IS_RPI TRUE)
+elseif(UNIX AND NOT APPLE)
+  if(EXISTS "/proc/device-tree/model")
+    file(READ "/proc/device-tree/model" _HUMID_DT_MODEL LIMIT 256)
+    if(_HUMID_DT_MODEL MATCHES "[Rr]aspberry")
+      set(_HUMID_IS_RPI TRUE)
+    endif()
+  endif()
+  if(NOT _HUMID_IS_RPI)
+    if(EXISTS "/etc/rpi-issue" OR EXISTS "/usr/bin/raspi-config")
+      set(_HUMID_IS_RPI TRUE)
+    endif()
+  endif()
+endif()
+
+# Default GLES on Linux ARM / Raspberry Pi only. Do not force GLES on
+# Apple Silicon (aarch64 Darwin) or other desktop hosts — use desktop GL.
+set(_HUMID_DEFAULT_GLES OFF)
+if(NOT APPLE AND (_HUMID_IS_ARM OR _HUMID_IS_RPI))
+  set(_HUMID_DEFAULT_GLES ON)
+endif()
+
+option(NANOGUI_USE_GLES
+  "Use OpenGL ES 3.0 instead of desktop OpenGL (auto ON for ARM/RPi)"
+  ${_HUMID_DEFAULT_GLES})
+
+# On GLES targets (typical RPi), build both GLFW backends so the running
+# compositor can pick Wayland or X11. Desktop x86 panels keep GLFW defaults.
+# Use plain DEFINED (not CACHE{}) for CMake 3.5 panel compatibility.
+if(UNIX AND NOT APPLE AND NANOGUI_USE_GLES)
+  if(NOT DEFINED GLFW_BUILD_WAYLAND)
+    set(GLFW_BUILD_WAYLAND ON CACHE BOOL "Build support for Wayland window system")
+  endif()
+  if(NOT DEFINED GLFW_BUILD_X11)
+    set(GLFW_BUILD_X11 ON CACHE BOOL "Build support for X11 window system")
+  endif()
+endif()
+
+message(STATUS "Humid platform detect: processor=${CMAKE_SYSTEM_PROCESSOR} arm=${_HUMID_IS_ARM} rpi=${_HUMID_IS_RPI} NANOGUI_USE_GLES=${NANOGUI_USE_GLES}")
+
 set(CMAKE_CXX_STANDARD 14)
 if (APPLE)
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
@@ -56,6 +109,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
+if (NANOGUI_USE_GLES)
+  # Ensure NanoGUI object sources and humid share the same GLES compile path.
+  if (TARGET nanogui-obj)
+    target_compile_definitions(nanogui-obj PRIVATE NANOGUI_GLES)
+  endif()
+  add_definitions(-DHUMID_USE_GLES=1)
+else()
+  add_definitions(-DHUMID_USE_GLES=0)
+endif()
 set_target_properties(nanogui PROPERTIES
 		INSTALL_RPATH "@loader_path/../lib"
 		BUILD_WITH_INSTALL_RPATH TRUE)
@@ -262,6 +324,7 @@ endif()
 		  src/editorimageview.cpp src/editorlineplot.cpp
 		  src/editorprogressbar.cpp src/structureswindow.cpp
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
+		  src/platformdetect.cpp
 		  src/curl_helper.cpp src/screenswindow.cpp
 		  src/linkableproperty.cpp src/anchor.cpp src/objectwindow.cpp src/patternswindow.cpp
 		  src/resourcemanager.cpp src/viewswindow.cpp src/listpanel.cpp

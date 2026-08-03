@@ -64,6 +64,29 @@ proof that it builds or runs on these panels.
   `humid` and `hmifile_check` in separate commands when needed.
 - `scripts/update-panel.sh` picks the newest `cmake`/`cmake3` on PATH.
 
+### Raspberry Pi / OpenGL ES (merged from feature-rpi)
+
+- RPi graphics support lives on the standard panel branch
+  (`cw-no-ec-tools-compatiblity`); do not maintain a long-lived separate
+  product line for Pi-only GLES unless necessary.
+- **Build-time auto-detect:** CMake turns `NANOGUI_USE_GLES` **ON** by default
+  on Linux ARM (`aarch64`/`arm*`) and when `/proc/device-tree/model` (or
+  RPi OS markers) indicates a Raspberry Pi, or when using
+  `cmake/Toolchain-RaspberryPi.cmake`. Override with
+  `-DNANOGUI_USE_GLES=ON|OFF`. Apple Silicon keeps desktop OpenGL.
+- On GLES builds, GLFW Wayland and X11 backends are both enabled by default;
+  **runtime** compositor choice is Wayland if `WAYLAND_DISPLAY` is set, else
+  X11 (`DISPLAY`).
+- **Runtime:** `humid` logs OS/arch/GL build/presentation and warns if an
+  RPi host is running a desktop-OpenGL binary (or the reverse).
+- NanoGUI pin must include GLES + GLFW 3.4 Wayland support (see
+  `lib/nanogui` history: `NANOGUI_USE_GLES`, upgraded GLFW).
+- Cross-build from macOS: `cmake/Toolchain-RaspberryPi.cmake` (sysroot +
+  aarch64 cross-compiler). Still prefer native builds on the Pi when practical.
+- Keep the normal panel **client-install** path for `cw_client`; do not
+  replace it with RPi-only in-tree `cmake -S/-B` clockwork builds that break
+  CMake 3.5 panels.
+
 ## Panel fleet update (preferred)
 
 Full failure-mode notes, dual-dependency history, and manual fallback:

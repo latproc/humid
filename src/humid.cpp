@@ -48,6 +48,7 @@
 #include "selectablebutton.h"
 #include "userwindow.h"
 #include "editor.h"
+#include "platformdetect.h"
 #include "themewindow.h"
 #include "propertywindow.h"
 #include "helper.h"
@@ -447,6 +448,10 @@ int main(int argc, const char ** argv ) {
 	Logger::instance();
 	NB_MSG << "starting\n";
     DebugExtra::instance();
+    {
+	    HumidPlatformInfo platform = detectHumidPlatform();
+	    logHumidPlatform(platform);
+    }
     std:cout << "running from the " << boost::filesystem::current_path().string() << " directory\n" <<std::flush;
 	std::string home_path(getenv("HOME"));
 	//assert(boost::filesystem::current_path().string().find(home_path) == 0);
