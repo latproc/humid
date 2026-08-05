@@ -389,8 +389,10 @@ endif()
   # Headless .humid parser/checker — no NanoGUI/GLFW/display (safe on panels).
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
-  		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp
+		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp
 	)
+  # This is a parser-only validation tool.  Clockwork provides Value and
+  # SymbolTable; deliberately do not link Nanogui, GLFW, or OpenGL.
   target_link_libraries(hmifile_check ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
   install(TARGETS hmifile_check RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)

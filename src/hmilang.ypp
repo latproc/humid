@@ -15,7 +15,6 @@
 #include <Logger.h>
 #include "valuehelper.h"
 #include "linkmanager.h"
-#include "thememanager.h"
 
 #define COMPILER_MAIN
 #include "hmilang.h"

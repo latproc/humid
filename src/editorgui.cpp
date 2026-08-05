@@ -5,6 +5,8 @@
 
 #include <iostream>
 #include <cmath>
+#include <fstream>
+#include <cstdlib>
 #include <boost/algorithm/string.hpp>
 #include <nanogui/common.h>
 #include <regular_expressions.h>
@@ -956,9 +958,9 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 
 void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long now, const std::string &op, std::list<Value> *message) {
 	if (op == "UPDATE") {
-		if (!this->getUserWindow()) return;
 		int pos = 0;
 		std::string name;
+		Value updated_value;
 		int64_t val = 0;
 		double dval = 0.0;
 		CircularBuffer *buf = 0;
@@ -976,6 +978,7 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 				}
 			}
 			else if (pos == 4) {
+				updated_value = v;
 				if (lp) {
 					lp->setValue(v);
 					requestRedraw();
@@ -999,8 +1002,76 @@ void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsign
 			}
 			++pos;
 		}
+		if (!name.empty()) updateBacklightRequest(name, updated_value);
 	}
 	else { std::cout << "unhandled: " << op << "\n"; }
+}
+
+void EditorGUI::updateBacklightRequest(const std::string &point_name, const Value &value) {
+	auto *settings = findStructure("ProjectSettings");
+	if (!settings) return;
+	const std::string configured_point = settings->getStringProperty("backlight_control_point");
+	if (point_name != configured_point) return;
+	bool requested = false;
+	if (!value.asBoolean(requested)) {
+		const std::string state = value.asString();
+		if (state == "on" || state == "ON") requested = true;
+		else if (state == "off" || state == "OFF") requested = false;
+		else {
+			std::cerr << "Ignoring unrecognised backlight value for " << configured_point << ": " << state << "\n";
+			return;
+		}
+	}
+	if (backlight_request_known && backlight_requested_on == requested) return;
+	backlight_request_known = true;
+	backlight_requested_on = requested;
+	std::cerr << "Backlight control point " << configured_point << " is " << (requested ? "on" : "off") << "\n";
+	if (requested) {
+		backlight_off_pending = false;
+		applyBacklight(true);
+	}
+	else {
+		backlight_off_requested_at = std::chrono::steady_clock::now();
+		backlight_off_pending = true;
+	}
+}
+
+void EditorGUI::applyBacklight(bool enabled) {
+	auto *settings = findStructure("ProjectSettings");
+	if (!settings) return;
+	const std::string interface_name = settings->getStringProperty("backlight_interface", "none");
+	if (interface_name == "sysfs") {
+		const std::string path = settings->getStringProperty("backlight_path");
+		std::ofstream brightness(path + "/brightness");
+		if (!brightness) {
+			std::cerr << "Unable to open configured backlight brightness control\n";
+			return;
+		}
+		brightness << (enabled ? settings->getIntProperty("backlight_on_brightness", 255) : 0) << "\n";
+	}
+	else if (interface_name == "edatec-ddc") {
+		const char *value = enabled ? "100" : "0";
+		const std::string command = "ed-ddc-server brightness write -v " + std::string(value);
+		if (std::system(command.c_str()) != 0) {
+			std::cerr << "EDATEC DDC backlight command failed\n";
+			return;
+		}
+	}
+	else if (interface_name != "none") {
+		std::cerr << "Unknown backlight interface: " << interface_name << "\n";
+		return;
+	}
+}
+
+void EditorGUI::processBacklightTimeout() {
+	auto *settings = findStructure("ProjectSettings");
+	if (!settings) return;
+	if (!backlight_off_pending) return;
+	const auto delay = std::chrono::seconds(settings->getIntProperty("backlight_off_delay_seconds", 0));
+	if (std::chrono::steady_clock::now() - backlight_off_requested_at >= delay) {
+		backlight_off_pending = false;
+		applyBacklight(false);
+	}
 }
 
 void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {
@@ -1045,6 +1116,9 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 					if (p != std::string::npos)
 						prop_name = prop_name.erase(p+1,4);
 				}
+				// The initial MODBUS refresh is also a point update for project
+				// services such as the configured display backlight.
+				updateBacklightRequest(prop_name, value);
 
 
 				//else
@@ -1108,6 +1182,8 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 		}
 	}
 
+	// This runs on the Clockwork refresh cadence even while the UI is idle.
+	processBacklightTimeout();
 	if (connection->getStartupState() != sDONE && connection->getStartupState() != sRELOAD) {
 		// if the tag file is loaded, get initial values
 		if (/*linkables.size() && */ connection->getStartupState() == sINIT) {

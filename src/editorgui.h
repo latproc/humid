@@ -162,6 +162,13 @@ private:
 	bool capture_enabled = false;
 	bool capture_written = false;
 	bool capture_timed_out = false;
+	bool backlight_off_pending = false;
+	bool backlight_request_known = false;
+	bool backlight_requested_on = true;
+	std::chrono::steady_clock::time_point backlight_off_requested_at;
+	void updateBacklightRequest(const std::string &point_name, const Value &value);
+	void applyBacklight(bool enabled);
+	void processBacklightTimeout();
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorGUI &m);
