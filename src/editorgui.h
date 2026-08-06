@@ -163,11 +163,15 @@ private:
 	bool capture_written = false;
 	bool capture_timed_out = false;
 	bool backlight_off_pending = false;
+	bool backlight_is_blanked = false;
+	bool backlight_wake_key_held = false;
+	int backlight_wake_key = 0;
+	int backlight_wake_scancode = 0;
 	bool backlight_request_known = false;
 	bool backlight_requested_on = true;
 	std::chrono::steady_clock::time_point backlight_off_requested_at;
 	void updateBacklightRequest(const std::string &point_name, const Value &value);
-	void applyBacklight(bool enabled);
+	bool applyBacklight(bool enabled);
 	void processBacklightTimeout();
 };
 

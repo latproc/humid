@@ -137,6 +137,26 @@ nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
 
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
+	// A key used to wake a blanked display must never be delivered to a widget.
+	// Swallow its repeat and release events as well as the initial press.
+	if (backlight_wake_key_held && key == backlight_wake_key && scancode == backlight_wake_scancode) {
+		if (action == GLFW_RELEASE) backlight_wake_key_held = false;
+		return true;
+	}
+	if (backlight_is_blanked && action == GLFW_PRESS) {
+		backlight_wake_key = key;
+		backlight_wake_scancode = scancode;
+		backlight_wake_key_held = true;
+		if (!applyBacklight(true)) {
+			backlight_wake_key_held = false;
+			return true;
+		}
+		backlight_is_blanked = false;
+		// The Clockwork point remains off, so start a fresh off-delay period.
+		backlight_off_requested_at = std::chrono::steady_clock::now();
+		backlight_off_pending = true;
+		return true;
+	}
 	if (action != GLFW_RELEASE)
 		requestRedraw();
 	if (EDITOR->isEditMode()) {
@@ -1028,6 +1048,7 @@ void EditorGUI::updateBacklightRequest(const std::string &point_name, const Valu
 	std::cerr << "Backlight control point " << configured_point << " is " << (requested ? "on" : "off") << "\n";
 	if (requested) {
 		backlight_off_pending = false;
+		backlight_is_blanked = false;
 		applyBacklight(true);
 	}
 	else {
@@ -1036,31 +1057,34 @@ void EditorGUI::updateBacklightRequest(const std::string &point_name, const Valu
 	}
 }
 
-void EditorGUI::applyBacklight(bool enabled) {
+bool EditorGUI::applyBacklight(bool enabled) {
 	auto *settings = findStructure("ProjectSettings");
-	if (!settings) return;
+	if (!settings) return false;
 	const std::string interface_name = settings->getStringProperty("backlight_interface", "none");
 	if (interface_name == "sysfs") {
 		const std::string path = settings->getStringProperty("backlight_path");
 		std::ofstream brightness(path + "/brightness");
 		if (!brightness) {
 			std::cerr << "Unable to open configured backlight brightness control\n";
-			return;
+			return false;
 		}
 		brightness << (enabled ? settings->getIntProperty("backlight_on_brightness", 255) : 0) << "\n";
+		return brightness.good();
 	}
 	else if (interface_name == "edatec-ddc") {
 		const char *value = enabled ? "100" : "0";
 		const std::string command = "ed-ddc-server brightness write -v " + std::string(value);
 		if (std::system(command.c_str()) != 0) {
 			std::cerr << "EDATEC DDC backlight command failed\n";
-			return;
+			return false;
 		}
+		return true;
 	}
 	else if (interface_name != "none") {
 		std::cerr << "Unknown backlight interface: " << interface_name << "\n";
-		return;
+		return false;
 	}
+	return true;
 }
 
 void EditorGUI::processBacklightTimeout() {
@@ -1070,7 +1094,7 @@ void EditorGUI::processBacklightTimeout() {
 	const auto delay = std::chrono::seconds(settings->getIntProperty("backlight_off_delay_seconds", 0));
 	if (std::chrono::steady_clock::now() - backlight_off_requested_at >= delay) {
 		backlight_off_pending = false;
-		applyBacklight(false);
+		backlight_is_blanked = applyBacklight(false);
 	}
 }
 
