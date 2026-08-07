@@ -210,16 +210,38 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 								return true;
 							}
 							else if (eb && eb->getName() == conn) {
-								if (eb->callback()) eb->callback()();
-								if (eb->changeCallback()) {
-									if (eb->flags() & nanogui::Button::ToggleButton)
-										eb->changeCallback()(!eb->pushed());
-									else
-										eb->changeCallback()(eb->pushed());
-									return true;
+								// Simulate a mouse click so command, remote, SetOn/Toggle,
+								// and visual feedback (on_caption) match a physical press.
+								const int flags = eb->flags();
+								if (flags & nanogui::Button::ToggleButton) {
+									const bool new_state = !eb->pushed();
+									eb->setPushed(new_state);
+									if (eb->changeCallback()) eb->changeCallback()(new_state);
+									if (eb->callback()) eb->callback()();
 								}
+								else if (flags & nanogui::Button::SetOnButton) {
+									eb->setPushed(true);
+									if (eb->changeCallback()) eb->changeCallback()(true);
+									if (eb->callback()) eb->callback()();
+								}
+								else if (flags & nanogui::Button::SetOffButton) {
+									eb->setPushed(false);
+									if (eb->changeCallback()) eb->changeCallback()(false);
+									if (eb->callback()) eb->callback()();
+								}
+								else {
+									// NormalButton or flags==0: momentary press then release.
+									// callback() runs the command / remote pulse (same as mouse-up).
+									eb->setPushed(true);
+									if (eb->changeCallback()) eb->changeCallback()(true);
+									if (eb->callback()) eb->callback()();
+									eb->setPushed(false);
+									if (eb->changeCallback()) eb->changeCallback()(false);
+								}
+								return true;
 							}
 						}
+						std::cout << "KEY mapping target not found on screen: " << conn << "\n";
 					}
 				}
 			}
