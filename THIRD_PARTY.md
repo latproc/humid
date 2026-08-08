@@ -93,6 +93,9 @@ links `cw_client`.
 - Fixing it cleanly would require a dual-license / client exception from the
   Clockwork copyright holder, or a non-GPL client API—out of scope for HTMLVIEW.
 
+**Discussion memo for relicensing `libcw_client` (ELC vs historical IgH):**  
+[docs/CLOCKWORK_CLIENT_LICENSE_DISCUSSION.md](docs/CLOCKWORK_CLIENT_LICENSE_DISCUSSION.md)
+
 ### 2. NanoGUI dependency notices were incomplete
 
 Previously `LICENSES/` only carried a NanoGUI top-level BSD text. NanoGUI
