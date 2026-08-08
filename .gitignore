@@ -51,6 +51,13 @@ Thumbs.db
 tags
 .ccls-cache/
 
+# Local AI-agent workspace state (AGENTS.md remains public documentation)
+.agent/
+.agents/
+.claude/
+.codex/
+.serena/
+
 #project build files
 build/
 xcode/
@@ -75,3 +82,20 @@ junk/
 examples/
 doc/*.png
 stage/
+
+# Private panel fleet inventory (hostnames/addresses must not be published)
+/panels.txt
+
+# clockwork/ contains only the vendored cw_client sources and the minimal
+# build/sync support tracked by Humid. Ignore remnants from a former full
+# Clockwork checkout while allowing newly added client source files to appear.
+/clockwork/*
+!/clockwork/src/
+!/clockwork/src/**
+!/clockwork/cmake/
+!/clockwork/cmake/Modules/
+!/clockwork/cmake/Modules/FindZeroMQ.cmake
+!/clockwork/CMakeLists.txt
+!/clockwork/LatprocConfig.h.in
+!/clockwork/Makefile
+!/clockwork/compare-clockwork-src.sh
