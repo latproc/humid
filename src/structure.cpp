@@ -5,8 +5,6 @@
 
 #include <value.h>
 
-#include <nanogui/screen.h>
-#include <nanogui/window.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -338,7 +336,6 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 }
 
 bool StructureClass::save(std::ostream &out) {
-	using namespace nanogui;
 	out << getName() << " STRUCTURE";
 	writePropertyList(out, properties, &defaults);
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
