@@ -2,17 +2,49 @@
 
 ## Repository And Submodules
 
-- This repository uses Git. `clockwork/` and `lib/nanogui/` are Git
-  submodules pinned by the parent Humid commit.
+- On `master`, `clockwork/` is vendored source, not a Git submodule. It contains
+  the trimmed Clockwork client code Humid needs under `clockwork/src/`; the
+  Clockwork repository's `iod/` tree is deliberately not copied into Humid.
+- `lib/nanogui/` remains a Git submodule pinned by the parent Humid commit.
 - Do not update a submodule only by moving the parent pointer to an untested
-  remote commit. Check out the intended submodule branch, make and test the
-  fix there, commit it, then commit the new submodule pointer in Humid.
-- A normal submodule checkout is detached. Before committing a Clockwork fix,
-  create or check out the local branch that tracks the intended remote branch.
-- Keep unrelated dirty submodule changes out of commits. Inspect status and
-  diffs in both the parent and each affected submodule.
+  remote commit. Keep unrelated dirty submodule changes out of commits and
+  inspect status and diffs in both the parent and each affected submodule.
 - A local submodule commit is not available to other machines until it is
   pushed. Do not push unless the operator explicitly approves publication.
+
+## Vendored Clockwork Client Source Sync
+
+Humid carries only the Clockwork source files needed by `cw_client`. The
+canonical counterparts live under `iod/src/` in a separate Clockwork checkout.
+Use `clockwork/compare-clockwork-src.sh` to compare or transfer them; do not
+manually copy whole Clockwork directories into Humid.
+
+Set `CLOCKWORK` to the root of the separate Clockwork checkout, not its `iod/`
+or `iod/src/` directory:
+
+```bash
+CLOCKWORK=/path/to/clockwork ./clockwork/compare-clockwork-src.sh
+CLOCKWORK=/path/to/clockwork ./clockwork/compare-clockwork-src.sh --list
+CLOCKWORK=/path/to/clockwork ./clockwork/compare-clockwork-src.sh --pull [filename]
+CLOCKWORK=/path/to/clockwork ./clockwork/compare-clockwork-src.sh --push [filename]
+```
+
+- With no option, the script shows unified content differences; `--list`
+  prints only differing filenames. License-header differences are ignored.
+- `--pull` copies bodies from Clockwork `iod/src/` into Humid
+  `clockwork/src/`. `--push` copies bodies in the other direction.
+- An optional filename limits `--pull` or `--push` to one file. It may be
+  written as `src/Foo.cpp` or `Foo.cpp`; otherwise all local vendored source
+  files are considered.
+- Transfers preserve the destination file's existing initial license header.
+  This matters because the vendored Humid copies use Humid's license header,
+  which differs from the canonical Clockwork files.
+- The script reports files that are missing from the separate Clockwork tree;
+  it does not create a new counterpart for a Humid-only file.
+- After a pull or push, inspect the diffs in both repositories and build/test
+  both affected sides. A push changes the separate Clockwork working tree but
+  does not create a commit or publish it; never `git push` either repository
+  without explicit operator approval.
 
 ## Production Compatibility
 
@@ -29,9 +61,11 @@ proof that it builds or runs on these panels.
   only one path. Prefer the abortable `check_event` loop when available.
 - Track Clockwork humid-client / CHANNEL / ZMQ fixes on
   **`prod-client-zmq-fix`** (clockwork line **C**, `scope: client-zmq`).
-  Pin the tested commit in the `clockwork/` submodule from this Humid branch
-  (`cw-no-ec-tools-compatiblity`). Port shared sources to plant lines A/B as
-  needed. Details: [docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md).
+  On `master`, transfer tested client sources into the vendored `clockwork/src/`
+  tree with `compare-clockwork-src.sh --pull`. The older
+  `cw-no-ec-tools-compatiblity` deployment branch pins a Clockwork submodule.
+  Port shared sources to plant lines A/B as needed. Details:
+  [docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md).
   Do **not** treat `prod-experimental-mqtt-fix` as the client trunk anymore
   (it remains plant `iod_sdo` / line A).
 - Humid must not dereference public `SubscriptionManager` implementation
@@ -120,20 +154,21 @@ Use `--restart` / `--start-cmd` only when intentional.
 
 Clockwork panel-client work tracks **`prod-experimental-mqtt-fix`**.
 
-New client library work: land on clockwork **`prod-client-zmq-fix`**, then
-advance this Humid submodule pin (see
-[docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md)).
+New client library work: land on Clockwork **`prod-client-zmq-fix`**. For the
+compatibility deployment branch, advance the tested submodule pin; for
+`master`, pull the tested source bodies into the vendored tree with the sync
+script (see [docs/CLOCKWORK_CLIENT_BRANCHES.md](docs/CLOCKWORK_CLIENT_BRANCHES.md)).
 
 ## Required Build Order (manual)
 
 After a Clockwork client or public-header change:
 
-1. Build and stage the Clockwork client from the checked-out submodule:
-   `cd clockwork/iod && make client-install`
-   (or `cmake --build clockwork/iod/build/Release --target install_client`)
+1. On `master`, build and stage the vendored Clockwork client:
+   `cd clockwork && make client-install`
+   (or `cmake --build clockwork/build/Release --target install_client`).
 2. Reconfigure Humid from `build/` with `cmake ..`.
-   Confirm the log shows the **submodule** client, not `/opt/latproc`:
-   `Found clockwork: .../clockwork/iod/stage/lib/libcw_client.a`
+   Confirm the log shows the **vendored** client, not `/opt/latproc`:
+   `Found clockwork: .../clockwork/stage/lib/libcw_client.a`
    If it still shows `/opt/latproc/...`, clear the cache and reconfigure:
    `rm -f build/CMakeCache.txt` then `cmake ..` again from `build/`.
    Also check for a local override in `LocalCMakeLists.txt` (gitignored).
