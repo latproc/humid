@@ -70,6 +70,10 @@ public:
 	DialogWindow *getUserDialog();
 	void setUserDialog(const std::string &dialog_name);
 	void showDialog(bool show = true);
+	// Cancel NanoGUI drag before destroying widgets that may be mDragWidget
+	// (e.g. screen change or dialog hide mid-press). Prevents use-after-free
+	// on the subsequent mouse-release/drag events.
+	void cancelActiveDrag();
 	nanogui::Window *getActiveWindow();
 
 	nanogui::Window *getNamedWindow(const std::string name);

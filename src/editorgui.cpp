@@ -793,13 +793,17 @@ void EditorGUI::showDialog(bool show) {
 		// The dialog can be hidden in response to a button press.  Cancel the
 		// active NanoGUI drag before clear() deletes that button; otherwise the
 		// subsequent mouse-release event dereferences mDragWidget after free.
-		mDragActive = false;
-		mDragWidget = nullptr;
+		cancelActiveDrag();
 		w_dialog->setVisible(false);
 		w_dialog->clear();
 		w_dialog->dispose();
 		w_dialog = nullptr;
 	}
+}
+
+void EditorGUI::cancelActiveDrag() {
+	mDragActive = false;
+	mDragWidget = nullptr;
 }
 
 bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

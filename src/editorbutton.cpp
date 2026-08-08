@@ -395,18 +395,23 @@ void EditorButton::draw(NVGcontext *ctx) {
       nvgRoundedRect(ctx, mPos.x()+a, mPos.y()+a, mSize.x()-2*a, mSize.y()-2*a, mTheme->mButtonCornerRadius);
     }
     if (mImageID == 0) {
+      // Alpha 0 means fully transparent: do not fall back to the theme
+      // gradient (that painted opaque grey/white "ghost" buttons).
       if (mPushed) {
         if (bg_on_color.w() != 0) {
           nvgFillColor(ctx, Color(bg_on_color.head<3>(), 1.f));
           nvgFill(ctx);
           gradTop.a = gradBot.a = 0.0f;
-        }  
+        }
         else if (mBackgroundColor.w() != 0) {
           nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 0.4f));
           nvgFill(ctx);
           double v = 1 - mBackgroundColor.w();
           gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
-        }  
+        }
+        else {
+          gradTop.a = gradBot.a = 0.0f;
+        }
       }
       else if (mBackgroundColor.w() != 0) {
         nvgFillColor(ctx, Color(mBackgroundColor.head<3>(), 1.f));
@@ -414,12 +419,17 @@ void EditorButton::draw(NVGcontext *ctx) {
         double v = 1 - mBackgroundColor.w();
         gradTop.a = gradBot.a = mEnabled ? v : v * .5f + .5f;
       }
+      else {
+        gradTop.a = gradBot.a = 0.0f;
+      }
 
-      NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
-                                      mPos.y() + mSize.y(), gradTop, gradBot);
+      if (gradTop.a != 0.0f || gradBot.a != 0.0f) {
+        NVGpaint bg = nvgLinearGradient(ctx, mPos.x(), mPos.y(), mPos.x(),
+                                        mPos.y() + mSize.y(), gradTop, gradBot);
 
-      nvgFillPaint(ctx, bg);
-      nvgFill(ctx);
+        nvgFillPaint(ctx, bg);
+        nvgFill(ctx);
+      }
     }
     else {
       NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), mSize.x(), mSize.y(), 0, mImageID, image_alpha);

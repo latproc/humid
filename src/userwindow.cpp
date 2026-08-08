@@ -345,6 +345,10 @@ void UserWindow::deleteSelections() {
 }
 
 void UserWindow::clear() {
+	// Screen changes can destroy the button under an active mouse drag (e.g.
+	// multi-tap hidden jump). Clear mDragWidget first or the next release crashes.
+	if (gui) gui->cancelActiveDrag();
+
 	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
 	if (drag_handle) drag_handle->setVisible(false);
 	drag_handle->incRef();
