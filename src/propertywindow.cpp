@@ -17,6 +17,7 @@
 #include "editorgui.h"
 #include "editorwidget.h"
 #include "editor.h"
+#include <cassert>
 
 PropertyWindow::PropertyWindow(nanogui::Screen *s, nanogui::Theme *theme) : screen(s) {
 	using namespace nanogui;

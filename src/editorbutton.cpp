@@ -21,6 +21,7 @@
 #include "helper.h"
 #include "colourhelper.h"
 #include "skeleton.h"
+#include <cassert>
 
 extern int debug;
 #define DEBUG_BASIC ( 1 & debug)

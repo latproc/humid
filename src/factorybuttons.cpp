@@ -18,9 +18,13 @@
 #include "editorprogressbar.h"
 #include "editorframe.h"
 #include "editortable.h"
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+#include "editorhtmlview.h"
+#endif
 #include "editorgui.h"
 #include "factorybuttons.h"
 #include "structureswindow.h"
+#include <cassert>
 
 StructureFactoryButton::StructureFactoryButton(EditorGUI *screen,
 						const std::string type_str, Palette *pal,
@@ -125,6 +129,16 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 			et->getRemote()->link(new LinkableJson(et));
 		}
 		result = et;
+	}
+	else if (sc->getName() == "HTMLVIEW") {
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+		EditorHtmlView *hv = new EditorHtmlView(parent, window, generated_name, nullptr);
+		hv->setDefinition(s);
+		s->setName(hv->getName());
+		result = hv;
+#else
+		result = nullptr;
+#endif
 	}
 	else if (sc->getName() == "IMAGE") {
 		GLuint img = gui->getImageId("images/blank.png");

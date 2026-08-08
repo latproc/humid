@@ -23,6 +23,7 @@
 #include "userwindow.h"
 
 #include <iostream>
+#include <cassert>
 
 extern CircularBuffer *createBuffer(const std::string name);
 NAMESPACE_BEGIN(nanogui)

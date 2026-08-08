@@ -9,6 +9,9 @@
 #include "editorbutton.h"
 #include "editorframe.h"
 #include "editortable.h"
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+#include "editorhtmlview.h"
+#endif
 #include <nanogui/button.h>
 #include "helper.h"
 #include "linkmanager.h"
@@ -216,6 +219,32 @@ void createTable(WidgetParams &params) {
 	if (params.visibility) et->setVisibilityLink(params.visibility);
 	prepare_remote_links(params, et);
 	et->setChanged(false);
+}
+
+void createHtmlView(WidgetParams &params) {
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+	EditorHtmlView *el = new EditorHtmlView(params.s, params.window, params.element->getName(), params.lp);
+	el->setName(params.element->getName());
+	el->setDefinition(params.element);
+	if (params.theme.get()) { el->setTheme(params.theme); }
+	setElementPosition(params, el, params.element);
+	fixElementSize(el, params.element);
+	if (params.connection != SymbolTable::Null) {
+		el->setRemoteName(params.remote.asString());
+		el->setConnection(params.connection.asString());
+	}
+	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
+	const Value url_v((params.lp) ? params.lp->value() : params.element->getValue("url"));
+	if (url_v != SymbolTable::Null)
+		el->setUrl(url_v.asString(), true);
+	if (params.lp)
+		params.lp->link(new LinkableText(el));
+	if (params.visibility) el->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, el);
+	el->setChanged(false);
+#else
+	(void)params;
+#endif
 }
 
 void createImage(WidgetParams &params) {

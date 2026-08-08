@@ -42,6 +42,7 @@
 #include "linkmanager.h"
 #include "thememanager.h"
 #include "screencapture.h"
+#include <cassert>
 
 extern std::map<std::string, Structure *>structures;
 extern std::list<Structure *>st_structures;

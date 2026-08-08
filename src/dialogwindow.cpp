@@ -127,6 +127,9 @@ void DialogWindow::loadStructure(Structure *s) {
             else if (element_class && element_class->isExtension("IMAGE")) {
                 createImage(params);
             }
+            else if (element_class && element_class->isExtension("HTMLVIEW")) {
+                createHtmlView(params);
+            }
             else if (element_class && element_class->isExtension("PROGRESS")) {
                 createProgress(params);
             }

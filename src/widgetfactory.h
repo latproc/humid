@@ -46,4 +46,5 @@ void createPlot(WidgetParams &params);
 void createButton(WidgetParams &params);
 void createFrame(WidgetParams &params);
 void createTable(WidgetParams &params);
+void createHtmlView(WidgetParams &params);
 

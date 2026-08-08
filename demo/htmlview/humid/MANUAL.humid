@@ -1,0 +1,7 @@
+Manual MANUAL(file_name: "MANUAL.humid", screen_height: 800, screen_width: 1280);
+MANUAL STRUCTURE EXTENDS SCREEN {
+  Title LABEL(alignment: 1, border: 0, caption: "Operators Manual", font_size: 32, height: 48, pos_x: 0, pos_y: 0, valign: 1, width: 1120, wrap: 0);
+  Doc HTMLVIEW(border: 1, height: 660, pos_x: 10, pos_y: 56, url: "http://127.0.0.1:8765/4C04_Operators_Manual.html", width: 1260);
+  Hint LABEL(alignment: 0, border: 0, caption: "Scroll: wheel/drag/arrows/PgUp/PgDn | Home=top End=end | Top button when scrolled | TOC links jump | Serve: python3 -m http.server 8765", font_size: 13, height: 28, pos_x: 10, pos_y: 730, width: 1100, wrap: 0);
+  Return BUTTON(alignment: 1, behaviour: 1, bg_color: "0.9372,0.4236,0.0156,1.0000", border: 2, caption: "Return", font_size: 28, height: 70, pos_x: 1120, pos_y: 730, text_colour: "0.0000,0.0000,0.0000,1.0000", valign: 2, width: 160, wrap: 0);
+}

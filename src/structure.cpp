@@ -99,6 +99,9 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Scale"] = "scale";
 		properties["Interactive"] = "interactive";
 	}
+	else if (class_name == "HTMLVIEW") {
+		properties["URL"] = "url";
+	}
 	else if (class_name == "PROGRESS") {
 		properties["Foreground Colour"] = "fg_color";
 		properties["Background Colour"] = "bg_color";
@@ -404,6 +407,9 @@ void Structure::loadBuiltins() {
     sc = new StructureClass("TABLE", "");
     sc->setBuiltIn();
     hm_classes.push_back(sc);
+	sc = new StructureClass("HTMLVIEW", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
     const std::string keypad = R"()";
 }
 

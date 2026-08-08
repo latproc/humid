@@ -36,6 +36,31 @@ clockwork/src tree with clockwork/compare-clockwork-src.sh. See:
 
 Plant iod bus lines (prod-experimental-mqtt-fix, iod-elc) are separate.
 
+## Third-party licenses
+
+Humid is BSD-licensed at the project level (see LICENSE.txt). Copies of
+third-party licenses for components shipped or linked with Humid are under
+LICENSES/. A full inventory and risk notes are in THIRD_PARTY.md.
+
+  NanoGUI-LICENSE.txt       NanoGUI (BSD-3)
+  GLFW-LICENSE.txt          GLFW (zlib), via NanoGUI
+  NanoVG-LICENSE.txt        NanoVG (zlib), via NanoGUI
+  libcoro-LICENSE.txt       libcoro (BSD-2), via NanoGUI
+  glad-LICENSE.txt          glad OpenGL loader (MIT), via NanoGUI
+  Eigen-MPL2-LICENSE.txt    Eigen headers (MPL-2.0), via NanoGUI
+  litehtml-LICENSE.txt      litehtml (BSD-3), HTMLVIEW
+  gumbo-LICENSE.txt         gumbo-parser (Apache-2.0), with litehtml
+  RobotoMono-LICENSE.txt    Roboto Mono font (Apache-2.0)
+  libcurl-LICENSE.txt       libcurl (curl/MIT-style)
+  Boost-LICENSE.txt         Boost (BSL-1.0)
+  ZeroMQ-MPL2-LICENSE.txt   libzmq (MPL-2.0)
+
+System libraries such as Cairo, Pango, and Fontconfig (HTMLVIEW) keep
+their own licenses from the OS packages (typically LGPL/MIT; dynamic link).
+
+The trimmed Clockwork client sources vendored under clockwork/src use the
+project's BSD-3-style license header and LICENSE.txt.
+
 Thanks for taking the time to look at this project, I hope
 to make it more reliable and accessible in the near future.
 

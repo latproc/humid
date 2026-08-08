@@ -26,6 +26,7 @@
 #include "helper.h"
 #include "selectablebutton.h"
 #include "factorybuttons.h"
+#include <cassert>
 
 extern std::string tag_file_name;
 

@@ -28,6 +28,7 @@ static void clearChildren(NamedObject *parent, nanogui::Widget *w, const std::st
 
 #include "editortable.h"
 #include "nanogui/layout.h"
+#include <cassert>
 
 EditorTable::EditorTable(NamedObject *owner,
                          nanogui::Widget *parent,

@@ -10,6 +10,7 @@
 #include "editorsettings.h"
 #include <list>
 #include <fstream>
+#include <cassert>
 
 std::map<std::string, nanogui::Widget *> EditorSettings::widgets;
 extern std::list<std::string>settings_files;

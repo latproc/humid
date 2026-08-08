@@ -4,6 +4,7 @@
 #include <symboltable.h>
 #include "structure.h"
 #include "colourhelper.h"
+#include <cassert>
 
 ThemeManager *ThemeManager::theme_manager = nullptr;
 

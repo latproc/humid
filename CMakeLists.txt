@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project("Humid")
+project("Humid" C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/stage")
@@ -86,13 +86,29 @@ endif()
 
 include(CheckCXXCompilerFlag)
 
-set(CMAKE_BUILD_TYPE "Debug")
-
+# Default to Release when no build type is given. Debug layout of large HTML
+# manuals is much slower; override with -DCMAKE_BUILD_TYPE=Debug if needed.
+# Output always lives under the normal out-of-tree dir (e.g. build/), not
+# build/Release/ — multi-config generators are unaffected.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Release' as none was specified.")
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+endif()
+if(CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
+  message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+endif()
+
+# Apple Clang 21 can ICE (segfault) on some NanoGUI TUs at -O3 (e.g. glutil.cpp).
+# Use -O2 for Release on Apple Clang; still far faster than unoptimized Debug.
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(NOT DEFINED HUMID_APPLE_RELEASE_FLAGS_SET)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags for Release" FORCE)
+    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags for Release" FORCE)
+    set(HUMID_APPLE_RELEASE_FLAGS_SET TRUE CACHE INTERNAL "")
+    message(STATUS "Apple Clang: Release uses -O2 (avoids -O3 frontend crash on nanogui)")
+  endif()
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
@@ -109,6 +125,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
+# Apple Clang 21 ICE/segfaults optimizing some NanoGUI TUs (e.g. glutil.cpp at -O2).
+# Force -O0 on the nanogui object target only; humid_litehtml / humid stay Release-opt.
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND TARGET nanogui-obj)
+  target_compile_options(nanogui-obj PRIVATE -O0)
+  message(STATUS "Apple Clang: nanogui-obj forced to -O0 (compiler ICE workaround)")
+endif()
 if (NANOGUI_USE_GLES)
   # Ensure NanoGUI object sources and humid share the same GLES compile path.
   if (TARGET nanogui-obj)
@@ -134,6 +156,9 @@ include_directories("/opt/local/include")
 find_package(ZeroMQ REQUIRED)
 find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
+
+# Optional embedded HTMLVIEW (litehtml + Cairo/Pango). Open-source only.
+include(HumidLitehtml)
 
 message(STATUS "Found clockwork: ${ClockworkClient_LIBRARIES}")
 message(STATUS "Clockwork includes: ${ClockworkClient_INCLUDE_DIR}")
@@ -204,6 +229,9 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/screencapture.h
 		  src/editortable.h
   )
+if (HUMID_HTMLVIEW_FOUND)
+  list(APPEND HEADERS src/editorhtmlview.h src/htmlview_container.h)
+endif()
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
 #target_link_libraries(okdialog ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} nanogui ${Boost_LIBRARIES})
@@ -307,6 +335,11 @@ if (Protobuf_INCLUDE_DIRS)
 	SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.cc GENERATED)
 endif()
 
+  set(HUMID_EXTRA_SOURCES "")
+  if (HUMID_HTMLVIEW_FOUND)
+    list(APPEND HUMID_EXTRA_SOURCES ${HUMID_HTMLVIEW_SOURCES})
+  endif()
+
   add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
 		  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp
 		  src/lineplot.cpp src/circularbuffer.cpp src/propertylist.cpp
@@ -336,9 +369,17 @@ endif()
 		  src/screencapture.cpp
 		  src/editortable.cpp
 		  src/anchor_widget.cpp
+		  ${HUMID_EXTRA_SOURCES}
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
+  if (HUMID_HTMLVIEW_FOUND)
+    target_include_directories(humid PRIVATE ${HUMID_HTMLVIEW_INCS})
+    target_compile_definitions(humid PRIVATE ${HUMID_HTMLVIEW_DEFS})
+    # HTMLVIEW TUs need C++17 for litehtml headers
+    set_source_files_properties(${HUMID_HTMLVIEW_SOURCES} PROPERTIES COMPILE_FLAGS "-std=c++17")
+    target_link_libraries(humid ${HUMID_HTMLVIEW_LIBS})
+  endif()
 
   install(TARGETS humid RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 

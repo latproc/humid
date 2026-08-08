@@ -17,6 +17,7 @@
 #include "propertyformhelper.h"
 #include "helper.h"
 #include "colourhelper.h"
+#include <cassert>
 
 const std::map<std::string, std::string> & EditorProgressBar::property_map() const {
   auto structure_class = findClass("PROGRESS");

@@ -9,6 +9,9 @@
 #include "editor.h"
 #include "editorbutton.h"
 #include "editorimageview.h"
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+#include "editorhtmlview.h"
+#endif
 #include "editorobject.h"
 #include "editorprogressbar.h"
 #include "editortable.h"
@@ -19,6 +22,7 @@
 #include <iostream>
 #include <nanogui/button.h>
 #include <nanogui/progressbar.h>
+#include <cassert>
 
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
@@ -99,6 +103,13 @@ void LinkableText::update(const Value &value) {
 		iv->setImageName(value.asString()); iv->fit();
 		return;
 	}
+#if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
+	EditorHtmlView *hv = dynamic_cast<EditorHtmlView*>(widget);
+	if (hv) {
+		hv->setUrl(value.asString(), true);
+		return;
+	}
+#endif
 }
 
 LinkableNumber::LinkableNumber(EditorObject *w) : LinkableObject(w) { }

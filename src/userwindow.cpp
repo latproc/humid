@@ -18,6 +18,7 @@
 #include "propertyformhelper.h"
 #include "screenswindow.h"
 #include "widgetfactory.h"
+#include <cassert>
 
 using namespace nanogui;
 
@@ -444,6 +445,9 @@ void UserWindow::loadStructure(Structure *s) {
 			}
 			if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
+			}
+			if (element_class && element_class->isExtension("HTMLVIEW")) {
+				createHtmlView(params);
 			}
 			if (element_class &&element_class->isExtension("PROGRESS")) {
 				createProgress(params);

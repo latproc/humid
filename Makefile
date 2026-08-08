@@ -6,7 +6,7 @@ endif
 
 all:	
 	[ -d "build" ] || mkdir build
-	cd build && cmake .. && make $(JOBS) && make install
+	cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make $(JOBS) && make install
 
 # Full panel update: pull master, build the vendored client, then build Humid.
 # See scripts/update-panel.sh --help
@@ -17,21 +17,21 @@ panel-update-restart:
 	./scripts/update-panel.sh --jobs $(subst -j,,$(JOBS)) --restart
 
 
+# Release is the default tree under build/ (not build/Release).
 release:
 	[ -d "build" ] || mkdir build
-	[ -d "build/Release" ] || mkdir build/Release
-	cd build/Release && cmake -DCMAKE_BUILD_TYPE=Release ../.. && make $(JOBS)
+	cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make $(JOBS)
 
-release-install:
-	cd build/Release && make $(JOBS) install
+release-install: release
+	cd build && make $(JOBS) install
 
+# Optional Debug build in a separate tree so it does not clobber build/.
 debug:
-	[ -d "build" ] || mkdir build
-	[ -d "build/Debug" ] || mkdir build/Debug
-	cd build/Debug && cmake -DCMAKE_BUILD_TYPE=Debug ../.. && make $(JOBS)
+	[ -d "build-debug" ] || mkdir build-debug
+	cd build-debug && cmake -DCMAKE_BUILD_TYPE=Debug .. && make $(JOBS)
 
 debug-install:	debug
-	cd build/Debug && make $(JOBS) install
+	cd build-debug && make $(JOBS) install
 
 xcode:
 	[ -d "xcode" ] || mkdir xcode

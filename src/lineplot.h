@@ -17,6 +17,7 @@
 #include <mutex>
 #include <map>
 #include "sampletrigger.h"
+#include <cassert>
 
 class CircularBuffer;
 class UserWindow;

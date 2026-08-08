@@ -16,6 +16,7 @@
 #include "editortextbox.h"
 #include "propertyformhelper.h"
 #include "helper.h"
+#include <cassert>
 
 const std::map<std::string, std::string> & EditorTextBox::property_map() const {
   auto structure_class = findClass("TEXT");

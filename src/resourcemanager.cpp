@@ -11,6 +11,7 @@
 #include <nanogui/glutil.h>
 #include <nanovg_gl.h>
 #include <value.h>
+#include <cassert>
 
 std::map<int, ResourceManager*> ResourceManager::resources;
 ResourceManager::Factory ResourceManager::default_factory;
