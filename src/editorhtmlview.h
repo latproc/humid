@@ -31,6 +31,8 @@ public:
 	bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 	bool mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button,
 						  int modifiers) override;
+	bool mouseDragEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button,
+						int modifiers) override;
 	bool mouseEnterEvent(const nanogui::Vector2i &p, bool enter) override;
 	bool scrollEvent(const nanogui::Vector2i &p, const nanogui::Vector2f &rel) override;
 	bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
@@ -64,6 +66,11 @@ private:
 	nanogui::Vector2i docCoords(const nanogui::Vector2i &widget_p) const;
 	bool hitTopButton(const nanogui::Vector2i &p) const;
 	nanogui::Vector4i topButtonRect() const; // x,y,w,h in widget coords
+	/// Convert parent-relative coords (nanogui drag path) to widget-local.
+	nanogui::Vector2i toLocal(const nanogui::Vector2i &parent_p) const { return parent_p - mPos; }
+	bool handlePointerMove(const nanogui::Vector2i &local_p);
+	void fireDocumentClick(const nanogui::Vector2i &local_p);
+	void endPointerGesture(const nanogui::Vector2i &local_p);
 
 	std::string m_url;
 	std::string m_status;
@@ -78,10 +85,14 @@ private:
 	int m_rgba_w = 0;
 	int m_rgba_h = 0;
 	int m_nvg_image = -1;
-	int m_drag_y = -1;
-	int m_drag_scroll0 = 0;
+	int m_press_x = -1;
+	int m_press_y = -1;
+	int m_press_scroll0 = 0;
 	bool m_mouse_down = false;
-	bool m_click_on_top_btn = false;
+	bool m_dragging = false; // true once motion exceeds click-vs-drag threshold
+	bool m_press_on_top = false;
+	// Larger than trackpad/touch jitter so TOC clicks are not stolen by micro-drags.
+	static constexpr int kDragThresholdPx = 16;
 };
 
 #endif

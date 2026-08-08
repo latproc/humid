@@ -97,7 +97,9 @@ void EditorHtmlView::releaseDocument() {
 	m_rgba_w = m_rgba_h = 0;
 	m_need_paint = true;
 	m_mouse_down = false;
-	m_click_on_top_btn = false;
+	m_dragging = false;
+	m_press_on_top = false;
+	m_press_x = m_press_y = -1;
 }
 
 EditorHtmlView::~EditorHtmlView() {
@@ -139,18 +141,20 @@ bool EditorHtmlView::jumpToFragment(const std::string &fragment) {
 		return false;
 
 	const std::string esc = cssEscapeAttr(fragment);
-	// Pandoc ids and named anchors
-	std::string selector = "[id=\"" + esc + "\"],[name=\"" + esc + "\"]";
-	litehtml::element::ptr el = m_doc->root()->select_one(selector);
-	if (!el) {
-		// try with leading # stripped already; also try CSS #id form
+	// Same approach as litehtml's web_page::show_fragment (pandoc ids + name=).
+	litehtml::element::ptr el =
+		m_doc->root()->select_one(":is([id=\"" + esc + "\"],[name=\"" + esc + "\"])");
+	if (!el)
+		el = m_doc->root()->select_one("[id=\"" + esc + "\"],[name=\"" + esc + "\"]");
+	if (!el)
 		el = m_doc->root()->select_one("#" + esc);
-	}
 	if (!el)
 		return false;
 
 	litehtml::position pos = el->get_placement();
-	setScrollY((int)std::lround((double)pos.top()));
+	// pixel_t converts to float; place heading near the top of the viewport.
+	const int y = (int)std::lround(pos.top().value());
+	setScrollY(y);
 	return true;
 }
 
@@ -449,74 +453,127 @@ void EditorHtmlView::draw(NVGcontext *ctx) {
 		drawElementBorder(ctx, mPos, mSize);
 }
 
-bool EditorHtmlView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
-	if (editorMouseButtonEvent(this, p, button, down, modifiers))
-		return Widget::mouseButtonEvent(p, button, down, modifiers);
+void EditorHtmlView::fireDocumentClick(const nanogui::Vector2i &local_p) {
+	if (!m_doc)
+		return;
+	// Atomic click at release position — do not arm litehtml on press, or a
+	// later drag-scroll will either steal the click or jump via a stale target.
+	auto d = docCoords(local_p);
+	m_doc->on_mouse_over(d.x(), d.y(), local_p.x(), local_p.y(), [](const litehtml::position &) {});
+	m_doc->on_lbutton_down(d.x(), d.y(), local_p.x(), local_p.y(), [](const litehtml::position &) {});
+	m_doc->on_lbutton_up(d.x(), d.y(), local_p.x(), local_p.y(), [](const litehtml::position &) {});
+	m_need_paint = true;
+}
 
-	if (button == GLFW_MOUSE_BUTTON_LEFT) {
-		if (down) {
-			requestFocus();
-			m_mouse_down = true;
-			m_click_on_top_btn = hitTopButton(p);
-			if (m_click_on_top_btn)
-				return true;
+void EditorHtmlView::endPointerGesture(const nanogui::Vector2i &local_p) {
+	if (!m_mouse_down) {
+		m_dragging = false;
+		m_press_on_top = false;
+		m_press_x = m_press_y = -1;
+		return;
+	}
 
-			m_drag_y = p.y();
-			m_drag_scroll0 = m_scroll_y;
+	if (m_press_on_top && !m_dragging) {
+		// Classic button: press on Top, release without drag → go to top
+		// even if the pointer drifted a few pixels off the chrome.
+		jumpToTop();
+	} else if (!m_dragging && !m_press_on_top) {
+		fireDocumentClick(local_p);
+	} else if (m_doc) {
+		m_doc->on_button_cancel([](const litehtml::position &) {});
+	}
 
-			if (m_doc) {
-				auto d = docCoords(p);
-				m_doc->on_lbutton_down(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {});
-			}
-		} else {
-			if (m_click_on_top_btn && hitTopButton(p)) {
-				jumpToTop();
-				m_click_on_top_btn = false;
-				m_mouse_down = false;
-				m_drag_y = -1;
-				return true;
-			}
-			m_click_on_top_btn = false;
+	m_mouse_down = false;
+	m_dragging = false;
+	m_press_on_top = false;
+	m_press_x = m_press_y = -1;
+}
 
-			if (m_doc && m_mouse_down) {
-				const bool dragged = (m_drag_y >= 0) && (std::abs(p.y() - m_drag_y) >= 6);
-				if (dragged) {
-					// Cancel active element so a drag-scroll does not follow a link.
-					m_doc->on_button_cancel([](const litehtml::position &) {});
-				} else {
-					auto d = docCoords(p);
-					m_doc->on_lbutton_up(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {});
-				}
-			}
-			m_mouse_down = false;
-			m_drag_y = -1;
-		}
+bool EditorHtmlView::handlePointerMove(const nanogui::Vector2i &local_p) {
+	if (!m_mouse_down || m_press_x < 0)
+		return false;
+
+	const int dx = std::abs(local_p.x() - m_press_x);
+	const int dy = std::abs(local_p.y() - m_press_y);
+	if (!m_dragging && (dx >= kDragThresholdPx || dy >= kDragThresholdPx)) {
+		m_dragging = true;
+		// Top-button press that turns into a drag becomes scroll instead.
+		m_press_on_top = false;
+		if (m_doc)
+			m_doc->on_button_cancel([](const litehtml::position &) {});
+	}
+	if (m_dragging) {
+		setScrollY(m_press_scroll0 - (local_p.y() - m_press_y));
 		return true;
+	}
+	return true; // consumed press-move within click threshold
+}
+
+bool EditorHtmlView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+	// editorMouseButtonEvent: false = edit-mode selection consumed the event;
+	// true = run mode — handle document interaction here (not Widget default).
+	if (!editorMouseButtonEvent(this, p, button, down, modifiers))
+		return true;
+
+	if (button != GLFW_MOUSE_BUTTON_LEFT)
+		return true;
+
+	// NanoGUI passes parent-relative coordinates; litehtml / Top chrome use local.
+	const nanogui::Vector2i local = p - mPos;
+
+	if (down) {
+		requestFocus();
+		m_mouse_down = true;
+		m_dragging = false;
+		m_press_x = local.x();
+		m_press_y = local.y();
+		m_press_scroll0 = m_scroll_y;
+		m_press_on_top = hitTopButton(local);
+		// Defer litehtml click until release so drag-scroll never activates links.
+		if (m_doc && !m_press_on_top) {
+			auto d = docCoords(local);
+			if (m_doc->on_mouse_over(d.x(), d.y(), local.x(), local.y(), [](const litehtml::position &) {}))
+				m_need_paint = true;
+		}
+	} else {
+		endPointerGesture(local);
 	}
 	return true;
 }
 
 bool EditorHtmlView::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button,
 									  int modifiers) {
-	if (editorMouseMotionEvent(this, p, rel, button, modifiers))
-		return Widget::mouseMotionEvent(p, rel, button, modifiers);
-
-	if (m_doc && !m_click_on_top_btn) {
-		auto d = docCoords(p);
-		if (m_doc->on_mouse_over(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {}))
-			m_need_paint = true; // hover style change
-	}
-
-	if (m_drag_y >= 0 && !m_click_on_top_btn && (button & (1 << GLFW_MOUSE_BUTTON_LEFT))) {
-		setScrollY(m_drag_scroll0 - (p.y() - m_drag_y));
+	if (!editorMouseMotionEvent(this, p, rel, button, modifiers))
 		return true;
+
+	const nanogui::Vector2i local = p - mPos;
+	const bool left_down = (button & (1 << GLFW_MOUSE_BUTTON_LEFT)) != 0;
+	if (m_mouse_down && left_down)
+		return handlePointerMove(local);
+
+	// Hover styles when not pressing
+	if (m_doc && !m_mouse_down) {
+		auto d = docCoords(local);
+		if (m_doc->on_mouse_over(d.x(), d.y(), local.x(), local.y(), [](const litehtml::position &) {}))
+			m_need_paint = true;
 	}
 	return true;
 }
 
+bool EditorHtmlView::mouseDragEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button,
+									int modifiers) {
+	// Nanogui drag path: p is parent-relative (screen - parent.absolutePosition).
+	(void)button;
+	(void)modifiers;
+	const nanogui::Vector2i local = toLocal(p);
+	if (!editorMouseMotionEvent(this, local, rel, button, modifiers))
+		return true;
+	return handlePointerMove(local);
+}
+
 bool EditorHtmlView::mouseEnterEvent(const nanogui::Vector2i &p, bool enter) {
-	if (editorMouseEnterEvent(this, p, enter))
-		return Widget::mouseEnterEvent(p, enter);
+	if (!editorMouseEnterEvent(this, p, enter))
+		return true;
 	if (!enter && m_doc) {
 		if (m_doc->on_mouse_leave([](const litehtml::position &) {}))
 			m_need_paint = true;
