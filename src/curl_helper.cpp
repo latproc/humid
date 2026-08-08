@@ -309,11 +309,27 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 		return;
 	}
 
-	// Bound parallel slots
 	const int slots_n = max_parallel < (int)jobs.size() ? max_parallel : (int)jobs.size();
 	std::vector<EasySlot> slots(static_cast<size_t>(slots_n));
+	std::vector<char> job_done(jobs.size(), 0);
 	size_t next_job = 0;
+	size_t completed = 0;
 	int still_running = 0;
+
+	auto mark_job_done = [&](size_t idx) {
+		if (idx < job_done.size() && !job_done[idx]) {
+			job_done[idx] = 1;
+			++completed;
+		}
+	};
+
+	// Map job pointer → index for completion tracking
+	auto job_index = [&](HttpFetchJob *j) -> size_t {
+		if (!j)
+			return jobs.size();
+		const size_t off = static_cast<size_t>(j - &jobs[0]);
+		return off < jobs.size() ? off : jobs.size();
+	};
 
 	auto start_next = [&]() -> bool {
 		while (next_job < jobs.size()) {
@@ -326,10 +342,13 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 			}
 			if (!open)
 				return false;
-			HttpFetchJob &job = jobs[next_job++];
+
+			const size_t idx = next_job++;
+			HttpFetchJob &job = jobs[idx];
 			if (!setup_easy(*open, job, timeout_sec)) {
 				job.result.status = HttpFetchStatus::Failed;
 				job.result.error = "curl_easy_init failed";
+				mark_job_done(idx);
 				continue;
 			}
 			const CURLMcode mc = curl_multi_add_handle(multi, open->easy);
@@ -337,6 +356,7 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 				job.result.status = HttpFetchStatus::Failed;
 				job.result.error = "curl_multi_add_handle failed";
 				release_slot(*open);
+				mark_job_done(idx);
 				continue;
 			}
 			return true;
@@ -344,17 +364,7 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 		return false;
 	};
 
-	// Prime
-	for (int i = 0; i < slots_n; ++i)
-		start_next();
-
-	curl_multi_perform(multi, &still_running);
-
-	while (still_running > 0 || next_job < jobs.size()) {
-		int numfds = 0;
-		curl_multi_wait(multi, nullptr, 0, 1000, &numfds);
-		curl_multi_perform(multi, &still_running);
-
+	auto drain_messages = [&]() {
 		CURLMsg *msg = nullptr;
 		int msgs_left = 0;
 		while ((msg = curl_multi_info_read(multi, &msgs_left)) != nullptr) {
@@ -367,34 +377,84 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 			EasySlot *slot = reinterpret_cast<EasySlot *>(priv);
 			curl_multi_remove_handle(multi, easy);
 			if (slot) {
+				HttpFetchJob *j = slot->job;
 				finish_slot(*slot, result);
+				if (j)
+					mark_job_done(job_index(j));
 			} else {
-				// Should not happen; avoid leaking the easy handle.
 				curl_easy_cleanup(easy);
 			}
-			start_next();
+		}
+	};
+
+	// Fill slots and run until every job has a result.
+	while (start_next()) {
+	}
+	curl_multi_perform(multi, &still_running);
+	drain_messages();
+
+	while (completed < jobs.size()) {
+		while (start_next()) {
+		}
+		curl_multi_perform(multi, &still_running);
+		drain_messages();
+
+		if (completed >= jobs.size())
+			break;
+
+		if (still_running > 0) {
+			int numfds = 0;
+			curl_multi_wait(multi, nullptr, 0, 1000, &numfds);
+			continue;
 		}
 
-		if (still_running == 0 && next_job >= jobs.size())
-			break;
-		if (still_running == 0 && next_job < jobs.size()) {
-			bool started = false;
-			while (start_next())
-				started = true;
-			if (!started)
-				break;
-			curl_multi_perform(multi, &still_running);
+		// Nothing running: either start more work or we are stuck.
+		if (next_job < jobs.size()) {
+			if (!start_next()) {
+				// No free slot but multi is idle — force-release stale active slots.
+				for (size_t i = 0; i < slots.size(); ++i) {
+					if (!slots[i].active)
+						continue;
+					HttpFetchJob *j = slots[i].job;
+					if (j) {
+						j->result.status = HttpFetchStatus::Failed;
+						j->result.error = "stale slot";
+						mark_job_done(job_index(j));
+					}
+					curl_multi_remove_handle(multi, slots[i].easy);
+					release_slot(slots[i]);
+				}
+			}
+			continue;
 		}
+
+		// All jobs submitted, multi idle, but some not marked done — force-fail leftovers.
+		for (size_t i = 0; i < slots.size(); ++i) {
+			if (!slots[i].active)
+				continue;
+			HttpFetchJob *j = slots[i].job;
+			if (j) {
+				j->result.status = HttpFetchStatus::Failed;
+				j->result.error = "aborted";
+				mark_job_done(job_index(j));
+			}
+			curl_multi_remove_handle(multi, slots[i].easy);
+			release_slot(slots[i]);
+		}
+		for (size_t i = 0; i < jobs.size(); ++i) {
+			if (!job_done[i]) {
+				jobs[i].result.status = HttpFetchStatus::Failed;
+				if (jobs[i].result.error.empty())
+					jobs[i].result.error = "not started";
+				mark_job_done(i);
+			}
+		}
+		break;
 	}
 
 	for (size_t i = 0; i < slots.size(); ++i) {
 		if (slots[i].active && slots[i].easy) {
 			curl_multi_remove_handle(multi, slots[i].easy);
-			if (slots[i].job) {
-				slots[i].job->result.status = HttpFetchStatus::Failed;
-				if (slots[i].job->result.error.empty())
-					slots[i].job->result.error = "aborted";
-			}
 			release_slot(slots[i]);
 		}
 	}

@@ -15,6 +15,8 @@
 #include <memory>
 #include <vector>
 #include <chrono>
+#include <thread>
+#include <atomic>
 
 class HtmlViewContainer;
 
@@ -63,20 +65,23 @@ private:
 		// Multi-frame load so status UI can paint before blocking work:
 		Pending,        // show "Loading…", next frame → Fetch
 		Fetch,          // network + cache (may block briefly)
-		ShowRendering,  // show "Rendering…", next frame → Layout
-		Layout          // litehtml parse+layout (often multi-second)
+		ShowRendering,  // show "Rendering…", next frame → start layout thread
+		LayoutWait      // layout on worker; main thread keeps redrawing elapsed
 	};
 
 	void requestReload();
 	void advanceLoad(NVGcontext *ctx);
 	void runFetchStage();
-	void runLayoutStage();
+	void startLayoutAsync();
+	void finishLayoutAsync();
+	void joinLayoutThread();
 	void paintViewport();
 	void releaseNvgImage();
 	void releaseDocument();
 	void onAnchorClick(const std::string &href);
 	void applyPendingFragment();
 	void drawStatusPanel(NVGcontext *ctx);
+	void updateBusyElapsed();
 	void requestNextFrame();
 	static long msSince(std::chrono::steady_clock::time_point t0);
 
@@ -107,6 +112,15 @@ private:
 	long m_ms_parse_layout = 0;
 	long m_ms_first_paint = 0;
 	int m_prefetch_count = 0;
+	// Background layout (so the status panel can repaint elapsed time).
+	std::thread m_layout_thread;
+	std::atomic<bool> m_layout_done{false};
+	std::atomic<bool> m_layout_ok{false};
+	std::shared_ptr<litehtml::document> m_layout_doc;
+	int m_layout_content_w = 0;
+	int m_layout_content_h = 0;
+	long m_layout_ms = 0;
+	std::string m_layout_error;
 	int m_scroll_y = 0;
 	int m_content_height = 0;
 	int m_content_width = 0;
