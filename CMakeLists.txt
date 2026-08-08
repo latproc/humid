@@ -265,7 +265,7 @@ endif ()
 	# Create custom command for bison/yacc (note the DEPENDS)
 	 ADD_CUSTOM_COMMAND(
 	   COMMAND ${BISON_EXECUTABLE}
-	   ARGS -y
+	   ARGS
 			-o ${CMAKE_BINARY_DIR}/settingslang.tab.cpp
 			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
