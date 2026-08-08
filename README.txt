@@ -35,6 +35,20 @@ branch's clockwork submodule. See:
 
 Plant iod bus lines (prod-experimental-mqtt-fix, iod-elc) are separate.
 
+## Third-party licenses
+
+Humid is BSD-licensed (see LICENSE.txt). Copies of third-party licenses
+for components shipped or linked with Humid are under LICENSES/:
+
+  NanoGUI-LICENSE.txt     NanoGUI (BSD-3)
+  libcurl-LICENSE.txt     libcurl (curl/MIT-style)
+  RobotoMono-LICENSE.txt  Roboto Mono font (Apache-2.0)
+  litehtml-LICENSE.txt    litehtml HTML engine (BSD-3), used by HTMLVIEW
+  gumbo-LICENSE.txt       gumbo-parser (Apache-2.0), vendored with litehtml
+
+System libraries such as Cairo, Pango, and Fontconfig (used when HTMLVIEW
+is enabled) keep their own distribution licenses from the OS packages.
+
 Thanks for taking the time to look at this project, I hope
 to make it more reliable and accessible in the near future.
 
