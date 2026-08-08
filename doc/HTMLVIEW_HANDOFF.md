@@ -115,8 +115,13 @@ Artifacts (local): `tools/html-viewer-bakeoff/out/` (gitignored)
 - Structure class registered in `structure.cpp` (`url` property)
 - Factory: `createHtmlView` in `widgetfactory.cpp` / userwindow / dialogwindow
 - LinkableText remote string → `setUrl()`
-- Fetch via `get_file()` (curl), unique temp HTML deleted after load
-- Per-session disk cache under `/tmp/humid-htmlview-cache/sess-…` (removed on container destroy)
+- Fetch via curl multi (`fetch_urls_to_files`) with conditional GET
+- **Persistent disk cache** (not `/tmp`, not `/dev/shm`):
+  - `HUMID_HTMLVIEW_CACHE` → else `$XDG_CACHE_HOME/humid/htmlview` →
+    else `$HOME/.cache/humid/htmlview` → else `/var/cache/humid/htmlview`
+  - Body + `.meta` only treated as durable when origin sends **ETag** and/or **Last-Modified**
+  - Reopen path: conditional GET → **304** reuses body; network fail falls back to validated body
+- **Parallel asset prefetch** (CSS + images, up to 8 in flight) before litehtml parse
 - Image surface cache: refcounted for litehtml’s destroy protocol; cap 128
 - Viewport paint only (not full-document texture) — scroll with `nvgUpdateImage` when size unchanged
 - Explicit cleanup order: document → surfaces → NVG
@@ -200,10 +205,11 @@ ldd build/hmifile_check | grep -i glfw   # expect empty
    - Help entry from settings/menu
    - Return → `M_CoreControl2Panel.Reset` (demo Return is not wired)
 4. **Docs host on 4C04** — mini_httpd or static server; full tree (`html` + `css` + `images/`).  
-5. **Background fetch** — curl currently on UI thread; can hitch on slow network.  
+5. **Background fetch** — curl still on UI thread (but parallel + disk cache); offload to worker for zero hitch.  
 6. **Panel Cairo/Pango packages** if missing on Ubuntu 18.04 images.  
 7. **GLES path** — HTMLVIEW uses Cairo→NVG; confirm on RPi if needed.  
-8. Merge strategy: land `hmifile_check` via prod commit first; merge HTMLVIEW when ready (expect CMake/structure conflicts if both diverge).
+8. Merge strategy: land `hmifile_check` via prod commit first; merge HTMLVIEW when ready (expect CMake/structure conflicts if both diverge).  
+9. Ensure panel user can write cache dir (`$HOME/.cache/humid/htmlview` or set `HUMID_HTMLVIEW_CACHE`).
 
 ---
 

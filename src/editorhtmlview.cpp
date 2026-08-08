@@ -5,7 +5,6 @@
 
 #include "editorhtmlview.h"
 #include "htmlview_container.h"
-#include "curl_helper.h"
 #include "editor.h"
 #include "propertyformhelper.h"
 #include "structure.h"
@@ -229,21 +228,22 @@ void EditorHtmlView::reload() {
 		m_pending_fragment = frag_from_url;
 
 	if (fetch_url.find("http://") == 0 || fetch_url.find("https://") == 0) {
-		fs::path tmp = fs::temp_directory_path() / fs::unique_path("humid-doc-%%%%-%%%%.html");
-		if (!get_file(fetch_url, tmp.string())) {
+		// Persistent validated disk cache (not /tmp): conditional GET when ETag/Last-Modified known.
+		std::string local;
+		if (!m_container->ensureLocalFile(fetch_url, local)) {
 			m_status = "Fetch failed";
-			std::cerr << "HTMLVIEW: get_file failed for " << fetch_url << "\n";
+			std::cerr << "HTMLVIEW: ensureLocalFile failed for " << fetch_url << "\n";
 			return;
 		}
-		std::ifstream in(tmp.string().c_str(), std::ios::binary);
+		std::ifstream in(local.c_str(), std::ios::binary);
+		if (!in) {
+			m_status = "Open failed";
+			return;
+		}
 		std::ostringstream ss;
 		ss << in.rdbuf();
 		html = ss.str();
 		base = fetch_url;
-		try {
-			fs::remove(tmp);
-		} catch (...) {
-		}
 	} else {
 		std::string path = fetch_url;
 		if (path.find("file://") == 0)
@@ -268,6 +268,15 @@ void EditorHtmlView::reload() {
 	const int vw = std::max(1, width() > 0 ? width() : 800);
 	const int vh = std::max(1, height() > 0 ? height() : 600);
 	m_container->setViewport(vw, vh);
+
+	// Parallel prefetch of CSS + images before litehtml parse (sequential load_image is slow).
+	if (fetch_url.find("http://") == 0 || fetch_url.find("https://") == 0) {
+		std::vector<std::string> assets = HtmlViewContainer::collectAssetUrls(html, base);
+		if (!assets.empty()) {
+			std::cerr << "HTMLVIEW: prefetching " << assets.size() << " assets (parallel)\n";
+			m_container->prefetchUrls(assets, 8);
+		}
+	}
 
 	try {
 		m_doc = litehtml::document::createFromString(html.c_str(), m_container.get());
