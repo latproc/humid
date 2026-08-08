@@ -23,8 +23,11 @@
 #include <algorithm>
 #include <vector>
 #include <cmath>
+#include <chrono>
+#include <cstdio>
 
 namespace fs = boost::filesystem;
+using Clock = std::chrono::steady_clock;
 
 namespace {
 // Escape for use inside CSS attribute selectors.
@@ -84,12 +87,20 @@ void EditorHtmlView::releaseNvgImage() {
 }
 
 void EditorHtmlView::releaseDocument() {
+	// Document must be destroyed before image surfaces (container is non-owning to litehtml).
 	m_doc.reset();
 	m_content_height = 0;
 	m_content_width = 0;
 	m_scroll_y = 0;
-	if (m_container)
+	// Drop in-flight HTML held between Fetch and Layout stages.
+	m_pending_html.clear();
+	m_pending_html.shrink_to_fit();
+	m_pending_base.clear();
+	if (m_container) {
 		m_container->clearImageSurfaces();
+		// Session URL→path map can grow if many manuals are opened; disk cache remains.
+		m_container->clearMemoryMaps();
+	}
 	releaseNvgImage();
 	m_rgba.clear();
 	m_rgba.shrink_to_fit();
@@ -102,8 +113,25 @@ void EditorHtmlView::releaseDocument() {
 }
 
 EditorHtmlView::~EditorHtmlView() {
+	// Abort multi-frame load so draw/advanceLoad cannot run after teardown.
+	m_load_phase = LoadPhase::Idle;
+	m_load_busy = false;
+	// Drop callback into this before destroying the container.
+	if (m_container)
+		m_container->setAnchorClickCallback(nullptr);
 	releaseDocument();
 	m_container.reset();
+}
+
+long EditorHtmlView::msSince(Clock::time_point t0) {
+	return (long)std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - t0).count();
+}
+
+void EditorHtmlView::requestNextFrame() {
+	// Humid only paints when ClockworkClient::needs_frame_redraw is set
+	// (see skeleton.cpp drawAll). Prefer EDITOR gui; fall back if early init.
+	if (EDITOR && EDITOR->gui())
+		EDITOR->gui()->requestRedraw();
 }
 
 void EditorHtmlView::setUrl(const std::string &url, bool force_reload) {
@@ -112,7 +140,7 @@ void EditorHtmlView::setUrl(const std::string &url, bool force_reload) {
 	std::string cur_base = stripFragment(m_url, nullptr);
 
 	// Same document, only fragment changed → jump without reload.
-	if (!force_reload && !m_url.empty() && base == cur_base && m_doc) {
+	if (!force_reload && !m_url.empty() && base == cur_base && m_doc && !m_load_busy) {
 		m_url = url;
 		m_pending_fragment = frag;
 		if (frag.empty())
@@ -122,13 +150,40 @@ void EditorHtmlView::setUrl(const std::string &url, bool force_reload) {
 		return;
 	}
 
-	if (!force_reload && url == m_url)
+	if (!force_reload && url == m_url && !m_load_busy)
 		return;
 
 	m_url = url;
 	m_pending_fragment = frag;
 	m_scroll_y = 0;
-	reload();
+	requestReload();
+}
+
+void EditorHtmlView::requestReload() {
+	if (m_url.empty()) {
+		m_status = "No URL";
+		m_status_detail.clear();
+		m_load_phase = LoadPhase::Idle;
+		m_load_busy = false;
+		m_pending_html.clear();
+		m_pending_base.clear();
+		return;
+	}
+	// Multi-frame load: paint "Loading…" this frame before any network/layout work.
+	// releaseDocument() also clears any in-flight m_pending_html from a prior load.
+	std::string keep_frag = m_pending_fragment;
+	releaseDocument();
+	m_pending_fragment = keep_frag;
+
+	m_load_phase = LoadPhase::Pending;
+	m_load_busy = true;
+	m_status = "Loading document…";
+	m_status_detail = "Please wait";
+	m_timing_line.clear();
+	m_ms_fetch_html = m_ms_prefetch = m_ms_parse_layout = m_ms_first_paint = 0;
+	m_prefetch_count = 0;
+	m_load_t0 = Clock::now();
+	requestNextFrame();
 }
 
 void EditorHtmlView::jumpToTop() {
@@ -208,36 +263,38 @@ void EditorHtmlView::onAnchorClick(const std::string &href) {
 	setUrl(resolved, true);
 }
 
-void EditorHtmlView::reload() {
-	// Keep pending fragment from setUrl; releaseDocument clears scroll only.
-	std::string keep_frag = m_pending_fragment;
-	releaseDocument();
-	m_pending_fragment = keep_frag;
+void EditorHtmlView::runFetchStage() {
+	m_pending_html.clear();
+	m_pending_base.clear();
 
-	if (m_url.empty()) {
-		m_status = "No URL";
-		return;
-	}
-
-	m_status = "Loading…";
-	std::string html;
-	std::string base = m_url;
 	std::string frag_from_url;
 	std::string fetch_url = stripFragment(m_url, &frag_from_url);
 	if (m_pending_fragment.empty() && !frag_from_url.empty())
 		m_pending_fragment = frag_from_url;
 
+	m_status = "Loading document…";
+	m_status_detail = "Fetching / validating cache…";
+
+	const auto t_html0 = Clock::now();
+	std::string html;
+	std::string base = m_url;
+
 	if (fetch_url.find("http://") == 0 || fetch_url.find("https://") == 0) {
-		// Persistent validated disk cache (not /tmp): conditional GET when ETag/Last-Modified known.
 		std::string local;
 		if (!m_container->ensureLocalFile(fetch_url, local)) {
 			m_status = "Fetch failed";
+			m_status_detail = fetch_url;
+			m_load_phase = LoadPhase::Idle;
+			m_load_busy = false;
 			std::cerr << "HTMLVIEW: ensureLocalFile failed for " << fetch_url << "\n";
 			return;
 		}
 		std::ifstream in(local.c_str(), std::ios::binary);
 		if (!in) {
 			m_status = "Open failed";
+			m_status_detail = local;
+			m_load_phase = LoadPhase::Idle;
+			m_load_busy = false;
 			return;
 		}
 		std::ostringstream ss;
@@ -251,6 +308,9 @@ void EditorHtmlView::reload() {
 		std::ifstream in(path.c_str(), std::ios::binary);
 		if (!in) {
 			m_status = "Open failed";
+			m_status_detail = path;
+			m_load_phase = LoadPhase::Idle;
+			m_load_busy = false;
 			return;
 		}
 		std::ostringstream ss;
@@ -258,9 +318,13 @@ void EditorHtmlView::reload() {
 		html = ss.str();
 		base = path;
 	}
+	m_ms_fetch_html = msSince(t_html0);
 
 	if (html.empty()) {
 		m_status = "Empty document";
+		m_status_detail.clear();
+		m_load_phase = LoadPhase::Idle;
+		m_load_busy = false;
 		return;
 	}
 
@@ -269,36 +333,133 @@ void EditorHtmlView::reload() {
 	const int vh = std::max(1, height() > 0 ? height() : 600);
 	m_container->setViewport(vw, vh);
 
-	// Parallel prefetch of CSS + images before litehtml parse (sequential load_image is slow).
+	m_prefetch_count = 0;
+	const auto t_pf0 = Clock::now();
 	if (fetch_url.find("http://") == 0 || fetch_url.find("https://") == 0) {
 		std::vector<std::string> assets = HtmlViewContainer::collectAssetUrls(html, base);
+		m_prefetch_count = (int)assets.size();
 		if (!assets.empty()) {
+			m_status_detail = "Fetching " + std::to_string(assets.size()) + " assets (parallel)…";
 			std::cerr << "HTMLVIEW: prefetching " << assets.size() << " assets (parallel)\n";
 			m_container->prefetchUrls(assets, 8);
 		}
 	}
+	m_ms_prefetch = msSince(t_pf0);
 
+	std::cerr << "HTMLVIEW timing: fetch_html=" << m_ms_fetch_html << "ms prefetch=" << m_ms_prefetch
+			  << "ms (" << m_prefetch_count << " assets) url=" << fetch_url << "\n";
+
+	m_pending_html = std::move(html);
+	m_pending_base = base;
+	m_status = "Rendering document…";
+	m_status_detail = "Layout may take several seconds (litehtml)…";
+	m_load_phase = LoadPhase::ShowRendering;
+}
+
+void EditorHtmlView::runLayoutStage() {
+	const std::string html = std::move(m_pending_html);
+	m_pending_html.clear();
+	m_pending_html.shrink_to_fit();
+	const std::string base = m_pending_base;
+	m_pending_base.clear();
+
+	if (html.empty()) {
+		m_status = "Empty document";
+		m_load_phase = LoadPhase::Idle;
+		m_load_busy = false;
+		return;
+	}
+
+	m_status = "Rendering document…";
+	m_status_detail = "Parsing and laying out…";
+
+	const int vw = std::max(1, width() > 0 ? width() : 800);
+	const int vh = std::max(1, height() > 0 ? height() : 600);
+	m_container->setViewport(vw, vh);
+	// Do not call setBaseUrl() here: it clears decoded image surfaces. Base was set
+	// in the fetch stage; only refresh if it somehow differs.
+	if (m_container->baseUrl() != base)
+		m_container->setBaseUrl(base);
+
+	const auto t_lay0 = Clock::now();
 	try {
+		// Drop any previous document before building a new one.
+		m_doc.reset();
+		if (m_container)
+			m_container->clearImageSurfaces();
+
 		m_doc = litehtml::document::createFromString(html.c_str(), m_container.get());
+		// `html` goes out of scope at end of function; litehtml has its own tree by now.
 		if (!m_doc) {
 			m_status = "Parse failed";
+			m_status_detail.clear();
+			m_load_phase = LoadPhase::Idle;
+			m_load_busy = false;
+			if (m_container)
+				m_container->clearImageSurfaces();
 			return;
 		}
 		m_content_width = (int)m_doc->render(vw);
 		m_content_height = (int)m_doc->height();
+		m_ms_parse_layout = msSince(t_lay0);
+
+		std::cerr << "HTMLVIEW timing: parse_layout=" << m_ms_parse_layout
+				  << "ms content=" << m_content_width << "x" << m_content_height << "\n";
+
 		m_status = "OK";
+		m_status_detail.clear();
 		m_need_paint = true;
 		applyPendingFragment();
+		m_load_phase = LoadPhase::Idle;
+		// first_paint timed in paintViewport; load_busy cleared after first paint log
 	} catch (const std::exception &e) {
+		m_ms_parse_layout = msSince(t_lay0);
 		m_status = std::string("Error: ") + e.what();
+		m_status_detail.clear();
 		m_doc.reset();
 		if (m_container)
 			m_container->clearImageSurfaces();
+		m_load_phase = LoadPhase::Idle;
+		m_load_busy = false;
 	} catch (...) {
+		m_ms_parse_layout = msSince(t_lay0);
 		m_status = "Render error";
+		m_status_detail.clear();
 		m_doc.reset();
 		if (m_container)
 			m_container->clearImageSurfaces();
+		m_load_phase = LoadPhase::Idle;
+		m_load_busy = false;
+	}
+}
+
+void EditorHtmlView::advanceLoad(NVGcontext * /*ctx*/) {
+	switch (m_load_phase) {
+	case LoadPhase::Pending:
+		// This frame only shows the Loading panel (painted after advanceLoad returns).
+		m_status = "Loading document…";
+		m_status_detail = "Please wait";
+		m_load_phase = LoadPhase::Fetch;
+		requestNextFrame();
+		break;
+	case LoadPhase::Fetch:
+		runFetchStage();
+		requestNextFrame();
+		break;
+	case LoadPhase::ShowRendering:
+		// This frame only shows the Rendering panel before the heavy layout frame.
+		m_status = "Rendering document…";
+		m_status_detail = "Layout may take several seconds (litehtml)…";
+		m_load_phase = LoadPhase::Layout;
+		requestNextFrame();
+		break;
+	case LoadPhase::Layout:
+		runLayoutStage();
+		requestNextFrame();
+		break;
+	case LoadPhase::Idle:
+	default:
+		break;
 	}
 }
 
@@ -330,21 +491,29 @@ bool EditorHtmlView::hitTopButton(const nanogui::Vector2i &p) const {
 }
 
 void EditorHtmlView::paintViewport() {
-	if (!m_doc || width() <= 0 || height() <= 0)
+	if (!m_doc || width() <= 0 || height() <= 0) {
+		// Avoid stuck m_load_busy if layout finished before the widget has a size.
+		if (m_doc && m_load_busy && m_status == "OK")
+			requestNextFrame();
 		return;
+	}
+
+	const bool log_first_paint = m_load_busy;
+	const auto t_paint0 = Clock::now();
 
 	const int w = width();
 	const int h = height();
 	m_container->setViewport(w, h);
 
 	if (m_content_width != w) {
+		const auto t_reflow0 = Clock::now();
 		m_content_width = (int)m_doc->render(w);
 		m_content_height = (int)m_doc->height();
 		int max_scroll = std::max(0, m_content_height - h);
 		if (m_scroll_y > max_scroll)
 			m_scroll_y = max_scroll;
-		// Width change can shift anchor positions; re-apply pending fragment if any
 		applyPendingFragment();
+		std::cerr << "HTMLVIEW timing: reflow=" << msSince(t_reflow0) << "ms width=" << w << "\n";
 	}
 
 	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
@@ -352,12 +521,14 @@ void EditorHtmlView::paintViewport() {
 		if (surface)
 			cairo_surface_destroy(surface);
 		m_status = "Cairo surface failed";
+		m_load_busy = false;
 		return;
 	}
 	cairo_t *cr = cairo_create(surface);
 	if (!cr) {
 		cairo_surface_destroy(surface);
 		m_status = "Cairo context failed";
+		m_load_busy = false;
 		return;
 	}
 	cairo_set_source_rgb(cr, 1, 1, 1);
@@ -399,39 +570,142 @@ void EditorHtmlView::paintViewport() {
 	m_rgba_w = w;
 	m_rgba_h = h;
 	m_need_paint = false;
+
+	const long paint_ms = msSince(t_paint0);
+	if (log_first_paint) {
+		m_ms_first_paint = paint_ms;
+		const long total = msSince(m_load_t0);
+		std::ostringstream line;
+		line << "fetch_html=" << m_ms_fetch_html << "ms"
+			 << " prefetch=" << m_ms_prefetch << "ms(" << m_prefetch_count << ")"
+			 << " parse_layout=" << m_ms_parse_layout << "ms"
+			 << " first_paint=" << m_ms_first_paint << "ms"
+			 << " total=" << total << "ms";
+		m_timing_line = line.str();
+		std::cerr << "HTMLVIEW timing: " << m_timing_line << " url=" << m_url << "\n";
+		m_load_busy = false;
+	}
+}
+
+void EditorHtmlView::drawStatusPanel(NVGcontext *ctx) {
+	const float x = (float)mPos.x();
+	const float y = (float)mPos.y();
+	const float w = (float)mSize.x();
+	const float h = (float)mSize.y();
+
+	// Background
+	nvgBeginPath(ctx);
+	nvgRect(ctx, x, y, w, h);
+	nvgFillColor(ctx, nvgRGBA(245, 247, 250, 255));
+	nvgFill(ctx);
+
+	// Center card
+	const float card_w = std::min(w - 40.f, 520.f);
+	const float card_h = 160.f;
+	const float cx = x + (w - card_w) * 0.5f;
+	const float cy = y + (h - card_h) * 0.5f;
+
+	nvgBeginPath(ctx);
+	nvgRoundedRect(ctx, cx, cy, card_w, card_h, 8.f);
+	nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
+	nvgFill(ctx);
+	nvgStrokeWidth(ctx, 1.f);
+	nvgStrokeColor(ctx, nvgRGBA(180, 190, 200, 255));
+	nvgStroke(ctx);
+
+	// Accent bar
+	nvgBeginPath(ctx);
+	nvgRoundedRect(ctx, cx, cy, 6.f, card_h, 3.f);
+	const bool rendering =
+		m_load_phase == LoadPhase::ShowRendering || m_load_phase == LoadPhase::Layout ||
+		(m_status.find("Rendering") != std::string::npos);
+	nvgFillColor(ctx, rendering ? nvgRGBA(200, 120, 40, 255) : nvgRGBA(30, 100, 170, 255));
+	nvgFill(ctx);
+
+	nvgFontFace(ctx, "sans-bold");
+	nvgFontSize(ctx, 22.f);
+	nvgFillColor(ctx, nvgRGBA(30, 40, 50, 255));
+	nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+	const std::string title = m_status.empty() ? std::string("HTMLVIEW") : m_status;
+	nvgText(ctx, cx + 24.f, cy + 24.f, title.c_str(), nullptr);
+
+	nvgFontFace(ctx, "sans");
+	nvgFontSize(ctx, 16.f);
+	nvgFillColor(ctx, nvgRGBA(70, 80, 90, 255));
+	if (!m_status_detail.empty())
+		nvgTextBox(ctx, cx + 24.f, cy + 56.f, card_w - 40.f, m_status_detail.c_str(), nullptr);
+
+	// Elapsed while busy
+	if (m_load_busy) {
+		const long elapsed = msSince(m_load_t0);
+		char buf[64];
+		std::snprintf(buf, sizeof(buf), "Elapsed: %.1f s", elapsed / 1000.0);
+		nvgFontSize(ctx, 14.f);
+		nvgFillColor(ctx, nvgRGBA(100, 110, 120, 255));
+		nvgText(ctx, cx + 24.f, cy + 100.f, buf, nullptr);
+	}
+
+	// URL footer
+	if (!m_url.empty()) {
+		nvgFontSize(ctx, 12.f);
+		nvgFillColor(ctx, nvgRGBA(120, 130, 140, 255));
+		nvgTextBox(ctx, cx + 24.f, cy + 124.f, card_w - 40.f, m_url.c_str(), nullptr);
+	}
+
+	// Last timing strip at bottom of widget (after a completed load, on error screens too)
+	if (!m_timing_line.empty() && !m_load_busy) {
+		nvgFontSize(ctx, 11.f);
+		nvgFillColor(ctx, nvgRGBA(90, 100, 110, 255));
+		nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_BOTTOM);
+		nvgTextBox(ctx, x + 10.f, y + h - 8.f, w - 20.f, m_timing_line.c_str(), nullptr);
+	}
 }
 
 void EditorHtmlView::draw(NVGcontext *ctx) {
 	Widget::draw(ctx);
 
-	if (m_doc && (m_need_paint || m_rgba_w != width() || m_rgba_h != height()))
+	// Advance multi-frame load *before* painting so Fetch/Layout run after a
+	// frame that already displayed the previous status (Loading / Rendering).
+	if (m_load_phase != LoadPhase::Idle)
+		advanceLoad(ctx);
+
+	// Ready to show document (may still need first paint this frame).
+	const bool ready = m_doc && m_status == "OK" && m_load_phase == LoadPhase::Idle;
+
+	if (ready && (m_need_paint || m_rgba_w != width() || m_rgba_h != height()))
 		paintViewport();
 
-	nvgBeginPath(ctx);
-	nvgRect(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y());
-	nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
-	nvgFill(ctx);
+	if (ready && m_nvg_image >= 0) {
+		nvgBeginPath(ctx);
+		nvgRect(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y());
+		nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
+		nvgFill(ctx);
 
-	if (m_nvg_image >= 0 && m_doc && m_status == "OK") {
 		NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y(), 0.f,
 									   m_nvg_image, 1.f);
 		nvgBeginPath(ctx);
 		nvgRect(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y());
 		nvgFillPaint(ctx, img);
 		nvgFill(ctx);
+
+		// After a timed load, keep the breakdown visible briefly at the bottom.
+		if (!m_timing_line.empty()) {
+			nvgBeginPath(ctx);
+			nvgRect(ctx, mPos.x(), mPos.y() + mSize.y() - 22.f, (float)mSize.x(), 22.f);
+			nvgFillColor(ctx, nvgRGBA(255, 255, 255, 200));
+			nvgFill(ctx);
+			nvgFontFace(ctx, "sans");
+			nvgFontSize(ctx, 11.f);
+			nvgFillColor(ctx, nvgRGBA(50, 60, 70, 255));
+			nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_BOTTOM);
+			nvgText(ctx, mPos.x() + 8.f, mPos.y() + mSize.y() - 6.f, m_timing_line.c_str(), nullptr);
+		}
 	} else {
-		nvgFontSize(ctx, 18.f);
-		nvgFontFace(ctx, "sans");
-		nvgFillColor(ctx, nvgRGBA(40, 40, 40, 255));
-		nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
-		std::string msg = m_status.empty() ? std::string("HTMLVIEW") : m_status;
-		if (!m_url.empty())
-			msg += std::string("\n") + m_url;
-		nvgTextBox(ctx, mPos.x() + 8, mPos.y() + 8, (float)mSize.x() - 16, msg.c_str(), nullptr);
+		drawStatusPanel(ctx);
 	}
 
 	// Jump-to-top control when scrolled
-	if (m_doc && m_status == "OK" && m_scroll_y > 0) {
+	if (ready && m_nvg_image >= 0 && m_scroll_y > 0) {
 		auto r = topButtonRect();
 		float x = mPos.x() + r.x();
 		float y = mPos.y() + r.y();

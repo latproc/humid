@@ -184,6 +184,8 @@ void HtmlViewContainer::clearMemoryMaps() {
 }
 
 void HtmlViewContainer::setBaseUrl(const std::string &base_url) {
+	if (m_base_url == base_url)
+		return;
 	m_base_url = base_url;
 	// Drop decoded bitmaps when document base changes; disk cache stays.
 	clearImageSurfaces();
@@ -432,16 +434,17 @@ bool HtmlViewContainer::ensureLocalFile(const std::string &url, std::string &loc
 
 	if (r.status != HttpFetchStatus::Ok) {
 		// Network failure: fall back to previously validated body if present.
+		try {
+			if (fs::exists(body_tmp))
+				fs::remove(body_tmp);
+		} catch (...) {
+		}
 		if (have_body && meta.has_validators()) {
 			std::cerr << "HTMLVIEW: fetch failed (" << r.error << "), using validated cache for "
 					  << url << "\n";
 			local_path = body;
 			m_url_to_local[url] = local_path;
 			return true;
-		}
-		try {
-			fs::remove(body_tmp);
-		} catch (...) {
 		}
 		return false;
 	}
@@ -683,6 +686,7 @@ void HtmlViewContainer::load_image(const char *src, const char *baseurl, bool) {
 
 cairo_surface_t *HtmlViewContainer::get_image(const std::string &url) {
 	// litehtml container_cairo always cairo_surface_destroy()s the return value.
+	// We keep one owned ref in m_images and hand out an extra reference.
 	auto it = m_images.find(url);
 	if (it != m_images.end() && it->second)
 		return cairo_surface_reference(it->second);
@@ -697,11 +701,13 @@ cairo_surface_t *HtmlViewContainer::get_image(const std::string &url) {
 	if (m_images.size() >= kMaxCachedImages) {
 		auto evict = m_images.begin();
 		if (evict != m_images.end()) {
+			// Do not evict the surface we are about to insert (different URL).
 			if (evict->second)
 				cairo_surface_destroy(evict->second);
 			m_images.erase(evict);
 		}
 	}
+	// m_images owns `surf` (refcount 1). Caller gets a second reference.
 	m_images[url] = surf;
 	return cairo_surface_reference(surf);
 }

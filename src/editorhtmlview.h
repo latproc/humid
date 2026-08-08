@@ -14,6 +14,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 class HtmlViewContainer;
 
@@ -57,12 +58,28 @@ public:
 	bool jumpToFragment(const std::string &fragment);
 
 private:
-	void reload();
+	enum class LoadPhase {
+		Idle,
+		// Multi-frame load so status UI can paint before blocking work:
+		Pending,        // show "Loading…", next frame → Fetch
+		Fetch,          // network + cache (may block briefly)
+		ShowRendering,  // show "Rendering…", next frame → Layout
+		Layout          // litehtml parse+layout (often multi-second)
+	};
+
+	void requestReload();
+	void advanceLoad(NVGcontext *ctx);
+	void runFetchStage();
+	void runLayoutStage();
 	void paintViewport();
 	void releaseNvgImage();
 	void releaseDocument();
 	void onAnchorClick(const std::string &href);
 	void applyPendingFragment();
+	void drawStatusPanel(NVGcontext *ctx);
+	void requestNextFrame();
+	static long msSince(std::chrono::steady_clock::time_point t0);
+
 	nanogui::Vector2i docCoords(const nanogui::Vector2i &widget_p) const;
 	bool hitTopButton(const nanogui::Vector2i &p) const;
 	nanogui::Vector4i topButtonRect() const; // x,y,w,h in widget coords
@@ -74,9 +91,22 @@ private:
 
 	std::string m_url;
 	std::string m_status;
+	std::string m_status_detail;   // second line on status panel
+	std::string m_timing_line;     // last completed load breakdown (shown under status)
 	std::string m_pending_fragment; // fragment to apply after load/layout
+	std::string m_pending_html;     // body held between Fetch and Layout stages
+	std::string m_pending_base;
 	std::unique_ptr<HtmlViewContainer> m_container;
 	std::shared_ptr<litehtml::document> m_doc;
+	LoadPhase m_load_phase = LoadPhase::Idle;
+	bool m_load_busy = false; // true while multi-frame load is in progress
+	// Timing for the in-progress load (ms accumulated per stage).
+	std::chrono::steady_clock::time_point m_load_t0;
+	long m_ms_fetch_html = 0;
+	long m_ms_prefetch = 0;
+	long m_ms_parse_layout = 0;
+	long m_ms_first_paint = 0;
+	int m_prefetch_count = 0;
 	int m_scroll_y = 0;
 	int m_content_height = 0;
 	int m_content_width = 0;

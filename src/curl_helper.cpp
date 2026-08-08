@@ -29,6 +29,8 @@ size_t receive_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 	BufferInfo *bufp = static_cast<BufferInfo *>(userp);
 	if (!bufp)
 		return 0;
+	if (n == 0)
+		return 0;
 	if (bufp->len + n + 1 > bufp->size) {
 		const size_t newsize = bufp->len + n + 1;
 		char *newbuf = static_cast<char *>(malloc(newsize));
@@ -43,6 +45,9 @@ size_t receive_data(void *buffer, size_t size, size_t nmemb, void *userp) {
 		bufp->size = newsize;
 		bufp->len = bufp->len + n;
 	} else {
+		// Size was reserved; buffer must already exist.
+		if (!bufp->buffer)
+			return 0;
 		memmove(bufp->buffer + bufp->len, buffer, n);
 		bufp->len += n;
 		if (bufp->size > bufp->len)
@@ -165,6 +170,10 @@ void release_slot(EasySlot &s) {
 }
 
 bool setup_easy(EasySlot &s, HttpFetchJob &job, long timeout_sec) {
+	// Defensive: never reuse a slot that still owns curl/body resources.
+	if (s.active || s.easy || s.body.buffer || s.headers)
+		release_slot(s);
+
 	s.easy = curl_easy_init();
 	if (!s.easy)
 		return false;
@@ -357,8 +366,12 @@ void fetch_urls_to_files(std::vector<HttpFetchJob> &jobs, int max_parallel, long
 			curl_easy_getinfo(easy, CURLINFO_PRIVATE, &priv);
 			EasySlot *slot = reinterpret_cast<EasySlot *>(priv);
 			curl_multi_remove_handle(multi, easy);
-			if (slot)
+			if (slot) {
 				finish_slot(*slot, result);
+			} else {
+				// Should not happen; avoid leaking the easy handle.
+				curl_easy_cleanup(easy);
+			}
 			start_next();
 		}
 
