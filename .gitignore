@@ -75,3 +75,10 @@ junk/
 examples/
 doc/*.png
 stage/
+
+# HTML viewer bake-off (local clones, build trees, PNG outputs)
+tools/html-viewer-bakeoff/Falco/
+tools/html-viewer-bakeoff/litehtml/
+tools/html-viewer-bakeoff/litehtml-build/
+tools/html-viewer-bakeoff/out/
+tools/html-viewer-bakeoff/litehtml_render

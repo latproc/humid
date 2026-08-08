@@ -2,8 +2,6 @@
 #include "linkableproperty.h"
 #include <map>
 #include <list>
-#include "editor.h"
-#include "editorwidget.h"
 #include "valuehelper.h"
 #include <iostream>
 

@@ -52,10 +52,13 @@ bool get_file(const std::string url_s, const std::string filename) {
     CURLcode curl = curl_global_init(CURL_GLOBAL_NOTHING);
     if (curl) return false; // initialisation failed, curl functions cannot be used
     CURL *curl_handle = curl_easy_init();
+    if (!curl_handle)
+        return false;
 
     struct buffer_info *buf = (struct buffer_info *)malloc(sizeof(struct buffer_info));
     if (!buf) {
         fprintf(stderr, "out of memory allocating buffer\n");
+        curl_easy_cleanup(curl_handle);
         return false;
     }
     buf->size = 0;
@@ -65,15 +68,16 @@ bool get_file(const std::string url_s, const std::string filename) {
     const char *url = url_s.c_str();
 
     curl_easy_setopt(curl_handle, CURLOPT_URL, url);
-    //curl_easy_setopt(curl_handle, CURLOPT_POSTFIELDS, data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, receive_data);
     curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, buf);
+    curl_easy_setopt(curl_handle, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl_handle, CURLOPT_TIMEOUT, 30L);
  
     result = curl_easy_perform(curl_handle);
     if (result != 0)
-        std::cerr << "Error %d from curl when retrieving " << url << "\n";
-    bool res = true;
-    if (buf->buffer)
+        std::cerr << "Error " << (int)result << " from curl when retrieving " << url << "\n";
+    bool res = (result == CURLE_OK);
+    if (res && buf->buffer)
     {
          FILE *f = fopen(filename.c_str(), "wb");
          if (f) {
@@ -83,9 +87,14 @@ bool get_file(const std::string url_s, const std::string filename) {
                  res = false;
              }
              fclose(f);
+         } else {
+             res = false;
          }
-         free(buf->buffer);
+    } else if (!buf->buffer) {
+         res = false;
     }
+    if (buf->buffer)
+         free(buf->buffer);
     free(buf);
     curl_easy_cleanup(curl_handle);
     return res;

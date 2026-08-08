@@ -12,7 +12,7 @@
 #include "linkableobject.h"
 #include "linkableproperty.h"
 #include "structure.h"
-#include "editorwidget.h"
+// WidgetPropertyAnchor methods live in anchor_widget.cpp (needs EditorWidget / GUI).
 
 std::ostream &Anchor::operator()(std::ostream &out) const {
   return out << "";
@@ -48,15 +48,6 @@ std::ostream &ActionAnchor::operator()(std::ostream &out) const {
 std::ostream &operator<<(std::ostream &out, const ActionAnchor &aa) {
   return aa.operator()(out);
 }
-std::ostream &WidgetPropertyAnchor::operator()(std::ostream &out) const {
-  return out;
-}
-std::ostream &operator<<(std::ostream &out, const WidgetPropertyAnchor &wpa) {
-  return wpa.operator()(out);
-}
-
-
-
 
 RemoteAnchor::~RemoteAnchor() {}
 Value RemoteAnchor::get() { return remote->value(); }
@@ -72,14 +63,6 @@ Value StructurePropertyAnchor::get() {
 
 void StructurePropertyAnchor::set(Value v) {
   endpoint->getProperties().add(property_name.c_str(), v);
-}
-
-Value WidgetPropertyAnchor::get() {
-  return ew->getPropertyValue(property_name);
-}
-
-void WidgetPropertyAnchor::set(Value v) {
-  ew->setPropertyValue(property_name, v);
 }
 
 std::ostream &Link::operator()(std::ostream &out) const {

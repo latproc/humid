@@ -5,8 +5,6 @@
 
 #include <value.h>
 
-#include <nanogui/screen.h>
-#include <nanogui/window.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -100,6 +98,9 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Image File"] = "image_file";
 		properties["Scale"] = "scale";
 		properties["Interactive"] = "interactive";
+	}
+	else if (class_name == "HTMLVIEW") {
+		properties["URL"] = "url";
 	}
 	else if (class_name == "PROGRESS") {
 		properties["Foreground Colour"] = "fg_color";
@@ -338,7 +339,6 @@ bool Structure::save(std::ostream &out, const std::string &structure_name) {
 }
 
 bool StructureClass::save(std::ostream &out) {
-	using namespace nanogui;
 	out << getName() << " STRUCTURE";
 	writePropertyList(out, properties, &defaults);
 	if (!getBase().empty()) out << " EXTENDS " << getBase();
@@ -407,6 +407,9 @@ void Structure::loadBuiltins() {
     sc = new StructureClass("TABLE", "");
     sc->setBuiltIn();
     hm_classes.push_back(sc);
+	sc = new StructureClass("HTMLVIEW", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
     const std::string keypad = R"()";
 }
 

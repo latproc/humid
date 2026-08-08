@@ -1,0 +1,619 @@
+//
+//  editorhtmlview.cpp
+//  Project: humid
+//
+
+#include "editorhtmlview.h"
+#include "htmlview_container.h"
+#include "curl_helper.h"
+#include "editor.h"
+#include "propertyformhelper.h"
+#include "structure.h"
+#include "helper.h"
+#include "linkableobject.h"
+
+#include <litehtml.h>
+#include <cairo.h>
+#include <nanogui/screen.h>
+#include <nanogui/opengl.h>
+
+#include <boost/filesystem.hpp>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <algorithm>
+#include <vector>
+#include <cmath>
+
+namespace fs = boost::filesystem;
+
+namespace {
+// Escape for use inside CSS attribute selectors.
+std::string cssEscapeAttr(const std::string &s) {
+	std::string out;
+	out.reserve(s.size() + 8);
+	for (char c : s) {
+		if (c == '\\' || c == '"' || c == '\'')
+			out.push_back('\\');
+		out.push_back(c);
+	}
+	return out;
+}
+
+std::string stripFragment(const std::string &url, std::string *fragment_out) {
+	auto hash = url.find('#');
+	if (hash == std::string::npos) {
+		if (fragment_out)
+			fragment_out->clear();
+		return url;
+	}
+	if (fragment_out)
+		*fragment_out = url.substr(hash + 1);
+	return url.substr(0, hash);
+}
+
+bool sameDocumentUrl(const std::string &a, const std::string &b) {
+	std::string fa, fb;
+	return stripFragment(a, &fa) == stripFragment(b, &fb);
+}
+} // namespace
+
+const std::map<std::string, std::string> &EditorHtmlView::property_map() const {
+	auto structure_class = findClass("HTMLVIEW");
+	assert(structure_class);
+	return structure_class->property_map();
+}
+
+const std::map<std::string, std::string> &EditorHtmlView::reverse_property_map() const {
+	auto structure_class = findClass("HTMLVIEW");
+	assert(structure_class);
+	return structure_class->reverse_property_map();
+}
+
+EditorHtmlView::EditorHtmlView(NamedObject *owner, Widget *parent, const std::string nam, LinkableProperty *lp)
+	: Widget(parent), EditorWidget(owner, "HTMLVIEW", nam, this, lp), m_container(new HtmlViewContainer()) {
+	m_status = "No URL";
+	m_container->setAnchorClickCallback([this](const std::string &href) { onAnchorClick(href); });
+}
+
+void EditorHtmlView::releaseNvgImage() {
+	if (m_nvg_image >= 0) {
+		if (screen())
+			nvgDeleteImage(screen()->nvgContext(), m_nvg_image);
+		m_nvg_image = -1;
+	}
+}
+
+void EditorHtmlView::releaseDocument() {
+	m_doc.reset();
+	m_content_height = 0;
+	m_content_width = 0;
+	m_scroll_y = 0;
+	if (m_container)
+		m_container->clearImageSurfaces();
+	releaseNvgImage();
+	m_rgba.clear();
+	m_rgba.shrink_to_fit();
+	m_rgba_w = m_rgba_h = 0;
+	m_need_paint = true;
+	m_mouse_down = false;
+	m_click_on_top_btn = false;
+}
+
+EditorHtmlView::~EditorHtmlView() {
+	releaseDocument();
+	m_container.reset();
+}
+
+void EditorHtmlView::setUrl(const std::string &url, bool force_reload) {
+	std::string frag;
+	std::string base = stripFragment(url, &frag);
+	std::string cur_base = stripFragment(m_url, nullptr);
+
+	// Same document, only fragment changed → jump without reload.
+	if (!force_reload && !m_url.empty() && base == cur_base && m_doc) {
+		m_url = url;
+		m_pending_fragment = frag;
+		if (frag.empty())
+			jumpToTop();
+		else
+			jumpToFragment(frag);
+		return;
+	}
+
+	if (!force_reload && url == m_url)
+		return;
+
+	m_url = url;
+	m_pending_fragment = frag;
+	m_scroll_y = 0;
+	reload();
+}
+
+void EditorHtmlView::jumpToTop() {
+	setScrollY(0);
+}
+
+bool EditorHtmlView::jumpToFragment(const std::string &fragment) {
+	if (!m_doc || !m_doc->root() || fragment.empty())
+		return false;
+
+	const std::string esc = cssEscapeAttr(fragment);
+	// Pandoc ids and named anchors
+	std::string selector = "[id=\"" + esc + "\"],[name=\"" + esc + "\"]";
+	litehtml::element::ptr el = m_doc->root()->select_one(selector);
+	if (!el) {
+		// try with leading # stripped already; also try CSS #id form
+		el = m_doc->root()->select_one("#" + esc);
+	}
+	if (!el)
+		return false;
+
+	litehtml::position pos = el->get_placement();
+	setScrollY((int)std::lround((double)pos.top()));
+	return true;
+}
+
+void EditorHtmlView::applyPendingFragment() {
+	if (m_pending_fragment.empty())
+		return;
+	if (jumpToFragment(m_pending_fragment))
+		m_pending_fragment.clear();
+}
+
+void EditorHtmlView::onAnchorClick(const std::string &href) {
+	if (href.empty())
+		return;
+
+	// Pure fragment: #section
+	if (href[0] == '#') {
+		std::string frag = href.substr(1);
+		m_pending_fragment = frag;
+		if (!jumpToFragment(frag))
+			std::cerr << "HTMLVIEW: fragment not found: " << frag << "\n";
+		return;
+	}
+
+	// Resolve relative links against current document base
+	std::string resolved = href;
+	if (href.find("http://") != 0 && href.find("https://") != 0 && href.find("file:") != 0) {
+		std::string base = stripFragment(m_url, nullptr);
+		// simple join
+		if (!base.empty()) {
+			auto slash = base.find_last_of('/');
+			if (slash != std::string::npos)
+				resolved = base.substr(0, slash + 1) + href;
+		}
+	}
+
+	std::string frag;
+	std::string bare = stripFragment(resolved, &frag);
+	std::string cur = stripFragment(m_url, nullptr);
+	if (bare == cur || bare.empty()) {
+		// Same page fragment
+		if (frag.empty())
+			jumpToTop();
+		else {
+			m_pending_fragment = frag;
+			if (!jumpToFragment(frag))
+				std::cerr << "HTMLVIEW: fragment not found: " << frag << "\n";
+		}
+		return;
+	}
+
+	// Different document
+	setUrl(resolved, true);
+}
+
+void EditorHtmlView::reload() {
+	// Keep pending fragment from setUrl; releaseDocument clears scroll only.
+	std::string keep_frag = m_pending_fragment;
+	releaseDocument();
+	m_pending_fragment = keep_frag;
+
+	if (m_url.empty()) {
+		m_status = "No URL";
+		return;
+	}
+
+	m_status = "Loading…";
+	std::string html;
+	std::string base = m_url;
+	std::string frag_from_url;
+	std::string fetch_url = stripFragment(m_url, &frag_from_url);
+	if (m_pending_fragment.empty() && !frag_from_url.empty())
+		m_pending_fragment = frag_from_url;
+
+	if (fetch_url.find("http://") == 0 || fetch_url.find("https://") == 0) {
+		fs::path tmp = fs::temp_directory_path() / fs::unique_path("humid-doc-%%%%-%%%%.html");
+		if (!get_file(fetch_url, tmp.string())) {
+			m_status = "Fetch failed";
+			std::cerr << "HTMLVIEW: get_file failed for " << fetch_url << "\n";
+			return;
+		}
+		std::ifstream in(tmp.string().c_str(), std::ios::binary);
+		std::ostringstream ss;
+		ss << in.rdbuf();
+		html = ss.str();
+		base = fetch_url;
+		try {
+			fs::remove(tmp);
+		} catch (...) {
+		}
+	} else {
+		std::string path = fetch_url;
+		if (path.find("file://") == 0)
+			path = path.substr(7);
+		std::ifstream in(path.c_str(), std::ios::binary);
+		if (!in) {
+			m_status = "Open failed";
+			return;
+		}
+		std::ostringstream ss;
+		ss << in.rdbuf();
+		html = ss.str();
+		base = path;
+	}
+
+	if (html.empty()) {
+		m_status = "Empty document";
+		return;
+	}
+
+	m_container->setBaseUrl(base);
+	const int vw = std::max(1, width() > 0 ? width() : 800);
+	const int vh = std::max(1, height() > 0 ? height() : 600);
+	m_container->setViewport(vw, vh);
+
+	try {
+		m_doc = litehtml::document::createFromString(html.c_str(), m_container.get());
+		if (!m_doc) {
+			m_status = "Parse failed";
+			return;
+		}
+		m_content_width = (int)m_doc->render(vw);
+		m_content_height = (int)m_doc->height();
+		m_status = "OK";
+		m_need_paint = true;
+		applyPendingFragment();
+	} catch (const std::exception &e) {
+		m_status = std::string("Error: ") + e.what();
+		m_doc.reset();
+		if (m_container)
+			m_container->clearImageSurfaces();
+	} catch (...) {
+		m_status = "Render error";
+		m_doc.reset();
+		if (m_container)
+			m_container->clearImageSurfaces();
+	}
+}
+
+void EditorHtmlView::setScrollY(int y) {
+	int max_scroll = std::max(0, m_content_height - std::max(1, height()));
+	y = std::max(0, std::min(y, max_scroll));
+	if (y != m_scroll_y) {
+		m_scroll_y = y;
+		m_need_paint = true;
+	}
+}
+
+nanogui::Vector2i EditorHtmlView::docCoords(const nanogui::Vector2i &widget_p) const {
+	return nanogui::Vector2i(widget_p.x(), widget_p.y() + m_scroll_y);
+}
+
+nanogui::Vector4i EditorHtmlView::topButtonRect() const {
+	const int bw = 72;
+	const int bh = 32;
+	const int margin = 10;
+	return nanogui::Vector4i(width() - bw - margin, height() - bh - margin, bw, bh);
+}
+
+bool EditorHtmlView::hitTopButton(const nanogui::Vector2i &p) const {
+	if (m_scroll_y <= 0)
+		return false;
+	auto r = topButtonRect();
+	return p.x() >= r.x() && p.x() < r.x() + r.z() && p.y() >= r.y() && p.y() < r.y() + r.w();
+}
+
+void EditorHtmlView::paintViewport() {
+	if (!m_doc || width() <= 0 || height() <= 0)
+		return;
+
+	const int w = width();
+	const int h = height();
+	m_container->setViewport(w, h);
+
+	if (m_content_width != w) {
+		m_content_width = (int)m_doc->render(w);
+		m_content_height = (int)m_doc->height();
+		int max_scroll = std::max(0, m_content_height - h);
+		if (m_scroll_y > max_scroll)
+			m_scroll_y = max_scroll;
+		// Width change can shift anchor positions; re-apply pending fragment if any
+		applyPendingFragment();
+	}
+
+	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+	if (!surface || cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS) {
+		if (surface)
+			cairo_surface_destroy(surface);
+		m_status = "Cairo surface failed";
+		return;
+	}
+	cairo_t *cr = cairo_create(surface);
+	if (!cr) {
+		cairo_surface_destroy(surface);
+		m_status = "Cairo context failed";
+		return;
+	}
+	cairo_set_source_rgb(cr, 1, 1, 1);
+	cairo_paint(cr);
+
+	litehtml::position clip(0, 0, w, h);
+	m_doc->draw((litehtml::uint_ptr)cr, 0, -m_scroll_y, &clip);
+
+	cairo_surface_flush(surface);
+	unsigned char *data = cairo_image_surface_get_data(surface);
+	const size_t nbytes = static_cast<size_t>(w) * static_cast<size_t>(h) * 4;
+	m_rgba.resize(nbytes);
+	for (int i = 0; i < w * h; ++i) {
+		unsigned char b = data[i * 4 + 0];
+		unsigned char g = data[i * 4 + 1];
+		unsigned char r = data[i * 4 + 2];
+		unsigned char a = data[i * 4 + 3];
+		m_rgba[i * 4 + 0] = r;
+		m_rgba[i * 4 + 1] = g;
+		m_rgba[i * 4 + 2] = b;
+		m_rgba[i * 4 + 3] = a ? a : 255;
+	}
+
+	cairo_destroy(cr);
+	cairo_surface_destroy(surface);
+
+	if (screen()) {
+		NVGcontext *vg = screen()->nvgContext();
+		if (m_nvg_image >= 0 && m_rgba_w == w && m_rgba_h == h) {
+			nvgUpdateImage(vg, m_nvg_image, m_rgba.data());
+		} else {
+			releaseNvgImage();
+			m_nvg_image = nvgCreateImageRGBA(vg, w, h, 0, m_rgba.data());
+		}
+	} else {
+		releaseNvgImage();
+	}
+
+	m_rgba_w = w;
+	m_rgba_h = h;
+	m_need_paint = false;
+}
+
+void EditorHtmlView::draw(NVGcontext *ctx) {
+	Widget::draw(ctx);
+
+	if (m_doc && (m_need_paint || m_rgba_w != width() || m_rgba_h != height()))
+		paintViewport();
+
+	nvgBeginPath(ctx);
+	nvgRect(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y());
+	nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
+	nvgFill(ctx);
+
+	if (m_nvg_image >= 0 && m_doc && m_status == "OK") {
+		NVGpaint img = nvgImagePattern(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y(), 0.f,
+									   m_nvg_image, 1.f);
+		nvgBeginPath(ctx);
+		nvgRect(ctx, mPos.x(), mPos.y(), (float)mSize.x(), (float)mSize.y());
+		nvgFillPaint(ctx, img);
+		nvgFill(ctx);
+	} else {
+		nvgFontSize(ctx, 18.f);
+		nvgFontFace(ctx, "sans");
+		nvgFillColor(ctx, nvgRGBA(40, 40, 40, 255));
+		nvgTextAlign(ctx, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+		std::string msg = m_status.empty() ? std::string("HTMLVIEW") : m_status;
+		if (!m_url.empty())
+			msg += std::string("\n") + m_url;
+		nvgTextBox(ctx, mPos.x() + 8, mPos.y() + 8, (float)mSize.x() - 16, msg.c_str(), nullptr);
+	}
+
+	// Jump-to-top control when scrolled
+	if (m_doc && m_status == "OK" && m_scroll_y > 0) {
+		auto r = topButtonRect();
+		float x = mPos.x() + r.x();
+		float y = mPos.y() + r.y();
+		float bw = (float)r.z();
+		float bh = (float)r.w();
+		nvgBeginPath(ctx);
+		nvgRoundedRect(ctx, x, y, bw, bh, 4.f);
+		nvgFillColor(ctx, nvgRGBA(30, 80, 140, 220));
+		nvgFill(ctx);
+		nvgFontSize(ctx, 15.f);
+		nvgFontFace(ctx, "sans-bold");
+		nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
+		nvgTextAlign(ctx, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+		nvgText(ctx, x + bw * 0.5f, y + bh * 0.5f, "Top", nullptr);
+	}
+
+	if (border > 0) {
+		nvgBeginPath(ctx);
+		nvgStrokeWidth(ctx, (float)border);
+		nvgRect(ctx, mPos.x() + 0.5f, mPos.y() + 0.5f, (float)mSize.x() - 1, (float)mSize.y() - 1);
+		nvgStrokeColor(ctx, nvgRGBA(80, 80, 80, 255));
+		nvgStroke(ctx);
+	}
+
+	if (mSelected)
+		drawSelectionBorder(ctx, mPos, mSize);
+	else if (EDITOR && EDITOR->isEditMode())
+		drawElementBorder(ctx, mPos, mSize);
+}
+
+bool EditorHtmlView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {
+	if (editorMouseButtonEvent(this, p, button, down, modifiers))
+		return Widget::mouseButtonEvent(p, button, down, modifiers);
+
+	if (button == GLFW_MOUSE_BUTTON_LEFT) {
+		if (down) {
+			requestFocus();
+			m_mouse_down = true;
+			m_click_on_top_btn = hitTopButton(p);
+			if (m_click_on_top_btn)
+				return true;
+
+			m_drag_y = p.y();
+			m_drag_scroll0 = m_scroll_y;
+
+			if (m_doc) {
+				auto d = docCoords(p);
+				m_doc->on_lbutton_down(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {});
+			}
+		} else {
+			if (m_click_on_top_btn && hitTopButton(p)) {
+				jumpToTop();
+				m_click_on_top_btn = false;
+				m_mouse_down = false;
+				m_drag_y = -1;
+				return true;
+			}
+			m_click_on_top_btn = false;
+
+			if (m_doc && m_mouse_down) {
+				const bool dragged = (m_drag_y >= 0) && (std::abs(p.y() - m_drag_y) >= 6);
+				if (dragged) {
+					// Cancel active element so a drag-scroll does not follow a link.
+					m_doc->on_button_cancel([](const litehtml::position &) {});
+				} else {
+					auto d = docCoords(p);
+					m_doc->on_lbutton_up(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {});
+				}
+			}
+			m_mouse_down = false;
+			m_drag_y = -1;
+		}
+		return true;
+	}
+	return true;
+}
+
+bool EditorHtmlView::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vector2i &rel, int button,
+									  int modifiers) {
+	if (editorMouseMotionEvent(this, p, rel, button, modifiers))
+		return Widget::mouseMotionEvent(p, rel, button, modifiers);
+
+	if (m_doc && !m_click_on_top_btn) {
+		auto d = docCoords(p);
+		if (m_doc->on_mouse_over(d.x(), d.y(), p.x(), p.y(), [](const litehtml::position &) {}))
+			m_need_paint = true; // hover style change
+	}
+
+	if (m_drag_y >= 0 && !m_click_on_top_btn && (button & (1 << GLFW_MOUSE_BUTTON_LEFT))) {
+		setScrollY(m_drag_scroll0 - (p.y() - m_drag_y));
+		return true;
+	}
+	return true;
+}
+
+bool EditorHtmlView::mouseEnterEvent(const nanogui::Vector2i &p, bool enter) {
+	if (editorMouseEnterEvent(this, p, enter))
+		return Widget::mouseEnterEvent(p, enter);
+	if (!enter && m_doc) {
+		if (m_doc->on_mouse_leave([](const litehtml::position &) {}))
+			m_need_paint = true;
+	}
+	return true;
+}
+
+bool EditorHtmlView::scrollEvent(const nanogui::Vector2i & /*p*/, const nanogui::Vector2f &rel) {
+	setScrollY(m_scroll_y - (int)(rel.y() * 40));
+	return true;
+}
+
+bool EditorHtmlView::keyboardEvent(int key, int scancode, int action, int modifiers) {
+	if (Widget::keyboardEvent(key, scancode, action, modifiers))
+		return true;
+
+	if (!m_doc || (action != GLFW_PRESS && action != GLFW_REPEAT))
+		return false;
+
+	const int page = std::max(40, height() - 40);
+	const int line = 40;
+
+	switch (key) {
+	case GLFW_KEY_HOME:
+		jumpToTop();
+		return true;
+	case GLFW_KEY_END:
+		setScrollY(std::max(0, m_content_height - height()));
+		return true;
+	case GLFW_KEY_PAGE_UP:
+		setScrollY(m_scroll_y - page);
+		return true;
+	case GLFW_KEY_PAGE_DOWN:
+		setScrollY(m_scroll_y + page);
+		return true;
+	case GLFW_KEY_UP:
+		setScrollY(m_scroll_y - line);
+		return true;
+	case GLFW_KEY_DOWN:
+		setScrollY(m_scroll_y + line);
+		return true;
+	default:
+		break;
+	}
+	return false;
+}
+
+void EditorHtmlView::getPropertyNames(std::list<std::string> &names) {
+	EditorWidget::getPropertyNames(names);
+	names.push_back("URL");
+}
+
+void EditorHtmlView::loadPropertyToStructureMap(std::map<std::string, std::string> &properties) {
+	properties = property_map();
+}
+
+Value EditorHtmlView::getPropertyValue(const std::string &prop) {
+	Value res = EditorWidget::getPropertyValue(prop);
+	if (res != SymbolTable::Null)
+		return res;
+	if (prop == "URL")
+		return Value(m_url, Value::t_string);
+	return SymbolTable::Null;
+}
+
+void EditorHtmlView::setProperty(const std::string &prop, const std::string value) {
+	EditorWidget::setProperty(prop, value);
+	if (prop == "URL") {
+		setUrl(value, true);
+	} else if (prop == "Remote") {
+		if (remote)
+			remote->unlink(this);
+		remote = EDITOR->gui()->findLinkableProperty(value);
+		if (remote)
+			remote->link(new LinkableText(this));
+	}
+}
+
+void EditorHtmlView::loadProperties(PropertyFormHelper *properties) {
+	EditorWidget::loadProperties(properties);
+	properties->addVariable<std::string>(
+		"URL", [&](std::string value) mutable { setUrl(value, true); }, [&]() -> std::string { return m_url; });
+	properties->addGroup("Remote");
+	properties->addVariable<std::string>(
+		"Remote object",
+		[&, this](std::string value) {
+			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(value);
+			this->setRemoteName(value);
+			if (remote)
+				remote->unlink(this);
+			remote = lp;
+			if (lp)
+				lp->link(new LinkableText(this));
+		},
+		[&]() -> std::string {
+			if (remote)
+				return remote->tagName();
+			return getRemoteName();
+		});
+}

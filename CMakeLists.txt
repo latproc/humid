@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project("Humid")
+project("Humid" C CXX)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS on)
 set(CMAKE_INSTALL_PREFIX "${PROJECT_SOURCE_DIR}/stage")
@@ -135,6 +135,9 @@ find_package(ZeroMQ REQUIRED)
 find_package(ClockworkClient REQUIRED)
 find_package(CURL REQUIRED)
 
+# Optional embedded HTMLVIEW (litehtml + Cairo/Pango). Open-source only.
+include(HumidLitehtml)
+
 message(STATUS "Found clockwork: ${ClockworkClient_LIBRARIES}")
 message(STATUS "Clockwork includes: ${ClockworkClient_INCLUDE_DIR}")
 # Guard against stale CMake cache / LocalCMakeLists pointing at /opt/latproc
@@ -204,6 +207,9 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/screencapture.h
 		  src/editortable.h
   )
+if (HUMID_HTMLVIEW_FOUND)
+  list(APPEND HEADERS src/editorhtmlview.h src/htmlview_container.h)
+endif()
 
 #add_executable(okdialog src/simple_client.cpp  src/manuallayout.cpp src/skeleton.cpp src/panelscreen.cpp ${HEADERS})
 #target_link_libraries(okdialog ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} nanogui ${Boost_LIBRARIES})
@@ -307,6 +313,11 @@ if (Protobuf_INCLUDE_DIRS)
 	SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/src/project.pb.cc GENERATED)
 endif()
 
+  set(HUMID_EXTRA_SOURCES "")
+  if (HUMID_HTMLVIEW_FOUND)
+    list(APPEND HUMID_EXTRA_SOURCES ${HUMID_HTMLVIEW_SOURCES})
+  endif()
+
   add_executable(humid ${HMI_SRCS} src/humid.cpp  src/manuallayout.cpp src/skeleton.cpp
 		  src/propertymonitor.cpp src/draghandle.cpp src/structure.cpp src/parameter.cpp
 		  src/lineplot.cpp src/circularbuffer.cpp src/propertylist.cpp
@@ -335,20 +346,30 @@ endif()
 		  src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
 		  src/screencapture.cpp
 		  src/editortable.cpp
+		  src/anchor_widget.cpp
+		  ${HUMID_EXTRA_SOURCES}
 		  ${HEADERS})
 
   target_link_libraries(humid nanogui ${NANOGUI_EXTRA_LIBS} ${CURL_LIBRARIES} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY}  ${Boost_LIBRARIES})
+  if (HUMID_HTMLVIEW_FOUND)
+    target_include_directories(humid PRIVATE ${HUMID_HTMLVIEW_INCS})
+    target_compile_definitions(humid PRIVATE ${HUMID_HTMLVIEW_DEFS})
+    # HTMLVIEW TUs need C++17 for litehtml headers
+    set_source_files_properties(${HUMID_HTMLVIEW_SOURCES} PROPERTIES COMPILE_FLAGS "-std=c++17")
+    target_link_libraries(humid ${HUMID_HTMLVIEW_LIBS})
+  endif()
 
   install(TARGETS humid RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 
   add_executable(settingscheck ${SETTINGCHECK_PARSER} src/settingscheck.cpp src/parameter.cpp src/structure.cpp src/linkmanager.cpp)
   target_link_libraries(settingscheck ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
+  # Headless .humid parser/checker — no NanoGUI/GLFW/display (safe on panels).
   SET(HMICHECK_PARSER src/hmilang.lpp src/hmilang.ypp ${hmi_yacc_output} ${hmi_lex_output})
   add_executable(hmifile_check ${HMICHECK_PARSER} src/hmifile_check.cpp src/parameter.cpp src/structure.cpp
-  		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp src/thememanager.cpp src/colourhelper.cpp
+  		src/namedobject.cpp src/anchor.cpp src/valuehelper.cpp src/linkmanager.cpp
 	)
-  target_link_libraries(hmifile_check nanogui ${NANOGUI_EXTRA_LIBS} ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
+  target_link_libraries(hmifile_check ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
   install(TARGETS hmifile_check RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
 

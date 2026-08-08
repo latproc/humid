@@ -445,6 +445,9 @@ void UserWindow::loadStructure(Structure *s) {
 			if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
 			}
+			if (element_class && element_class->isExtension("HTMLVIEW")) {
+				createHtmlView(params);
+			}
 			if (element_class &&element_class->isExtension("PROGRESS")) {
 				createProgress(params);
 			}
