@@ -21,6 +21,7 @@
 #include "editor.h"
 #include "propertymonitor.h"
 #include "helper.h"
+#include <cassert>
 
 extern std::list<Structure *>hm_structures;
 extern std::list<StructureClass *> hm_classes;

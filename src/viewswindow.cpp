@@ -10,6 +10,7 @@
 #include "objectwindow.h"
 #include "patternswindow.h"
 #include "structureswindow.h"
+#include <cassert>
 
 ViewsWindow::ViewsWindow(EditorGUI *screen, nanogui::Theme *theme) : gui(screen) {
 	using namespace nanogui;

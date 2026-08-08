@@ -18,6 +18,7 @@
 #include "viewswindow.h"
 #include "dialogwindow.h"
 #include "helper.h"
+#include <cassert>
 
 extern std::list<std::string> source_files;
 

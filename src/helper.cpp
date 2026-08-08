@@ -16,6 +16,7 @@
 #include "screenswindow.h"
 #include "circularbuffer.h"
 #include "valuehelper.h"
+#include <cassert>
 
 extern std::list<Structure *>hm_structures;
 extern std::list<Structure *>builtin_structures;

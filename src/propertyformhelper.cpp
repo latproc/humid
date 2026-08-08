@@ -3,6 +3,7 @@
 
 #include "propertyformhelper.h"
 #include "propertyformwindow.h"
+#include <cassert>
 
 PropertyFormHelper::PropertyFormHelper(nanogui::Screen *screen, nanogui::Vector2i *fixed_size) 
 : nanogui::FormHelper(screen), mContent(0), mItemSize(fixed_size) { }

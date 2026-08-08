@@ -69,6 +69,7 @@ extern int st_yylineno;
 const char *st_yyfilename = 0;
 
 #include "hmilang.h"
+#include <cassert>
 extern std::list<Structure *>hm_structures;
 extern std::list<StructureClass *> hm_classes;
 extern FILE *yyin;

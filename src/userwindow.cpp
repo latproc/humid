@@ -18,6 +18,7 @@
 #include "propertyformhelper.h"
 #include "screenswindow.h"
 #include "widgetfactory.h"
+#include <cassert>
 
 using namespace nanogui;
 

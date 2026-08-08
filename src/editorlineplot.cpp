@@ -23,6 +23,7 @@
 #include "propertyformhelper.h"
 #include "objectwindow.h"
 #include "factorybuttons.h"
+#include <cassert>
 
 EditorLinePlot::EditorLinePlot(NamedObject *owner, Widget *parent, std::string nam, LinkableProperty *lp, int icon)
 : LinePlot(parent, "Test"), EditorWidget(owner, "PLOT", nam, this, lp), handle_coordinates(9,2),

@@ -24,6 +24,7 @@
 #include "editorgui.h"
 #include "factorybuttons.h"
 #include "structureswindow.h"
+#include <cassert>
 
 StructureFactoryButton::StructureFactoryButton(EditorGUI *screen,
 						const std::string type_str, Palette *pal,

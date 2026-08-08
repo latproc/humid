@@ -12,6 +12,7 @@
 #include "editorgui.h"
 #include "propertyformhelper.h"
 #include "helper.h"
+#include <cassert>
 
 const std::map<std::string, std::string> & EditorImageView::property_map() const {
   auto structure_class = findClass("IMAGE");

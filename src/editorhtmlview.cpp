@@ -25,6 +25,7 @@
 #include <cmath>
 #include <chrono>
 #include <cstdio>
+#include <cassert>
 
 namespace fs = boost::filesystem;
 using Clock = std::chrono::steady_clock;

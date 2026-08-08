@@ -22,6 +22,7 @@
 #include <iostream>
 #include <nanogui/button.h>
 #include <nanogui/progressbar.h>
+#include <cassert>
 
 extern std::string shortName(const std::string s);
 PropertyLinkTarget::PropertyLinkTarget(EditorWidget *widget, const std::string & property, const Value &default_value)
