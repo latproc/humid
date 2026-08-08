@@ -3,6 +3,12 @@ HTMLVIEW demo
 
 Requires humid built with HUMID_WITH_HTMLVIEW=ON (default when Cairo/Pango present).
 
+Build deps (pkg-config: cairo, pangocairo, fontconfig):
+  Debian/RPi:  sudo apt-get install -y libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config
+  macOS:       brew install cairo pango fontconfig pkg-config
+  Verify:      pkg-config --exists cairo pangocairo fontconfig && echo OK
+  Then:        rm -f build/CMakeCache.txt && cmake ..   # look for "HTMLVIEW: enabled"
+
 1. Serve the operators manual (required for the default URL):
 
    cd /Users/mike/src/CW_Simulation/4C04/Docs/operators-manual

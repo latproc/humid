@@ -93,7 +93,17 @@ Artifacts (local): `tools/html-viewer-bakeoff/out/` (gitignored)
 
 - **CMake option:** `HUMID_WITH_HTMLVIEW` (default ON if Cairo/Pango found)
 - **Module:** `cmake/Modules/HumidLitehtml.cmake`
-- **Runtime:** Cairo + PangoCairo + Fontconfig + libcurl
+- **pkg-config modules:** `cairo`, `pangocairo`, `fontconfig` (plus libcurl, already required by humid)
+- **Install (panels / Debian / RPi OS):**
+  ```bash
+  sudo apt-get install -y libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config
+  ```
+- **Install (macOS Homebrew):**
+  ```bash
+  brew install cairo pango fontconfig pkg-config
+  ```
+- **Verify:** `pkg-config --exists cairo pangocairo fontconfig && echo OK`
+- After installing, reconfigure (`rm -f build/CMakeCache.txt` then `cmake ..` / `make`) so CMake does not keep a forced `HUMID_WITH_HTMLVIEW=OFF`.
 - litehtml sources compile as **C++17** static lib `humid_litehtml`; humid core stays C++14 except HTMLVIEW TUs
 
 ---
