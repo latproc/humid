@@ -7,7 +7,7 @@
 #   ./scripts/update-panels.sh --hosts-file panels.txt -- --restart
 #
 # Extra args after -- are passed to update-panel.sh on each host.
-# First push humid (and clockwork) so panels can git pull the script + fixes.
+# First push Humid so panels can fetch the script, vendored client, and fixes.
 #
 set -euo pipefail
 
@@ -18,7 +18,20 @@ PANEL_ARGS=()
 HOSTS_FILE=""
 
 usage() {
-  sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'
+  cat <<'EOF'
+Run scripts/update-panel.sh on one or more panels over SSH.
+
+Usage:
+  ./scripts/update-panels.sh [options] HOST... [-- PANEL_OPTIONS...]
+
+Options:
+  -p, --port PORT        SSH port (default: 2222)
+  --humid-dir PATH       remote Humid checkout (default: /opt/humid)
+  --hosts-file FILE      read panel hosts from FILE
+  --help                 show this help
+
+Arguments after -- are passed to update-panel.sh on each host.
+EOF
   exit "${1:-0}"
 }
 
@@ -55,9 +68,9 @@ REMOTE_CMD=$(cat <<EOF
 set -euo pipefail
 cd '$HUMID_DIR'
 # bootstrap: pull first so a newly added script is available
-git fetch origin
-git checkout cw-no-ec-tools-compatiblity 2>/dev/null || true
-git pull --ff-only || git pull --ff-only origin cw-no-ec-tools-compatiblity || true
+git -c fetch.recurseSubmodules=no fetch origin
+git checkout master 2>/dev/null || git checkout -B master origin/master
+git pull --ff-only origin master
 if [[ ! -x scripts/update-panel.sh ]]; then
   echo "ERROR: $HUMID_DIR/scripts/update-panel.sh missing after pull" >&2
   exit 1

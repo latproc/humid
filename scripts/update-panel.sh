@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Update Humid + pinned Clockwork client on a panel.
+# Update Humid + its Clockwork client on a panel.
 #
 # Handles the failures seen on multi-panel deploys:
 #   - dirty clockwork submodule blocking pin checkout
@@ -8,14 +8,14 @@
 #
 # Usage (on the panel):
 #   cd /opt/humid && ./scripts/update-panel.sh
-#   ./scripts/update-panel.sh --branch cw-no-ec-tools-compatiblity --jobs 6
+#   ./scripts/update-panel.sh --branch master --jobs 6
 #   ./scripts/update-panel.sh --keep-local          # do not reset submodule dirt
 #   ./scripts/update-panel.sh --restart             # kill humid after install
 #   ./scripts/update-panel.sh --restart --start-cmd '/opt/humid/stage/bin/humid --run_only=1 ...'
 #
 set -euo pipefail
 
-BRANCH="${HUMID_BRANCH:-cw-no-ec-tools-compatiblity}"
+BRANCH="${HUMID_BRANCH:-master}"
 JOBS="${HUMID_JOBS:-4}"
 FORCE_SUBMODULES=1
 DO_PULL=1
@@ -25,7 +25,24 @@ START_CMD="${HUMID_START_CMD:-}"
 ROOT=""
 
 usage() {
-  sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+  cat <<'EOF'
+Update Humid + its Clockwork client on a panel.
+
+Usage:
+  ./scripts/update-panel.sh [options]
+
+Options:
+  --branch BRANCH       Humid branch to deploy (default: master)
+  --jobs, -j N          parallel build jobs (default: 4)
+  --force               reset to origin and force submodule checkout (default)
+  --keep-local          require a fast-forward and preserve local submodule dirt
+  --no-pull             build the currently checked-out tree
+  --no-build            update sources without building
+  --restart             stop Humid after installation
+  --start-cmd COMMAND   command used to restart Humid
+  --root PATH           Humid checkout (default: script parent)
+  --help                show this help
+EOF
   exit "${1:-0}"
 }
 
@@ -59,7 +76,7 @@ export JOBS
 export MAKEFLAGS="${MAKEFLAGS:-} -j${JOBS}"
 
 log "Humid root: $ROOT"
-log "Host: $(hostname)  Branch: $BRANCH  Jobs: $JOBS  Force submodules: $FORCE_SUBMODULES"
+log "Host: $(hostname)  Branch: $BRANCH  Jobs: $JOBS  Force checkout: $FORCE_SUBMODULES"
 
 # --- git / submodule -------------------------------------------------------
 # Never use plain `git pull` on panels: it recurses nested submodules (SOEM,
@@ -83,38 +100,56 @@ if [[ "$DO_PULL" -eq 1 ]]; then
   fi
 fi
 
-PIN="$(git rev-parse ":clockwork" 2>/dev/null || git ls-tree HEAD clockwork | awk '{print $3}')"
-[[ -n "$PIN" ]] || die "cannot read clockwork submodule pin from humid"
-log "Humid pins clockwork at $PIN"
+CW_ENTRY_MODE="$(git ls-files -s clockwork | awk 'NR == 1 {print $1}')"
+PIN=""
+if [[ "$CW_ENTRY_MODE" == "160000" ]]; then
+  CLOCKWORK_LAYOUT="submodule"
+  PIN="$(git rev-parse ":clockwork" 2>/dev/null || git ls-tree HEAD clockwork | awk '{print $3}')"
+  [[ -n "$PIN" ]] || die "cannot read clockwork submodule pin from humid"
+  log "Humid pins clockwork at $PIN"
 
-log "Sync top-level submodule URLs"
-git submodule sync clockwork 2>/dev/null || true
-git submodule sync lib/nanogui 2>/dev/null || true
+  log "Sync top-level submodule URLs"
+  git submodule sync clockwork 2>/dev/null || true
 
-if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
-  log "Reset local clockwork dirt (panel deploy mode)"
+  if [[ "$FORCE_SUBMODULES" -eq 1 ]]; then
+    log "Reset local clockwork dirt (panel deploy mode)"
+    if [[ -e clockwork/.git || -f clockwork/.git ]]; then
+      git -C clockwork reset --hard HEAD 2>/dev/null || true
+      git -C clockwork clean -fd 2>/dev/null || true
+    fi
+  fi
+
+  log "Checkout pinned clockwork (top-level only)"
+  # Do not --recursive: nested iod/ext/* and nanogui/ext/* often break on panels.
+  if ! git submodule update --init --force clockwork; then
+    log "submodule update clockwork failed; fetching pin directly"
+    git -C clockwork fetch origin 2>/dev/null || \
+      git -C clockwork fetch https://github.com/latproc/clockwork.git 2>/dev/null || true
+    git -C clockwork checkout -f "$PIN" || git -C clockwork reset --hard "$PIN"
+  fi
+  # Ensure exact pin even if update left an old dirty HEAD.
   if [[ -e clockwork/.git || -f clockwork/.git ]]; then
-    git -C clockwork reset --hard HEAD 2>/dev/null || true
+    git -C clockwork fetch origin "$PIN" 2>/dev/null || \
+      git -C clockwork fetch origin 2>/dev/null || true
+    git -C clockwork checkout -f "$PIN" 2>/dev/null || \
+      git -C clockwork reset --hard "$PIN"
     git -C clockwork clean -fd 2>/dev/null || true
   fi
+
+  CW_PROJECT_DIR="$ROOT/clockwork/iod"
+else
+  CLOCKWORK_LAYOUT="vendored"
+  CW_PROJECT_DIR="$ROOT/clockwork"
+  [[ -f "$CW_PROJECT_DIR/CMakeLists.txt" && -d "$CW_PROJECT_DIR/src" ]] || \
+    die "master requires vendored Clockwork sources under clockwork/src"
+  log "Using vendored Clockwork client sources from Humid"
 fi
 
-log "Checkout pinned clockwork (top-level only)"
-# Do not --recursive: nested iod/ext/* and nanogui/ext/* often break on panels.
-if ! git submodule update --init --force clockwork; then
-  log "submodule update clockwork failed; fetching pin directly"
-  git -C clockwork fetch origin 2>/dev/null || \
-    git -C clockwork fetch https://github.com/latproc/clockwork.git 2>/dev/null || true
-  git -C clockwork checkout -f "$PIN" || git -C clockwork reset --hard "$PIN"
-fi
-# Ensure exact pin even if update left an old dirty HEAD
-if [[ -e clockwork/.git || -f clockwork/.git ]]; then
-  git -C clockwork fetch origin "$PIN" 2>/dev/null || \
-    git -C clockwork fetch origin 2>/dev/null || true
-  git -C clockwork checkout -f "$PIN" 2>/dev/null || \
-    git -C clockwork reset --hard "$PIN"
-  git -C clockwork clean -fd 2>/dev/null || true
-fi
+CW_SOURCE_DIR="$CW_PROJECT_DIR/src"
+CW_BUILD_DIR="$CW_PROJECT_DIR/build/Release"
+CW_STAGE_DIR="$CW_PROJECT_DIR/stage/lib"
+
+git submodule sync lib/nanogui 2>/dev/null || true
 
 # nanogui: best-effort top-level only (existing tree is enough if already built)
 if git ls-tree HEAD lib/nanogui >/dev/null 2>&1; then
@@ -123,12 +158,14 @@ if git ls-tree HEAD lib/nanogui >/dev/null 2>&1; then
     log "WARNING: lib/nanogui submodule update failed; using existing tree if present"
 fi
 
-CW_HEAD="$(git -C clockwork rev-parse HEAD)"
-log "clockwork HEAD: $(git -C clockwork log -1 --oneline)"
-[[ "$CW_HEAD" == "$PIN" || "$CW_HEAD" == "$PIN"* ]] || \
-  die "clockwork HEAD $CW_HEAD does not match humid pin $PIN"
+if [[ "$CLOCKWORK_LAYOUT" == "submodule" ]]; then
+  CW_HEAD="$(git -C clockwork rev-parse HEAD)"
+  log "clockwork HEAD: $(git -C clockwork log -1 --oneline)"
+  [[ "$CW_HEAD" == "$PIN" || "$CW_HEAD" == "$PIN"* ]] || \
+    die "clockwork HEAD $CW_HEAD does not match humid pin $PIN"
+fi
 
-CM_HDR="clockwork/iod/src/ConnectionManager.h"
+CM_HDR="$CW_SOURCE_DIR/ConnectionManager.h"
 [[ -f "$CM_HDR" ]] || die "missing $CM_HDR"
 if ! grep -q 'addSetupResponder' "$CM_HDR"; then
   die "$CM_HDR has no addSetupResponder — wrong clockwork pin or incomplete checkout"
@@ -162,22 +199,25 @@ find_cmake() {
 }
 
 if [[ "$DO_BUILD" -eq 1 ]]; then
-  log "Build + install libcw_client from submodule"
+  log "Build + install libcw_client from $CLOCKWORK_LAYOUT sources"
   CMAKE_INFO="$(find_cmake)" || die "no cmake found on PATH"
   read -r CMAKE_CMD CMAKE_VER <<<"$CMAKE_INFO"
   log "Using cmake $CMAKE_VER ($CMAKE_CMD)"
-  # Clockwork client supports 3.5+. Do not use 3.1* patterns — that also
-  # matches 3.10.x (Bionic's cmake).
+  if [[ "$CLOCKWORK_LAYOUT" == "vendored" ]]; then
+    REQUIRED_CMAKE="3.10"
+  else
+    REQUIRED_CMAKE="3.5"
+  fi
   version_ge() { printf '%s\n%s\n' "$2" "$1" | sort -V | head -1 | grep -qx "$2"; }
-  if ! version_ge "$CMAKE_VER" "3.5"; then
-    die "cmake $CMAKE_VER is too old (need >= 3.5)"
+  if ! version_ge "$CMAKE_VER" "$REQUIRED_CMAKE"; then
+    die "cmake $CMAKE_VER is too old for $CLOCKWORK_LAYOUT Clockwork (need >= $REQUIRED_CMAKE)"
   fi
   # Drop CMake caches that were generated under a different tree path
   # (e.g. /opt/humid_next → /opt/humid copy/rename).
-  for cache in clockwork/iod/build/Release/CMakeCache.txt \
-               clockwork/iod/build/CMakeCache.txt \
-               clockwork/iod/build/Debug/CMakeCache.txt; do
-    if [[ -f "$cache" ]] && ! grep -q "$ROOT/clockwork/iod" "$cache" 2>/dev/null; then
+  for cache in "$CW_PROJECT_DIR/build/Release/CMakeCache.txt" \
+               "$CW_PROJECT_DIR/build/CMakeCache.txt" \
+               "$CW_PROJECT_DIR/build/Debug/CMakeCache.txt"; do
+    if [[ -f "$cache" ]] && ! grep -q "$CW_PROJECT_DIR" "$cache" 2>/dev/null; then
       log "Removing stale CMake cache $cache (path mismatch)"
       rm -f "$cache"
       # Also drop the sibling CMakeFiles so cmake fully reconfigures
@@ -185,16 +225,16 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
     fi
   done
   # Ensure objects rebuild after pin moves (make can think Release is current)
-  rm -f clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o \
-        clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o \
-        clockwork/iod/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o \
-        clockwork/iod/build/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o 2>/dev/null || true
+  rm -f "$CW_PROJECT_DIR/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+        "$CW_PROJECT_DIR/build/Release/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o" \
+        "$CW_PROJECT_DIR/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+        "$CW_PROJECT_DIR/build/CMakeFiles/cw_client.dir/src/SocketMonitor.cpp.o" 2>/dev/null || true
 
-  # Invoke cmake directly (iod Makefile hardcodes "cmake" which may be 3.5.1
+  # Invoke cmake directly (the Makefile hardcodes "cmake" which may be 3.5.1
   # while a newer binary exists elsewhere; also avoids make client quirks).
   (
     set -e
-    cd clockwork/iod
+    cd "$CW_PROJECT_DIR"
     mkdir -p build/Release
     cd build/Release
     "$CMAKE_CMD" -DCMAKE_BUILD_TYPE=Release -DRUN_TESTS=OFF ../..
@@ -202,7 +242,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
     "$CMAKE_CMD" --build . --target install_client -- -j"${JOBS}"
   )
 
-  CLIENT_LIB="$ROOT/clockwork/iod/stage/lib/libcw_client.a"
+  CLIENT_LIB="$CW_STAGE_DIR/libcw_client.a"
   [[ -f "$CLIENT_LIB" ]] || die "missing $CLIENT_LIB after client-install"
 
   # Confirm the new API is in the built objects.
@@ -217,8 +257,8 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
 
   SYM_OK=0
   for o in \
-    "$ROOT/clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
-    "$ROOT/clockwork/iod/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+    "$CW_PROJECT_DIR/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
+    "$CW_PROJECT_DIR/build/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o" \
     "$CLIENT_LIB"
   do
     if has_setup_responder_sym "$o"; then
@@ -228,12 +268,12 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
     fi
   done
   if [[ "$SYM_OK" -eq 0 ]]; then
-    die "built client lacks addSetupResponder (header ok, object/lib check failed). On the panel run: nm clockwork/iod/build/Release/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o | grep Setup"
+    die "built client lacks addSetupResponder (header ok, object/lib check failed). Inspect $CW_BUILD_DIR/CMakeFiles/cw_client.dir/src/ConnectionManager.cpp.o"
   fi
 
   # --- humid ---------------------------------------------------------------
 
-  log "Configure and build humid (prefer submodule client)"
+  log "Configure and build humid (use $CLOCKWORK_LAYOUT client)"
   mkdir -p build
   # Drop stale cache from old tree paths or /opt/latproc client selection
   if [[ -f build/CMakeCache.txt ]]; then
@@ -247,19 +287,19 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
 
   (
     cd build
-    cmake \
+    "$CMAKE_CMD" \
       -DClockworkClient_LIBRARY="$CLIENT_LIB" \
-      -DClockworkClient_INCLUDE_DIR="$ROOT/clockwork/iod/src" \
+      -DClockworkClient_INCLUDE_DIR="$CW_SOURCE_DIR" \
       .. 2>&1 | tee /tmp/humid-cmake-$$.log
   )
 
-  if ! grep -q 'clockwork/iod/stage/lib/libcw_client.a' /tmp/humid-cmake-$$.log; then
+  if ! grep -Fq "$CLIENT_LIB" /tmp/humid-cmake-$$.log; then
     if grep -q '/opt/latproc' /tmp/humid-cmake-$$.log; then
       die "cmake still selected /opt/latproc client — check LocalCMakeLists.txt"
     fi
-    log "WARNING: could not confirm submodule client path in cmake log; continuing"
+    log "WARNING: could not confirm $CLOCKWORK_LAYOUT client path in cmake log; continuing"
   else
-    ok "cmake uses submodule libcw_client.a"
+    ok "cmake uses $CLOCKWORK_LAYOUT libcw_client.a"
   fi
   rm -f /tmp/humid-cmake-$$.log
 
@@ -295,5 +335,9 @@ log "Done on $(hostname)"
 echo
 echo "Verify:"
 echo "  git -C $ROOT log -1 --oneline"
-echo "  git -C $ROOT/clockwork log -1 --oneline   # should be $PIN"
+if [[ "$CLOCKWORK_LAYOUT" == "submodule" ]]; then
+  echo "  git -C $ROOT/clockwork log -1 --oneline   # should be $PIN"
+else
+  echo "  ls -la $ROOT/clockwork/src/ConnectionManager.h"
+fi
 echo "  ls -la $ROOT/stage/bin/humid $ROOT/build/humid 2>/dev/null"

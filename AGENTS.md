@@ -132,24 +132,25 @@ submodules break):
 ```bash
 cd /opt/humid
 git -c fetch.recurseSubmodules=no fetch origin
-git checkout cw-no-ec-tools-compatiblity
-git reset --hard origin/cw-no-ec-tools-compatiblity
+git checkout master
+git reset --hard origin/master
 ./scripts/update-panel.sh --no-pull
 # or after tree already matches origin: make panel-update
 ```
 
-From a laptop after **pushing** humid (and clockwork pin targets):
+From a laptop after **pushing** Humid:
 
 ```bash
 ./scripts/update-panels.sh -p 2222 root@172.29.52.10 root@172.29.53.11
 ./scripts/update-panels.sh --hosts-file panels.txt -- --restart
 ```
 
-The script: hard-resets humid to origin, force-checks out the **pinned**
-clockwork SHA (discards submodule dirt), verifies `addSetupResponder`, builds
-`cw_client` into `clockwork/iod/stage/lib`, reconfigures humid against that
-library (not `/opt/latproc`), builds and installs. Clears CMake caches from
-renamed trees (`/opt/humid_next`). Use `--keep-local` to refuse resets.
+The script defaults to `master`: it hard-resets Humid to origin, verifies the
+vendored `addSetupResponder` API, builds `cw_client` into
+`clockwork/stage/lib`, reconfigures Humid against that library (not
+`/opt/latproc`), builds, and installs. It still detects the pinned-submodule
+layout when an older branch is selected explicitly. It clears CMake caches
+from renamed trees (`/opt/humid_next`). Use `--keep-local` to refuse resets.
 Use `--restart` / `--start-cmd` only when intentional.
 
 Clockwork panel-client work tracks **`prod-experimental-mqtt-fix`**.

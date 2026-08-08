@@ -14,21 +14,22 @@ clockwork system so that clockwork can control the GUI.
 
 Panel fleet (1G2C-122 Core/Grab and similar) runs:
 
-  cw-no-ec-tools-compatiblity
+  master
 
-That line pins a clockwork/ submodule and builds against
-clockwork/iod/stage/lib/libcw_client.a (not a plant /opt/latproc tree).
+That line vendors the trimmed Clockwork client sources under clockwork/src
+and builds against clockwork/stage/lib/libcw_client.a (not a plant
+/opt/latproc tree).
 
 Older lines:
 
   production  — conservative historical runtime
-  master      — not the panel fleet branch
+  cw-no-ec-tools-compatiblity — legacy pinned-submodule deployment line
 
 ## Clockwork client dependency (channel / ZMQ)
 
 CHANNEL reconnect, sticky REQ, and cw_client fixes land on clockwork
-branch prod-client-zmq-fix (line C), then get pinned into this Humid
-branch's clockwork submodule. See:
+branch prod-client-zmq-fix (line C), then are pulled into Humid's vendored
+clockwork/src tree with clockwork/compare-clockwork-src.sh. See:
 
   docs/CLOCKWORK_CLIENT_BRANCHES.md
   AGENTS.md
@@ -39,4 +40,3 @@ Thanks for taking the time to look at this project, I hope
 to make it more reliable and accessible in the near future.
 
 Martin Leadbeater
-

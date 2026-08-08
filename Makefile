@@ -8,7 +8,7 @@ all:
 	[ -d "build" ] || mkdir build
 	cd build && cmake .. && make $(JOBS) && make install
 
-# Full panel update: pull branch, force clockwork pin, client-install, humid.
+# Full panel update: pull master, build the vendored client, then build Humid.
 # See scripts/update-panel.sh --help
 panel-update:
 	./scripts/update-panel.sh --jobs $(subst -j,,$(JOBS))
@@ -42,4 +42,3 @@ xcode:
 test:
 	[ -d ".test" ] || mkdir .test
 	cd .test && cmake -DCMAKE_BUILD_TYPE=Debug -DRUN_TESTS=ON .. && make $(JOBS) && make test
-
