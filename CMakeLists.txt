@@ -86,13 +86,29 @@ endif()
 
 include(CheckCXXCompilerFlag)
 
-set(CMAKE_BUILD_TYPE "Debug")
-
+# Default to Release when no build type is given. Debug layout of large HTML
+# manuals is much slower; override with -DCMAKE_BUILD_TYPE=Debug if needed.
+# Output always lives under the normal out-of-tree dir (e.g. build/), not
+# build/Release/ — multi-config generators are unaffected.
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'Release' as none was specified.")
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
+endif()
+if(CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
+  message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+endif()
+
+# Apple Clang 21 can ICE (segfault) on some NanoGUI TUs at -O3 (e.g. glutil.cpp).
+# Use -O2 for Release on Apple Clang; still far faster than unoptimized Debug.
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(NOT DEFINED HUMID_APPLE_RELEASE_FLAGS_SET)
+    set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags for Release" FORCE)
+    set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG" CACHE STRING "Flags for Release" FORCE)
+    set(HUMID_APPLE_RELEASE_FLAGS_SET TRUE CACHE INTERNAL "")
+    message(STATUS "Apple Clang: Release uses -O2 (avoids -O3 frontend crash on nanogui)")
+  endif()
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
@@ -109,6 +125,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused
 
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
+# Apple Clang 21 ICE/segfaults optimizing some NanoGUI TUs (e.g. glutil.cpp at -O2).
+# Force -O0 on the nanogui object target only; humid_litehtml / humid stay Release-opt.
+if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND TARGET nanogui-obj)
+  target_compile_options(nanogui-obj PRIVATE -O0)
+  message(STATUS "Apple Clang: nanogui-obj forced to -O0 (compiler ICE workaround)")
+endif()
 if (NANOGUI_USE_GLES)
   # Ensure NanoGUI object sources and humid share the same GLES compile path.
   if (TARGET nanogui-obj)
