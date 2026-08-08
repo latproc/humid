@@ -139,12 +139,12 @@ message(STATUS "Found clockwork: ${ClockworkClient_LIBRARIES}")
 message(STATUS "Clockwork includes: ${ClockworkClient_INCLUDE_DIR}")
 # Guard against stale CMake cache / LocalCMakeLists pointing at /opt/latproc
 # while sources expect the submodule client API (e.g. addSetupResponder).
-if (ClockworkClient_LIBRARIES AND NOT ClockworkClient_LIBRARIES MATCHES "clockwork/iod")
+if (ClockworkClient_LIBRARIES AND NOT ClockworkClient_LIBRARIES MATCHES "clockwork")
   message(WARNING
     "Clockwork client is not from the humid submodule:\n"
     "  ${ClockworkClient_LIBRARIES}\n"
-    "After 'cd clockwork/iod && make client-install', reconfigure so humid "
-    "uses clockwork/iod/stage/lib/libcw_client.a")
+    "After 'cd clockwork && make client-install', reconfigure so humid "
+    "uses clockwork/stage/lib/libcw_client.a")
 endif()
 
 #set(BOOST_ROOT "/usr/local/")
@@ -164,10 +164,10 @@ if (Boost_DATE_TIME_LEGACY_LIBRARY)
   list(APPEND Boost_LIBRARIES ${Boost_DATE_TIME_LEGACY_LIBRARY})
 endif()
 
-set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork/iod/src")
+set (CLOCKWORK_DIR "${PROJECT_SOURCE_DIR}/clockwork/src")
 set(NANOGUI_EXTRA_INCS "CLOCKWORK_DIR")
-#set(Clockwork_INCLUDE_DIR /opt/latproc/iod/stage/include/clockwork)
-#set(ClockworkClient_LIBRARIES /opt/latproc/iod/stage/lib/libcw_client.a)
+#set(Clockwork_INCLUDE_DIR /opt/latproc/stage/include/clockwork)
+#set(ClockworkClient_LIBRARIES /opt/latproc/stage/lib/libcw_client.a)
 
 if (RUN_TESTS)
 enable_testing()
@@ -236,7 +236,7 @@ endif ()
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
-		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/clockwork/iod/src/Parameter.h
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/clockwork/src/Parameter.h
 	   OUTPUT ${hmi_yacc_output})
 
 	# Add generated source to the list of sources

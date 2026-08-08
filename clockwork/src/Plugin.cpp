@@ -1,0 +1,240 @@
+
+#include "Plugin.h"
+#include "IOComponent.h"
+#include "MachineInstance.h"
+#include "MessageLog.h"
+#include "SetStateAction.h"
+#include "symboltable.h"
+#include "value.h"
+
+uint64_t getIOClock(void) { return IOComponent::getClock(); }
+
+void log_message(cwpi_Scope, const char *m) { MessageLog::instance()->add(m); }
+
+void log_message_2(cwpi_Scope, const char *m1, const char *m2) {
+    MessageLog::instance()->add(m1, m2);
+}
+
+void log_message_3(cwpi_Scope, const char *m1, const char *m2, const char *m3) {
+    MessageLog::instance()->add(m1, m2, m3);
+}
+
+int getIntValue(cwpi_Scope s, const char *property_name, const int64_t **res) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("getIntValue was passed a null instance from a plugin");
+        return 0;
+    }
+    const Value &value = scope->getValue(property_name);
+    if (value.kind == Value::t_bool) {
+        return value.bValue;
+    }
+    if (value.kind != Value::t_integer) {
+        return 0;
+    }
+    *res = &value.iValue;
+    return 1;
+}
+
+
+int getBoolValue(cwpi_Scope s, const char *property_name) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("getBoolValue was passed a null instance from a plugin");
+        return 0;
+    }
+    const Value &value = scope->getValue(property_name);
+    if (value.kind == Value::t_bool) {
+        return value.bValue;
+    }
+    if (value.kind == Value::t_integer) {
+        return value.bValue;
+    }
+    return 0;
+}
+
+
+namespace {
+
+char *getStringValue_(cwpi_Scope s, const char *property_name) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        return 0;
+    }
+
+    std::string name(property_name);
+    const Value &val = scope->getValue(name);
+    char *res = strdup(val.asString().c_str());
+    return res;
+}
+
+}
+
+extern "C"
+char *getStringValue(cwpi_Scope s, const char *property_name) {
+    return getStringValue_(s, property_name);
+}
+
+void setIntValue(cwpi_Scope s, const char *property_name, int64_t new_value) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        return;
+    }
+    std::string name(property_name);
+    scope->setValue(name, new_value);
+}
+void setStringValue(cwpi_Scope s, const char *property_name, const char *new_value) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        return;
+    }
+
+    std::string name(property_name);
+    scope->setValue(name, new_value);
+}
+
+void setJsonValue(cwpi_Scope s, const char *property_name, const char *new_value) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        return;
+    }
+
+    std::string name(property_name);
+    if (!new_value || strlen(new_value) == 0) {
+        scope->setValue(name, Value{cJSON_CreateObject()});
+        return;
+    }
+    cJSON *json = cJSON_Parse(new_value);
+    if (json) {
+        scope->setValue(name, Value{json});
+    }
+    else {
+        json = cJSON_CreateObject();
+        cJSON_AddItemToObject(json, name.c_str(),cJSON_CreateString(new_value));
+        scope->setValue(name, Value{json});
+    }
+
+}
+
+int changeState(cwpi_Scope s, const char *new_state) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("changeState was passed a null instance from a plugin");
+        return 0;
+    }
+    if (!scope->hasState(State(new_state))) {
+        MessageLog::instance()->add("Machine ", scope->getName(), " does not have state ",
+                                    new_state);
+        return 0;
+    }
+    SetStateActionTemplate ssat("SELF", new_state);
+    if (scope->isActive()) {
+        scope->enqueueAction(
+            ssat.factory(scope)); // execute this state change once all other actions are complete
+    }
+    else {
+        scope->setState(new_state);
+    }
+    return 1;
+}
+char *getState(cwpi_Scope s) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("getState was passed a null instance from a plugin");
+        return 0;
+    }
+
+    std::string state(scope->getCurrentStateString());
+    return strdup(state.c_str());
+}
+
+void *getNamedScope(cwpi_Scope s, const char *name) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("getNamedScope was passed a null instance from a plugin");
+        return 0;
+    }
+
+    MachineInstance *res = scope->lookup(name);
+    if (!res) {
+        MessageLog::instance()->add("getNamedScope failed lookup of ", name);
+    }
+    return res;
+}
+
+void *getInstanceData(cwpi_Scope s) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("getInstanceData was passed a null instance from a plugin");
+        return 0;
+    }
+    return scope->data;
+}
+
+void setInstanceData(cwpi_Scope s, void *block) {
+    MachineInstance *scope = static_cast<MachineInstance *>(s);
+    if (!scope) {
+        MessageLog::instance()->add("setInstanceData was passed a null instance from a plugin");
+        return;
+    }
+    scope->data = block;
+}
+
+Plugin::Plugin(plugin_func sc, plugin_func pa, plugin_filter f)
+    : state_check(0), poll_actions(0), filter(0) {
+    state_check = sc;
+    poll_actions = pa;
+    filter = f;
+}
+
+PluginManager *PluginManager::_instance = 0;
+
+PluginManager::PluginManager() {}
+PluginManager *PluginManager::instance() {
+    if (!_instance) {
+        _instance = new PluginManager();
+    }
+    return _instance;
+}
+
+void *PluginManager::findPlugin(const std::string name) {
+    std::map<std::string, void *>::iterator found = plugins.find(name);
+    if (found != plugins.end()) {
+        return (*found).second;
+    }
+    return 0;
+}
+
+void PluginManager::registerPlugin(const std::string name, void *handle) { plugins[name] = handle; }
+
+/*
+    Value &PluginScope::getValue(std::string property) {
+    MachineInstance *mi = dynamic_cast<MachineInstance*>(this);
+    if (!mi) return SymbolTable::Null;
+
+    return mi->getValue(property);
+    }
+
+    void PluginScope::setValue(const std::string &property, Value new_value) {
+    MachineInstance *mi = dynamic_cast<MachineInstance*>(this);
+
+    if (mi) mi->setValue(property, new_value);
+    }
+
+    int PluginScope::changeState(const std::string new_state) {
+    MachineInstance *mi = dynamic_cast<MachineInstance*>(this);
+    if (!mi) return false;
+
+    SetStateActionTemplate ssat("SELF", new_state );
+    mi->active_actions.push_front(ssat.factory(mi)); // execute this state change once all other actions are complete
+    return false;
+    }
+
+    std::string PluginScope::getState() {
+    MachineInstance *mi = dynamic_cast<MachineInstance*>(this);
+    if (!mi) return "";
+
+    return mi->getCurrentStateString();
+    }
+
+*/

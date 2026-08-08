@@ -1,0 +1,1919 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+
+#include "DebugExtra.h"
+#include "Logger.h"
+#include "MessageLog.h"
+#include "cJSON.h"
+#include "clock.h"
+#include "symboltable.h"
+#include <boost/foreach.hpp>
+#include <functional>
+#include <inttypes.h>
+#include <iomanip>
+#include <iostream>
+#include <iterator>
+#include <limits.h>
+#include <math.h>
+#include <numeric>
+#include <sstream>
+#include <stdio.h>
+#include <utility>
+
+static bool stringToLong(const std::string &s, int64_t &x);
+static bool stringToFloat(const std::string &s, double &x);
+
+const int short_form_string_length = 50;
+
+std::string short_form_value(const Value &val) {
+    std::string result{val.asString()};
+    if (result.size() > short_form_string_length) {
+        result = result.substr(0, short_form_string_length) + "...";
+    }
+    return result;
+}
+
+std::string short_form_value(const std::string &str) {
+    if (str.size() > short_form_string_length) {
+        std::string result{str.substr(0, short_form_string_length) + "..."};
+        return result;
+    }
+    return str;
+}
+
+std::string Value::kind_to_string() const {
+    std::string result;
+    switch (kind) {
+    case t_empty:
+        result = "empty";
+        break;
+    case t_bool:
+        result = "bool";
+        break;
+    case t_integer:
+        result = "integer";
+        break;
+    case t_float:
+        result = "float";
+        break;
+    case t_string:
+        result = "string";
+        break;
+    case t_symbol:
+        result = "symbol";
+        break;
+    case t_json:
+        result = "json";
+        break;
+    case t_dynamic:
+        result = "dynamic";
+        break;
+    default:
+        result = "unknown";
+    }
+    return result;
+}
+
+uint64_t microsecs() { return Clock::clock(); }
+
+static const double ZERO_DISTANCE = 1.0E-8;
+
+namespace {
+
+Value assign_value(cJSON *json) {
+    if (json == nullptr) { return Value(); }
+    Value result;
+    switch (json->type) {
+    case cJSON_NULL:
+        break;
+    case cJSON_True:
+        result = true;
+        break;
+    case cJSON_False:
+        result = false;
+        break;
+    case cJSON_Number:
+        if (json->valueNumber.kind == cJSON_Number_int_t) {
+            result = (int64_t)json->valueNumber.val._int;
+        }
+        else {
+            result = json->valueNumber.val._double;
+        }
+        break;
+    case cJSON_String: {
+        std::string s(json->valuestring);
+        if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
+            result = s.substr(1, s.length() - 2);
+        }
+        else {
+            result = s;
+        }
+        result.kind = Value::t_string;
+        break;
+    }
+    case cJSON_Array:
+    case cJSON_Object:
+        result.kind = Value::t_json;
+        result.json = json;
+    }
+    return result;
+}
+
+} // namespace
+
+void simple_deltat(std::ostream &out, int64_t dt) {
+    if (dt > 60000000) {
+        out << std::setprecision(3) << (float)dt / 60000000.0f << "m";
+    }
+    else if (dt > 1000000) {
+        out << std::setprecision(3) << (float)dt / 1000000.0f << "s";
+    }
+    else if (dt > 1000) {
+        out << std::setprecision(3) << (float)dt / 1000.0f << "ms";
+    }
+    else {
+        out << dt << "us";
+    }
+}
+
+DynamicValueBase::~DynamicValueBase() {}
+
+Value::Value()
+    : kind(t_empty), json(0), cached_machine(0), cached_value(0), token_id(0), dyn_value(0) {}
+
+Value::Value(Kind k)
+    : kind(k), json(0), cached_machine(0), cached_value(0), token_id(0), dyn_value(0) {}
+
+Value::Value(bool v)
+    : kind(t_bool), bValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(int64_t v)
+    : kind(t_integer), iValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(int v)
+    : kind(t_integer), iValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(unsigned int v)
+    : kind(t_integer), iValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(uint64_t v)
+    : kind(t_integer), iValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(float v)
+    : kind(t_float), fValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(double v)
+    : kind(t_float), fValue(v), json(0), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {}
+
+Value::Value(cJSON *v)
+    : kind(t_json), fValue(0), json(nullptr), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {
+    if (v) {
+        Value converted = assign_value(v);
+        if (converted.kind != t_json) {
+            cJSON_Delete(v);
+        }
+        *this = converted;
+    }
+    else { kind = t_empty; }
+}
+
+Value::Value(const char *str, Kind k)
+    : kind(k), iValue(0), fValue(0.0f), json(nullptr), sValue(str), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {
+    if (kind == t_symbol && !sValue.empty()) {
+        if (sValue == "FALSE") {
+            sValue = "";
+            kind = t_bool;
+            bValue = false;
+        }
+        else if (sValue == "TRUE") {
+            sValue = "";
+            kind = t_bool;
+            bValue = true;
+        }
+        else if (sValue == "NULL") {
+            kind = t_empty;
+            sValue = "";
+        }
+        else {
+            token_id = Tokeniser::instance()->getTokenId(str);
+        }
+    }
+}
+
+Value::Value(const std::string & str, Kind k)
+    : kind(k), iValue(0), fValue(0.0f), json(nullptr), sValue(str), cached_machine(0), cached_value(0), token_id(0),
+      dyn_value(0) {
+    if (kind == t_symbol && !str.empty()) {
+        if (sValue == "FALSE") {
+            sValue = "";
+            kind = t_bool;
+            bValue = false;
+        }
+        else if (sValue == "TRUE") {
+            sValue = "";
+            kind = t_bool;
+            bValue = true;
+        }
+        else if (sValue == "NULL") {
+            kind = t_empty;
+            sValue = "";
+        }
+        token_id = Tokeniser::instance()->getTokenId(str);
+    }
+}
+
+bool Value::isNull() const { return kind == t_empty; }
+
+void Value::setDynamicValue(DynamicValueBase *dv) {
+    if (kind == t_dynamic && dyn_value) {
+        dyn_value = dyn_value->deref();
+    }
+    else {
+        assert(dyn_value == nullptr);
+    }
+    kind = t_dynamic;
+    dyn_value = DynamicValueBase::ref(dv);
+}
+
+void Value::setDynamicValue(DynamicValueBase &dv) {
+    if (kind == t_dynamic) {
+        dyn_value = dyn_value->deref();
+    }
+    else {
+        assert(dyn_value == nullptr);
+    }
+    kind = t_dynamic;
+    dyn_value = DynamicValueBase::ref(&dv);
+}
+
+Value::~Value() {
+    if (kind == t_dynamic) {
+        if (dyn_value) {
+            dyn_value = dyn_value->deref();
+        }
+    }
+    else {
+        assert(dyn_value == nullptr);
+    }
+    if (kind == t_json && json != nullptr) {
+        cJSON_Delete(json);
+    }
+}
+
+Value::Value(const Value &other)
+    : kind(other.kind), bValue(other.bValue), iValue(other.iValue), fValue(other.fValue),
+      json(nullptr), sValue(other.sValue), cached_machine(other.cached_machine), cached_value(0),
+      token_id(other.token_id), dyn_value(DynamicValueBase::ref(other.dyn_value)) {
+    if (other.json) {
+        json = clone_json(other.json);
+    }
+
+    //      if (kind == t_list) {
+    //              std::copy(other.listValue.begin(), other.listValue.end(), std::back_inserter(listValue));
+    //      }
+    //      else if (kind == t_map) {
+    //              std::pair<std::string, Value> node;
+    //              BOOST_FOREACH(node, other.mapValue) {
+    //                      mapValue[node.first] = node.second;
+    //              }
+    //      }
+}
+
+Value::Value(Value &&other)
+    : kind(other.kind), bValue(other.bValue), iValue(other.iValue), fValue(other.fValue),
+      json(nullptr), sValue(other.sValue), cached_machine(other.cached_machine), cached_value(0),
+      token_id(other.token_id), dyn_value(nullptr) {
+    if (other.kind == t_string) {
+        sValue = std::move(other.sValue);
+    }
+    else if (other.kind == t_dynamic) {
+        dyn_value = other.dyn_value;
+        other.dyn_value = nullptr;
+        other.kind = t_empty;
+    }
+    else if (other.kind == t_json) {
+        json = other.json;
+        other.json = nullptr;
+        other.kind = t_empty;
+    }
+
+    //      if (kind == t_list) {
+    //              std::copy(other.listValue.begin(), other.listValue.end(), std::back_inserter(listValue));
+    //      }
+    //      else if (kind == t_map) {
+    //              std::pair<std::string, Value> node;
+    //              BOOST_FOREACH(node, other.mapValue) {
+    //                      mapValue[node.first] = node.second;
+    //              }
+    //      }
+}
+
+Value::Value(DynamicValueBase &dv) : kind(t_dynamic), cached_value(0) {
+    dyn_value = DynamicValueBase::ref(&dv);
+}
+
+// this form takes ownership of the passed DynamiValue rather than makes a clone
+Value::Value(DynamicValueBase *dv) : kind(t_dynamic), cached_value(0) {
+    dyn_value = DynamicValueBase::ref(dv);
+}
+
+void Value::toString() {
+    if (kind == t_symbol) {
+        kind = t_string;
+    }
+}
+
+void Value::toSymbol() {
+    if (kind == t_string) {
+        kind = t_symbol;
+    }
+}
+
+Value &Value::operator=(const Value &orig) {
+    if (this == &orig) { return *this; }
+    //      listValue.erase(listValue.begin(), listValue.end());
+    if (this == &orig) {
+        return *this;
+    }
+    if (dyn_value) {
+        dyn_value = dyn_value->deref();
+    }
+    if (kind == t_json && json) {
+        cJSON_Delete(json);
+        json = nullptr;
+    }
+    kind = orig.kind;
+    switch (kind) {
+    case t_bool:
+        bValue = orig.bValue;
+        break;
+    case t_integer:
+        iValue = orig.iValue;
+        break;
+    case t_float:
+        fValue = orig.fValue;
+        break;
+    case t_string:
+        sValue = orig.sValue;
+        break;
+    case t_symbol:
+        sValue = orig.sValue;
+        token_id = orig.token_id;
+        break;
+    case t_json:
+        json = orig.json ? clone_json(orig.json) : nullptr;
+        break;
+    case t_dynamic:
+        dyn_value = DynamicValueBase::ref(orig.dyn_value);
+        break;
+#if 0
+        case t_list:
+            std::copy(orig.listValue.begin(), orig.listValue.end(), std::back_inserter(listValue));
+            break;
+        case t_map: {
+            std::pair<std::string, Value> node;
+            BOOST_FOREACH(node, orig.mapValue) {
+                mapValue[node.first] = node.second;
+            }
+        }
+        break;
+#endif
+    default:
+        break;
+    }
+    cached_machine = orig.cached_machine;
+    cached_value = orig.cached_value;
+    return *this;
+}
+
+Value &Value::operator=(bool val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(int val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(int64_t val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(uint64_t val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(float val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(double val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(cJSON *val) {
+    Value converted = assign_value(val);
+    if (val && converted.kind != t_json) {
+        cJSON_Delete(val);
+    }
+    *this = converted;
+    return *this;
+}
+
+Value &Value::operator=(const char *val) {
+    *this = Value(val);
+    return *this;
+}
+
+Value &Value::operator=(std::string val) {
+    *this = Value(val);
+    return *this;
+}
+
+int64_t Value::trunc() const {
+    if (kind == t_integer) {
+        return iValue;
+    }
+    if (kind == t_float) {
+        return (int64_t)::trunc(fValue);
+    }
+    return 0;
+};
+
+int64_t Value::round(int digits) const {
+    if (kind == t_integer) {
+        return iValue;
+    }
+    if (kind == t_float) {
+        return (int64_t)::round(fValue);
+    }
+    return 0;
+}
+
+double Value::toFloat() const {
+    if (kind == t_integer) {
+        return iValue;
+    }
+    if (kind == t_float) {
+        return fValue;
+    }
+    double x;
+    if (kind == t_string) {
+        std::cerr << "Warning: converting a string to float\n";
+        if (stringToFloat(sValue, x)) {
+            return x;
+        }
+    }
+    else if (kind == t_symbol) {
+        std::cerr << "Warning: converting a string to float when passed a symbol\n";
+    }
+    //TBD assert(false);
+    return 0.0;
+}
+
+bool Value::numeric() const { return kind == t_integer || kind == t_float; }
+
+bool Value::identical(const Value &other) const {
+    if (kind != t_float || other.kind != t_float) {
+        return *this == other;
+    }
+    else {
+        return fValue == other.fValue;
+    }
+}
+
+std::string Value::name() const {
+    switch (kind) {
+    case t_symbol:
+    case t_string:
+        return sValue;
+        break;
+#if 0
+        case t_map:
+        case t_list: {
+            Value v = *(listValue.begin());
+            return v.name();
+        }
+#endif
+    default:;
+    }
+    return "Untitled";
+}
+
+#if 0
+Value Value::operator[](int index)
+{
+    if (kind != t_list)
+        if (index == 0) {
+            return *this;
+        }
+        else {
+            return 0;
+        }
+    if (index < 0 || index >= listValue.size()) {
+        return 0;
+    }
+    int i = 0;
+    List::iterator iter = listValue.begin();
+    while (iter != listValue.end() && i++ < index) {
+        iter++;
+    }
+    return *iter;
+}
+#endif
+
+bool numeric_types(Value::Kind a, Value::Kind b) {
+    return (a == Value::t_integer || a == Value::t_float) &&
+           (b == Value::t_integer || b == Value::t_float);
+}
+
+bool Value::operator>=(const Value &other) const {
+    Kind a = kind;
+    Kind b = other.kind;
+
+    if (a == t_symbol) {
+        a = t_string;
+    }
+    if (b == t_symbol) {
+        b = t_string;
+    }
+
+    if (numeric_types(a, b) || (a != b && (a == t_string || b == t_string))) {
+
+        if (a == t_float || b == t_float) {
+            double x, y;
+            if (asFloat(x) && other.asFloat(y)) {
+                return x >= y;
+            }
+            else {
+                return false;
+            }
+        }
+
+        if (a == t_integer || b == t_integer) {
+            int64_t x, y;
+            if (asInteger(x) && other.asInteger(y)) {
+                return x >= y;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+
+    if (a != b) {
+        return false;
+    }
+    switch (kind) {
+    case t_empty:
+        return false;
+        break;
+    case t_integer:
+        return iValue >= other.iValue;
+        break;
+    case t_float:
+        return fValue >= other.fValue;
+        break;
+    case t_symbol:
+    case t_string:
+        return sValue >= other.sValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator<=(const Value &other) const {
+    Kind a = kind;
+    Kind b = other.kind;
+
+    if (a == t_symbol) {
+        a = t_string;
+    }
+    if (b == t_symbol) {
+        b = t_string;
+    }
+
+    if (numeric_types(a, b) || (a != b && (a == t_string || b == t_string))) {
+        if (a == t_float || b == t_float) {
+            double x, y;
+            if (asFloat(x) && other.asFloat(y)) {
+                return x <= y;
+            }
+            else {
+                return false;
+            }
+        }
+
+        if (a == t_integer || b == t_integer) {
+            int64_t x, y;
+            if (asInteger(x) && other.asInteger(y)) {
+                return x <= y;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+
+    if (a != b) {
+        return false;
+    }
+    switch (kind) {
+    case t_empty:
+        return false;
+        break;
+    case t_integer:
+        return iValue <= other.iValue;
+        break;
+    case t_float:
+        return fValue <= other.fValue;
+        break;
+    case t_symbol:
+    case t_string:
+        return sValue <= other.sValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator==(const Value &other) const {
+
+    Kind a = kind;
+    Kind b = other.kind;
+
+    if (a == t_symbol && b == t_symbol) {
+        return token_id == other.token_id;
+    }
+
+    if (a == t_symbol) {
+        a = t_string;
+    }
+    if (b == t_symbol) {
+        b = t_string;
+    }
+
+    if (numeric_types(a, b) || (a != b && (a == t_string || b == t_string))) {
+        if (a == t_float || b == t_float) {
+            double x, y;
+            if (asFloat(x) && other.asFloat(y)) {
+                return x == y || fabs(x - y) <= ZERO_DISTANCE;
+            }
+            else {
+                return false;
+            }
+        }
+
+        if (a == t_integer || b == t_integer) {
+            int64_t x, y;
+            if (asInteger(x) && other.asInteger(y)) {
+                return x == y;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+
+    if (a != b) {
+        return false; // different types cannot be equal (yet)
+    }
+    switch (a) {
+    case t_empty:
+        return b == t_empty;
+        break;
+    case t_float:
+        return fValue == other.fValue || fabs(fValue - other.fValue) <= ZERO_DISTANCE;
+        break;
+    case t_integer:
+        return iValue == other.iValue;
+        break;
+    case t_symbol: //TBD assert(false);
+        return token_id == other.token_id;
+    case t_string:
+        return sValue == other.sValue;
+        break;
+    case t_bool:
+        return bValue == other.bValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator!=(const Value &other) const {
+    Kind a = kind;
+    Kind b = other.kind;
+
+    if (a == t_symbol && b == t_symbol) {
+        return token_id != other.token_id;
+    }
+
+    if (a == t_symbol) {
+        a = t_string;
+    }
+    if (b == t_symbol) {
+        b = t_string;
+    }
+
+    if (numeric_types(a, b) || (a != b && (a == t_string || b == t_string))) {
+        if (a == t_float || b == t_float) {
+            double x, y;
+            if (asFloat(x) && other.asFloat(y)) {
+                return x != y && fabs(x - y) > ZERO_DISTANCE;
+            }
+            else {
+                return true;
+            }
+        }
+        if (a == t_integer || b == t_integer) {
+            int64_t x, y;
+            if (asInteger(x) && other.asInteger(y)) {
+                return x != y;
+            }
+            else {
+                return true;
+            }
+        }
+    }
+
+    if (a != b) {
+        return true;
+    }
+    switch (a) {
+    case t_empty:
+        return b != t_empty;
+        break;
+    case t_integer:
+        return iValue != other.iValue;
+        break;
+    case t_float:
+        return fValue != other.fValue && fabs(fValue - other.fValue) > ZERO_DISTANCE;
+        break;
+    case t_symbol:
+        //TBD assert(false);
+        return token_id != other.token_id;
+    case t_string:
+        return sValue != other.sValue;
+        break;
+    case t_bool:
+        return bValue != other.bValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator&&(const Value &other) const {
+    switch (kind) {
+    case t_empty:
+        return false;
+        break;
+    case t_integer:
+        return iValue && other.iValue;
+        break;
+    case t_bool:
+        return bValue && other.bValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator||(const Value &other) const {
+    switch (kind) {
+    case t_empty:
+        return false;
+        break;
+    case t_integer:
+        return iValue || other.iValue;
+        break;
+    case t_bool:
+        return bValue || other.bValue;
+        break;
+    default:
+        break;
+    }
+    return false;
+}
+
+bool Value::operator!() const {
+    switch (kind) {
+    case t_empty:
+        return true;
+        break;
+    case t_integer:
+        return !iValue;
+        break;
+    case t_bool:
+        return !bValue;
+        break;
+    case t_symbol:
+    case t_string:
+        return false;
+        break;
+    default:
+        break;
+    }
+    return true;
+}
+
+static bool stringToLong(const std::string &s, int64_t &x) {
+    const char *str = s.c_str();
+    char *end;
+    x = strtol(str, &end, 10);
+    if (*end) {
+        // check if this is actually a float before writing an error message
+        if (*end == '.') {
+            char *p = end;
+            while (isdigit(*(++p))) {
+                ;
+            }
+            if (*p == 0) {
+                return false;
+            }
+        }
+
+        char buf[200];
+        snprintf(buf, 200, "str to int64_t parsed %ld chars but did not hit the end of string '%s'",
+                 end - str, str);
+        MessageLog::instance()->add(buf);
+        DBG_PREDICATES << buf << "'\n";
+    }
+    return *end == 0;
+}
+
+static bool stringToFloat(const std::string &s, double &x) {
+    const char *str = s.c_str();
+    char *end;
+    x = strtod(str, &end);
+    if (*end) {
+        char buf[200];
+        snprintf(buf, 200, "str to float parsed %ld chars but did not hit the end of string '%s'",
+                 end - str, str);
+        MessageLog::instance()->add(buf);
+        DBG_PREDICATES << buf << "'\n";
+    }
+    return *end == 0;
+}
+
+namespace ValueOperations {
+struct ValueOperation {
+    virtual Value operator()(const Value &a, const Value &b) const { return 0; }
+    virtual std::ostream &operator<<(std::ostream &out) const { return out; }
+    virtual std::string toString() const { return ""; }
+};
+std::ostream &operator<<(std::ostream &out, const ValueOperation &v) { return v.operator<<(out); }
+
+struct Sum : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const {
+        if (a.kind == Value::t_integer) {
+            if (b.kind == Value::t_integer) {
+                return a.iValue + b.iValue;
+            }
+            else if (b.kind == Value::t_float) {
+                return b.fValue + (double)a.iValue;
+            }
+            else {
+                return a.iValue;
+            }
+        }
+        else if (a.kind == Value::t_float) {
+            if (b.kind == Value::t_float) {
+                return a.fValue + b.fValue;
+            }
+            else if (b.kind == Value::t_integer) {
+                return a.fValue + (double)b.iValue;
+            }
+            else {
+                return a.fValue;
+            }
+        }
+        else if (b.kind == Value::t_integer) {
+            return b.iValue;
+        }
+        else if (b.kind == Value::t_float) {
+            return b.fValue;
+        }
+        else if (a.kind == Value::t_string) {
+            return Value(a.sValue + b.asString(), Value::t_string);
+        }
+        else if (a.kind == Value::t_symbol) {
+            return Value(a.sValue + b.asString(), a.kind);
+        }
+        return 0;
+    }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "add";
+        return out;
+    }
+    virtual std::string toString() const { return "add"; }
+};
+
+struct Minus : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const {
+        if (a.kind == Value::t_integer) {
+            if (b.kind == Value::t_integer) {
+                return a.iValue - b.iValue;
+            }
+            else if (b.kind == Value::t_float) {
+                return (double)a.iValue - b.fValue;
+            }
+            else {
+                return a.iValue;
+            }
+        }
+        else if (a.kind == Value::t_float) {
+            if (b.kind == Value::t_float) {
+                return a.fValue - b.fValue;
+            }
+            else if (b.kind == Value::t_integer) {
+                return a.fValue - (double)b.iValue;
+            }
+            else {
+                return a.fValue;
+            }
+        }
+        else if (b.kind == Value::t_integer) {
+            return -b.iValue;
+        }
+        else if (b.kind == Value::t_float) {
+            return -b.fValue;
+        }
+        else if (a.kind == Value::t_string) {
+            return a;
+        }
+        else if (a.kind == Value::t_symbol) {
+            return a;
+        }
+        return 0;
+    }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "subtract";
+        return out;
+    }
+    virtual std::string toString() const { return "subtract"; }
+};
+
+struct Multiply : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const {
+        if (a.kind == Value::t_integer) {
+            if (b.kind == Value::t_integer) {
+                return a.iValue * b.iValue;
+            }
+            else if (b.kind == Value::t_float) {
+                return b.fValue * (double)a.iValue;
+            }
+            else {
+                return 0;
+            }
+        }
+        else if (a.kind == Value::t_float) {
+            if (b.kind == Value::t_float) {
+                return a.fValue * b.fValue;
+            }
+            else if (b.kind == Value::t_integer) {
+                return a.fValue * (double)b.iValue;
+            }
+            else {
+                return 0;
+            }
+        }
+        return 0;
+    }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "multiply";
+        return out;
+    }
+    virtual std::string toString() const { return "multiply"; }
+};
+
+struct Divide : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const {
+        if (a.kind == Value::t_integer) {
+            if (a.iValue == 0) {
+                return a;
+            }
+            if (b.kind == Value::t_integer) {
+                if (b.iValue == 0) {
+                    if (a.iValue < 0) {
+                        return INT_MIN;
+                    }
+                    else {
+                        return INT_MAX;
+                    }
+                }
+                else {
+                    return a.iValue / b.iValue;
+                }
+            }
+            else if (b.kind == Value::t_float)
+                if (b.fValue == 0) {
+                    if (a.iValue < 0) {
+                        return INT_MIN;
+                    }
+                    else {
+                        return INT_MAX;
+                    }
+                }
+                else {
+                    return (double)a.iValue / b.fValue;
+                }
+            else {
+                return a;
+            }
+        }
+        else if (a.kind == Value::t_float) {
+            if (a.fValue == 0) {
+                return 0.0;
+            }
+            if (b.kind == Value::t_float) {
+                if (b.fValue == 0.0) {
+                    if (a.fValue < 0) {
+                        return INT_MIN;
+                    }
+                    else {
+                        return INT_MAX;
+                    }
+                }
+                else {
+                    return a.fValue / b.fValue;
+                }
+            }
+            else if (b.kind == Value::t_integer)
+                if (b.iValue == 0) {
+                    if (a.fValue < 0) {
+                        return INT_MIN;
+                    }
+                    else {
+                        return INT_MAX;
+                    }
+                }
+                else {
+                    return a.fValue / b.iValue;
+                }
+            else {
+                return 0;
+            }
+        }
+        return a;
+    }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "divide";
+        return out;
+    }
+    virtual std::string toString() const { return "divide"; }
+};
+
+struct Modulus : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const {
+        if (b.kind != Value::t_integer) {
+            return a;
+        }
+        if (b.iValue == 0) {
+            return 0;
+        }
+        else {
+            if (a.kind == Value::t_integer) {
+                return a.iValue % b.iValue;
+            }
+            else if (a.kind == Value::t_float) {
+                return (int64_t)trunc(a.fValue) % b.iValue;
+            }
+            else {
+                return 0;
+            }
+        }
+    }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "modulus";
+        return out;
+    }
+    virtual std::string toString() const { return "modulus"; }
+};
+
+struct BitAnd : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const { return a.iValue & b.iValue; }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "AND";
+        return out;
+    }
+    virtual std::string toString() const { return "AND"; }
+};
+
+struct BitOr : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const { return a.iValue | b.iValue; }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "OR";
+        return out;
+    }
+    virtual std::string toString() const { return "OR"; }
+};
+
+struct BitXOr : public ValueOperation {
+    Value operator()(const Value &a, const Value &b) const { return a.iValue ^ b.iValue; }
+    std::ostream &operator<<(std::ostream &out) const {
+        out << "XOR";
+        return out;
+    }
+    virtual std::string toString() const { return "XOR"; }
+};
+
+} // namespace ValueOperations
+using namespace ValueOperations;
+
+struct TypeFix {
+    Value operator()(const Value &a, ValueOperation *op, const Value &b) {
+        if (a.kind != b.kind) {
+            int64_t x;
+            double x_float;
+            if ((a.kind == Value::t_integer || a.kind == Value::t_float) &&
+                (b.kind == Value::t_string || b.kind == Value::t_symbol)) {
+                if (stringToLong(b.sValue, x)) {
+                    v_ = x;
+                    return (*op)(a, v_);
+                }
+                else if (stringToFloat(b.sValue, x_float)) {
+                    v_ = x_float;
+                    return (*op)(a, v_);
+                }
+                else {
+                    char buf[200];
+                    snprintf(buf, 200,
+                             "Trying to %s %s and %s but the string does not contain a number",
+                             op->toString().c_str(), a.asString().c_str(), b.asString().c_str());
+                    MessageLog::instance()->add(buf);
+                    DBG_PREDICATES << buf << "\n";
+                    return a;
+                }
+            }
+            else if (a.kind == Value::t_string || a.kind == Value::t_symbol) {
+                return (*op)(a, Value(b.asString(), Value::t_string));
+            }
+            /*
+                else if (b.kind == Value::t_integer && (a.kind == Value::t_string || a.kind == Value::t_symbol) ){
+                if (stringToLong(a.sValue, x)) {
+                    v_ = x;
+                    return (*op)(v_, b);
+                }
+                else {
+                    //DBG_PREDICATES << "Trying to add a string and value but the string does not contain a number\n";
+                                        v_ = a;
+                    v_ = v_.operator+(b.asString());
+                }
+                }
+            */
+            else if ((a.kind == Value::t_integer && b.kind == Value::t_float) ||
+                     (a.kind == Value::t_float && b.kind == Value::t_integer)) {
+                return (*op)(a, b);
+            }
+            else {
+                DBG_PREDICATES << " type clash, returning lhs a is" << a.kind << " and b is "
+                               << b.kind << "\n";
+                return a;
+            }
+        }
+        DBG_PREDICATES << "invalid call to TypeFix operator when type are the same for: " << a
+                       << " and " << b << "\n";
+        // TBD assert(false);
+        return a; // invalid usage
+    }
+    Value &value() { return v_; }
+
+  private:
+    Value v_;
+};
+
+Value Value::operator+(const Value &other) {
+    Value res(*this);
+    return res += other;
+}
+
+Value &Value::operator+=(const Value &other) {
+    if (kind != other.kind) {
+        Sum op;
+        TypeFix tf;
+        Value v(tf(*this, &op, other));
+        return operator=(v);
+    }
+    switch (kind) {
+    case t_integer:
+        iValue += other.iValue;
+        break;
+    case t_float:
+        fValue += other.fValue;
+        break;
+    case t_bool:
+        bValue |= other.bValue;
+    case t_symbol:
+    case t_string:
+        sValue += other.asString();
+        token_id = 0;
+        break;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator-(void) const {
+    switch (kind) {
+    case t_integer:
+        return Value(-iValue);
+    case t_float:
+        return Value(-fValue);
+        break;
+    case t_symbol:
+    case t_string:
+        int64_t x;
+        if (stringToLong(sValue, x)) {
+            return -x;
+        }
+        char *end;
+        x = strtol(sValue.c_str(), &end, 10);
+        if (*end == 0) {
+            return Value(-x);
+        }
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator-(const Value &other) {
+    Value res(*this);
+    return res -= other;
+}
+
+Value &Value::operator-=(const Value &other) {
+    if (kind != other.kind) {
+        Minus op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        iValue -= other.iValue;
+        break;
+    case t_float:
+        fValue -= other.fValue;
+        break;
+    case t_bool:
+        bValue |= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator*(const Value &other) {
+    Value res(*this);
+    return res *= other;
+}
+
+Value &Value::operator*=(const Value &other) {
+    if (kind != other.kind) {
+        if (kind == t_string || kind == t_symbol) {
+            char buf[200];
+            snprintf(buf, 200, "Warning: multiplying %s(string) by %s%s", this->asString().c_str(),
+                     other.asString().c_str(),
+                     (other.kind == t_string || other.kind == t_symbol) ? "(string)" : "");
+            MessageLog::instance()->add(buf);
+            NB_MSG << buf << "\n";
+            return *this;
+        }
+        Multiply op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        iValue *= other.iValue;
+        break;
+    case t_float:
+        fValue *= other.fValue;
+        break;
+    case t_bool:
+        bValue &= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator/(const Value &other) {
+    Value res(*this);
+    return res /= other;
+}
+
+Value &Value::operator/=(const Value &other) {
+    if (kind != other.kind) {
+        Divide op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        if (iValue != 0) {
+            if (other.iValue == 0) {
+                if (iValue < 0) {
+                    iValue = INT_MIN;
+                }
+                else {
+                    iValue = INT_MAX;
+                }
+            }
+            else {
+                iValue /= other.iValue;
+            }
+        }
+        break;
+    case t_float:
+        if (fValue != 0) {
+            if (other.fValue == 0) {
+                if (fValue < 0) {
+                    fValue = INT_MIN;
+                }
+                else {
+                    fValue = INT_MAX;
+                }
+            }
+            else {
+                fValue /= other.fValue;
+            }
+        }
+        break;
+    case t_bool:
+        bValue &= other.bValue;
+    default:;
+    }
+    return *this;
+}
+Value Value::operator%(const Value &other) {
+    Value res(*this);
+    return res %= other;
+}
+
+Value &Value::operator%=(const Value &other) {
+    if (kind != other.kind) {
+        Modulus op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        if (other.iValue == 0) {
+            iValue = 0;
+        }
+        else {
+            iValue = iValue % other.iValue;
+        }
+        break;
+    case t_float: {
+        // Same-kind float path must use other.fValue as the divisor.
+        // Using other.iValue here is wrong (often 0) and raises SIGFPE on idiv.
+        // Qualify ::trunc — Value has a trunc() method that would otherwise bind.
+        const int64_t divisor = (int64_t)::trunc(other.fValue);
+        if (divisor == 0) {
+            iValue = 0;
+        }
+        else {
+            iValue = ((int64_t)::trunc(fValue)) % divisor;
+        }
+        kind = t_integer; // modulus returns an integer result
+        break;
+    }
+    case t_bool:
+        bValue ^= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator&(const Value &other) {
+    Value res(*this);
+    return res &= other;
+}
+
+Value &Value::operator&=(const Value &other) {
+    if (kind != other.kind) {
+        BitAnd op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        iValue = iValue & other.iValue;
+        break;
+    case t_bool:
+        bValue &= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator|(const Value &other) {
+    Value res(*this);
+    return res |= other;
+}
+
+Value &Value::operator|=(const Value &other) {
+    if (kind != other.kind) {
+        BitOr op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        iValue = iValue | other.iValue;
+        break;
+    case t_bool:
+        bValue |= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value Value::operator^(const Value &other) {
+    Value res(*this);
+    return res ^= other;
+}
+
+Value &Value::operator^=(const Value &other) {
+    if (kind != other.kind) {
+        BitXOr op;
+        TypeFix tf;
+        return operator=(tf(*this, &op, other));
+    }
+    switch (kind) {
+    case t_integer:
+        iValue = iValue ^ other.iValue;
+        break;
+    case t_bool:
+        bValue ^= other.bValue;
+    default:;
+    }
+    return *this;
+}
+
+Value &Value::operator~() {
+    switch (kind) {
+    case t_integer:
+        iValue = ~iValue;
+        break;
+    case t_bool:
+        bValue = !bValue;
+    default:;
+    }
+    return *this;
+}
+
+#if 0
+Value Value::operator[](std::string key)
+{
+    if (kind != t_map) {
+        return 0;
+    }
+    Map::iterator iter = mapValue.find(key);
+    if (iter == mapValue.end()) {
+        return 0;
+    }
+    return (*iter).second;
+}
+#endif
+
+std::ostream &Value::operator<<(std::ostream &out) const {
+    switch (kind) {
+    case t_empty:
+        out << "(empty)";
+        break;
+    case t_integer:
+        out << iValue;
+        break;
+    case t_float: {
+        if (fValue != 0.0 && fValue <= 1.0e-4 && fValue >= -1.0e-4) {
+            out << std::scientific << fValue;
+        }
+        else {
+            int prec = (fValue == 0.0) ? 1 : 6;
+            out << std::setprecision(prec) << std::fixed << fValue;
+        }
+        break;
+    }
+    case t_json: {
+        assert(json != nullptr);
+        auto json_str = cJSON_PrintUnformatted(json);
+        out << json_str;
+        free(json_str);
+        break;
+    }
+    case t_symbol:
+        out << sValue;
+        break;
+    case t_string:
+        out << '"' << sValue << '"';
+        break;
+#if 0
+        case t_list:     {
+            std::ostream_iterator<Value> o_iter(out, ",");
+            std::copy(listValue.begin(), listValue.end(), o_iter);
+            out << "(" << listValue.size() << " values)";
+        }
+        break;
+        case t_map: {
+            if (mapValue.size()) {
+                out << "(Properties)";
+            }
+        }
+        break;
+#endif
+    case t_bool: {
+        out << ((bValue) ? "true" : "false");
+    } break;
+    case t_dynamic:
+        if (dyn_value) {
+            dyn_value->operator<<(out);
+        }
+        else {
+            out << "<null>";
+        }
+        break;
+    }
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const Value &val) { return val.operator<<(out); }
+
+#if 0
+void Value::addItem(Value next_value)
+{
+    if (kind == t_empty) {
+        *this = next_value;
+    }
+    else {
+        if (kind == t_integer) {
+            listValue.push_front(Value(iValue));
+        }
+        else if (kind == t_string) {
+            listValue.push_front(Value(sValue.c_str()));
+        }
+
+        kind = t_list;
+        listValue.push_front(next_value);
+    }
+}
+
+void Value::addItem(int next_value)
+{
+    addItem(Value(next_value));
+}
+
+void Value::addItem(const char *next_value)
+{
+    addItem(Value(next_value));
+}
+
+void Value::addItem(std::string key, Value val)
+{
+    if (kind != t_map) {
+        return;
+    }
+    mapValue[key] = val;
+}
+#endif
+
+std::string Value::asString(const char *fmt) const {
+    switch (kind) {
+    case t_bool:
+        return (bValue) ? "true" : "false";
+        break;
+    case t_integer: {
+        char buf[25];
+        if (fmt) {
+            snprintf(buf, 25, fmt, iValue);
+        }
+        else {
+            snprintf(buf, 25, "%" PRId64, iValue);
+        }
+        return buf;
+    }
+    case t_float: {
+        char buf[25];
+        if (fmt) {
+            snprintf(buf, 25, fmt, fValue);
+        }
+        else {
+            snprintf(buf, 25, "%6.6lf", fValue);
+        }
+        return buf;
+    }
+    case t_empty:
+        return "null";
+    case t_json: {
+        std::string result;
+        assert(json != nullptr);
+        auto json_str = cJSON_PrintUnformatted(json);
+        result = json_str;
+        free(json_str);
+        return result;
+    }
+    case t_symbol:
+    case t_string:
+        return sValue;
+    case t_dynamic: {
+        const Value &tmp((*dyn_value)());
+        return tmp.asString();
+    }
+
+    default:
+        break;
+    }
+    return "";
+}
+
+std::string Value::quoted() const {
+    std::string val = this->asString();
+    if (val[0] != '\"' || val.back() != '\"') {
+        std::string res = "\"";
+        res += val + "\"";
+        return res;
+    }
+    else {
+        return val;
+    }
+}
+
+bool Value::asBoolean(bool &x) const {
+    switch (kind) {
+    case t_bool: {
+        x = bValue;
+        return true;
+    }
+    case t_integer: {
+        x = iValue != 0;
+        return true;
+    }
+    case t_float: {
+        x = fValue != 0.0;
+        return true;
+    }
+    case t_string:
+    case t_symbol:
+        if (sValue == "true" || sValue == "TRUE") {
+            x = true;
+            return true;
+        }
+        else if (sValue == "false" || sValue == "FALSE") {
+            x = false;
+            return true;
+        }
+        else {
+            return false;
+        }
+    case t_dynamic: {
+        const Value &tmp((*dyn_value)());
+        return tmp.asBoolean(x);
+    }
+    default:
+        return false;
+    }
+}
+
+bool Value::asInteger(int64_t &x) const {
+    if (kind == t_integer) {
+        x = iValue;
+        return true;
+    }
+    if (kind == t_float) {
+        x = fValue;
+        return true;
+    }
+    if (kind == t_string || kind == t_symbol) {
+        char *p;
+        const char *v = sValue.c_str();
+        x = strtol(v, &p, 10);
+        if (*p == 0) {
+            return true;
+        }
+        if (p != v) {
+            return false;
+        }
+        return false;
+    }
+    else if (kind == t_bool) {
+        x = (bValue) ? 1 : 0;
+        return true;
+    }
+    else if (kind == t_dynamic) {
+        const Value &tmp((*dyn_value)());
+        return tmp.asInteger(x);
+    }
+    return false;
+}
+
+bool Value::asFloat(double &x) const {
+    if (kind == t_float) {
+        x = fValue;
+        return true;
+    }
+    if (kind == t_integer) {
+        x = (double)iValue;
+        return true;
+    }
+    if (kind == t_string || kind == t_symbol) {
+        char *p;
+        const char *v = sValue.c_str();
+        x = strtod(v, &p);
+        if (*p == 0) {
+            return true;
+        }
+        if (p != v) {
+            return false;
+        }
+        return false;
+    }
+    else if (kind == t_bool) {
+        x = (bValue) ? 1.0 : 0.0;
+        return true;
+    }
+    else if (kind == t_dynamic) {
+        const Value &tmp((*dyn_value)());
+        return tmp.asFloat(x);
+    }
+    return false;
+}
+
+cJSON *Value::asJSON() const {
+    if (kind == t_json) {
+        return json ? clone_json(json) : nullptr;
+    }
+    else if (kind == t_string || kind == t_symbol) {
+        return cJSON_Parse(sValue.c_str());
+    }
+    else if (kind == t_dynamic) {
+        assert(false && "conversion of dynamic value to JSON not implemented");
+        return cJSON_CreateNull();
+    }
+    else if (kind == t_empty) {
+        return cJSON_CreateNull();
+    }
+    else if (kind == t_bool) {
+        return bValue ? cJSON_CreateTrue() : cJSON_CreateFalse();
+    }
+    else if (kind == t_integer) {
+        return cJSON_CreateNumber(iValue);
+    }
+    else if (kind == t_float) {
+        return cJSON_CreateNumber(fValue);
+    }
+    return nullptr;
+}
+
+cJSON *getFromJSON(cJSON *json, const std::string &key) { // lookup the named property
+    if (!json) { return nullptr; }
+    if (json->type != cJSON_Object) { return nullptr; }
+    cJSON *res = cJSON_GetObjectItem(json, key.c_str());
+    return res;
+}
+
+/* Duplication */
+/* From git@github.com:DaveGamble/cJSON.git */
+cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth);
+
+cJSON * cJSON_Duplicate(const cJSON *item)
+{
+    return cJSON_Duplicate_rec(item, 0 );
+}
+
+static void *(*cJSON_malloc)(size_t sz) = malloc;
+static void (*cJSON_free)(void *ptr) = free;
+
+static char *cJSON_strdup(const char *str) {
+    size_t len;
+    char *copy;
+
+    len = strlen(str) + 1;
+    if (!(copy = (char *)cJSON_malloc(len))) {
+        return 0;
+    }
+    memcpy(copy, str, len);
+    return copy;
+}
+
+constexpr int CJSON_CIRCULAR_LIMIT = 1000;
+
+cJSON * cJSON_Duplicate_rec(const cJSON *item, size_t depth)
+{
+    cJSON *newitem = NULL;
+    cJSON *child = NULL;
+    cJSON *next = NULL;
+    cJSON *newchild = NULL;
+
+    /* Bail on bad ptr */
+    if (!item)
+    {
+        goto fail;
+    }
+    /* Create new item */
+    newitem = cJSON_CreateNull();
+    if (!newitem)
+    {
+        goto fail;
+    }
+    /* Copy over all vars */
+    newitem->type = item->type & (~cJSON_IsReference);
+    newitem->valueint = item->valueint;
+    newitem->valueNumber = item->valueNumber;
+    newitem->valuedouble = item->valuedouble;
+    if (item->valuestring)
+    {
+        newitem->valuestring = (char*)cJSON_strdup(item->valuestring);
+        if (!newitem->valuestring)
+        {
+            goto fail;
+        }
+    }
+    if (item->string)
+    {
+        newitem->string = cJSON_strdup(item->string);
+        if (!newitem->string)
+        {
+            goto fail;
+        }
+    }
+
+    /* Walk the ->next chain for the child. */
+    child = item->child;
+    while (child != NULL)
+    {
+        if(depth >= CJSON_CIRCULAR_LIMIT) {
+            goto fail;
+        }
+        newchild = cJSON_Duplicate_rec(child, depth + 1); /* Duplicate (with recurse) each item in the ->next chain */
+        if (!newchild)
+        {
+            goto fail;
+        }
+        if (next != NULL)
+        {
+            /* If newitem->child already set, then crosswire ->prev and ->next and move on */
+            next->next = newchild;
+            newchild->prev = next;
+            next = newchild;
+        }
+        else
+        {
+            /* Set newitem->child and move to it */
+            newitem->child = newchild;
+            next = newchild;
+        }
+        child = child->next;
+    }
+    if (newitem && newitem->child)
+    {
+        newitem->child->prev = newchild;
+    }
+
+    return newitem;
+
+fail:
+    if (newitem != NULL)
+    {
+        cJSON_Delete(newitem);
+    }
+
+    return NULL;
+}
+
+cJSON *clone_json(const cJSON *json) {
+    return json ? cJSON_Duplicate(json) : nullptr;
+}
+
+// Borrowing view: does not take ownership of json. Prefer Value(cJSON*) when
+// the caller owns a newly allocated tree (apply/Parse/clone) and wants free-on-scalar.
+Value get_value(cJSON *json) { return assign_value(json); }
+
+Value Value::getFromJSON(const std::string &key) {
+    if (kind != t_json || !json) { return Value(); }
+    // clone_json allocates; Value(cJSON*) takes ownership and frees scalars/nulls
+    // after conversion. Using assign_value alone leaked those clones.
+    return Value(clone_json(::getFromJSON(json, key)));
+}

@@ -1,0 +1,199 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+
+#pragma once
+
+#include <cstdint>
+#include <list>
+#include <map>
+#include <string>
+
+class MachineInstance;
+class DynamicValue;
+class Value;
+struct cJSON;
+
+uint64_t microsecs();
+void simple_deltat(std::ostream &out, int64_t dt);
+
+class DynamicValueBase {
+  public:
+    virtual ~DynamicValueBase();
+    static DynamicValueBase *ref(DynamicValueBase *dv) {
+        if (!dv) {
+            return nullptr;
+        }
+        else {
+            dv->refs++;
+        }
+        return dv;
+    }
+    DynamicValueBase *deref() {
+        --refs;
+        if (!refs) {
+            delete this;
+        }
+        return nullptr;
+    }
+    virtual DynamicValueBase *clone() const = 0;
+    virtual const Value *lastResult() const = 0;
+    virtual void setScope(MachineInstance *m) = 0;
+    virtual MachineInstance *getScope() const = 0;
+
+    virtual std::ostream &operator<<(std::ostream &) const = 0;
+    virtual const Value &
+    operator()(MachineInstance *scope) = 0; // uses the provided machine's scope
+    virtual const Value &operator()() = 0;  // uses the current scope for evaluation
+  protected:
+    int refs = 0;
+};
+std::ostream &operator<<(std::ostream &, const DynamicValue &);
+
+// Helpers
+// Lookup a property and return it as a cJSON object.
+// The caller does not own the returned value.
+cJSON *clone_json(const cJSON *json);
+Value get_value(cJSON *json); // returns a plain value if possible
+cJSON *getFromJSON(cJSON *json, const std::string &key); // lookup the named property
+
+std::string short_form_value(const Value &val);
+
+class Value {
+  public:
+    enum Kind {
+        t_empty,
+        t_integer,
+        t_string,
+        t_bool,
+        t_symbol,
+        t_dynamic,
+        t_float,
+        t_json /*, t_list, t_map */
+    };
+    std::string kind_to_string() const;
+
+    typedef std::list<Value *> List;
+    //    typedef std::map<std::string, Value> Map;
+
+    Value();
+    Value(Kind k);
+    Value(bool v);
+    Value(int64_t v);
+    Value(int v);
+    Value(unsigned int v);
+    Value(uint64_t v);
+    Value(float v);
+    Value(double v);
+    Value(cJSON *v); // take ownership of the JSON
+    Value(const char *str, Kind k = t_symbol);
+    Value(const std::string & str, Kind k = t_symbol);
+    Value(const Value &other);
+    Value(Value &&other);
+    Value(DynamicValueBase *dv);
+    Value(DynamicValueBase &dv);
+    virtual ~Value();
+    std::string asString(const char *format = nullptr) const;
+    std::string quoted() const;
+    bool isNull() const;
+    bool asFloat(double &val) const;
+    bool asInteger(int64_t &val) const;
+    bool asBoolean(bool &val) const;
+    cJSON *asJSON() const;
+    int64_t trunc() const;
+    int64_t round(int digits = 0) const;
+    double toFloat() const;
+    explicit operator int64_t() const { return iValue; }
+    explicit operator int() const { return (int)iValue; }
+    explicit operator float() const { return (float)fValue; }
+    explicit operator double() const { return fValue; }
+    //  Value operator[](int index);
+    //  Value operator[](std::string index);
+
+    void toString(); // convert the value to a string from a symbol
+    void toSymbol(); // convert the value to a symbol from a string
+
+    Kind kind = t_empty;
+    bool bValue = false;
+    int64_t iValue = 0;
+    double fValue = 0.0;
+    cJSON *json = nullptr;
+    std::string sValue; // used for strings and for symbols
+    MachineInstance *cached_machine = nullptr;
+
+    Value *cached_value = nullptr;
+    int token_id = 0;
+
+    bool numeric() const;
+    bool identical(const Value &other) const; // bypasses default == for floats
+
+    DynamicValueBase *dynamicValue() const { return dyn_value; }
+    void setDynamicValue();
+    void setDynamicValue(DynamicValueBase *dv);
+    void setDynamicValue(DynamicValueBase &dv);
+
+    Value &operator=(const Value &orig);
+    Value &operator=(bool);
+    Value &operator=(int);
+    Value &operator=(int64_t);
+    Value &operator=(uint64_t);
+    Value &operator=(const char *);
+    Value &operator=(std::string);
+    Value &operator=(float);
+    Value &operator=(double);
+    Value &operator=(cJSON *);
+
+    bool operator>=(const Value &other) const;
+    bool operator<=(const Value &other) const;
+    bool operator<(const Value &other) const { return !operator>=(other); }
+    bool operator>(const Value &other) const { return !operator<=(other); }
+    bool operator==(const Value &other) const;
+    bool operator!=(const Value &other) const;
+    bool operator&&(const Value &other) const;
+    bool operator||(const Value &other) const;
+    bool operator!() const;
+    Value operator-() const;
+    Value operator+(const Value &other);
+    Value &operator+=(const Value &other);
+    Value operator-(const Value &other);
+    Value &operator-=(const Value &other);
+    Value operator*(const Value &other);
+    Value &operator*=(const Value &other);
+    Value operator/(const Value &other);
+    Value &operator/=(const Value &other);
+    Value operator%(const Value &other);
+    Value &operator%=(const Value &other);
+    Value operator&(const Value &other);
+    Value &operator&=(const Value &other);
+    Value operator|(const Value &other);
+    Value &operator|=(const Value &other);
+    Value operator^(const Value &other);
+    Value &operator^=(const Value &other);
+    Value &operator~();
+
+    std::ostream &operator<<(std::ostream &out) const;
+
+  private:
+    DynamicValueBase *dyn_value = nullptr;
+    std::string name() const;
+
+    Value getFromJSON(const std::string &key);
+};
+
+std::ostream &operator<<(std::ostream &out, const Value &val);
+
+class ListValue : public Value {
+  public:
+    List *list;
+    //    Map mapValue;
+    void addItem(int next_value);
+    void addItem(const char *next_value);
+    void addItem(Value next_value);
+    void addItem(std::string key, Value next_value);
+    void push_back(Value *value) const {
+        if (list) {
+            list->push_back(value);
+        }
+    }
+};

@@ -1,0 +1,69 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+
+#ifndef __REGULAR_EXPRESSIONS_H__
+#define __REGULAR_EXPRESSIONS_H__
+
+#include <regex.h>
+#include <string>
+#include <vector>
+#include <boost/optional.hpp>
+#include <memory>
+
+struct rexp_info {
+    boost::optional<std::string> pattern;
+    int compilation_result;
+    boost::optional<std::string> compilation_error;
+    regex_t regex;
+    std::vector<regmatch_t> matches;
+    
+    // Constructor
+    rexp_info() : compilation_result(0) {}
+    
+    // Destructor to clean up regex resources
+    ~rexp_info() {
+        regfree(&regex);
+    }
+    
+    // Delete copy constructor and assignment operator to prevent issues
+    rexp_info(const rexp_info&) = delete;
+    rexp_info& operator=(const rexp_info&) = delete;
+};
+
+rexp_info *create_pattern(const char *pat);
+
+size_t numSubexpressions(const rexp_info *info);
+
+int execute_pattern(rexp_info *info, const char *string);
+
+void release_pattern(rexp_info *info);
+
+int matches(const char *string, const char *pattern);
+
+int is_integer(const char *string);
+
+/*  tests the precompiled pattern against the text provided and return zero if the
+    match succeeded.
+
+    If the entire matched pattern is returned in variables[0] and
+    if there are any subexpressions, the corresponding matches are returned in variables[1]..[n]
+*/
+int find_matches(rexp_info *info, std::vector<std::string> &variables, const char *string);
+
+/*  substitute the subt string into the text. Using the precompiled pattern.
+
+    If the precompiled pattern contains subexpressions, these are first extracted
+    into variables by the use of find_matches().
+*/
+char *substitute_pattern(rexp_info *info, std::vector<std::string> &variables, const char *text,
+                         const char *subst);
+
+/* here is a way for users to iterate through each match */
+typedef int(match_func)(const char *match, int index, void *user_data);
+
+int each_match(rexp_info *info, const char *text, size_t *end_offset, match_func f,
+               void *user_data);
+
+#endif

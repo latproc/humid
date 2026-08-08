@@ -1,0 +1,138 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+
+#ifndef cwlang_Message_h
+#define cwlang_Message_h
+
+#include "symboltable.h"
+#include "value.h"
+#include <boost/thread/mutex.hpp>
+#include <list>
+#include <ostream>
+#include <set>
+#include <sstream>
+#include <stdlib.h>
+#include <string.h>
+#include <string>
+#include "ThreadSafeList.h"
+
+class CStringHolder {
+  public:
+    CStringHolder();
+    CStringHolder(char *s);
+    CStringHolder(const char *s);
+    CStringHolder(const CStringHolder &orig);
+    CStringHolder(CStringHolder &&orig);
+    CStringHolder &operator=(const CStringHolder &orig);
+    CStringHolder &operator=(CStringHolder &&orig);
+    ~CStringHolder();
+
+    const char *get() const;
+    bool will_free() const;
+
+  private:
+    const char *s_str;
+    char *str;
+};
+
+class Message {
+  public:
+    enum MessageType { SIMPLEMSG, ENTERMSG, LEAVEMSG, ENABLEMSG, DISABLEMSG };
+    typedef std::list<Value> Parameters;
+
+    Message(MessageType t = SIMPLEMSG);
+    Message(CStringHolder msg, MessageType t = SIMPLEMSG, Parameters *p = 0);
+    Message(const Message &orig);
+    Message(Message &&orig);
+
+    Message &operator=(const Message &other);
+    Message &operator=(Message &&other);
+    ~Message();
+    std::ostream &operator<<(std::ostream &out) const;
+    bool operator==(const Message &other) const;
+    bool operator==(const char *msg) const;
+    bool operator!=(const Message &other) const { return !(*this == other); }
+    bool operator!=(const char *msg) const { return !(*this == msg); }
+    bool operator<(const Message &other) const { return text < other.text; }
+    bool operator>(const Message &other) const { return text > other.text; }
+    const std::string getText() const { return text; }
+    const std::list<Value> *getParams() const { return params; }
+
+    MessageType getType() const { return kind; }
+    bool isEnter() const { return kind == ENTERMSG; }
+    bool isLeave() const { return kind == LEAVEMSG; }
+    bool isSimple() const { return kind == SIMPLEMSG; }
+    bool isEnable() const { return kind == ENABLEMSG; }
+    bool isDisable() const { return kind == DISABLEMSG; }
+
+    static std::list<Value> *makeParams(Value p1, Value p2 = SymbolTable::Null,
+                                        Value p3 = SymbolTable::Null, Value p4 = SymbolTable::Null);
+
+  private:
+    static unsigned long sequence;
+    MessageType kind;
+    unsigned long seq;
+    std::string text;
+    std::list<Value> *params;
+};
+
+std::ostream &operator<<(std::ostream &out, const Message &m);
+
+class Receiver;
+using ReceiverList = ThreadSafeList<Receiver*>;
+class Transmitter {
+  public:
+    Transmitter(CStringHolder name_str)
+        : id(++next_id), _name(name_str.get()), allow_debug(false) {}
+    virtual ~Transmitter();
+    Transmitter() : id(++next_id) {
+        std::stringstream ss;
+        ss << id;
+        _name = ss.str();
+    }
+    virtual void sendMessageToReceiver(const Message &m, Receiver *r = NULL,
+                                       bool expect_reply = false);
+    virtual void sendMessageToReceiver(const char *msg, Receiver *r = NULL,
+                                       bool expect_reply = false);
+    virtual const std::string &getName() const { return _name; }
+    virtual Receiver *asReceiver() { return 0; }
+    virtual bool debug() { return allow_debug; }
+    virtual bool enabled() const { return true; }
+
+  protected:
+    long id;
+    static long next_id;
+    std::string _name;
+    bool allow_debug;
+};
+
+struct Package {
+    Transmitter *transmitter;
+    Receiver *receiver;
+    Message *message;
+    bool needs_receipt;
+    Package();
+    Package(Transmitter *t, Receiver *r, const Message &m, bool need_receipt = false);
+    Package(const Package &);
+    Package(Package &&);
+    ~Package();
+    Package &operator=(const Package &);
+    Package &operator=(Package &&);
+    std::ostream &operator<<(std::ostream &out) const;
+};
+std::ostream &operator<<(std::ostream &out, const Package &package);
+
+struct Bundle {
+    Transmitter *transmitter;
+    Receiver *receiver;
+    Message message;
+    Bundle() : transmitter(0), receiver(0) {}
+    Bundle(Transmitter *t, Receiver *r, Message &&m) : transmitter(t), receiver(r), message(std::move(m)) {}
+    bool operator==(const Bundle &other) const {
+        return transmitter == other.transmitter && receiver == other.receiver && message == other.message;
+    }
+};
+
+#endif

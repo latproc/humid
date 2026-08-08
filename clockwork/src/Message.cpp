@@ -1,0 +1,261 @@
+/*
+	All rights reserved. Use of this source code is governed by the
+	3-clause BSD License in LICENSE.txt.
+*/
+
+#include "Message.h"
+#include "Receiver.h"
+#include "value.h"
+#include <algorithm>
+#include <boost/thread/condition.hpp>
+#include <boost/thread/mutex.hpp>
+#include <iostream>
+#include <list>
+#include <set>
+#include <string.h>
+
+// Used to generate a unique id for each transmitter.
+long Transmitter::next_id;
+boost::mutex Receiver::q_mutex;
+unsigned long Message::sequence = 0; // each message has a sequence number
+
+CStringHolder::CStringHolder(char *s) : s_str(0), str(s) {}
+
+CStringHolder::CStringHolder(const char *s) : s_str(0), str(strdup(s)) {}
+
+CStringHolder::CStringHolder(const CStringHolder &orig) : s_str(0), str(0) {
+    if (orig.str) {
+        str = strdup(orig.str);
+    }
+    s_str = orig.s_str;
+}
+
+CStringHolder::CStringHolder(CStringHolder &&orig) : s_str(orig.s_str), str(orig.str) {
+    orig.str = 0;
+}
+
+CStringHolder::CStringHolder() : s_str(0), str(0) {}
+
+CStringHolder &CStringHolder::operator=(const CStringHolder &orig) {
+    if (this == &orig) return *this;
+    if (str) {
+        free(str);
+        str = 0;
+    }
+    if (orig.str) {
+        str = strdup(orig.str);
+    }
+    s_str = orig.s_str;
+    return *this;
+}
+
+CStringHolder & CStringHolder::operator=(CStringHolder &&orig) {
+    if (this == &orig) return *this;
+    if (str) {
+        free(str);
+    }
+    str = orig.str;
+    s_str = orig.s_str;
+    orig.str = 0;
+    return *this;
+}
+
+CStringHolder::~CStringHolder() {
+    if (str) {
+        free(str);
+    }
+}
+
+const char *CStringHolder::get() const { return (str) ? str : s_str; }
+
+bool CStringHolder::will_free() const { return str != 0; }
+
+//CStringHolder::CStringHolder() { if (str) free( str ); }
+
+std::set<Receiver *> Receiver::working_machines; // machines that have non-empty work queues
+
+Message::Message(MessageType t) : kind(t), seq(++sequence), text(""), params(0) {}
+
+// in this form, the message takes ownership of the parameters
+Message::Message(CStringHolder msg, MessageType t, std::list<Value> *param_list)
+    : kind(t), seq(++sequence), text(msg.get()), params(0) {
+    params = param_list;
+}
+
+// in this form, the message takes ownership of the parameters
+
+Message::Message(const Message &orig) : kind(orig.kind), seq(orig.seq), text(orig.text), params(0) {
+    if (orig.params) {
+        params = new std::list<Value>();
+        std::copy(orig.params->begin(), orig.params->end(), back_inserter(*params));
+    }
+}
+
+Message::Message(Message &&orig) : kind(orig.kind), seq(orig.seq), text(orig.text), params(orig.params) {
+    orig.params = 0;
+}
+
+Message &Message::operator=(const Message &other) {
+    if (this == &other) {
+        return *this;
+    }
+    kind = other.kind;
+    seq = other.seq;
+    text = other.text;
+
+    if (params) { // free any existing params to avoid leaks
+        delete params;
+        params = nullptr;
+    }
+    if (other.params) {
+        params = new std::list<Value>();
+        std::copy(other.params->begin(), other.params->end(), back_inserter(*params));
+    }
+    return *this;
+}
+
+Message &Message::operator=(Message && other) {
+    if (this == &other) {
+        return *this;
+    }
+    kind = other.kind;
+    seq = other.seq;
+    text = other.text;
+
+    if (params) {
+        delete params;
+        params = nullptr;
+    }
+    params = other.params;
+    other.params = 0;
+    return *this;
+}
+
+Message::~Message() {
+    if (params) {
+        params->clear();
+        delete params;
+        params = 0;
+    }
+}
+
+std::list<Value> *Message::makeParams(Value p1, Value p2, Value p3, Value p4) {
+    std::list<Value> *params = new std::list<Value>();
+    params->push_back(p1);
+    if (p2 != SymbolTable::Null) {
+        params->push_back(p2);
+    }
+    else {
+        return params;
+    }
+    if (p3 != SymbolTable::Null) {
+        params->push_back(p3);
+    }
+    else {
+        return params;
+    }
+    if (p4 != SymbolTable::Null) {
+        params->push_back(p4);
+    }
+    return params;
+}
+
+void Receiver::enqueue(const Package &package) {
+    boost::mutex::scoped_lock lock(q_mutex);
+    mail_queue.push_back(package);
+    has_work = true;
+}
+
+std::ostream &Message::operator<<(std::ostream &out) const {
+    out << text << " " << kind << " ";
+    return out;
+}
+
+std::ostream &operator<<(std::ostream &out, const Message &m) { return m.operator<<(out); }
+
+bool Message::operator==(const Message &other) const { return text.compare(other.text) == 0; }
+
+bool Message::operator==(const char *msg) const {
+    if (!msg) {
+        return false;
+    }
+    return strcmp(text.c_str(), msg) == 0;
+}
+
+Package::Package() : transmitter(0), receiver(0), message(0), needs_receipt(false) {}
+
+Package::Package(Transmitter *t, Receiver *r, const Message &m, bool need_receipt)
+    : transmitter(t), receiver(r), message(new Message(m)), needs_receipt(need_receipt) {}
+
+Package::Package(const Package &other)
+    : transmitter(other.transmitter), receiver(other.receiver),
+      message(new Message(*other.message)), needs_receipt(other.needs_receipt) {}
+
+Package::Package(Package &&other)
+    : transmitter(other.transmitter), receiver(other.receiver),
+      message(other.message), needs_receipt(other.needs_receipt) {
+      other.message = 0;
+}
+
+Package::~Package() { delete message; }
+
+Package &Package::operator=(const Package &other) {
+    if (this == &other) { return *this; }
+    transmitter = other.transmitter;
+    receiver = other.receiver;
+    if (message) {
+        delete message;
+    }
+    message = new Message(*other.message);
+    needs_receipt = other.needs_receipt;
+    return *this;
+}
+
+Package &Package::operator=(Package &&other) {
+    if (this == &other) {
+        return *this;
+    }
+    transmitter = other.transmitter;
+    receiver = other.receiver;
+    delete message;
+    message = other.message;
+    other.message = 0;
+    needs_receipt = other.needs_receipt;
+    return *this;
+}
+
+std::ostream &Package::operator<<(std::ostream &out) const {
+    if (receiver)
+        return out << "Package: " << *message << " from " << transmitter->getName() << " to "
+                   << receiver->getName() << " needs receipt: " << needs_receipt;
+    else {
+        return out << "Package: " << *message << " from " << transmitter->getName()
+                   << " needs receipt: " << needs_receipt;
+    }
+}
+
+std::ostream &operator<<(std::ostream &out, const Package &package) {
+    return package.operator<<(out);
+}
+
+Transmitter::~Transmitter() {}
+
+void Transmitter::sendMessageToReceiver(const Message &m, Receiver *r, bool expect_reply) {
+    assert(false);
+}
+
+void Transmitter::sendMessageToReceiver(const char *msg, Receiver *r, bool expect_reply) {
+    assert(false);
+}
+
+bool Receiver::hasPending(const Message &msg) {
+    boost::mutex::scoped_lock lock(q_mutex);
+    std::list<Package>::iterator iter = mail_queue.begin();
+    while (iter != mail_queue.end()) {
+        const Package &p = *iter++;
+        if (p.message && *p.message == msg) {
+            return true;
+        }
+    }
+    return false;
+}
