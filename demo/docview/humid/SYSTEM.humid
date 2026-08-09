@@ -1,0 +1,7 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    active_screen: "Drawings",
+    full_screen: 0,
+    w: 1280,
+    h: 800);

@@ -91,6 +91,20 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "DOCVIEW", this, cell, 0, "DOCVIEW", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure(nullptr, "Start_DocView", "DOCVIEW");
+		starters["DOCVIEW"] = s;
+		s->getProperties().add("width", 640);
+		s->getProperties().add("height", 480);
+		s->getProperties().add("pages", 1);
+		s->getProperties().add("page", 1);
+		s->getProperties().add("interactive", 1);
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "LABEL", this, cell, 0, "LABEL", "");
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));

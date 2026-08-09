@@ -47,4 +47,5 @@ void createButton(WidgetParams &params);
 void createFrame(WidgetParams &params);
 void createTable(WidgetParams &params);
 void createHtmlView(WidgetParams &params);
+void createDocView(WidgetParams &params);
 

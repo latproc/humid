@@ -1,0 +1,7 @@
+Drawings DRAWINGS(file_name: "DRAWINGS.humid", screen_height: 800, screen_width: 1280);
+DRAWINGS STRUCTURE EXTENDS SCREEN {
+  Title LABEL(alignment: 1, border: 0, caption: "Drawing Viewer (DOCVIEW)", font_size: 28, height: 48, pos_x: 0, pos_y: 0, valign: 1, width: 1120, wrap: 0);
+  Doc DOCVIEW(border: 1, height: 660, interactive: 1, page: 1, pages: 3, pos_x: 10, pos_y: 56, source: "http://127.0.0.1:8767/sample-drawing/", width: 1260);
+  Hint LABEL(alignment: 0, border: 0, caption: "Arrows=pan (Shift=large) | +/- =zoom | F=fit C=centre | PgUp/PgDn or [/]=page | buttons: Prev/Next/Fit", font_size: 13, height: 28, pos_x: 10, pos_y: 730, width: 1100, wrap: 0);
+  Return BUTTON(alignment: 1, direction: 1, bg_color: "0.9372,0.4236,0.0156,1.0000", border: 2, caption: "Return", font_size: 28, height: 70, pos_x: 1120, pos_y: 730, text_colour: "0.0000,0.0000,0.0000,1.0000", valign: 2, width: 160, wrap: 0);
+}

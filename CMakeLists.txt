@@ -218,7 +218,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/editorobject.h src/linkableobject.h src/editorgui.h
 		  src/factorybuttons.h src/editor.h src/connectable.h
 		  src/editorwidget.h src/editorbutton.h src/editortextbox.h src/editorlabel.h
-		  src/editorimageview.h src/editorlineplot.h src/editorprogressbar.h src/structureswindow.h src/themewindow.h src/propertywindow.h
+		  src/editorimageview.h src/editordocview.h src/editorlineplot.h src/editorprogressbar.h src/structureswindow.h src/themewindow.h src/propertywindow.h
 		  src/helper.h src/curl_helper.h src/screenswindow.h
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
 		  src/resourcemanager.h src/viewswindow.h src/listpanel.h
@@ -354,7 +354,7 @@ endif()
 		  src/linkableobject.cpp src/editorgui.cpp src/factorybuttons.cpp
 		  src/editor.cpp src/connectable.cpp src/editorwidget.cpp
 		  src/editorbutton.cpp src/editortextbox.cpp src/editorlabel.cpp
-		  src/editorimageview.cpp src/editorlineplot.cpp
+		  src/editorimageview.cpp src/editordocview.cpp src/editorlineplot.cpp
 		  src/editorprogressbar.cpp src/structureswindow.cpp
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
 		  src/platformdetect.cpp

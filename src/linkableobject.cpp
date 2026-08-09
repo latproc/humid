@@ -9,6 +9,7 @@
 #include "editor.h"
 #include "editorbutton.h"
 #include "editorimageview.h"
+#include "editordocview.h"
 #if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
 #include "editorhtmlview.h"
 #endif
@@ -103,6 +104,12 @@ void LinkableText::update(const Value &value) {
 		iv->setImageName(value.asString()); iv->fit();
 		return;
 	}
+	EditorDocView *dv = dynamic_cast<EditorDocView*>(widget);
+	if (dv) {
+		// Remote string updates the document base URL (HTTP directory of page-*.png).
+		dv->setSource(value.asString(), true);
+		return;
+	}
 #if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
 	EditorHtmlView *hv = dynamic_cast<EditorHtmlView*>(widget);
 	if (hv) {
@@ -121,7 +128,19 @@ void LinkableNumber::update(const Value &value) {
             pb->setValue(value.iValue);
         else if (value.kind == Value::t_float)
             pb->setValue(value.fValue);
+		return;
     }
+	EditorDocView *dv = dynamic_cast<EditorDocView*>(widget);
+	if (dv) {
+		int64_t page = 1;
+		if (value.kind == Value::t_integer)
+			page = value.iValue;
+		else if (value.kind == Value::t_float)
+			page = (int64_t)value.fValue;
+		else
+			value.asInteger(page);
+		dv->setPage((int)page, true);
+	}
 }
 
 LinkableIndicator::LinkableIndicator(EditorObject *w) : LinkableObject(w) { }

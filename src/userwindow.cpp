@@ -449,6 +449,9 @@ void UserWindow::loadStructure(Structure *s) {
 			if (element_class && element_class->isExtension("HTMLVIEW")) {
 				createHtmlView(params);
 			}
+			if (element_class && element_class->isExtension("DOCVIEW")) {
+				createDocView(params);
+			}
 			if (element_class &&element_class->isExtension("PROGRESS")) {
 				createProgress(params);
 			}

@@ -12,6 +12,7 @@
 #if defined(HUMID_WITH_HTMLVIEW) && HUMID_WITH_HTMLVIEW
 #include "editorhtmlview.h"
 #endif
+#include "editordocview.h"
 #include <nanogui/button.h>
 #include "helper.h"
 #include "linkmanager.h"
@@ -245,6 +246,51 @@ void createHtmlView(WidgetParams &params) {
 #else
 	(void)params;
 #endif
+}
+
+void createDocView(WidgetParams &params) {
+	EditorDocView *el = new EditorDocView(params.s, params.window, params.element->getName(), params.lp, 0);
+	el->setName(params.element->getName());
+	el->setDefinition(params.element);
+	if (params.connection != SymbolTable::Null) {
+		el->setRemoteName(params.remote.asString());
+		el->setConnection(params.connection.asString());
+	}
+	if (params.theme.get()) { el->setTheme(params.theme); }
+	setElementPosition(params, el, params.element);
+	fixElementSize(el, params.element);
+	if (params.border != SymbolTable::Null) el->setBorder(params.border.iValue);
+
+	bool interactive = true;
+	const Value interactive_val(params.element->getValue("interactive"));
+	if (interactive_val != SymbolTable::Null)
+		interactive_val.asBoolean(interactive);
+	el->setInteractive(interactive);
+
+	const Value scale_val(params.element->getValue("scale"));
+	double sc = 1.0;
+	if (scale_val != SymbolTable::Null) scale_val.asFloat(sc);
+	el->setScale((float)sc);
+
+	int64_t pages = 1;
+	const Value pages_v(params.element->getValue("pages"));
+	if (pages_v != SymbolTable::Null) pages_v.asInteger(pages);
+	el->setPageCount((int)pages);
+
+	int64_t page = 1;
+	const Value page_v(params.element->getValue("page"));
+	if (page_v != SymbolTable::Null) page_v.asInteger(page);
+
+	const Value source_v((params.lp) ? params.lp->value() : params.element->getValue("source"));
+	if (source_v != SymbolTable::Null)
+		el->setSource(source_v.asString(), false);
+	el->setPage((int)page, true);
+
+	if (params.lp)
+		params.lp->link(new LinkableText(el));
+	if (params.visibility) el->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, el);
+	el->setChanged(false);
 }
 
 void createImage(WidgetParams &params) {

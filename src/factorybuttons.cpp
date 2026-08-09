@@ -14,6 +14,7 @@
 #include "editortextbox.h"
 #include "editorlabel.h"
 #include "editorimageview.h"
+#include "editordocview.h"
 #include "editorlineplot.h"
 #include "editorprogressbar.h"
 #include "editorframe.h"
@@ -150,6 +151,15 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		iv->setImageName("images/blank.png");
 		iv->fit();
 		result = iv;
+	}
+	else if (sc->getName() == "DOCVIEW") {
+		EditorDocView *dv = new EditorDocView(parent, window, generated_name, nullptr, 0);
+		dv->setDefinition(s);
+		s->setName(dv->getName());
+		dv->setInteractive(true);
+		dv->setPageCount(1);
+		dv->setPage(1, false);
+		result = dv;
 	}
 	else if (sc->getName() == "PLOT") {
 		EditorLinePlot *lp = new EditorLinePlot(parent, window, generated_name, nullptr);
