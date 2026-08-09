@@ -43,8 +43,10 @@ Build: normal humid build (no extra deps beyond IMAGE/HTTP already used).
    - On-screen Prev / Next / Fit buttons
 
 4. Plant drawings (private PDFs):
-   - Convert offline with pdftoppm / plant pdf_to_web.py at ~150 dpi to
-     page-001.png … page-00N.png under a document directory.
+   - Convert offline with llm-rules/tools/pdf_to_web.py at ~150 dpi
+     (see llm-rules/TOOLS.md and humid doc/document-viewing.md):
+       python3 llm-rules/tools/pdf_to_web.py --width 1240 --height 700 --dpi 150 \
+         --source /path/to/pdfs --web /path/to/web
    - Serve that tree over HTTP (do not commit private PDFs into humid).
    - Set DOCVIEW source to the document base URL (trailing slash OK) and
      pages to the page count.

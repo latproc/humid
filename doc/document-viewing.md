@@ -20,12 +20,22 @@ Fleet includes older **J2900-class** machines, newer **Wayland** panels, and at 
 
 ## Offline conversion (dev machine)
 
-Use plant tooling, e.g. `4C04/Docs/schematics/pdf_to_web.py`:
+Canonical converter for agents and plant work:
+
+| Copy | Path |
+| --- | --- |
+| **llm-rules (preferred for agents)** | `llm-rules/tools/pdf_to_web.py` |
+| Plant schematics tree | `4C04/Docs/schematics/pdf_to_web.py` (when present) |
+| Tool index | `llm-rules/TOOLS.md` |
 
 ```sh
-# Example: multipage electrical PDF → page-001.png …
-pdftoppm -png -r 150 drawing.pdf out/page
-# rename to page-001.png … or use pdf_to_web.py --dpi 150 --width 1240 --height 700
+# Multipage electrical PDF → web/<doc-id>/page-001.png …
+python3 /path/to/llm-rules/tools/pdf_to_web.py \
+  --width 1240 --height 700 --dpi 150 \
+  --source /path/to/pdfs --web /path/to/web
+
+# One-off without the script:
+# pdftoppm -png -r 150 drawing.pdf out/page   # then rename to page-001.png …
 ```
 
 Private PDFs stay in plant trees (e.g. TwoGrab4Core `Docs/Manual`); never commit them into public humid.
