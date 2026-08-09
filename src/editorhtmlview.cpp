@@ -27,6 +27,9 @@
 #include <cstdio>
 #include <cassert>
 
+extern int debug;
+#define DEBUG_BASIC (1 & debug)
+
 namespace fs = boost::filesystem;
 using Clock = std::chrono::steady_clock;
 
@@ -359,8 +362,10 @@ void EditorHtmlView::runFetchStage() {
 	}
 	m_ms_prefetch = msSince(t_pf0);
 
-	std::cerr << "HTMLVIEW timing: fetch_html=" << m_ms_fetch_html << "ms prefetch=" << m_ms_prefetch
-			  << "ms (" << m_prefetch_count << " assets)\n";
+	if (DEBUG_BASIC) {
+		std::cerr << "HTMLVIEW timing: fetch_html=" << m_ms_fetch_html << "ms prefetch=" << m_ms_prefetch
+				  << "ms (" << m_prefetch_count << " assets)\n";
+	}
 
 	m_pending_html = std::move(html);
 	m_pending_base = base;
@@ -466,8 +471,10 @@ void EditorHtmlView::finishLayoutAsync() {
 	m_content_width = m_layout_content_w;
 	m_content_height = m_layout_content_h;
 
-	std::cerr << "HTMLVIEW timing: parse_layout=" << m_ms_parse_layout
-			  << "ms content=" << m_content_width << "x" << m_content_height << "\n";
+	if (DEBUG_BASIC) {
+		std::cerr << "HTMLVIEW timing: parse_layout=" << m_ms_parse_layout
+				  << "ms content=" << m_content_width << "x" << m_content_height << "\n";
+	}
 
 	m_status = "OK";
 	m_status_detail.clear();
@@ -572,7 +579,8 @@ void EditorHtmlView::paintViewport() {
 		if (m_scroll_y > max_scroll)
 			m_scroll_y = max_scroll;
 		applyPendingFragment();
-		std::cerr << "HTMLVIEW timing: reflow=" << msSince(t_reflow0) << "ms width=" << w << "\n";
+		if (DEBUG_BASIC)
+			std::cerr << "HTMLVIEW timing: reflow=" << msSince(t_reflow0) << "ms width=" << w << "\n";
 	}
 
 	cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
@@ -633,15 +641,19 @@ void EditorHtmlView::paintViewport() {
 	const long paint_ms = msSince(t_paint0);
 	if (log_first_paint) {
 		m_ms_first_paint = paint_ms;
-		const long total = msSince(m_load_t0);
-		std::ostringstream line;
-		line << "fetch_html=" << m_ms_fetch_html << "ms"
-			 << " prefetch=" << m_ms_prefetch << "ms(" << m_prefetch_count << ")"
-			 << " parse_layout=" << m_ms_parse_layout << "ms"
-			 << " first_paint=" << m_ms_first_paint << "ms"
-			 << " total=" << total << "ms";
-		m_timing_line = line.str();
-		std::cerr << "HTMLVIEW timing: " << m_timing_line << "\n";
+		if (DEBUG_BASIC) {
+			const long total = msSince(m_load_t0);
+			std::ostringstream line;
+			line << "fetch_html=" << m_ms_fetch_html << "ms"
+				 << " prefetch=" << m_ms_prefetch << "ms(" << m_prefetch_count << ")"
+				 << " parse_layout=" << m_ms_parse_layout << "ms"
+				 << " first_paint=" << m_ms_first_paint << "ms"
+				 << " total=" << total << "ms";
+			m_timing_line = line.str();
+			std::cerr << "HTMLVIEW timing: " << m_timing_line << "\n";
+		} else {
+			m_timing_line.clear();
+		}
 		m_load_busy = false;
 	}
 }
@@ -726,8 +738,8 @@ void EditorHtmlView::draw(NVGcontext *ctx) {
 		nvgFillPaint(ctx, img);
 		nvgFill(ctx);
 
-		// After a timed load, keep the breakdown visible briefly at the bottom.
-		if (!m_timing_line.empty()) {
+		// Debug-only load timing bar (run humid with --debug N, N!=0).
+		if (DEBUG_BASIC && !m_timing_line.empty()) {
 			nvgBeginPath(ctx);
 			nvgRect(ctx, mPos.x(), mPos.y() + mSize.y() - 22.f, (float)mSize.x(), 22.f);
 			nvgFillColor(ctx, nvgRGBA(255, 255, 255, 200));

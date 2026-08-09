@@ -97,7 +97,7 @@ private:
 	std::string m_url;
 	std::string m_status;
 	std::string m_status_detail;   // second line on status panel
-	std::string m_timing_line;     // last completed load breakdown (shown under status)
+	std::string m_timing_line;     // last load breakdown (on-screen only when DEBUG_BASIC)
 	std::string m_pending_fragment; // fragment to apply after load/layout
 	std::string m_pending_html;     // body held between Fetch and Layout stages
 	std::string m_pending_base;
