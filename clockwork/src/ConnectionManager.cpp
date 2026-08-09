@@ -9,6 +9,7 @@
 #include "cJSON.h"
 #include <assert.h>
 #include <boost/thread.hpp>
+#include <cerrno>
 #include <exception>
 #include <iostream>
 #include <map>
@@ -229,6 +230,39 @@ void SubscriptionManager::invalidateSubscriberSession() {
     current_channel.clear();
     authority = 0;
     sub_status_ = ss_init;
+}
+
+bool SubscriptionManager::forceFullReconnect(const char *reason) {
+    if (!isClient()) {
+        return false;
+    }
+    SubscriptionManagerInternals *smi = dynamic_cast<SubscriptionManagerInternals *>(internals);
+    if (smi) {
+        const uint64_t now = microsecs();
+        if (smi->last_setup_recreate_time &&
+            now - smi->last_setup_recreate_time <
+                SubscriptionManagerInternals::setup_recreate_min_interval) {
+            return false;
+        }
+    }
+    {
+        FileLogger fl(program_name);
+        fl.f() << channel_name << " forceFullReconnect"
+               << (reason ? ": " : "") << (reason ? reason : "") << "\n"
+               << std::flush;
+    }
+    // Drop data-path session first so we never mark e_done on a stale SUB.
+    invalidateSubscriberSession();
+    // Always recreate setup REQ — half-open REQ after peer death cannot recover
+    // with drain alone, and resetChannelRequestState(false) left zombies.
+    resetChannelRequestState(true);
+    // Drive the client FSM from e_startup so setupConnections() re-binds URL
+    // and requestChannel() issues a fresh CHANNEL.
+    if (setupStatus() != e_startup && setupStatus() != e_waiting_connect) {
+        setSetupStatus(e_startup);
+    }
+    state_start = microsecs();
+    return true;
 }
 
 void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket) {
@@ -545,9 +579,12 @@ bool SubscriptionManager::requestChannel() {
         if (error_count >= 4) {
             {
                 FileLogger fl(program_name);
-                fl.f() << channel_name << " aborting\n" << std::flush;
+                fl.f() << channel_name
+                       << " too many CHANNEL send errors — full reconnect\n"
+                       << std::flush;
             }
-            exit(2);
+            forceFullReconnect("CHANNEL send error storm");
+            return false;
         }
         return false;
     }
@@ -1103,25 +1140,16 @@ bool SubscriptionManager::checkConnections() {
             {
                 FileLogger fl(program_name);
                 fl.f() << " waiting too long in state " << STATUS_NAMES[setupStatus()]
-                       << ". aborting\n";
+                       << " — full reconnect\n";
             }
             usleep(5);
-            // Full REQ recovery: long-lived wait_setup with no reply is the sticky case.
-            if (setupStatus() == e_waiting_setup || setupStatus() == e_waiting_connect) {
-                resetChannelRequestState(true);
-            }
-            if (setupStatus() == e_error) {
-                SubscriptionManager::Status next_status =
-                    monit_setup->disconnected() ? e_startup : e_connected;
-                setSetupStatus(next_status);
-            }
-            else {
-                setSetupStatus(e_startup);
-            }
+            forceFullReconnect("state timeout");
         }
 #endif
         if (monit_setup->disconnected() && monit_subs.disconnected()) {
-            resetChannelRequestState(false);
+            // Both legs down (typical after iod restart): full reconnect, not a
+            // soft drain — resetChannelRequestState(false) left half-open REQ.
+            forceFullReconnect("setup+subscriber both disconnected");
             return false;
         }
     }
@@ -1135,20 +1163,23 @@ bool SubscriptionManager::checkConnections() {
         // poll (~50ms) storms sockets and can strand humid.
         const Status st = setupStatus();
         if (st == e_done) {
-            // Peer restart: command path is dead and the CHANNEL grant is gone.
-            // Also drop the subscriber session so we cannot mark e_done again
-            // from a stale auto-reconnected SUB without a new grant.
-            // Demote e_done first: recreate may be rate-limited and would otherwise
-            // leave Ready() true with no grant (zombie session).
-            invalidateSubscriberSession();
-            setSetupStatus(e_waiting_connect);
-            resetChannelRequestState(true);
+            // Peer restart: full reconnect (invalidate SUB + new REQ + e_startup).
+            forceFullReconnect("setup disconnected while e_done (peer restart)");
         }
         else if (st == e_waiting_setup || st == e_connected || st == e_error ||
                  st == e_waiting_subscriber || st == e_settingup_subscriber) {
-            resetChannelRequestState(true);
+            // Mid-handshake: recreate REQ; keep trying without full invalidate
+            // if we never had a grant (no stale SUB session).
+            if (!current_channel.empty() || sub_status_ != ss_init) {
+                forceFullReconnect("setup disconnected mid-CHANNEL");
+            }
+            else {
+                resetChannelRequestState(true);
+            }
         }
         else {
+            // e_waiting_connect / e_startup: soft clear; rate-limited full
+            // recreate if we stay stuck (state_timeout above).
             resetChannelRequestState(false);
             if (st != e_waiting_connect && st != e_startup) {
                 setSetupStatus(e_startup);
@@ -1168,17 +1199,48 @@ bool SubscriptionManager::checkConnections() {
 #endif
         // Lost the data path: must re-CHANNEL (new port/authority) not only reconnect.
         if (setupStatus() == e_done || !current_channel.empty()) {
-            current_channel.clear();
-            authority = 0;
-            sub_status_ = ss_init;
-            channel_url.clear();
+            invalidateSubscriberSession();
             setSetupStatus(e_waiting_connect);
-            resetChannelRequestState(false);
+            // Setup TCP still up but grant is invalid for commands; clear REQ
+            // bookkeeping so CHANNEL can be re-requested (recreate if half-open).
+            resetChannelRequestState(true);
         }
         setupConnections();
         usleep(50000);
         return false;
     }
+
+    // Mid-CHANNEL handshake while both TCP legs look connected.
+    // Common after iod restart when SUB auto-reconnects to a fixed definition
+    // port (e.g. PERSISTENCE 7901) before the CHANNEL grant is applied: neither
+    // monitor reports disconnected, so the disconnect/timeout branch above never
+    // runs, and a bare "return true" would skip requestChannel() forever — stuck
+    // in e_waiting_setup with no property path (persistd, humid, mbmon).
+    if (setupStatus() == e_waiting_connect || setupStatus() == e_waiting_setup ||
+        setupStatus() == e_settingup_subscriber || setupStatus() == e_waiting_subscriber) {
+        uint64_t state_timeout = 10000000; // 10s mid-handshake
+        if (setupStatus() == e_waiting_connect) {
+            state_timeout = 60000000;
+        }
+        if (state_start && microsecs() - state_start > state_timeout) {
+            {
+                FileLogger fl(program_name);
+                fl.f() << " waiting too long in state " << STATUS_NAMES[setupStatus()]
+                       << " with TCP up — full reconnect\n";
+            }
+            forceFullReconnect("state timeout while TCP up");
+            return false;
+        }
+        // Drive CHANNEL send/recv and SUB bind even though monitors look healthy.
+        setupConnections();
+        if (!current_channel.empty() && !monit_subs.disconnected() && sub_status_ != ss_init) {
+            setSetupStatus(SubscriptionManager::e_done);
+            channel_error_count = 0;
+            return true;
+        }
+        return false;
+    }
+
     // Both TCP paths up is not enough: we must have applied a CHANNEL grant
     // (current_channel set). Otherwise a race after peer restart marks e_done
     // while the CHANNEL JSON was drained/ignored and authority/port are wrong.
@@ -1232,12 +1294,26 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
         }
     }
     catch (const zmq::error_t &zex) {
-        char buf[200];
-        snprintf(buf, 200, "%s %s %d %s %s", channel_name.c_str(), "exception", zmq_errno(),
-                 zmq_strerror(zmq_errno()), "polling connections");
-        FileLogger fl(program_name);
-        fl.f() << buf << "\n";
-        MessageLog::instance()->add(buf);
+        // ENOTSOCK/EFSM after peer restart is common while clients refresh
+        // sockets. Log at most once per second — unrestricted logging here
+        // was multi‑MB/s and pegged device_connector + blocked iosh.
+        static uint64_t last_poll_err_log_us = 0;
+        const uint64_t now_us = microsecs();
+        const int err = zmq_errno();
+        if (last_poll_err_log_us == 0 || now_us - last_poll_err_log_us >= 1000000) {
+            last_poll_err_log_us = now_us;
+            char buf[200];
+            snprintf(buf, 200, "%s %s %d %s %s", channel_name.c_str(), "exception", err,
+                     zmq_strerror(err), "polling connections");
+            FileLogger fl(program_name);
+            fl.f() << buf << "\n";
+            MessageLog::instance()->add(buf);
+        }
+        // Invalid FD / bad REQ state: full reconnect so next loop's
+        // configurePoll() sees live sockets (device_connector refreshes items).
+        if (err == ENOTSOCK || err == ETERM || err == EFSM) {
+            forceFullReconnect("zmq poll error");
+        }
         return false;
     }
     if (rc == 0) {

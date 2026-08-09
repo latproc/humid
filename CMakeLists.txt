@@ -260,7 +260,7 @@ endif ()
 	   COMMAND ${BISON_EXECUTABLE}
 	   ARGS
 			-o ${CMAKE_BINARY_DIR}/hmilang.tab.cpp
-			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
+			-v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/hmilang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
@@ -295,7 +295,7 @@ endif ()
 	   COMMAND ${BISON_EXECUTABLE}
 	   ARGS
 			-o ${CMAKE_BINARY_DIR}/settingslang.tab.cpp
-			-g -v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
+			-v -d ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.lpp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/settingslang.ypp
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/structure.h
