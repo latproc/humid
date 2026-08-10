@@ -36,6 +36,15 @@ clockwork/src tree with clockwork/compare-clockwork-src.sh. See:
 
 Plant iod bus lines (prod-experimental-mqtt-fix, iod-elc) are separate.
 
+## Document viewers (HTMLVIEW / DOCVIEW)
+
+- HTML operators manuals: embedded HTMLVIEW (litehtml). Demo: demo/htmlview/
+- Multipage wiring / CAD drawings: DOCVIEW (HTTP page-00N.png, keyboard
+  pan/zoom). Demo: demo/docview/
+- Implementation and usage handoff: doc/document-viewing.md
+- Offline PDF→PNG: llm-rules/tools/pdf_to_web.py (plant SVN), not in this
+  binary; panels never open PDF files.
+
 ## Third-party licenses
 
 Humid is BSD-licensed at the project level (see LICENSE.txt). Copies of

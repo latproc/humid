@@ -1,9 +1,12 @@
 DOCVIEW demo (wiring / multi-page drawings)
 ==========================================
 
+Full implementation and plant usage handoff:
+  doc/document-viewing.md
+
 DOCVIEW displays offline-converted PDF pages as PNG images loaded over HTTP.
-It is for wiring diagrams and CAD sheets (zoom + pan + page flip). Long text
-manuals stay on HTMLVIEW with HTML sources.
+It is for wiring diagrams and CAD sheets (keyboard pan/zoom + page flip).
+Long text manuals stay on HTMLVIEW with HTML sources.
 
 Build: normal humid build (no extra deps beyond IMAGE/HTTP already used).
 
