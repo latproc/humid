@@ -1097,6 +1097,17 @@ void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON 
 }
 
 void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_sync) {
+	// Peer reconnect: re-arm *before* the sINIT send check so the same pass can
+	// queue MODBUS REFRESH (previously re-arm ran after and deferred a frame,
+	// and a clear of needsRefresh without a send could leave sDONE unchanged).
+	if (connection->needsRefresh()) {
+		connection->setNeedsRefresh(false);
+		// Drop a stuck in-flight request after iod restart and re-request.
+		if (connection->getStartupState() != sINIT) {
+			connection->setState(sINIT);
+		}
+	}
+
 	if (connection->getStartupState() != sDONE && connection->getStartupState() != sRELOAD) {
 		// if the tag file is loaded, get initial values
 		if (/*linkables.size() && */ connection->getStartupState() == sINIT) {
@@ -1108,85 +1119,83 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 				connection->setState(sSENT);
 				queueMessage( connection->getName(), "MODBUS REFRESH",
 					[this, connection](const std::string & s) {
-						if (s != "failed") {
-							cJSON *obj = cJSON_Parse(s.c_str());
-							if (!obj) {
-								connection->setState(sINIT);
-								return;
-							}
-							if (obj->type == cJSON_Array) {
-								processModbusInitialisation(connection->getName(), obj);
-								w_objects->rebuildWindow();
-								if (w_user && getState() == GUIWORKING) {
-									w_user->setStructure(w_user->structure());
-									if (!shouldIgnoreRemoteScreen()) {
-										const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
-										if (remote_screen != SymbolTable::Null) {
-											LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
-											if (lp) {
-												lp->link(getUserWindow());
+						// Treat any non-array reply (failed/timeout/disconnect text) as retry.
+						if (s == "failed" || s == "timeout") {
+							connection->setState(sINIT);
+							return;
+						}
+						cJSON *obj = cJSON_Parse(s.c_str());
+						if (!obj) {
+							connection->setState(sINIT);
+							return;
+						}
+						if (obj->type == cJSON_Array) {
+							processModbusInitialisation(connection->getName(), obj);
+							w_objects->rebuildWindow();
+							if (w_user && getState() == GUIWORKING) {
+								w_user->setStructure(w_user->structure());
+								if (!shouldIgnoreRemoteScreen()) {
+									const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
+									if (remote_screen != SymbolTable::Null) {
+										LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+										if (lp) {
+											lp->link(getUserWindow());
+										}
+									}
+								}
+								const Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
+								if (remote_dialog != SymbolTable::Null) {
+									LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog.asString());
+									if (lp) {
+										class DialogNameTarget : public LinkTarget {
+											EditorGUI *m_gui;
+										public:
+											DialogNameTarget(EditorGUI *gui) : m_gui(gui) {}
+											void update(const Value &value) override {
+												m_gui->setUserDialog(value.asString());
 											}
-										}
+										};
+										lp->clear();
+										lp->link(new LinkableObject(new DialogNameTarget(EDITOR->gui())));
 									}
-									const Value remote_dialog(EditorGUI::systemSettings()->getProperties().find("remote_dialog"));
-									if (remote_dialog != SymbolTable::Null) {
-										LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog.asString());
-										if (lp) {
-											class DialogNameTarget : public LinkTarget {
-												EditorGUI *m_gui;
-											public:
-												DialogNameTarget(EditorGUI *gui) : m_gui(gui) {}
-												void update(const Value &value) override {
-													m_gui->setUserDialog(value.asString());
-												}
-											};
-											lp->clear();
-											lp->link(new LinkableObject(new DialogNameTarget(EDITOR->gui())));
-										}
-									}
-
-									Value remote_dialog_visible(EditorGUI::systemSettings()->getProperties().find("remote_dialog_visibility"));
-									if (remote_dialog_visible != SymbolTable::Null) {
-										LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog_visible.asString());
-										if (lp) {
-											class DialogVisibilityTarget : public LinkTarget {
-												EditorGUI *m_gui;
-											public:
-												DialogVisibilityTarget(EditorGUI *gui) : m_gui(gui) {}
-												void update(const Value &value) override {
-													int64_t visible;
-													if (value.asInteger(visible)) {
-														m_gui->showDialog(visible);
-													}
-													else {
-														std::cout << "could not parse " << value << " as an integer to show/hide dialog\n";
-													}
-												}
-											};
-											lp->clear();
-											lp->link(new LinkableObject(new DialogVisibilityTarget(EDITOR->gui())));
-										}
-									}
-
-
 								}
 
+								Value remote_dialog_visible(EditorGUI::systemSettings()->getProperties().find("remote_dialog_visibility"));
+								if (remote_dialog_visible != SymbolTable::Null) {
+									LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(remote_dialog_visible.asString());
+									if (lp) {
+										class DialogVisibilityTarget : public LinkTarget {
+											EditorGUI *m_gui;
+										public:
+											DialogVisibilityTarget(EditorGUI *gui) : m_gui(gui) {}
+											void update(const Value &value) override {
+												int64_t visible;
+												if (value.asInteger(visible)) {
+													m_gui->showDialog(visible);
+												}
+												else {
+													std::cout << "could not parse " << value << " as an integer to show/hide dialog\n";
+												}
+											}
+										};
+										lp->clear();
+										lp->link(new LinkableObject(new DialogVisibilityTarget(EDITOR->gui())));
+									}
+								}
+
+
 							}
+
 							cJSON_Delete(obj);
 							connection->setState(sRELOAD);
 						}
-						else
+						else {
+							cJSON_Delete(obj);
 							connection->setState(sINIT);
+						}
 					}
 				);
 			}
-		}
-	}
-	// Peer reconnect: re-arm data sync whenever a refresh was requested.
-	if (connection->needsRefresh()) {
-		connection->setNeedsRefresh(false);
-		if (connection->getStartupState() != sINIT && connection->getStartupState() != sSENT) {
-			connection->setState(sINIT);
 		}
 	}
 

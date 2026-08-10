@@ -194,9 +194,9 @@ public:
 	explicit SetupDisconnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
 		// Setup REQ flaps during CHANNEL recovery (EFSM recreate). Only treat a
-		// disconnect as "connection lost" when we were fully online (e_done),
-		// otherwise the UI and data-init state thrash on every intermediate bounce.
-		if (connection && connection->Ready()) {
+		// disconnect as "connection lost" when we had a full session (e_done seen
+		// in idle, or still Ready). Mid-handshake bounces must not thrash data-init.
+		if (connection && (connection->Ready() || connection->channelWasReady())) {
 			connection->noteDisconnected(addr_);
 		}
 	}
@@ -209,9 +209,9 @@ class SetupConnectMonitor : public EventResponder {
 public:
 	explicit SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-		// Setup TCP connect is a useful progress signal and flags data refresh once
-		// CHANNEL reaches e_done (see needsRefresh / sINIT in idle). Disconnect is
-		// gated on Ready() so mid-recovery REQ recreates do not wipe state.
+		// Setup TCP connect flags a pending data refresh once CHANNEL reaches
+		// e_done. The reliable re-arm is idle's !was_ready -> e_done edge; this
+		// is an early hint when the monitor fires.
 		if (connection) {
 			connection->noteConnected(addr_);
 		}
@@ -426,7 +426,8 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
 		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
-		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds"), needs_refresh(false) {
+		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds"),
+		needs_refresh(false), channel_was_ready(false) {
 	local_commands += "_" + connection_name;
 }
 
@@ -606,17 +607,38 @@ void ClockworkClient::Connection::resetCommandPath() {
 	command_state = WaitingCommand;
 }
 
-void ClockworkClient::Connection::noteDisconnected(const char *addr) {
-	std::cerr << name << " DISCONNECTED from " << host_name << ":" << port;
+void ClockworkClient::Connection::onChannelLost(const char *addr) {
+	std::cerr << name << " channel lost from " << host_name << ":" << port;
 	if (addr && *addr) {
 		std::cerr << " (" << addr << ")";
 	}
 	std::cerr << std::endl;
+	// Drop half-open REQ and any in-flight command callbacks so reconnect can
+	// queue a fresh MODBUS REFRESH instead of stalling in WaitingResponse.
 	resetCommandPath();
 	messages.clear();
 	first_message_time = 0;
-	setNeedsRefresh(false);
-	setState(sINIT); // re-init data once peer is back
+	channel_was_ready = false;
+	// Re-arm data init for when setup returns to e_done (even if setup TCP
+	// CONNECTED is never observed, e.g. SUB-only recovery after iod restart).
+	setNeedsRefresh(true);
+	setState(sINIT);
+}
+
+void ClockworkClient::Connection::onChannelBecameReady() {
+	std::cerr << name << " channel ready — re-arming data refresh ("
+		  << host_name << ":" << port << ")\n";
+	// Ensure a clean command path after peer restart (may not have seen DISCONNECTED).
+	resetCommandPath();
+	messages.clear();
+	first_message_time = 0;
+	setNeedsRefresh(true);
+	setState(sINIT);
+}
+
+void ClockworkClient::Connection::noteDisconnected(const char *addr) {
+	// Setup-socket monitor path; shared cleanup with idle e_done edge detection.
+	onChannelLost(addr);
 }
 
 void ClockworkClient::Connection::noteConnected(const char *addr) {
@@ -625,8 +647,10 @@ void ClockworkClient::Connection::noteConnected(const char *addr) {
 		std::cerr << " (" << addr << ")";
 	}
 	std::cerr << std::endl;
+	// Early hint only: actual snapshot is requested when idle sees e_done again.
+	// Do not clear the command path here — setup TCP CONNECT flaps during
+	// CHANNEL recovery; onChannelBecameReady handles a clean re-arm.
 	setNeedsRefresh(true);
-	// Force MODBUS REFRESH path when setup completes again.
 	if (startup == sDONE || startup == sRELOAD || startup == sSENT) {
 		setState(sINIT);
 	}
@@ -672,10 +696,7 @@ void ClockworkClient::idle(bool gui_is_ready) {
 				if (!subscription_manager) continue;
 
 				{
-					if (conn->Ready() && conn->update()) {
-						update(conn, gui_is_ready);
-						if (reported_error) { reported_error = false; }
-					}
+					const bool was_ready = conn->channelWasReady();
 					zmq::pollitem_t items[] = {
 						{ subscription_manager->setup(), 0, ZMQ_POLLIN, 0 },
 						{ subscription_manager->subscriber(), 0, ZMQ_POLLIN, 0 },
@@ -683,24 +704,61 @@ void ClockworkClient::idle(bool gui_is_ready) {
 					};
 
 					try {
+						// Drive CHANNEL/setup first so Ready reflects the peer this pass.
+						// Data-init re-arm is based on e_done edges, not only ZMQ CONNECTED
+						// (iod restart often recovers SUB/CHANNEL while setup TCP stays up).
 						if (!subscription_manager->checkConnections(items, 3, *conn->iosh_cmd)) {
+							if (was_ready) {
+								conn->onChannelLost();
+							}
+							conn->setChannelWasReady(false);
 							if (debug && !reported_error) {
 								std::cerr << conn->getName() << ": no connection to iod\n";
 								reported_error = true;
 							}
 						}
-						else  if (subscription_manager->setupStatus() == SubscriptionManager::e_done) {
-							int loop_counter = 400;
-							// After peer reconnect, re-run data init (sSTARTUP was unused in practice).
-							if (gui_is_ready && (conn->getStartupState() == sSTARTUP || conn->needsRefresh())) {
-								if (conn->needsRefresh()) {
-									conn->setNeedsRefresh(false);
-								}
-								conn->refreshData(); // sINIT -> EditorGUI sends MODBUS REFRESH
+						else {
+							const bool ready_now =
+								subscription_manager->setupStatus() == SubscriptionManager::e_done;
+							if (was_ready && !ready_now) {
+								conn->onChannelLost();
 							}
-							conn->handleCommand(this);
-							while (loop_counter--) {
-								if (!conn->handleSubscriber()) break;
+							else if (!was_ready && ready_now) {
+								// First e_done or recovery after loss: force MODBUS REFRESH.
+								conn->onChannelBecameReady();
+								// Command socket was rebuilt in onChannelBecameReady.
+								if (!conn->commandInterface())
+									conn->setupCommandInterface();
+							}
+							conn->setChannelWasReady(ready_now);
+
+							if (ready_now) {
+								if (reported_error) { reported_error = false; }
+
+								// After peer reconnect, ensure data init is armed (sSTARTUP unused).
+								// Leave needsRefresh set so EditorGUI::update re-arms and sends
+								// MODBUS REFRESH in this same pass when possible.
+								if (gui_is_ready && (conn->getStartupState() == sSTARTUP ||
+										     conn->needsRefresh())) {
+									conn->refreshData();
+								}
+
+								// Run GUI/data-init when the 10ms throttle fires, or whenever
+								// a snapshot request is pending (do not wait a full throttle).
+								const bool data_init_pending = gui_is_ready &&
+									(conn->needsRefresh() ||
+									 conn->getStartupState() == sINIT ||
+									 conn->getStartupState() == sSTARTUP ||
+									 conn->getStartupState() == sSENT);
+								if (conn->update() || data_init_pending) {
+									update(conn, gui_is_ready);
+								}
+
+								conn->handleCommand(this);
+								int loop_counter = 400;
+								while (loop_counter--) {
+									if (!conn->handleSubscriber()) break;
+								}
 							}
 						}
 					}

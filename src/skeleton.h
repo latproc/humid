@@ -130,9 +130,17 @@ public:
 		void setNeedsRefresh(bool which) { needs_refresh = which; }
 		bool needsRefresh() { return needs_refresh; }
 
+		// True once SubscriptionManager has been e_done in a prior idle pass.
+		// Used to detect loss and recovery even when ZMQ setup CONNECTED is missed
+		// (e.g. SUB/CHANNEL recovery while setup TCP stays up after iod restart).
+		bool channelWasReady() const { return channel_was_ready; }
+		void setChannelWasReady(bool which) { channel_was_ready = which; }
+
 		// Peer link lifecycle (iod restart / network blip)
 		void noteDisconnected(const char *addr = nullptr);
 		void noteConnected(const char *addr = nullptr);
+		void onChannelLost(const char *addr = nullptr);
+		void onChannelBecameReady();
 		void resetCommandPath();
 
 		bool Ready();
@@ -160,6 +168,7 @@ public:
 		long message_time_scale;
 		std::string local_commands;
 		bool needs_refresh;
+		bool channel_was_ready;
 
 	};
 
