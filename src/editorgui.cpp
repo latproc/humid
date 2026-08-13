@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 #include <fstream>
 #include <cstdlib>
 #include <boost/algorithm/string.hpp>
@@ -137,6 +138,7 @@ nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
 
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
+	if (control_disconnected_overlay_visible) return true;
 	// A key used to wake a blanked display must never be delivered to a widget.
 	// Swallow its repeat and release events as well as the initial press.
 	if (backlight_wake_key_held && key == backlight_wake_key && scancode == backlight_wake_scancode) {
@@ -271,6 +273,85 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 		}
 	}
 	return nanogui::Screen::keyboardEvent(key, scancode, action, modifiers);
+}
+
+bool EditorGUI::controlConnectionsReady() const {
+	if (connections.empty()) return false;
+	for (const auto &item : connections) {
+		auto *connection = item.second;
+		if (!connection || !connection->Ready() ||
+		    connection->getStartupState() != sDONE) return false;
+	}
+	return true;
+}
+
+void EditorGUI::updateControlDisconnectedOverlay() {
+	extern int run_only;
+	auto *settings = findStructure("ProjectSettings");
+	const bool enabled = run_only && settings &&
+		settings->getBoolProperty("show_control_disconnected_overlay", false);
+	if (!enabled || (EDITOR && EDITOR->isEditMode())) {
+		control_disconnect_pending = false;
+		if (control_disconnected_overlay_visible) {
+			control_disconnected_overlay_visible = false;
+			requestRedraw();
+		}
+		return;
+	}
+
+	if (controlConnectionsReady()) {
+		control_disconnect_pending = false;
+		if (control_disconnected_overlay_visible) {
+			control_disconnected_overlay_visible = false;
+			requestRedraw();
+		}
+		return;
+	}
+
+	const auto now = std::chrono::steady_clock::now();
+	if (!control_disconnect_pending) {
+		control_disconnect_pending = true;
+		control_disconnected_at = now;
+	}
+	const long delay_seconds = std::max<long>(0,
+		settings->getIntProperty("control_disconnected_delay_seconds", 3));
+	if (!control_disconnected_overlay_visible &&
+	    now - control_disconnected_at >= std::chrono::seconds(delay_seconds)) {
+		control_disconnected_overlay_visible = true;
+		cancelActiveDrag();
+		requestRedraw();
+	}
+}
+
+void EditorGUI::idle(bool gui_is_ready) {
+	ClockworkClient::idle(gui_is_ready);
+	updateControlDisconnectedOverlay();
+}
+
+void EditorGUI::draw(NVGcontext *ctx) {
+	ClockworkClient::draw(ctx);
+	if (!control_disconnected_overlay_visible) return;
+
+	const float width = static_cast<float>(size().x());
+	const float height = static_cast<float>(size().y());
+	nvgSave(ctx);
+	nvgBeginPath(ctx);
+	nvgRect(ctx, 0, 0, width, height);
+	nvgFillColor(ctx, nvgRGBA(18, 24, 31, 245));
+	nvgFill(ctx);
+
+	nvgFontFace(ctx, "sans-bold");
+	nvgFontSize(ctx, 44.0f);
+	nvgTextAlign(ctx, NVG_ALIGN_CENTER | NVG_ALIGN_MIDDLE);
+	nvgFillColor(ctx, nvgRGBA(255, 255, 255, 255));
+	nvgText(ctx, width * 0.5f, height * 0.5f - 32.0f,
+	        "Control is not connected", nullptr);
+	nvgFontFace(ctx, "sans");
+	nvgFontSize(ctx, 28.0f);
+	nvgFillColor(ctx, nvgRGBA(205, 213, 221, 255));
+	nvgText(ctx, width * 0.5f, height * 0.5f + 32.0f,
+	        "Please wait...", nullptr);
+	nvgRestore(ctx);
 }
 
 bool isURL(const std::string name) {
@@ -833,6 +914,7 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 
 	using namespace nanogui;
 	requestRedraw();
+	if (control_disconnected_overlay_visible) return true;
 
 	nanogui::Window *window = w_user->getWindow();
 	if (!window || !window->visible()) return Screen::mouseButtonEvent(p, button, down, modifiers);

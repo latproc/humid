@@ -84,6 +84,8 @@ public:
 	virtual bool mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) override;
 	virtual bool resizeEvent(const nanogui::Vector2i &) override;
 	virtual bool keyboardEvent(int key, int scancode , int action, int modifiers) override;
+	void draw(NVGcontext *ctx) override;
+	void idle(bool gui_is_ready = true) override;
 
 	GLuint getImageId(const char *, bool reload = false);
 	void freeImage(GLuint image_id);
@@ -126,6 +128,8 @@ private:
 	size_t expectedCaptureConnectionCount();
 	bool captureDeadlineExceeded() const;
 	void tryCaptureFrame();
+	void updateControlDisconnectedOverlay();
+	bool controlConnectionsReady() const;
 
 	static Structure *system_settings;
 	std::recursive_mutex linkables_mutex;
@@ -162,6 +166,9 @@ private:
 	bool capture_enabled = false;
 	bool capture_written = false;
 	bool capture_timed_out = false;
+	bool control_disconnected_overlay_visible = false;
+	bool control_disconnect_pending = false;
+	std::chrono::steady_clock::time_point control_disconnected_at;
 	bool backlight_off_pending = false;
 	bool backlight_is_blanked = false;
 	bool backlight_wake_key_held = false;
