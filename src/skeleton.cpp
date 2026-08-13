@@ -15,6 +15,8 @@
 #include <fstream>
 #include <locale>
 #include <string>
+#include <algorithm>
+#include <cctype>
 #include "propertymonitor.h"
 #include "draghandle.h"
 
@@ -42,6 +44,29 @@
 
 std::string table_font{"sans"};
 std::string table_header_font{"sans-bold"};
+
+namespace {
+std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
+
+bool isVirtualMonitor(GLFWmonitor *monitor) {
+	const char *name = glfwGetMonitorName(monitor);
+	if (!name) return false;
+	std::string lower(name);
+	std::transform(lower.begin(), lower.end(), lower.begin(),
+	               [](unsigned char c) { return std::tolower(c); });
+	return lower.find("headless") != std::string::npos ||
+	       lower.find("virtual") != std::string::npos;
+}
+
+GLFWmonitor *preferredMonitor() {
+	int count = 0;
+	GLFWmonitor **monitors = glfwGetMonitors(&count);
+	for (int i = 0; i < count; ++i) {
+		if (!isVirtualMonitor(monitors[i])) return monitors[i];
+	}
+	return count > 0 ? monitors[0] : nullptr;
+}
+}
 
 long collect_history = 0;
 extern Structure *system_settings;
@@ -343,19 +368,25 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 	window_stagger(this),
 	needs_frame_redraw(true) {
 	gettimeofday(&start, 0);
-	extern int full_screen_mode;
+	extern long full_screen_mode;
 	if (full_screen_mode) {
-		int w,h;
-		glfwGetWindowSize(mGLFWWindow, &w, &h);
-		auto monitor = glfwGetPrimaryMonitor();
-		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-		std::cout << "setting monitor resolution: " << size.x() << "," << size.y() << "\n";
-		glfwSetWindowMonitor(mGLFWWindow, monitor, 0, 0, size.x(), size.y(), mode->refreshRate);
+		selectPreferredMonitor();
 	}
 	// NanoGUI constructs windows with glfwSwapInterval(0). Enabling vsync
 	// avoids free-running presents when the refresh timer posts events faster
 	// than the display, which matters on lower-power panel GPUs.
 	glfwSwapInterval(1);
+	// A display power cycle can invalidate the last presented framebuffer even
+	// when no application data changed.  NanoGUI does not install GLFW's window
+	// refresh callback, so make exposure/reconnect events request a fresh frame.
+	refresh_clients[mGLFWWindow] = this;
+	glfwSetWindowRefreshCallback(mGLFWWindow, [](GLFWwindow *window) {
+		auto found = refresh_clients.find(window);
+		if (found != refresh_clients.end()) found->second->requestRedraw();
+	});
+	glfwSetMonitorCallback([](GLFWmonitor *, int) {
+		for (auto &entry : refresh_clients) entry.second->selectPreferredMonitor();
+	});
     nvgContext();
     if (load_font(nvgContext(), "mono", "RobotoMono-Medium.ttf")) {
         table_font = "mono";
@@ -363,6 +394,39 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
     if (load_font(nvgContext(), "mono-bold", "RobotoMono-Bold.ttf")) {
         table_header_font = "mono-bold";
     }
+}
+
+void ClockworkClient::selectPreferredMonitor() {
+	extern long full_screen_mode;
+	if (!full_screen_mode) return;
+	GLFWmonitor *monitor = preferredMonitor();
+	if (!monitor) return;
+	const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+	if (!mode) return;
+	int monitor_x = 0, monitor_y = 0, window_x = 0, window_y = 0;
+	glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
+	glfwGetWindowPos(mGLFWWindow, &window_x, &window_y);
+	int window_width = 0, window_height = 0;
+	glfwGetWindowSize(mGLFWWindow, &window_width, &window_height);
+	if (window_x == monitor_x && window_y == monitor_y &&
+	    window_width == mode->width && window_height == mode->height) return;
+	const char *name = glfwGetMonitorName(monitor);
+	std::cout << "moving Humid to preferred monitor "
+	          << (name ? name : "unknown") << " at "
+	          << mode->width << "," << mode->height << "\n";
+	glfwSetWindowPos(mGLFWWindow, monitor_x, monitor_y);
+	glfwSetWindowSize(mGLFWWindow, mode->width, mode->height);
+	requestRedraw();
+}
+
+bool ClockworkClient::resizeEvent(const nanogui::Vector2i &size) {
+	requestRedraw();
+	return nanogui::Screen::resizeEvent(size);
+}
+
+bool ClockworkClient::focusEvent(bool focused) {
+	requestRedraw();
+	return nanogui::Screen::focusEvent(focused);
 }
 
 bool ClockworkClient::keyboardEvent(int key, int scancode, int action, int modifiers) {

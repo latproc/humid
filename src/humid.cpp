@@ -659,6 +659,10 @@ int main(int argc, const char ** argv ) {
 			
 			std::cout << "settings videomode: " << width << "x" << height << " fullscreen:" << full_screen << "\n" <<std::flush;
 
+			// A borderless window can move between the permanent headless output
+			// and HDMI. Exclusive fullscreen is pinned by Xwayland/labwc to the
+			// output on which it was created.
+			glfwWindowHint(GLFW_DECORATED, full_screen ? GLFW_FALSE : GLFW_TRUE);
 			app = (full_screen)
 					? new EditorGUI(width, height, full_screen != 0)
 					: new EditorGUI(width, height);

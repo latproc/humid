@@ -179,6 +179,9 @@ public:
 	
 
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
+	virtual bool resizeEvent(const nanogui::Vector2i &size) override;
+	virtual bool focusEvent(bool focused) override;
+	void selectPreferredMonitor();
 
 	virtual void draw(NVGcontext *ctx) override;
 
