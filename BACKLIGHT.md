@@ -515,15 +515,52 @@ ProjectSettings PROJECTSETTINGS(
   `on` restores the backlight immediately; `off` starts the delay.
 - `backlight_off_delay_seconds` is measured in seconds. Use a short value
   such as `30` while commissioning, then set the operational value.
-- `backlight_interface` may be `sysfs`, `edatec-ddc`, or `none`.
+- `backlight_interface` may be `sysfs`, `edatec-ddc`, `ddcutil`, `x11-dpms`,
+  `wayland-dpms`, or `none`.
   - `sysfs` writes brightness under `backlight_path`; use it for this EDATEC
     integrated panel. It writes `0` when off and restores
     `backlight_on_brightness` when on. Do not toggle `bl_power` on this raw
     DSI driver: its LEDs resume but its video image may not.
   - `edatec-ddc` runs the installed `ed-ddc-server` brightness command; use
     it only where that tool and a DDC-capable display are available.
+  - `ddcutil` sends the standard monitor power-mode VCP `D6` using `ddcutil`:
+    `01` wakes the monitor and `04` requests standby. Set `backlight_ddc_bus`
+    to the monitor's I2C bus number when more than one display may be present.
+    The Humid user must have access to the corresponding `/dev/i2c-N` device.
+  - `x11-dpms` uses `xset` to force the X11 display on or into DPMS standby.
+    Humid must inherit the active X session's `DISPLAY` and X authority. It
+    enables DPMS immediately before an off request, so kiosk startup may keep
+    automatic DPMS disabled with `xset -dpms`.
+  - `wayland-dpms` uses `wlopm` to power the configured Wayland output on or
+    off. Set `backlight_output` to the compositor output name, for example
+    `HDMI-A-1`; Humid must inherit `XDG_RUNTIME_DIR`. Install `wlopm` on the
+    target system before selecting this interface.
+    If the launcher removes `WAYLAND_DISPLAY` to force Humid through Xwayland,
+    set `backlight_wayland_display` if the compositor socket is not the default
+    `wayland-0`. Humid supplies that value only to the `wlopm` child process.
   - `none` disables physical backlight writes while retaining the configured
     point.
+
+For an X11 HDMI HMI:
+
+```humid
+ProjectSettings PROJECTSETTINGS(
+  backlight_interface: "x11-dpms",
+  backlight_control_point: "P_CoreHmiBacklightEnabled",
+  backlight_off_delay_seconds: 300
+);
+```
+
+For a labwc/Wayland HDMI HMI:
+
+```humid
+ProjectSettings PROJECTSETTINGS(
+  backlight_interface: "wayland-dpms",
+  backlight_output: "HDMI-A-1",
+  backlight_control_point: "P_CoreHmiBacklightEnabled",
+  backlight_off_delay_seconds: 300
+);
+```
 
 The configured point must be exported by Clockwork, for example:
 

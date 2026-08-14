@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <fstream>
 #include <cstdlib>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <boost/algorithm/string.hpp>
 #include <nanogui/common.h>
 #include <regular_expressions.h>
@@ -63,6 +65,26 @@ void setupTheme(nanogui::Theme *theme);
 Structure *EditorGUI::system_settings = 0;
 
 ResourceManager::Factory resource_manager_factory;
+
+extern char **environ;
+
+namespace {
+bool runDisplayCommand(const std::vector<std::string> &arguments) {
+	if (arguments.empty()) return false;
+	std::vector<char *> argv;
+	argv.reserve(arguments.size() + 1);
+	for (const auto &argument : arguments)
+		argv.push_back(const_cast<char *>(argument.c_str()));
+	argv.push_back(nullptr);
+
+	pid_t pid = 0;
+	const int spawn_result = posix_spawnp(&pid, argv[0], nullptr, nullptr, argv.data(), environ);
+	if (spawn_result != 0) return false;
+	int status = 0;
+	if (waitpid(pid, &status, 0) < 0) return false;
+	return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+}
 
 class Texture {
 public:
@@ -1162,6 +1184,52 @@ bool EditorGUI::applyBacklight(bool enabled) {
 		}
 		return true;
 	}
+	else if (interface_name == "ddcutil") {
+		std::vector<std::string> command = {"ddcutil"};
+		const int bus = settings->getIntProperty("backlight_ddc_bus", 0);
+		if (bus > 0) {
+			command.push_back("--bus");
+			command.push_back(std::to_string(bus));
+		}
+		command.insert(command.end(), {"setvcp", "D6", enabled ? "01" : "04"});
+		if (!runDisplayCommand(command)) {
+			std::cerr << "DDC/CI display power command failed\n";
+			return false;
+		}
+		return true;
+	}
+	else if (interface_name == "x11-dpms") {
+		// Automatic DPMS may be disabled for kiosk operation. Enable it only
+		// when requesting standby; an explicit wake works in either state.
+		if (!enabled && !runDisplayCommand({"xset", "+dpms"})) {
+			std::cerr << "Unable to enable X11 DPMS\n";
+			return false;
+		}
+		if (!runDisplayCommand({"xset", "dpms", "force", enabled ? "on" : "off"})) {
+			std::cerr << "X11 DPMS display command failed\n";
+			return false;
+		}
+		return true;
+	}
+	else if (interface_name == "wayland-dpms") {
+		const std::string output = settings->getStringProperty("backlight_output", "HDMI-A-1");
+		const char *inherited_display = std::getenv("HUMID_WAYLAND_DISPLAY");
+		const std::string wayland_display = inherited_display && *inherited_display
+			? inherited_display
+			: settings->getStringProperty("backlight_wayland_display", "wayland-0");
+		if (output.empty()) {
+			std::cerr << "Wayland DPMS requires backlight_output\n";
+			return false;
+		}
+		// Humid itself runs through Xwayland and therefore has WAYLAND_DISPLAY
+		// removed. Restore it only for the wlopm child process.
+		if (!runDisplayCommand({"env", "WAYLAND_DISPLAY=" + wayland_display,
+				"wlopm", enabled ? "--on" : "--off", output})) {
+			std::cerr << "Wayland DPMS display command failed for " << output << "\n";
+			return false;
+		}
+		return true;
+	}
 	else if (interface_name != "none") {
 		std::cerr << "Unknown backlight interface: " << interface_name << "\n";
 		return false;
@@ -1172,6 +1240,14 @@ bool EditorGUI::applyBacklight(bool enabled) {
 void EditorGUI::processBacklightTimeout() {
 	auto *settings = findStructure("ProjectSettings");
 	if (!settings) return;
+	if (!backlight_initialised) {
+		backlight_initialised = true;
+		// A restarted HMI must default to a visible display while it waits for
+		// the initial Clockwork refresh. An initial off request will still use
+		// the configured delay once it arrives.
+		backlight_is_blanked = false;
+		applyBacklight(true);
+	}
 	if (!backlight_off_pending) return;
 	const auto delay = std::chrono::seconds(settings->getIntProperty("backlight_off_delay_seconds", 0));
 	if (std::chrono::steady_clock::now() - backlight_off_requested_at >= delay) {
