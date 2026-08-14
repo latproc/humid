@@ -1230,6 +1230,23 @@ bool EditorGUI::applyBacklight(bool enabled) {
 		}
 		return true;
 	}
+	else if (interface_name == "wlr-randr") {
+		const std::string output = settings->getStringProperty("backlight_output", "HDMI-A-1");
+		const char *inherited_display = std::getenv("HUMID_WAYLAND_DISPLAY");
+		const std::string wayland_display = inherited_display && *inherited_display
+			? inherited_display
+			: settings->getStringProperty("backlight_wayland_display", "wayland-0");
+		if (output.empty()) {
+			std::cerr << "wlr-randr backlight control requires backlight_output\n";
+			return false;
+		}
+		if (!runDisplayCommand({"env", "WAYLAND_DISPLAY=" + wayland_display,
+				"wlr-randr", "--output", output, enabled ? "--on" : "--off"})) {
+			std::cerr << "wlr-randr display command failed for " << output << "\n";
+			return false;
+		}
+		return true;
+	}
 	else if (interface_name != "none") {
 		std::cerr << "Unknown backlight interface: " << interface_name << "\n";
 		return false;

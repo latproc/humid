@@ -516,7 +516,7 @@ ProjectSettings PROJECTSETTINGS(
 - `backlight_off_delay_seconds` is measured in seconds. Use a short value
   such as `30` while commissioning, then set the operational value.
 - `backlight_interface` may be `sysfs`, `edatec-ddc`, `ddcutil`, `x11-dpms`,
-  `wayland-dpms`, or `none`.
+  `wayland-dpms`, `wlr-randr`, or `none`.
   - `sysfs` writes brightness under `backlight_path`; use it for this EDATEC
     integrated panel. It writes `0` when off and restores
     `backlight_on_brightness` when on. Do not toggle `bl_power` on this raw
@@ -538,6 +538,10 @@ ProjectSettings PROJECTSETTINGS(
     If the launcher removes `WAYLAND_DISPLAY` to force Humid through Xwayland,
     set `backlight_wayland_display` if the compositor socket is not the default
     `wayland-0`. Humid supplies that value only to the `wlopm` child process.
+  - `wlr-randr` enables or disables the configured wlroots output. Use it on a
+    wlroots compositor such as labwc when `wlopm` is unavailable. It uses the
+    same `backlight_output` and optional `backlight_wayland_display` settings as
+    `wayland-dpms`.
   - `none` disables physical backlight writes while retaining the configured
     point.
 
