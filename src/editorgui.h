@@ -130,6 +130,8 @@ private:
 	void tryCaptureFrame();
 	void updateControlDisconnectedOverlay();
 	bool controlConnectionsReady() const;
+	bool controlPageReady() const;
+	void applyControlRemoteTargets();
 
 	static Structure *system_settings;
 	std::recursive_mutex linkables_mutex;
@@ -168,6 +170,8 @@ private:
 	bool capture_timed_out = false;
 	bool control_disconnected_overlay_visible = false;
 	bool control_disconnect_pending = false;
+	// -1: not armed; >0: covered frames still required; 0: last covered frame done.
+	int control_overlay_settle_remaining = -1;
 	std::chrono::steady_clock::time_point control_disconnected_at;
 	bool backlight_off_pending = false;
 	bool backlight_is_blanked = false;

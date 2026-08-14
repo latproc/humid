@@ -307,6 +307,38 @@ bool EditorGUI::controlConnectionsReady() const {
 	return true;
 }
 
+bool EditorGUI::controlPageReady() const {
+	if (state != GUIWORKING) return false;
+	if (!w_user || !w_user->structure()) return false;
+	if (!systemSettings()) return true;
+	const Value active = systemSettings()->getProperties().find("active_screen");
+	if (active == SymbolTable::Null || active.asString().empty()) return true;
+	if (w_user->structure()->getName() == active.asString()) return true;
+	// Named screen is not in the project; do not hold the overlay forever.
+	return findScreen(active.asString()) == nullptr;
+}
+
+void EditorGUI::applyControlRemoteTargets() {
+	if (!systemSettings()) return;
+	if (!shouldIgnoreRemoteScreen()) {
+		const Value remote_screen(systemSettings()->getProperties().find("remote_screen"));
+		if (remote_screen != SymbolTable::Null) {
+			LinkableProperty *lp = findLinkableProperty(remote_screen.asString());
+			if (lp) lp->apply();
+		}
+	}
+	const Value remote_dialog(systemSettings()->getProperties().find("remote_dialog"));
+	if (remote_dialog != SymbolTable::Null) {
+		LinkableProperty *lp = findLinkableProperty(remote_dialog.asString());
+		if (lp) lp->apply();
+	}
+	const Value remote_dialog_visible(systemSettings()->getProperties().find("remote_dialog_visibility"));
+	if (remote_dialog_visible != SymbolTable::Null) {
+		LinkableProperty *lp = findLinkableProperty(remote_dialog_visible.asString());
+		if (lp) lp->apply();
+	}
+}
+
 void EditorGUI::updateControlDisconnectedOverlay() {
 	extern int run_only;
 	auto *settings = findStructure("ProjectSettings");
@@ -314,6 +346,7 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 		settings->getBoolProperty("show_control_disconnected_overlay", false);
 	if (!enabled || (EDITOR && EDITOR->isEditMode())) {
 		control_disconnect_pending = false;
+		control_overlay_settle_remaining = -1;
 		if (control_disconnected_overlay_visible) {
 			control_disconnected_overlay_visible = false;
 			requestRedraw();
@@ -321,28 +354,44 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 		return;
 	}
 
-	if (controlConnectionsReady()) {
-		control_disconnect_pending = false;
-		if (control_disconnected_overlay_visible) {
-			control_disconnected_overlay_visible = false;
+	if (!controlConnectionsReady()) {
+		control_overlay_settle_remaining = -1;
+		const auto now = std::chrono::steady_clock::now();
+		if (!control_disconnect_pending) {
+			control_disconnect_pending = true;
+			control_disconnected_at = now;
+		}
+		const long delay_seconds = std::max<long>(0,
+			settings->getIntProperty("control_disconnected_delay_seconds", 3));
+		if (!control_disconnected_overlay_visible &&
+		    now - control_disconnected_at >= std::chrono::seconds(delay_seconds)) {
+			control_disconnected_overlay_visible = true;
+			cancelActiveDrag();
 			requestRedraw();
 		}
 		return;
 	}
 
-	const auto now = std::chrono::steady_clock::now();
-	if (!control_disconnect_pending) {
-		control_disconnect_pending = true;
-		control_disconnected_at = now;
+	control_disconnect_pending = false;
+	if (!control_disconnected_overlay_visible) {
+		control_overlay_settle_remaining = -1;
+		return;
 	}
-	const long delay_seconds = std::max<long>(0,
-		settings->getIntProperty("control_disconnected_delay_seconds", 3));
-	if (!control_disconnected_overlay_visible &&
-	    now - control_disconnected_at >= std::chrono::seconds(delay_seconds)) {
-		control_disconnected_overlay_visible = true;
-		cancelActiveDrag();
+
+	// Snapshot is in; keep covering until the selected page exists and has
+	// been painted at least once with widget values applied.
+	if (!controlPageReady()) {
+		control_overlay_settle_remaining = -1;
 		requestRedraw();
+		return;
 	}
+
+	if (control_overlay_settle_remaining < 0) {
+		const int settle_frames = std::max(1,
+			static_cast<int>(settings->getIntProperty("control_overlay_settle_frames", 1)));
+		control_overlay_settle_remaining = settle_frames;
+	}
+	requestRedraw();
 }
 
 void EditorGUI::idle(bool gui_is_ready) {
@@ -1476,21 +1525,31 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 
 	if (connection->getStartupState() == sDONE || connection->getStartupState() == sRELOAD) {
 		if (w_user && getState() == GUIWORKING) {
-			//bool changed = false;
 			const Value &active(EditorGUI::systemSettings()->getProperties().find("active_screen"));
-			if (active != SymbolTable::Null) {
+			if (active != SymbolTable::Null && !active.asString().empty()) {
 				if (connection->getStartupState() == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
 					Structure *s = findScreen(active.asString());
 					if (connection->getStartupState() == sRELOAD || (s && w_user->structure() != s) ) {
 						w_user->getWindow()->requestFocus();
 						w_user->clearSelections();
-						w_user->setStructure(s);
+						if (s) {
+							w_user->setStructure(s);
+							applyControlRemoteTargets();
+							std::cout << "Loaded active screen " << active << "\n";
+						}
+						else if (connection->getStartupState() != sRELOAD) {
+							std::cout << "Active screen " << active << " cannot be found\n";
+						}
 						requestRedraw();
-						std::cout << "Loaded active screen " << active << "\n";
 						if (connection->getStartupState() == sRELOAD) connection->setState(sDONE);
 					}
 					else if (connection->getStartupState() != sRELOAD) std::cout << "Active screen " << active << " cannot be found\n";
 				}
+			}
+			else if (connection->getStartupState() == sRELOAD) {
+				applyControlRemoteTargets();
+				connection->setState(sDONE);
+				requestRedraw();
 			}
 		}
 	}
@@ -1597,4 +1656,16 @@ void EditorGUI::afterFrameRendered() {
 	// Capture needs consecutive painted frames; keep requesting redraw until done.
 	if (capture_enabled && !capture_written && !capture_timed_out)
 		requestRedraw();
+
+	if (control_disconnected_overlay_visible &&
+	    controlConnectionsReady() &&
+	    controlPageReady() &&
+	    control_overlay_settle_remaining > 0) {
+		--control_overlay_settle_remaining;
+		if (control_overlay_settle_remaining == 0) {
+			control_disconnected_overlay_visible = false;
+			control_disconnect_pending = false;
+		}
+		requestRedraw();
+	}
 }
