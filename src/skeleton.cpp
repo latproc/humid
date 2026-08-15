@@ -408,14 +408,40 @@ void ClockworkClient::selectPreferredMonitor() {
 	glfwGetWindowPos(mGLFWWindow, &window_x, &window_y);
 	int window_width = 0, window_height = 0;
 	glfwGetWindowSize(mGLFWWindow, &window_width, &window_height);
-	if (window_x == monitor_x && window_y == monitor_y &&
-	    window_width == mode->width && window_height == mode->height) return;
+
+	// GLFW reports the hardware videomode. A 90/270 compositor transform
+	// (typical DSI portrait panel used landscape) makes the logical desktop
+	// the transpose, e.g. 800x1280 -> 1280x800. Forcing the hardware size
+	// clips the configured landscape layout and letterboxes the output.
+	int target_width = mode->width;
+	int target_height = mode->height;
+	if (window_width > 0 && window_height > 0 &&
+	    window_width == mode->height && window_height == mode->width) {
+		target_width = window_width;
+		target_height = window_height;
+	}
+
+#if defined(GLFW_PLATFORM_WAYLAND)
+	const bool can_position = glfwGetPlatform() != GLFW_PLATFORM_WAYLAND;
+#else
+	const bool can_position = true;
+#endif
+	const bool pos_ok = !can_position || (window_x == monitor_x && window_y == monitor_y);
+	if (pos_ok && window_width == target_width && window_height == target_height)
+		return;
+
 	const char *name = glfwGetMonitorName(monitor);
 	std::cout << "moving Humid to preferred monitor "
 	          << (name ? name : "unknown") << " at "
-	          << mode->width << "," << mode->height << "\n";
-	glfwSetWindowPos(mGLFWWindow, monitor_x, monitor_y);
-	glfwSetWindowSize(mGLFWWindow, mode->width, mode->height);
+	          << target_width << "x" << target_height;
+	if (target_width != mode->width || target_height != mode->height) {
+		std::cout << " (hardware mode " << mode->width << "x" << mode->height << ")";
+	}
+	std::cout << "\n" << std::flush;
+	if (can_position)
+		glfwSetWindowPos(mGLFWWindow, monitor_x, monitor_y);
+	if (window_width != target_width || window_height != target_height)
+		glfwSetWindowSize(mGLFWWindow, target_width, target_height);
 	requestRedraw();
 }
 
