@@ -16,9 +16,12 @@ ProjectSettings PROJECTSETTINGS(
 
 `show_control_disconnected_overlay` enables the overlay only when Humid is run
 with `--run_only=1`. `control_disconnected_delay_seconds` defaults to 3 seconds
-and may be set to zero for immediate display. `control_overlay_settle_frames`
-defaults to 1 and is the number of fully painted frames that must complete
-while the overlay still covers the rebuilt page before it is removed.
+and applies only after a previously-ready session drops; a cold start (Humid
+up while Clockwork is still down, or the first connection of the process)
+shows the overlay immediately. The delay may be set to zero for immediate
+display on every drop. `control_overlay_settle_frames` defaults to 1 and is
+the number of fully painted frames that must complete while the overlay still
+covers the rebuilt page before it is removed.
 
 The overlay consumes operator keyboard and mouse input and displays:
 

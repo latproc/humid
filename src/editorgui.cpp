@@ -347,6 +347,7 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 	if (!enabled || (EDITOR && EDITOR->isEditMode())) {
 		control_disconnect_pending = false;
 		control_overlay_settle_remaining = -1;
+		control_needs_covered_rebuild = true;
 		if (control_disconnected_overlay_visible) {
 			control_disconnected_overlay_visible = false;
 			requestRedraw();
@@ -356,6 +357,7 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 
 	if (!controlConnectionsReady()) {
 		control_overlay_settle_remaining = -1;
+		control_needs_covered_rebuild = true;
 		const auto now = std::chrono::steady_clock::now();
 		if (!control_disconnect_pending) {
 			control_disconnect_pending = true;
@@ -363,8 +365,11 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 		}
 		const long delay_seconds = std::max<long>(0,
 			settings->getIntProperty("control_disconnected_delay_seconds", 3));
-		if (!control_disconnected_overlay_visible &&
-		    now - control_disconnected_at >= std::chrono::seconds(delay_seconds)) {
+		// First boot (never fully connected) must cover immediately. The delay
+		// only debounce-flickers after a previously-ready session drops.
+		const bool delay_elapsed = !control_ever_ready ||
+			now - control_disconnected_at >= std::chrono::seconds(delay_seconds);
+		if (!control_disconnected_overlay_visible && delay_elapsed) {
 			control_disconnected_overlay_visible = true;
 			cancelActiveDrag();
 			requestRedraw();
@@ -373,9 +378,20 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 	}
 
 	control_disconnect_pending = false;
+	control_ever_ready = true;
+
+	// Connections came back before the overlay was shown (common when Clockwork
+	// is started after Humid, inside the delay window). Still cover until the
+	// snapshot is applied and painted, otherwise operators see a stale page.
 	if (!control_disconnected_overlay_visible) {
-		control_overlay_settle_remaining = -1;
-		return;
+		if (!control_needs_covered_rebuild) {
+			control_overlay_settle_remaining = -1;
+			return;
+		}
+		control_disconnected_overlay_visible = true;
+		cancelActiveDrag();
+		applyControlRemoteTargets();
+		requestRedraw();
 	}
 
 	// Snapshot is in; keep covering until the selected page exists and has
@@ -1665,6 +1681,7 @@ void EditorGUI::afterFrameRendered() {
 		if (control_overlay_settle_remaining == 0) {
 			control_disconnected_overlay_visible = false;
 			control_disconnect_pending = false;
+			control_needs_covered_rebuild = false;
 		}
 		requestRedraw();
 	}

@@ -170,6 +170,13 @@ private:
 	bool capture_timed_out = false;
 	bool control_disconnected_overlay_visible = false;
 	bool control_disconnect_pending = false;
+	// False until every configured connection has reached sDONE at least once.
+	// Cold start uses this to show the overlay immediately (the delay is only
+	// for brief drops after a live session).
+	bool control_ever_ready = false;
+	// True after a gap (or never-connected) until a post-snapshot frame is
+	// painted under the overlay. Prevents uncovering a half-built first page.
+	bool control_needs_covered_rebuild = true;
 	// -1: not armed; >0: covered frames still required; 0: last covered frame done.
 	int control_overlay_settle_remaining = -1;
 	std::chrono::steady_clock::time_point control_disconnected_at;
