@@ -7,7 +7,11 @@
 #   ./scripts/update-panels.sh --hosts-file panels.txt -- --restart
 #
 # Extra args after -- are passed to update-panel.sh on each host.
-# First push Humid so panels can fetch the script, vendored client, and fixes.
+#
+# The local scripts/update-panel.sh is streamed to the panel and executed
+# there. Script fixes do not have to be pushed first. Humid source the
+# panel builds still comes from origin (update-panel.sh resets to that).
+# Push source/CMake changes you want on the panel before running this.
 #
 set -euo pipefail
 
@@ -16,6 +20,8 @@ HUMID_DIR="${HUMID_DIR:-/opt/humid}"
 HOSTS=()
 PANEL_ARGS=()
 HOSTS_FILE=""
+HERE="$(cd "$(dirname "$0")" && pwd)"
+LOCAL_PANEL_SCRIPT="${HERE}/update-panel.sh"
 
 usage() {
   cat <<'EOF'
@@ -31,6 +37,15 @@ Options:
   --help                 show this help
 
 Arguments after -- are passed to update-panel.sh on each host.
+
+This wrapper streams the local update-panel.sh to each panel, so HTMLVIEW
+package install and other script fixes apply even before those script
+changes are on origin. The panel still hard-resets Humid sources to
+origin/<branch>.
+
+HTMLVIEW packages (libcairo2-dev, libpango1.0-dev, libfontconfig1-dev) are
+installed on the panel by update-panel.sh when missing. Pass
+--without-htmlview or --no-htmlview-deps after -- to skip that.
 EOF
   exit "${1:-0}"
 }
@@ -63,27 +78,32 @@ if [[ -n "$HOSTS_FILE" ]]; then
 fi
 
 [[ ${#HOSTS[@]} -gt 0 ]] || { echo "no hosts given" >&2; usage 1; }
+[[ -f "$LOCAL_PANEL_SCRIPT" ]] || { echo "missing $LOCAL_PANEL_SCRIPT" >&2; exit 1; }
 
-REMOTE_CMD=$(cat <<EOF
-set -euo pipefail
-cd '$HUMID_DIR'
-# bootstrap: pull first so a newly added script is available
-git -c fetch.recurseSubmodules=no fetch origin
-git checkout master 2>/dev/null || git checkout -B master origin/master
-git pull --ff-only origin master
-if [[ ! -x scripts/update-panel.sh ]]; then
-  echo "ERROR: $HUMID_DIR/scripts/update-panel.sh missing after pull" >&2
-  exit 1
+quote_remote() {
+  printf '%q' "$1"
+}
+
+REMOTE_DIR_Q="$(quote_remote "$HUMID_DIR")"
+# --root is required when the script is run via bash -s ($0 is "bash").
+REMOTE_ARGS=(--root "$HUMID_DIR" --force-submodules)
+if [[ ${#PANEL_ARGS[@]} -gt 0 ]]; then
+  REMOTE_ARGS+=("${PANEL_ARGS[@]}")
 fi
-exec ./scripts/update-panel.sh --force-submodules ${PANEL_ARGS[@]+"${PANEL_ARGS[@]}"}
-EOF
-)
+REMOTE_ARGS_Q=""
+for a in "${REMOTE_ARGS[@]}"; do
+  REMOTE_ARGS_Q+=" $(quote_remote "$a")"
+done
 
 fail=0
 for host in "${HOSTS[@]}"; do
   echo
   echo "######## $host ########"
-  if ssh -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new "$host" "bash -s" <<<"$REMOTE_CMD"; then
+  # Stream the laptop's update-panel.sh. A remote git reset cannot replace
+  # the script already being executed from stdin.
+  if ssh -p "$SSH_PORT" -o StrictHostKeyChecking=accept-new "$host" \
+      "cd ${REMOTE_DIR_Q} && bash -s --${REMOTE_ARGS_Q}" \
+      < "$LOCAL_PANEL_SCRIPT"; then
     echo "######## $host OK ########"
   else
     echo "######## $host FAILED ########" >&2

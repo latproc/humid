@@ -56,16 +56,19 @@ if(NOT _HUMID_HAVE_CAIRO)
   endif()
   message(WARNING
     "HTMLVIEW: missing pkg-config modules: ${_HUMID_HTMLVIEW_MISSING_STR}\n"
-    "  Building humid without HTMLVIEW (operators-manual viewer).\n"
-    "  Install development packages, then reconfigure (rm build/CMakeCache.txt).\n"
+    "  Building humid without HTMLVIEW (operators-manual viewer) this configure.\n"
+    "  HUMID_WITH_HTMLVIEW stays ON so a later cmake run can enable it after:\n"
     "  Debian / Ubuntu / Raspberry Pi OS:\n"
     "    sudo apt-get install -y libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config\n"
     "  macOS (Homebrew):\n"
     "    brew install cairo pango fontconfig pkg-config\n"
     "  Verify:\n"
     "    pkg-config --exists cairo pangocairo fontconfig && echo OK\n"
+    "  Then re-run cmake (no need to delete CMakeCache.txt).\n"
     "  Or disable: cmake .. -DHUMID_WITH_HTMLVIEW=OFF")
-  set(HUMID_WITH_HTMLVIEW OFF CACHE BOOL "Build embedded HTMLVIEW (litehtml + Cairo/Pango)" FORCE)
+  # Do not FORCE the option OFF. A previous missing-package probe used to
+  # latch the cache, so later configures skipped HTMLVIEW even after the
+  # development packages were installed.
   return()
 endif()
 
@@ -73,12 +76,36 @@ set(LITEHTML_ROOT "${PROJECT_SOURCE_DIR}/lib/litehtml")
 if(NOT EXISTS "${LITEHTML_ROOT}/include/litehtml.h")
   message(WARNING
     "HTMLVIEW: lib/litehtml missing at ${LITEHTML_ROOT}\n"
-    "  Building humid without HTMLVIEW.\n"
+    "  Building humid without HTMLVIEW this configure.\n"
     "  Ensure the feature branch includes the vendored submodule/tree:\n"
     "    git submodule update --init --recursive\n"
     "  or restore lib/litehtml/include/litehtml.h\n"
     "  Or disable: cmake .. -DHUMID_WITH_HTMLVIEW=OFF")
-  set(HUMID_WITH_HTMLVIEW OFF CACHE BOOL "Build embedded HTMLVIEW (litehtml + Cairo/Pango)" FORCE)
+  return()
+endif()
+
+# litehtml headers need C++17 <variant>. GCC 5 (Ubuntu 16.04) accepts -std=c++17
+# but has no <variant>; do not enable HTMLVIEW on that compiler.
+include(CheckCXXSourceCompiles)
+set(_HUMID_SAVED_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS}")
+set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -std=c++17")
+check_cxx_source_compiles("
+#include <variant>
+int main() {
+  std::variant<int, double> v = 1;
+  return std::get<int>(v) - 1;
+}
+" HUMID_HAVE_CXX17_VARIANT)
+set(CMAKE_REQUIRED_FLAGS "${_HUMID_SAVED_REQUIRED_FLAGS}")
+if(NOT HUMID_HAVE_CXX17_VARIANT)
+  message(WARNING
+    "HTMLVIEW: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} "
+    "(${CMAKE_CXX_COMPILER}) cannot compile C++17 <variant>.\n"
+    "  litehtml needs GCC 7+, Clang 5+, or equivalent.\n"
+    "  Ubuntu 16.04 default g++-5 cannot build the operators-manual viewer.\n"
+    "  Building humid without HTMLVIEW this configure.\n"
+    "  Install g++-7 or newer and re-run cmake, or pass "
+    "-DCMAKE_CXX_COMPILER=g++-7")
   return()
 endif()
 

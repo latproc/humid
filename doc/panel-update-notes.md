@@ -79,8 +79,16 @@ What `scripts/update-panel.sh` does (default force mode):
 5. Verify `addSetupResponder` in `ConnectionManager.h`
 6. Clear CMake caches that reference another tree path (`/opt/humid_next`, etc.)
 7. Configure/build/install `cw_client` with the newest cmake on PATH
-8. Reconfigure humid forcing the vendored client library + includes
-9. Build and install humid
+8. Probe C++17 `<variant>` first (litehtml). Only if that compiler works,
+   install HTMLVIEW development packages (`libcairo2-dev`, `libpango1.0-dev`,
+   `libfontconfig1-dev`, `pkg-config`). Cairo/Pango cannot make GCC 5 compile
+   litehtml, so they are not installed on Ubuntu 16.04-style panels. If apt
+   has `g++-7`, try that. If either requirement is missing, warn and continue
+   without the operators-manual viewer. Re-pass `-DHUMID_WITH_HTMLVIEW=ON`
+   when both are present so a previous cache that forced the feature OFF is
+   re-enabled.
+9. Reconfigure humid forcing the vendored client library + includes
+10. Build and install humid
 
 Useful flags:
 
@@ -91,8 +99,13 @@ Useful flags:
 | `--restart` | `killall -9 humid` after install |
 | `--start-cmd '...'` | Start humid after kill |
 | `--jobs N` | Parallelism |
+| `--no-htmlview-deps` | Do not apt/brew Cairo/Pango/Fontconfig |
+| `--without-htmlview` | Force cmake `-DHUMID_WITH_HTMLVIEW=OFF` |
 
-Multi-host from a laptop (after origin is updated):
+Multi-host from a laptop (after origin is updated for source/CMake you want
+on the panel). The laptop streams its local `scripts/update-panel.sh`, so
+script-only fixes (HTMLVIEW package install, cache re-enable) apply without
+pushing first:
 
 ```bash
 ./scripts/update-panels.sh -p 2222 root@172.29.52.10 root@172.29.53.11
@@ -108,6 +121,8 @@ grep -n addSetupResponder /opt/humid/clockwork/src/ConnectionManager.h
 # cmake log must show:
 #   Found clockwork: .../clockwork/stage/lib/libcw_client.a
 # not /opt/latproc/...
+# and, when Cairo/Pango/Fontconfig are installed:
+#   HTMLVIEW: enabled (litehtml + Cairo/Pango)
 ls -la /opt/humid/stage/bin/humid /opt/humid/build/humid
 ```
 
@@ -129,6 +144,9 @@ subscriber channels up, expected active screen.
 | Script says cmake 3.10 “too old” | Bug: pattern `3.1*` matched 3.10 | Fixed with `sort -V` compare in update-panel |
 | Divergent branch / pull.rebase | Local panel commits | `git reset --hard origin/<branch>` |
 | Push rejected from panel | Origin has newer work | Do not push from panels; pull/reset only |
+| `HTMLVIEW: missing pkg-config modules` / no operators-manual viewer | Cairo/Pango/Fontconfig -dev packages not on the panel | Script installs them when apt/brew can run; otherwise install `libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config` and re-run. A cached `HUMID_WITH_HTMLVIEW=OFF` is re-enabled by the script once packages exist |
+| `HTMLVIEW: disabled (HUMID_WITH_HTMLVIEW=OFF)` after packages were added | CMake cache forced OFF on the previous probe | Re-run `update-panel.sh` (passes `-DHUMID_WITH_HTMLVIEW=ON`) or `rm build/CMakeCache.txt` and reconfigure |
+| `fatal error: variant: No such file or directory` | litehtml needs C++17 `<variant>`; Ubuntu 16.04 g++-5 does not have it | Script probes the compiler, tries `g++-7` from apt, otherwise builds humid without HTMLVIEW. Install GCC 7+ or a newer panel OS to enable the viewer |
 
 ---
 

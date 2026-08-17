@@ -147,7 +147,9 @@ From a laptop after **pushing** Humid:
 
 The script defaults to `master`: it hard-resets Humid to origin, verifies the
 vendored `addSetupResponder` API, builds `cw_client` into
-`clockwork/stage/lib`, reconfigures Humid against that library (not
+`clockwork/stage/lib`, installs HTMLVIEW system packages (Cairo/Pango/Fontconfig)
+when possible or warns if it cannot, re-enables `HUMID_WITH_HTMLVIEW` after a
+previous missing-package disable, reconfigures Humid against that library (not
 `/opt/latproc`), builds, and installs. It still detects the pinned-submodule
 layout when an older branch is selected explicitly. It clears CMake caches
 from renamed trees (`/opt/humid_next`). Use `--keep-local` to refuse resets.

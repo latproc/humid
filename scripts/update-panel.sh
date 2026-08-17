@@ -13,6 +13,11 @@
 #   ./scripts/update-panel.sh --restart             # kill humid after install
 #   ./scripts/update-panel.sh --restart --start-cmd '/opt/humid/stage/bin/humid --run_only=1 ...'
 #
+# HTMLVIEW (operators-manual viewer) needs Cairo/Pango/Fontconfig. The script
+# installs those development packages when possible; otherwise it warns and
+# continues without HTMLVIEW. A previous CMake cache that forced
+# HUMID_WITH_HTMLVIEW=OFF is re-enabled after the packages are present.
+#
 set -euo pipefail
 
 BRANCH="${HUMID_BRANCH:-master}"
@@ -21,6 +26,8 @@ FORCE_SUBMODULES=1
 DO_PULL=1
 DO_BUILD=1
 DO_RESTART=0
+INSTALL_HTMLVIEW_DEPS=1
+WANT_HTMLVIEW=1
 START_CMD="${HUMID_START_CMD:-}"
 ROOT=""
 
@@ -41,7 +48,17 @@ Options:
   --restart             stop Humid after installation
   --start-cmd COMMAND   command used to restart Humid
   --root PATH           Humid checkout (default: script parent)
+  --no-htmlview-deps    do not apt/brew HTMLVIEW packages (cairo/pango/fontconfig)
+  --without-htmlview    build without HTMLVIEW (skip package install, cmake OFF)
   --help                show this help
+
+HTMLVIEW (litehtml) needs a C++17 compiler with <variant> (GCC 7+, Clang 5+)
+and pkg-config modules cairo, pangocairo, and fontconfig. Ubuntu 16.04
+g++-5 cannot build it; Cairo/Pango packages do not change that. The script
+checks the compiler first, only then installs the development packages (and
+g++-7 from apt if that package exists). If either requirement cannot be
+met, humid is built without the operators-manual viewer and a warning is
+printed (the panel update still succeeds).
 EOF
   exit "${1:-0}"
 }
@@ -49,6 +66,166 @@ EOF
 log()  { printf '==> %s\n' "$*"; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 ok()   { printf 'OK: %s\n' "$*"; }
+warn() { printf 'WARNING: %s\n' "$*"; }
+
+# pkg-config modules required by cmake/Modules/HumidLitehtml.cmake
+HTMLVIEW_PC_MODULES=(cairo pangocairo fontconfig)
+HTMLVIEW_APT_PKGS=(libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config)
+HTMLVIEW_BREW_PKGS=(cairo pango fontconfig pkg-config)
+HTMLVIEW_CXX=""
+
+htmlview_pc_ok() {
+  command -v pkg-config >/dev/null 2>&1 || return 1
+  pkg-config --exists "${HTMLVIEW_PC_MODULES[@]}"
+}
+
+htmlview_missing_pc() {
+  local missing=() m
+  if ! command -v pkg-config >/dev/null 2>&1; then
+    printf '%s\n' "pkg-config"
+    return
+  fi
+  for m in "${HTMLVIEW_PC_MODULES[@]}"; do
+    pkg-config --exists "$m" || missing+=("$m")
+  done
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    printf '%s\n' "${missing[*]}"
+  fi
+}
+
+run_apt_get() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    DEBIAN_FRONTEND=noninteractive apt-get "$@"
+  else
+    DEBIAN_FRONTEND=noninteractive sudo -n apt-get "$@"
+  fi
+}
+
+# Install Cairo/Pango/Fontconfig so cmake can enable HTMLVIEW.
+# Returns 0 if pkg-config modules are present afterwards, 1 if not.
+# Never aborts the panel update: missing HTMLVIEW is a warning.
+ensure_htmlview_deps() {
+  local missing
+  missing="$(htmlview_missing_pc)"
+  if [[ -z "$missing" ]]; then
+    ok "HTMLVIEW pkg-config modules present (${HTMLVIEW_PC_MODULES[*]})"
+    return 0
+  fi
+
+  log "HTMLVIEW development packages missing ($missing)"
+
+  if [[ "$INSTALL_HTMLVIEW_DEPS" -eq 0 ]]; then
+    warn "not installing HTMLVIEW packages (--no-htmlview-deps / --without-htmlview)"
+    return 1
+  fi
+
+  if command -v apt-get >/dev/null 2>&1; then
+    if [[ "$(id -u)" -ne 0 ]] && ! sudo -n true >/dev/null 2>&1; then
+      warn "cannot install HTMLVIEW packages (need root or passwordless sudo)"
+      warn "  apt-get install -y ${HTMLVIEW_APT_PKGS[*]}"
+      return 1
+    fi
+    log "Installing HTMLVIEW packages: ${HTMLVIEW_APT_PKGS[*]}"
+    if ! run_apt_get install -y "${HTMLVIEW_APT_PKGS[@]}"; then
+      log "apt-get install failed; retrying after apt-get update"
+      if ! run_apt_get update || ! run_apt_get install -y "${HTMLVIEW_APT_PKGS[@]}"; then
+        warn "could not install HTMLVIEW packages (offline panel or broken apt sources?)"
+        warn "  humid will configure without the operators-manual HTML viewer"
+        return 1
+      fi
+    fi
+  elif command -v brew >/dev/null 2>&1; then
+    log "Installing HTMLVIEW packages via Homebrew: ${HTMLVIEW_BREW_PKGS[*]}"
+    if ! brew install "${HTMLVIEW_BREW_PKGS[@]}"; then
+      warn "Homebrew HTMLVIEW package install failed"
+      return 1
+    fi
+  else
+    warn "no apt-get or brew — cannot install HTMLVIEW packages automatically"
+    warn "  Debian / Ubuntu / Raspberry Pi OS:"
+    warn "    apt-get install -y ${HTMLVIEW_APT_PKGS[*]}"
+    warn "  macOS: brew install ${HTMLVIEW_BREW_PKGS[*]}"
+    return 1
+  fi
+
+  if htmlview_pc_ok; then
+    ok "HTMLVIEW packages installed (${HTMLVIEW_PC_MODULES[*]})"
+    return 0
+  fi
+  warn "packages installed but pkg-config still cannot find: $(htmlview_missing_pc)"
+  return 1
+}
+
+htmlview_compiler_id() {
+  local cc="${1:-${CXX:-g++}}"
+  if ! command -v "$cc" >/dev/null 2>&1; then
+    printf '%s\n' "no $cc on PATH"
+    return
+  fi
+  "$cc" --version 2>/dev/null | head -1
+}
+
+# litehtml needs C++17 <variant> (GCC 7+ / Clang 5+). Ubuntu 16.04 g++-5
+# accepts -std=c++17 but the compile still dies on #include <variant>.
+htmlview_try_compile_variant() {
+  local cc="$1" src bin
+  command -v "$cc" >/dev/null 2>&1 || return 1
+  src="$(mktemp /tmp/humid-cxx17-XXXXXX.cpp)"
+  bin="$(mktemp /tmp/humid-cxx17-XXXXXX)"
+  cat >"$src" <<'EOF'
+#include <variant>
+int main() {
+  std::variant<int, double> v = 1;
+  return std::get<int>(v) - 1;
+}
+EOF
+  if "$cc" -std=c++17 -o "$bin" "$src" >/dev/null 2>&1; then
+    rm -f "$src" "$bin"
+    return 0
+  fi
+  rm -f "$src" "$bin"
+  return 1
+}
+
+# Pick a compiler that can build litehtml. Optionally apt-get g++-7.
+# Sets HTMLVIEW_CXX on success. Never aborts the panel update.
+ensure_htmlview_cxx17() {
+  local cc
+  local candidates=()
+  if [[ -n "${CXX:-}" ]]; then
+    candidates+=("$CXX")
+  fi
+  candidates+=(g++ clang++ g++-13 g++-12 g++-11 g++-10 g++-9 g++-8 g++-7)
+
+  for cc in "${candidates[@]}"; do
+    if htmlview_try_compile_variant "$cc"; then
+      HTMLVIEW_CXX="$cc"
+      ok "HTMLVIEW C++17 <variant> ok ($cc: $(htmlview_compiler_id "$cc"))"
+      return 0
+    fi
+  done
+
+  if [[ "$INSTALL_HTMLVIEW_DEPS" -eq 1 ]] && command -v apt-get >/dev/null 2>&1; then
+    if [[ "$(id -u)" -eq 0 ]] || sudo -n true >/dev/null 2>&1; then
+      if apt-cache show g++-7 >/dev/null 2>&1; then
+        log "Trying apt-get install g++-7 (litehtml needs C++17 <variant>)"
+        if run_apt_get install -y g++-7 && htmlview_try_compile_variant g++-7; then
+          HTMLVIEW_CXX="g++-7"
+          ok "installed g++-7 for HTMLVIEW ($(htmlview_compiler_id g++-7))"
+          return 0
+        fi
+        warn "g++-7 is in apt but install or compile check failed"
+      else
+        warn "g++-7 is not in this OS apt archive (typical on Ubuntu 16.04)"
+      fi
+    fi
+  fi
+
+  warn "HTMLVIEW cannot be built: litehtml needs C++17 <variant> (GCC 7+, Clang 5+)"
+  warn "  compiler: $(htmlview_compiler_id "${CXX:-g++}")"
+  warn "  Cairo/Pango packages do not fix this — they are only used after a C++17 compiler exists"
+  return 1
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -62,15 +239,34 @@ while [[ $# -gt 0 ]]; do
     --restart) DO_RESTART=1; shift ;;
     --start-cmd) START_CMD="$2"; shift 2 ;;
     --root) ROOT="$2"; shift 2 ;;
+    --no-htmlview-deps) INSTALL_HTMLVIEW_DEPS=0; shift ;;
+    --without-htmlview) WANT_HTMLVIEW=0; INSTALL_HTMLVIEW_DEPS=0; shift ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
 done
 
+is_humid_tree() {
+  [[ -f "${1:-.}/CMakeLists.txt" && -d "${1:-.}/clockwork" ]]
+}
+
 if [[ -z "$ROOT" ]]; then
-  ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+  # bash -s (streamed by update-panels.sh) has $0=bash, so dirname $0/.. is
+  # the parent of cwd (/opt/humid -> /opt). Prefer cwd when it is the tree.
+  if is_humid_tree "."; then
+    ROOT="$(pwd)"
+  else
+    _src="${BASH_SOURCE[0]:-$0}"
+    case "$_src" in
+      bash|-|/dev/stdin|/bin/bash|/usr/bin/bash) _src="" ;;
+    esac
+    if [[ -n "$_src" && -f "$_src" ]]; then
+      ROOT="$(cd "$(dirname "$_src")/.." && pwd)"
+    fi
+  fi
 fi
+[[ -n "$ROOT" ]] || die "not a humid tree (pass --root, or cd to the checkout). cwd=$(pwd)"
 cd "$ROOT" || die "cannot cd to $ROOT"
-[[ -f CMakeLists.txt && -d clockwork ]] || die "not a humid tree: $ROOT"
+is_humid_tree "$ROOT" || die "not a humid tree: $ROOT"
 
 export JOBS
 export MAKEFLAGS="${MAKEFLAGS:-} -j${JOBS}"
@@ -275,6 +471,41 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
 
   log "Configure and build humid (use $CLOCKWORK_LAYOUT client)"
   mkdir -p build
+
+  HTMLVIEW_CMAKE_ARGS=("-DHUMID_WITH_HTMLVIEW=OFF")
+  if [[ "$WANT_HTMLVIEW" -eq 1 ]]; then
+    if [[ ! -f "$ROOT/lib/litehtml/include/litehtml.h" ]]; then
+      warn "lib/litehtml missing at $ROOT/lib/litehtml — HTMLVIEW cannot be built"
+    fi
+    # Compiler first: Cairo/Pango -dev packages cannot make GCC 5 compile
+    # litehtml. Do not install them on a panel that cannot build HTMLVIEW.
+    _htmlview_deps=0
+    _htmlview_cxx=0
+    if ensure_htmlview_cxx17; then
+      _htmlview_cxx=1
+      ensure_htmlview_deps && _htmlview_deps=1
+    else
+      warn "skipping Cairo/Pango package install — compiler cannot build litehtml"
+    fi
+    if [[ "$_htmlview_deps" -eq 1 && "$_htmlview_cxx" -eq 1 ]]; then
+      # Previous configures FORCE this OFF when packages were missing.
+      # Command-line -D re-enables it now that cairo/pango/fontconfig exist.
+      HTMLVIEW_CMAKE_ARGS=("-DHUMID_WITH_HTMLVIEW=ON")
+      if [[ -n "$HTMLVIEW_CXX" ]]; then
+        _default_cc="$(command -v "${CXX:-g++}" 2>/dev/null || true)"
+        _picked_cc="$(command -v "$HTMLVIEW_CXX" 2>/dev/null || true)"
+        if [[ -n "$_picked_cc" && "$_picked_cc" != "$_default_cc" ]]; then
+          log "Using $HTMLVIEW_CXX for humid so litehtml can compile"
+          HTMLVIEW_CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$HTMLVIEW_CXX")
+        fi
+      fi
+    else
+      warn "building humid without HTMLVIEW (operators-manual viewer unavailable)"
+    fi
+  else
+    log "HTMLVIEW disabled (--without-htmlview)"
+  fi
+
   # Drop stale cache from old tree paths or /opt/latproc client selection
   if [[ -f build/CMakeCache.txt ]]; then
     if grep -qE '/opt/latproc|/opt/humid_next' build/CMakeCache.txt 2>/dev/null || \
@@ -290,6 +521,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
     "$CMAKE_CMD" \
       -DClockworkClient_LIBRARY="$CLIENT_LIB" \
       -DClockworkClient_INCLUDE_DIR="$CW_SOURCE_DIR" \
+      "${HTMLVIEW_CMAKE_ARGS[@]}" \
       .. 2>&1 | tee /tmp/humid-cmake-$$.log
   )
 
@@ -301,13 +533,38 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   else
     ok "cmake uses $CLOCKWORK_LAYOUT libcw_client.a"
   fi
+
+  HTMLVIEW_ENABLED=0
+  if grep -Fq 'HTMLVIEW: enabled' /tmp/humid-cmake-$$.log; then
+    HTMLVIEW_ENABLED=1
+    ok "HTMLVIEW enabled (litehtml + Cairo/Pango)"
+  elif [[ "$WANT_HTMLVIEW" -eq 1 ]]; then
+    warn "cmake did not enable HTMLVIEW"
+    grep -E 'HTMLVIEW' /tmp/humid-cmake-$$.log || true
+    warn "operators-manual screens will not render until HTMLVIEW packages and a C++17 compiler (GCC 7+) are available"
+  else
+    log "HTMLVIEW left disabled"
+  fi
   rm -f /tmp/humid-cmake-$$.log
 
-  (
-    cd build
-    make -j"${JOBS}"
-    make install
-  )
+  if ( cd build && make -j"${JOBS}" && make install ); then
+    :
+  elif [[ "$HTMLVIEW_ENABLED" -eq 1 ]]; then
+    warn "humid build failed with HTMLVIEW enabled; retrying without litehtml"
+    (
+      cd build
+      "$CMAKE_CMD" \
+        -DClockworkClient_LIBRARY="$CLIENT_LIB" \
+        -DClockworkClient_INCLUDE_DIR="$CW_SOURCE_DIR" \
+        -DHUMID_WITH_HTMLVIEW=OFF \
+        ..
+      make -j"${JOBS}"
+      make install
+    ) || die "humid build failed even without HTMLVIEW"
+    warn "humid installed without HTMLVIEW (litehtml did not compile on this compiler)"
+  else
+    die "humid build/install failed"
+  fi
 
   [[ -x build/humid || -x stage/bin/humid ]] || die "humid binary not produced"
   ok "humid build/install finished"
@@ -341,3 +598,4 @@ else
   echo "  ls -la $ROOT/clockwork/src/ConnectionManager.h"
 fi
 echo "  ls -la $ROOT/stage/bin/humid $ROOT/build/humid 2>/dev/null"
+echo "  # HTMLVIEW: cmake log should say 'HTMLVIEW: enabled' when cairo/pango/fontconfig are present"
