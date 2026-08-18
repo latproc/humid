@@ -90,9 +90,16 @@ litehtml::uint_ptr container_cairo_pango::create_font(const litehtml::font_descr
         pango_layout_set_font_description(layout, desc);
         PangoFontMetrics* metrics = pango_context_get_metrics(context, desc, language);
 
-        fm->ascent      = PANGO_PIXELS(static_cast<double>(pango_font_metrics_get_ascent(metrics)));
-        fm->height      = PANGO_PIXELS(static_cast<double>(pango_font_metrics_get_height(metrics)));
-        fm->descent     = fm->height - fm->ascent;
+        fm->ascent = PANGO_PIXELS(static_cast<double>(pango_font_metrics_get_ascent(metrics)));
+        // pango_font_metrics_get_height arrived in Pango 1.44; Ubuntu 16.04/18.04
+        // ship 1.38/1.40. Ascent + descent is the pre-1.44 line height.
+#if PANGO_VERSION_CHECK(1, 44, 0)
+        fm->height  = PANGO_PIXELS(static_cast<double>(pango_font_metrics_get_height(metrics)));
+        fm->descent = fm->height - fm->ascent;
+#else
+        fm->descent = PANGO_PIXELS(static_cast<double>(pango_font_metrics_get_descent(metrics)));
+        fm->height  = fm->ascent + fm->descent;
+#endif
         fm->x_height    = fm->height;
         fm->draw_spaces = (descr.decoration_line != litehtml::text_decoration_line_none);
         fm->sub_shift   = descr.size / 5;

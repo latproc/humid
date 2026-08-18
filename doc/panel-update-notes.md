@@ -152,6 +152,8 @@ subscriber channels up, expected active screen.
 | `Target "humid_litehtml" requires the language dialect "CXX17"` | CMake 3.5.1 has no C++17 compile-flag table | Do not set `CXX_STANDARD 17` on CMake 3.5. Update humid past that generate fix and re-run |
 | litehtml `inline variables are only available with -std=c++1z` / `std::variant` incomplete | CMake 3.5 Makefile generator drops `$<COMPILE_LANGUAGE:CXX>` (added for Make/Ninja in 3.9), so litehtml stayed at global `-std=c++14` | HumidLitehtml.cmake sets per-source `COMPILE_FLAGS -std=c++17` on the litehtml C++ files |
 | `bytecode stream ... LTO version 4.2 instead of the expected 6.2` | `CMAKE_CXX_COMPILER=g++-7` but C stayed gcc-5; NanoGUI `-flto` cannot mix | `update-panel.sh` now also passes `CMAKE_C_COMPILER=gcc-7`. CMake disables NanoGUI LTO if the GNU majors still differ |
+| litehtml `std::vector(tokens.rbegin(), tokens.rend())` / `couldn't deduce template parameter` | GCC 7 has C++17 but not class template argument deduction for that constructor | `style.cpp` uses `std::vector<css_token>(...)` |
+| `pango_font_metrics_get_height` was not declared | API is Pango 1.44+; Ubuntu 18.04 has 1.40 | `container_cairo_pango.cpp` falls back to ascent + descent |
 
 ---
 

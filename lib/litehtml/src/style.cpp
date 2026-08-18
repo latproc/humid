@@ -1557,7 +1557,8 @@ namespace litehtml
     void style::parse_text_emphasis(const css_token_vector& tokens, bool important, document_container* container)
     {
         std::string style;
-        for(const auto& token : std::vector(tokens.rbegin(), tokens.rend()))
+        // GCC 7 (Ubuntu 18.04) has C++17 but not CTAD for std::vector(iter, iter).
+        for(const auto& token : std::vector<css_token>(tokens.rbegin(), tokens.rend()))
         {
             if(parse_text_emphasis_color(token, important, container))
             {
