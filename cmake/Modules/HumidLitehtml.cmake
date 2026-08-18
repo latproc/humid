@@ -138,8 +138,15 @@ target_include_directories(humid_litehtml PRIVATE
   "${LITEHTML_ROOT}/src/gumbo"
 )
 # litehtml sources need C++17; gumbo is C.
-set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD 17)
-set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD_REQUIRED ON)
+# CMake 3.5 knows C++11/14 flags only. CXX_STANDARD 17 then fails generate
+# even when g++-7 already passed the <variant> probe (Ubuntu 16.04 panels).
+if(CMAKE_VERSION VERSION_LESS 3.8)
+  target_compile_options(humid_litehtml PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
+else()
+  set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD 17)
+  set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD_REQUIRED ON)
+endif()
 target_compile_options(humid_litehtml PRIVATE ${HUMID_CAIRO_CFLAGS_OTHER})
 # CMake 3.5: avoid target_link_directories; pass -L via link flags if needed.
 if(HUMID_CAIRO_LIBRARY_DIRS)
