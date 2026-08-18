@@ -1,6 +1,6 @@
 # 3.5: still present on some older Ubuntu HMI panels (e.g. 16.04 / cmake 3.5.1).
 # Prefer 3.10+ where available; avoid features that require newer CMake unless gated.
-cmake_minimum_required (VERSION 3.10)
+cmake_minimum_required (VERSION 3.5)
 project (Latproc)
 
 set (Latproc_VERSION_MAJOR 0)

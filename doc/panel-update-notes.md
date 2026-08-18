@@ -29,7 +29,7 @@ Symptoms seen across the fleet:
 - Nested submodule fetch failures (SOEM, eigen, glfw) on `git pull`
 - CMake cache still pointing at **`/opt/humid_next`** after tree renames
 - Full iod configure failing without **libmodbus** (HMI only needs `cw_client`)
-- CMake 3.5.1 vs `cmake_minimum_required(3.10)` on older panels
+- CMake 3.5.1 vs a vendored `cmake_minimum_required(3.10)` (fixed: client is 3.5+)
 - **Boost.Context `fiber.hpp`** missing on Ubuntu Bionic 1.65 (package installs
   do not provide that header even with `libboost-context-dev`)
 - `update-panel.sh` falsely rejecting **cmake 3.10.x** (`3.1*` pattern matched 3.10)
@@ -143,6 +143,7 @@ subscriber channels up, expected active screen.
 | `MODBUS_LIBRARIES NOTFOUND` | Full iod always linked modbusd/dbd | Clockwork skips modbusd/dbd when libmodbus missing |
 | `fiber.hpp` not found (Bionic) | 1.65 packages lack fiber headers | Fiber-free JSON path + no `process.cpp` in `cw_client` |
 | Script says cmake 3.10 “too old” | Bug: pattern `3.1*` matched 3.10 | Fixed with `sort -V` compare in update-panel |
+| `cmake 3.5.1 is too old for vendored Clockwork (need >= 3.10)` | Vendored `CMakeLists.txt` kept a 3.10 floor | Client `cmake_minimum_required` is 3.5; `update-panel.sh` requires 3.5 for both layouts |
 | Divergent branch / pull.rebase | Local panel commits | `git reset --hard origin/<branch>` |
 | Push rejected from panel | Origin has newer work | Do not push from panels; pull/reset only |
 | `HTMLVIEW: missing pkg-config modules` / no operators-manual viewer | Cairo/Pango/Fontconfig -dev packages not on the panel | Script installs them when apt/brew can run; otherwise install `libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config` and re-run. A cached `HUMID_WITH_HTMLVIEW=OFF` is re-enabled by the script once packages exist |

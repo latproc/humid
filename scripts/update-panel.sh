@@ -414,11 +414,8 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   CMAKE_INFO="$(find_cmake)" || die "no cmake found on PATH"
   read -r CMAKE_CMD CMAKE_VER <<<"$CMAKE_INFO"
   log "Using cmake $CMAKE_VER ($CMAKE_CMD)"
-  if [[ "$CLOCKWORK_LAYOUT" == "vendored" ]]; then
-    REQUIRED_CMAKE="3.10"
-  else
-    REQUIRED_CMAKE="3.5"
-  fi
+  # Vendored client CMakeLists is 3.5-compatible (newer APIs are version-gated).
+  REQUIRED_CMAKE="3.5"
   version_ge() { printf '%s\n%s\n' "$2" "$1" | sort -V | head -1 | grep -qx "$2"; }
   if ! version_ge "$CMAKE_VER" "$REQUIRED_CMAKE"; then
     die "cmake $CMAKE_VER is too old for $CLOCKWORK_LAYOUT Clockwork (need >= $REQUIRED_CMAKE)"
