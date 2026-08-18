@@ -101,6 +101,22 @@ run_apt_get() {
   fi
 }
 
+# apt-get install can fail on a stale index (404s for moved packages).
+# Refresh once per run before any extra-package install.
+APT_UPDATED=0
+ensure_apt_updated() {
+  if [[ "$APT_UPDATED" -eq 1 ]]; then
+    return 0
+  fi
+  log "Refreshing apt package lists"
+  if run_apt_get update; then
+    APT_UPDATED=1
+    return 0
+  fi
+  warn "apt-get update failed; package install may not be able to download packages"
+  return 1
+}
+
 # Install Cairo/Pango/Fontconfig so cmake can enable HTMLVIEW.
 # Returns 0 if pkg-config modules are present afterwards, 1 if not.
 # Never aborts the panel update: missing HTMLVIEW is a warning.
@@ -126,13 +142,11 @@ ensure_htmlview_deps() {
       return 1
     fi
     log "Installing HTMLVIEW packages: ${HTMLVIEW_APT_PKGS[*]}"
+    ensure_apt_updated || true
     if ! run_apt_get install -y "${HTMLVIEW_APT_PKGS[@]}"; then
-      log "apt-get install failed; retrying after apt-get update"
-      if ! run_apt_get update || ! run_apt_get install -y "${HTMLVIEW_APT_PKGS[@]}"; then
-        warn "could not install HTMLVIEW packages (offline panel or broken apt sources?)"
-        warn "  humid will configure without the operators-manual HTML viewer"
-        return 1
-      fi
+      warn "could not install HTMLVIEW packages (offline panel or broken apt sources?)"
+      warn "  humid will configure without the operators-manual HTML viewer"
+      return 1
     fi
   elif command -v brew >/dev/null 2>&1; then
     log "Installing HTMLVIEW packages via Homebrew: ${HTMLVIEW_BREW_PKGS[*]}"
@@ -207,6 +221,7 @@ ensure_htmlview_cxx17() {
 
   if [[ "$INSTALL_HTMLVIEW_DEPS" -eq 1 ]] && command -v apt-get >/dev/null 2>&1; then
     if [[ "$(id -u)" -eq 0 ]] || sudo -n true >/dev/null 2>&1; then
+      ensure_apt_updated || true
       if apt-cache show g++-7 >/dev/null 2>&1; then
         log "Trying apt-get install g++-7 (litehtml needs C++17 <variant>)"
         if run_apt_get install -y g++-7 && htmlview_try_compile_variant g++-7; then

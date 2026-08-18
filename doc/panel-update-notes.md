@@ -80,10 +80,11 @@ What `scripts/update-panel.sh` does (default force mode):
 6. Clear CMake caches that reference another tree path (`/opt/humid_next`, etc.)
 7. Configure/build/install `cw_client` with the newest cmake on PATH
 8. Probe C++17 `<variant>` first (litehtml). Only if that compiler works,
-   install HTMLVIEW development packages (`libcairo2-dev`, `libpango1.0-dev`,
-   `libfontconfig1-dev`, `pkg-config`). Cairo/Pango cannot make GCC 5 compile
-   litehtml, so they are not installed on Ubuntu 16.04-style panels. If apt
-   has `g++-7`, try that. If either requirement is missing, warn and continue
+   run `apt-get update` and install HTMLVIEW development packages
+   (`libcairo2-dev`, `libpango1.0-dev`, `libfontconfig1-dev`, `pkg-config`).
+   Cairo/Pango cannot make GCC 5 compile litehtml, so they are not installed
+   on Ubuntu 16.04-style panels. If apt has `g++-7`, try that (after the
+   same apt refresh). If either requirement is missing, warn and continue
    without the operators-manual viewer. Re-pass `-DHUMID_WITH_HTMLVIEW=ON`
    when both are present so a previous cache that forced the feature OFF is
    re-enabled.
