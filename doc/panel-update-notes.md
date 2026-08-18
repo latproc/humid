@@ -149,7 +149,9 @@ subscriber channels up, expected active screen.
 | `HTMLVIEW: missing pkg-config modules` / no operators-manual viewer | Cairo/Pango/Fontconfig -dev packages not on the panel | Script installs them when apt/brew can run; otherwise install `libcairo2-dev libpango1.0-dev libfontconfig1-dev pkg-config` and re-run. A cached `HUMID_WITH_HTMLVIEW=OFF` is re-enabled by the script once packages exist |
 | `HTMLVIEW: disabled (HUMID_WITH_HTMLVIEW=OFF)` after packages were added | CMake cache forced OFF on the previous probe | Re-run `update-panel.sh` (passes `-DHUMID_WITH_HTMLVIEW=ON`) or `rm build/CMakeCache.txt` and reconfigure |
 | `fatal error: variant: No such file or directory` | litehtml needs C++17 `<variant>`; Ubuntu 16.04 g++-5 does not have it | Script probes the compiler, tries `g++-7` from apt, otherwise builds humid without HTMLVIEW. Install GCC 7+ or a newer panel OS to enable the viewer |
-| `Target "humid_litehtml" requires the language dialect "CXX17"` | CMake 3.5.1 has no C++17 compile-flag table | HumidLitehtml.cmake passes `-std=c++17` on CMake 3.5–3.7 instead of `CXX_STANDARD 17`. Update humid past that fix and re-run |
+| `Target "humid_litehtml" requires the language dialect "CXX17"` | CMake 3.5.1 has no C++17 compile-flag table | Do not set `CXX_STANDARD 17` on CMake 3.5. Update humid past that generate fix and re-run |
+| litehtml `inline variables are only available with -std=c++1z` / `std::variant` incomplete | CMake 3.5 Makefile generator drops `$<COMPILE_LANGUAGE:CXX>` (added for Make/Ninja in 3.9), so litehtml stayed at global `-std=c++14` | HumidLitehtml.cmake sets per-source `COMPILE_FLAGS -std=c++17` on the litehtml C++ files |
+| `bytecode stream ... LTO version 4.2 instead of the expected 6.2` | `CMAKE_CXX_COMPILER=g++-7` but C stayed gcc-5; NanoGUI `-flto` cannot mix | `update-panel.sh` now also passes `CMAKE_C_COMPILER=gcc-7`. CMake disables NanoGUI LTO if the GNU majors still differ |
 
 ---
 

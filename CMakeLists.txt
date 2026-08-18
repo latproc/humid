@@ -123,6 +123,25 @@ if (APPLE)
 endif()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations -Wno-unused-parameter")
 
+# NanoGUI enables -flto for shared Release builds. GCC LTO bytecode is not
+# compatible across majors (gcc-5 LTO 4.2 vs gcc-7 LTO 6.2). If only CXX was
+# switched to g++-7, skip NanoGUI's LTO block: it keys off CMAKE_CXX_FLAGS
+# matching "-flto", then -fno-lto wins on the compiler command line.
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  string(REGEX REPLACE "^([0-9]+).*" "\\1" _HUMID_C_MAJ "${CMAKE_C_COMPILER_VERSION}")
+  string(REGEX REPLACE "^([0-9]+).*" "\\1" _HUMID_CXX_MAJ "${CMAKE_CXX_COMPILER_VERSION}")
+  if(NOT _HUMID_C_MAJ STREQUAL _HUMID_CXX_MAJ)
+    message(WARNING
+      "C is GNU ${_HUMID_C_MAJ} (${CMAKE_C_COMPILER}) but C++ is GNU "
+      "${_HUMID_CXX_MAJ} (${CMAKE_CXX_COMPILER}); disabling NanoGUI LTO. "
+      "Pass matching -DCMAKE_C_COMPILER=gcc-N -DCMAKE_CXX_COMPILER=g++-N")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -flto -fno-lto")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-lto")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fno-lto")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fno-lto")
+  endif()
+endif()
+
 set(NANOGUI_BUILD_PYTHON  OFF CACHE BOOL " " FORCE)
 add_subdirectory(lib/nanogui)
 # Apple Clang 21 ICE/segfaults optimizing some NanoGUI TUs (e.g. glutil.cpp at -O2).

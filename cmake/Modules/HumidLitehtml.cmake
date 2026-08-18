@@ -137,13 +137,15 @@ target_include_directories(humid_litehtml PRIVATE
   "${LITEHTML_ROOT}/src/gumbo/include/gumbo"
   "${LITEHTML_ROOT}/src/gumbo"
 )
-# litehtml sources need C++17; gumbo is C.
-# CMake 3.5 knows C++11/14 flags only. CXX_STANDARD 17 then fails generate
-# even when g++-7 already passed the <variant> probe (Ubuntu 16.04 panels).
-if(CMAKE_VERSION VERSION_LESS 3.8)
-  target_compile_options(humid_litehtml PRIVATE
-    $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>)
-else()
+# litehtml C++ TUs need C++17; gumbo is C. Two CMake 3.5 traps:
+#   * CXX_STANDARD 17 fails generate (no CMAKE_CXX17_* flag table until 3.8).
+#   * $<COMPILE_LANGUAGE:...> is empty on Makefile/Ninja until CMake 3.9, so
+#     target_compile_options with that genex never reaches the compiler.
+# Per-source COMPILE_FLAGS are appended after global CMAKE_CXX_FLAGS
+# (-std=c++14) and work on 3.5. Keep CXX_STANDARD 17 on newer CMake too.
+set_source_files_properties(${HUMID_LITEHTML_CPP} ${HUMID_LITEHTML_CAIRO}
+  PROPERTIES COMPILE_FLAGS "-std=c++17")
+if(NOT CMAKE_VERSION VERSION_LESS 3.8)
   set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD 17)
   set_property(TARGET humid_litehtml PROPERTY CXX_STANDARD_REQUIRED ON)
 endif()

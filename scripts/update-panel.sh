@@ -179,6 +179,28 @@ htmlview_compiler_id() {
   "$cc" --version 2>/dev/null | head -1
 }
 
+# NanoGUI Release shared builds use -flto. GCC LTO bytecode is not compatible
+# across majors (gcc-5 = 4.2, gcc-7 = 6.2). Pair gcc-N with g++-N.
+htmlview_matching_c_compiler() {
+  local cxx="$1" dir base cand
+  [[ -n "$cxx" ]] || return 1
+  dir="$(dirname "$cxx")"
+  base="$(basename "$cxx")"
+  case "$base" in
+    g++-*) cand="gcc-${base#g++-}" ;;
+    clang++-*) cand="clang-${base#clang++-}" ;;
+    g++) cand="gcc" ;;
+    clang++) cand="clang" ;;
+    c++) cand="cc" ;;
+    *) return 1 ;;
+  esac
+  if [[ "$dir" != "." && -x "${dir}/${cand}" ]]; then
+    printf '%s\n' "${dir}/${cand}"
+    return 0
+  fi
+  command -v "$cand" 2>/dev/null
+}
+
 # litehtml needs C++17 <variant> (GCC 7+ / Clang 5+). Ubuntu 16.04 g++-5
 # accepts -std=c++17 but the compile still dies on #include <variant>.
 htmlview_try_compile_variant() {
@@ -485,6 +507,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
   mkdir -p build
 
   HTMLVIEW_CMAKE_ARGS=("-DHUMID_WITH_HTMLVIEW=OFF")
+  HUMID_COMPILER_ARGS=()
   if [[ "$WANT_HTMLVIEW" -eq 1 ]]; then
     if [[ ! -f "$ROOT/lib/litehtml/include/litehtml.h" ]]; then
       warn "lib/litehtml missing at $ROOT/lib/litehtml — HTMLVIEW cannot be built"
@@ -508,7 +531,14 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
         _picked_cc="$(command -v "$HTMLVIEW_CXX" 2>/dev/null || true)"
         if [[ -n "$_picked_cc" && "$_picked_cc" != "$_default_cc" ]]; then
           log "Using $HTMLVIEW_CXX for humid so litehtml can compile"
-          HTMLVIEW_CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$HTMLVIEW_CXX")
+          HUMID_COMPILER_ARGS+=("-DCMAKE_CXX_COMPILER=$HTMLVIEW_CXX")
+          _htmlview_c="$(htmlview_matching_c_compiler "$HTMLVIEW_CXX" || true)"
+          if [[ -n "$_htmlview_c" ]]; then
+            log "Using $_htmlview_c for C to match $HTMLVIEW_CXX (NanoGUI LTO)"
+            HUMID_COMPILER_ARGS+=("-DCMAKE_C_COMPILER=$_htmlview_c")
+          else
+            warn "no matching C compiler for $HTMLVIEW_CXX; NanoGUI LTO may fail"
+          fi
         fi
       fi
     else
@@ -534,6 +564,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
       -DClockworkClient_LIBRARY="$CLIENT_LIB" \
       -DClockworkClient_INCLUDE_DIR="$CW_SOURCE_DIR" \
       "${HTMLVIEW_CMAKE_ARGS[@]}" \
+      ${HUMID_COMPILER_ARGS[@]+"${HUMID_COMPILER_ARGS[@]}"} \
       .. 2>&1 | tee /tmp/humid-cmake-$$.log
   )
 
@@ -569,6 +600,7 @@ if [[ "$DO_BUILD" -eq 1 ]]; then
         -DClockworkClient_LIBRARY="$CLIENT_LIB" \
         -DClockworkClient_INCLUDE_DIR="$CW_SOURCE_DIR" \
         -DHUMID_WITH_HTMLVIEW=OFF \
+        ${HUMID_COMPILER_ARGS[@]+"${HUMID_COMPILER_ARGS[@]}"} \
         ..
       make -j"${JOBS}"
       make install
