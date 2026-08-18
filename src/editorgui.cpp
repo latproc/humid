@@ -1551,6 +1551,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 						if (s) {
 							w_user->setStructure(s);
 							applyControlRemoteTargets();
+							w_user->refreshImages();
 							std::cout << "Loaded active screen " << active << "\n";
 						}
 						else if (connection->getStartupState() != sRELOAD) {
@@ -1564,6 +1565,7 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 			}
 			else if (connection->getStartupState() == sRELOAD) {
 				applyControlRemoteTargets();
+				w_user->refreshImages();
 				connection->setState(sDONE);
 				requestRedraw();
 			}

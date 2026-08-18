@@ -515,6 +515,30 @@ void UserWindow::update() {
 	if (w) w->update();
 }
 
+namespace {
+void refreshImageWidgets(nanogui::Widget *parent) {
+	if (!parent) return;
+	for (auto child : parent->children()) {
+		if (EditorImageView *image = dynamic_cast<EditorImageView *>(child)) {
+			const std::string source = image->imageName();
+			if (!source.empty()) {
+				image->setImageName(source, true);
+				image->fit();
+			}
+		}
+		refreshImageWidgets(child);
+	}
+}
+}
+
+void UserWindow::refreshImages() {
+	// An IOD snapshot does not necessarily contain imageURL properties.  Reload
+	// the active widgets from their retained URLs after reconnect so those
+	// images cannot remain at their pre-restart cached contents.
+	refreshImageWidgets(window);
+	gui->requestRedraw();
+}
+
 void UserWindowWin::update() {
 	// if the window contains a line plot, that object should be updated
 	for (auto child : children()) {
