@@ -163,6 +163,10 @@ public:
 		std::list< std::pair< std::string, std::function<void(std::string)> > > messages; // outgoing messages
 		MessagingInterface *g_iodcmd;
 		CommandState command_state;
+		// Time the local REQ/REP leg as well as SubscriptionManager's remote
+		// request.  A reconnect-era inproc send can be lost before the remote
+		// timeout is armed, otherwise leaving Humid in WaitingResponse forever.
+		uint64_t command_request_start;
 		uint64_t last_update;
 		uint64_t first_message_time;
 		long message_time_scale;

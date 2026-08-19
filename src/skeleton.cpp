@@ -515,7 +515,7 @@ bool ClockworkClient::mouseButtonEvent(const nanogui::Vector2i &p, int button, b
 
 ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string connection_name, const std::string ch, std::string h, int p) 
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
-		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), last_update(0), 
+		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), command_request_start(0), last_update(0),
 		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds"),
 		needs_refresh(false), channel_was_ready(false) {
 	local_commands += "_" + connection_name;
@@ -635,8 +635,22 @@ bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
 		if (DEBUG_BASIC) { std::cerr << name << " sending " << msg << "\n"; }
 		safeSend(*cmd_interface, msg.c_str(), msg.length());
 		command_state = WaitingResponse;
+		command_request_start = microsecs();
 	}
 	else if (command_state == WaitingResponse) {
+		// SubscriptionManager has its own timeout after it receives this local
+		// request.  Also guard the inproc leg: after an iod restart the REQ can
+		// enter WaitingResponse without the REP bridge ever seeing the message.
+		// Keep the queued callback and retry it through a fresh REQ socket.
+		static const uint64_t local_command_timeout_us = 7000000ULL;
+		if (command_request_start &&
+		    microsecs() - command_request_start > local_command_timeout_us) {
+			std::cerr << name
+			          << " local command response timed out; rebuilding command path\n";
+			resetCommandPath();
+			setupCommandInterface();
+			return true;
+		}
 		char *buf = 0;
 		size_t len = 0;
 		if (safeRecv(*cmd_interface, &buf, &len, false, 0)) {
@@ -648,6 +662,7 @@ bool ClockworkClient::Connection::handleCommand(ClockworkClient *owner) {
 			messages.pop_front();
 			delete[] buf;
 			command_state = WaitingCommand;
+			command_request_start = 0;
 		}
 	}
 	return command_state == WaitingCommand && !messages.empty();
@@ -695,6 +710,7 @@ void ClockworkClient::Connection::resetCommandPath() {
 		cmd_interface = nullptr;
 	}
 	command_state = WaitingCommand;
+	command_request_start = 0;
 }
 
 void ClockworkClient::Connection::onChannelLost(const char *addr) {
