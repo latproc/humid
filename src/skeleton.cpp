@@ -855,7 +855,8 @@ void ClockworkClient::idle(bool gui_is_ready) {
 									(conn->needsRefresh() ||
 									 conn->getStartupState() == sINIT ||
 									 conn->getStartupState() == sSTARTUP ||
-									 conn->getStartupState() == sSENT);
+									 conn->getStartupState() == sSENT ||
+									 conn->getStartupState() == sRELOAD);
 								if (conn->update() || data_init_pending) {
 									update(conn, gui_is_ready);
 								}

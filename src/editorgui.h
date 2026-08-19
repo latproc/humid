@@ -129,6 +129,7 @@ private:
 	bool captureDeadlineExceeded() const;
 	void tryCaptureFrame();
 	void updateControlDisconnectedOverlay();
+	void hideControlDisconnectedOverlay();
 	bool controlConnectionsReady() const;
 	bool controlPageReady() const;
 	void applyControlRemoteTargets();
@@ -180,6 +181,8 @@ private:
 	// -1: not armed; >0: covered frames still required; 0: last covered frame done.
 	int control_overlay_settle_remaining = -1;
 	std::chrono::steady_clock::time_point control_disconnected_at;
+	bool control_channel_ready_at_valid = false;
+	std::chrono::steady_clock::time_point control_channel_ready_at;
 	bool backlight_off_pending = false;
 	bool backlight_is_blanked = false;
 	bool backlight_wake_key_held = false;

@@ -301,18 +301,23 @@ bool EditorGUI::controlConnectionsReady() const {
 	if (connections.empty()) return false;
 	for (const auto &item : connections) {
 		auto *connection = item.second;
-		if (!connection || !connection->Ready() ||
-		    connection->getStartupState() != sDONE) return false;
+		// CHANNEL e_done means iod is reachable. Snapshot sDONE is a paint
+		// gate, not connectivity: a long iod-down must not keep the overlay
+		// up after the peer is back.
+		if (!connection || !connection->Ready()) return false;
 	}
 	return true;
 }
 
 bool EditorGUI::controlPageReady() const {
 	if (state != GUIWORKING) return false;
-	if (!w_user || !w_user->structure()) return false;
+	if (!w_user) return false;
 	if (!systemSettings()) return true;
 	const Value active = systemSettings()->getProperties().find("active_screen");
+	// Empty / unset active_screen: do not require a loaded structure.
+	// Cold start with iod already down never select()s a real page.
 	if (active == SymbolTable::Null || active.asString().empty()) return true;
+	if (!w_user->structure()) return false;
 	if (w_user->structure()->getName() == active.asString()) return true;
 	// Named screen is not in the project; do not hold the overlay forever.
 	return findScreen(active.asString()) == nullptr;
@@ -339,26 +344,34 @@ void EditorGUI::applyControlRemoteTargets() {
 	}
 }
 
+void EditorGUI::hideControlDisconnectedOverlay() {
+	control_disconnect_pending = false;
+	control_overlay_settle_remaining = -1;
+	control_needs_covered_rebuild = false;
+	if (control_disconnected_overlay_visible) {
+		control_disconnected_overlay_visible = false;
+		requestRedraw();
+	}
+}
+
 void EditorGUI::updateControlDisconnectedOverlay() {
 	extern int run_only;
 	auto *settings = findStructure("ProjectSettings");
 	const bool enabled = run_only && settings &&
 		settings->getBoolProperty("show_control_disconnected_overlay", false);
 	if (!enabled || (EDITOR && EDITOR->isEditMode())) {
-		control_disconnect_pending = false;
-		control_overlay_settle_remaining = -1;
+		control_channel_ready_at_valid = false;
+		hideControlDisconnectedOverlay();
 		control_needs_covered_rebuild = true;
-		if (control_disconnected_overlay_visible) {
-			control_disconnected_overlay_visible = false;
-			requestRedraw();
-		}
 		return;
 	}
 
+	const auto now = std::chrono::steady_clock::now();
+
 	if (!controlConnectionsReady()) {
+		control_channel_ready_at_valid = false;
 		control_overlay_settle_remaining = -1;
 		control_needs_covered_rebuild = true;
-		const auto now = std::chrono::steady_clock::now();
 		if (!control_disconnect_pending) {
 			control_disconnect_pending = true;
 			control_disconnected_at = now;
@@ -367,6 +380,7 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 			settings->getIntProperty("control_disconnected_delay_seconds", 3));
 		// First boot (never fully connected) must cover immediately. The delay
 		// only debounce-flickers after a previously-ready session drops.
+		// How long iod stays down does not change this: keep covering.
 		const bool delay_elapsed = !control_ever_ready ||
 			now - control_disconnected_at >= std::chrono::seconds(delay_seconds);
 		if (!control_disconnected_overlay_visible && delay_elapsed) {
@@ -379,6 +393,25 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 
 	control_disconnect_pending = false;
 	control_ever_ready = true;
+	if (!control_channel_ready_at_valid) {
+		control_channel_ready_at = now;
+		control_channel_ready_at_valid = true;
+		std::cerr << "Control channel ready — will uncover overlay\n";
+	}
+
+	// Iod is up. Hold briefly for snapshot/page paint, then uncover even if
+	// sDONE or the selected screen never arrives. Outage length is irrelevant.
+	const long uncover_seconds = std::max<long>(0,
+		settings->getIntProperty("control_reconnect_uncover_seconds", 2));
+	if (now - control_channel_ready_at >= std::chrono::seconds(uncover_seconds)) {
+		if (control_disconnected_overlay_visible) {
+			applyControlRemoteTargets();
+			std::cerr << "Control overlay uncover (channel ready "
+			          << uncover_seconds << "s)\n";
+		}
+		hideControlDisconnectedOverlay();
+		return;
+	}
 
 	// Connections came back before the overlay was shown (common when Clockwork
 	// is started after Humid, inside the delay window). Still cover until the
@@ -394,8 +427,6 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 		requestRedraw();
 	}
 
-	// Snapshot is in; keep covering until the selected page exists and has
-	// been painted at least once with widget values applied.
 	if (!controlPageReady()) {
 		control_overlay_settle_remaining = -1;
 		requestRedraw();
