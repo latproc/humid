@@ -186,6 +186,11 @@ public:
 	virtual bool resizeEvent(const nanogui::Vector2i &size) override;
 	virtual bool focusEvent(bool focused) override;
 	void selectPreferredMonitor();
+	// Re-layout fullscreen and present for a short window after a display
+	// comes back (HDMI HPD, DPMS, or GLFW monitor connect). GLFW RandR can
+	// be marked broken when every output is disconnected, so DRM scanout
+	// state is the compositor-independent source of truth.
+	void noteDisplayRestored();
 
 	virtual void draw(NVGcontext *ctx) override;
 
@@ -236,6 +241,11 @@ protected:
 	WindowStagger window_stagger;
 	std::list< std::pair<GLuint, uint64_t> > deferred_texture_cleanup;
 	bool needs_frame_redraw;
+	bool drm_watch_ready = false;
+	bool drm_output_active = false;
+	uint64_t display_restore_until = 0;
+
+	void pollDisplayOutputs();
 };
 
 

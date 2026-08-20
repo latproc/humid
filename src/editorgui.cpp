@@ -1261,6 +1261,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 	auto *settings = findStructure("ProjectSettings");
 	if (!settings) return false;
 	const std::string interface_name = settings->getStringProperty("backlight_interface", "none");
+	bool applied = false;
 	if (interface_name == "sysfs") {
 		const std::string path = settings->getStringProperty("backlight_path");
 		std::ofstream brightness(path + "/brightness");
@@ -1269,7 +1270,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			return false;
 		}
 		brightness << (enabled ? settings->getIntProperty("backlight_on_brightness", 255) : 0) << "\n";
-		return brightness.good();
+		applied = brightness.good();
 	}
 	else if (interface_name == "edatec-ddc") {
 		const char *value = enabled ? "100" : "0";
@@ -1278,7 +1279,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			std::cerr << "EDATEC DDC backlight command failed\n";
 			return false;
 		}
-		return true;
+		applied = true;
 	}
 	else if (interface_name == "ddcutil") {
 		std::vector<std::string> command = {"ddcutil"};
@@ -1292,7 +1293,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			std::cerr << "DDC/CI display power command failed\n";
 			return false;
 		}
-		return true;
+		applied = true;
 	}
 	else if (interface_name == "x11-dpms") {
 		// Automatic DPMS may be disabled for kiosk operation. Enable it only
@@ -1305,7 +1306,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			std::cerr << "X11 DPMS display command failed\n";
 			return false;
 		}
-		return true;
+		applied = true;
 	}
 	else if (interface_name == "wayland-dpms") {
 		const std::string output = settings->getStringProperty("backlight_output", "HDMI-A-1");
@@ -1324,7 +1325,7 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			std::cerr << "Wayland DPMS display command failed for " << output << "\n";
 			return false;
 		}
-		return true;
+		applied = true;
 	}
 	else if (interface_name == "wlr-randr") {
 		const std::string output = settings->getStringProperty("backlight_output", "HDMI-A-1");
@@ -1341,13 +1342,18 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			std::cerr << "wlr-randr display command failed for " << output << "\n";
 			return false;
 		}
-		return true;
+		applied = true;
 	}
 	else if (interface_name != "none") {
 		std::cerr << "Unknown backlight interface: " << interface_name << "\n";
 		return false;
 	}
-	return true;
+	else {
+		applied = true;
+	}
+	if (applied && enabled && interface_name != "none")
+		noteDisplayRestored();
+	return applied;
 }
 
 void EditorGUI::processBacklightTimeout() {

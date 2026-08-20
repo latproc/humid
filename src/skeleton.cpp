@@ -41,12 +41,72 @@
 #include "editorsettings.h"
 
 #include <sys/stat.h>
+#include <cstring>
+#if defined(__linux__)
+#include <dirent.h>
+#endif
 
 std::string table_font{"sans"};
 std::string table_header_font{"sans-bold"};
 
 namespace {
 std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
+const uint64_t display_restore_grace_us = 2000000;
+
+#if defined(__linux__)
+std::string readSysfsValue(const std::string &path) {
+	std::ifstream in(path);
+	if (!in)
+		return std::string();
+	std::string line;
+	std::getline(in, line);
+	while (!line.empty() && (line.back() == '\0' || line.back() == '\n' || line.back() == '\r'))
+		line.pop_back();
+	return line;
+}
+
+bool isIgnoredDrmConnector(const char *entry) {
+	if (!entry)
+		return true;
+	const char *dash = std::strchr(entry, '-');
+	if (!dash || !dash[1])
+		return true;
+	std::string rest(dash + 1);
+	std::transform(rest.begin(), rest.end(), rest.begin(),
+	               [](unsigned char c) { return std::tolower(c); });
+	return rest.find("virtual") == 0 ||
+	       rest.find("writeback") == 0 ||
+	       rest.find("unknown") == 0;
+}
+
+// True when a physical connector can scan out. HDMI power-off typically
+// reports disconnected even if the CRTC is still configured; DPMS/wlopm
+// leave the connector connected with dpms Off.
+bool drmOutputCanScanout() {
+	DIR *dir = opendir("/sys/class/drm");
+	if (!dir)
+		return false;
+	bool any = false;
+	while (dirent *entry = readdir(dir)) {
+		if (entry->d_name[0] == '.' || isIgnoredDrmConnector(entry->d_name))
+			continue;
+		const std::string base = std::string("/sys/class/drm/") + entry->d_name;
+		if (readSysfsValue(base + "/status") != "connected")
+			continue;
+		const std::string enabled = readSysfsValue(base + "/enabled");
+		if (!enabled.empty() && enabled == "disabled")
+			continue;
+		const std::string dpms = readSysfsValue(base + "/dpms");
+		if (!dpms.empty() && dpms == "Off")
+			continue;
+		any = true;
+		break;
+	}
+	closedir(dir);
+	return any;
+}
+#endif
+
 
 bool isVirtualMonitor(GLFWmonitor *monitor) {
 	const char *name = glfwGetMonitorName(monitor);
@@ -384,8 +444,13 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
 		auto found = refresh_clients.find(window);
 		if (found != refresh_clients.end()) found->second->requestRedraw();
 	});
-	glfwSetMonitorCallback([](GLFWmonitor *, int) {
-		for (auto &entry : refresh_clients) entry.second->selectPreferredMonitor();
+	glfwSetMonitorCallback([](GLFWmonitor *, int event) {
+		for (auto &entry : refresh_clients) {
+			if (event == GLFW_CONNECTED)
+				entry.second->noteDisplayRestored();
+			else
+				entry.second->selectPreferredMonitor();
+		}
 	});
     nvgContext();
     if (load_font(nvgContext(), "mono", "RobotoMono-Medium.ttf")) {
@@ -443,6 +508,36 @@ void ClockworkClient::selectPreferredMonitor() {
 	if (window_width != target_width || window_height != target_height)
 		glfwSetWindowSize(mGLFWWindow, target_width, target_height);
 	requestRedraw();
+}
+
+void ClockworkClient::noteDisplayRestored() {
+	selectPreferredMonitor();
+	display_restore_until = microsecs() + display_restore_grace_us;
+	requestRedraw();
+	std::cout << "display output restored; presenting for "
+	          << (display_restore_grace_us / 1000) << " ms\n" << std::flush;
+}
+
+void ClockworkClient::pollDisplayOutputs() {
+	const uint64_t now = microsecs();
+	if (display_restore_until) {
+		if (now < display_restore_until)
+			requestRedraw();
+		else
+			display_restore_until = 0;
+	}
+
+#if defined(__linux__)
+	const bool active = drmOutputCanScanout();
+	if (!drm_watch_ready) {
+		drm_output_active = active;
+		drm_watch_ready = true;
+		return;
+	}
+	if (active && !drm_output_active)
+		noteDisplayRestored();
+	drm_output_active = active;
+#endif
 }
 
 bool ClockworkClient::resizeEvent(const nanogui::Vector2i &size) {
@@ -768,6 +863,8 @@ bool ClockworkClient::Connection::Ready() {
 
 void ClockworkClient::idle(bool gui_is_ready) {
 	using namespace nanogui;
+
+	pollDisplayOutputs();
 
 	boost::mutex::scoped_lock lock(update_mutex);
 	Structure *connection = 0;
