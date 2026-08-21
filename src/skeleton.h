@@ -19,6 +19,11 @@
 
 enum ProgramState { s_initialising, s_running, s_disconnecting, s_idle, s_finished };
 
+// Native X11: enable the first connected physical output at its EDID
+// preferred mode. Does not use a hardcoded output name or resolution.
+// Returns true when the desktop is at that mode. No-op on Wayland.
+bool ensureNativeX11Output();
+
 class Structure;
 class SkeletonWindow : public nanogui::Window, public PanelScreen {
 public:

@@ -43,7 +43,10 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
+#include <cctype>
 #include <unistd.h>
+#include <vector>
 #if defined(__linux__)
 #include <dirent.h>
 #endif
@@ -71,6 +74,123 @@ bool usesWaylandCompositor() {
 			return true;
 	}
 	return false;
+}
+
+bool isTinyVideomode(int width, int height) {
+	return width < 640 || height < 400;
+}
+
+bool isPhysicalOutputName(const std::string &name) {
+	std::string lower(name);
+	std::transform(lower.begin(), lower.end(), lower.begin(),
+	               [](unsigned char c) { return std::tolower(c); });
+	return lower.compare(0, 4, "hdmi") == 0 ||
+	       lower.compare(0, 2, "dp") == 0 ||
+	       lower.compare(0, 3, "dvi") == 0 ||
+	       lower.compare(0, 3, "edp") == 0 ||
+	       lower.compare(0, 3, "dsi") == 0 ||
+	       lower.compare(0, 3, "vga") == 0 ||
+	       lower.compare(0, 11, "displayport") == 0;
+}
+
+bool isSafeOutputName(const std::string &name) {
+	if (name.empty() || name.size() > 32)
+		return false;
+	for (unsigned char c : name) {
+		if (!std::isalnum(c) && c != '-' && c != '_')
+			return false;
+	}
+	return true;
+}
+
+struct XrandrOutput {
+	std::string name;
+	bool connected = false;
+	bool has_crtc = false;
+	int crtc_w = 0;
+	int crtc_h = 0;
+	int preferred_w = 0;
+	int preferred_h = 0;
+};
+
+struct XrandrState {
+	int screen_w = 0;
+	int screen_h = 0;
+	std::vector<XrandrOutput> outputs;
+};
+
+bool parseXrandrQuery(XrandrState &state) {
+	state = XrandrState();
+	FILE *pipe = popen("xrandr --query 2>/dev/null", "r");
+	if (!pipe)
+		return false;
+	char line[512];
+	XrandrOutput *current = nullptr;
+	while (fgets(line, sizeof(line), pipe)) {
+		if (std::strncmp(line, "Screen ", 7) == 0) {
+			const char *current_tok = std::strstr(line, "current ");
+			if (current_tok)
+				std::sscanf(current_tok, "current %d x %d", &state.screen_w, &state.screen_h);
+			continue;
+		}
+		if (std::strncmp(line, "  ", 2) == 0 && current && current->connected) {
+			int w = 0, h = 0;
+			if (std::sscanf(line, " %dx%d", &w, &h) == 2 && w > 0 && h > 0) {
+				const bool preferred = std::strchr(line, '+') != nullptr;
+				if (preferred || current->preferred_w == 0) {
+					current->preferred_w = w;
+					current->preferred_h = h;
+				}
+			}
+			continue;
+		}
+		char name[64] = {0};
+		char conn[32] = {0};
+		if (std::sscanf(line, "%63s %31s", name, conn) != 2)
+			continue;
+		if (std::strcmp(conn, "connected") != 0 && std::strcmp(conn, "disconnected") != 0)
+			continue;
+		state.outputs.push_back(XrandrOutput());
+		current = &state.outputs.back();
+		current->name = name;
+		current->connected = std::strcmp(conn, "connected") == 0;
+		int w = 0, h = 0, x = 0, y = 0;
+		const char *geom = line;
+		while ((geom = std::strchr(geom, ' ')) != nullptr) {
+			++geom;
+			if (std::sscanf(geom, "%dx%d+%d+%d", &w, &h, &x, &y) == 4 && w > 0 && h > 0) {
+				current->has_crtc = true;
+				current->crtc_w = w;
+				current->crtc_h = h;
+				break;
+			}
+		}
+	}
+	pclose(pipe);
+	return true;
+}
+
+const XrandrOutput *bestConnectedOutput(const XrandrState &state) {
+	const XrandrOutput *best = nullptr;
+	for (const auto &output : state.outputs) {
+		if (!output.connected || !isPhysicalOutputName(output.name))
+			continue;
+		if (output.preferred_w <= 0 || output.preferred_h <= 0)
+			continue;
+		if (isTinyVideomode(output.preferred_w, output.preferred_h))
+			continue;
+		if (!best)
+			best = &output;
+		else if (best->name.compare(0, 3, "VGA") == 0 && output.name.compare(0, 3, "VGA") != 0)
+			best = &output;
+	}
+	return best;
+}
+
+bool desktopAtPreferred(const XrandrState &state, const XrandrOutput &output) {
+	return output.has_crtc &&
+	       state.screen_w == output.preferred_w &&
+	       state.screen_h == output.preferred_h;
 }
 
 #if defined(__linux__)
@@ -142,10 +262,43 @@ GLFWmonitor *preferredMonitor() {
 	int count = 0;
 	GLFWmonitor **monitors = glfwGetMonitors(&count);
 	for (int i = 0; i < count; ++i) {
-		if (!isVirtualMonitor(monitors[i])) return monitors[i];
+		if (isVirtualMonitor(monitors[i])) continue;
+		const GLFWvidmode *mode = glfwGetVideoMode(monitors[i]);
+		if (mode && isTinyVideomode(mode->width, mode->height)) continue;
+		return monitors[i];
 	}
-	return count > 0 ? monitors[0] : nullptr;
+	return nullptr;
 }
+}
+
+bool ensureNativeX11Output() {
+	if (usesWaylandCompositor())
+		return true;
+	XrandrState state;
+	if (!parseXrandrQuery(state))
+		return false;
+	const XrandrOutput *output = bestConnectedOutput(state);
+	if (!output || !isSafeOutputName(output->name))
+		return false;
+	if (desktopAtPreferred(state, *output))
+		return true;
+	char cmd[192];
+	std::snprintf(cmd, sizeof(cmd),
+	              "xrandr --output %s --mode %dx%d --primary >/dev/null 2>&1",
+	              output->name.c_str(), output->preferred_w, output->preferred_h);
+	std::cout << "enabling " << output->name << " "
+	          << output->preferred_w << "x" << output->preferred_h << "\n"
+	          << std::flush;
+	if (std::system(cmd) != 0)
+		return false;
+	XrandrState after;
+	if (!parseXrandrQuery(after))
+		return false;
+	for (const auto &candidate : after.outputs) {
+		if (candidate.name == output->name)
+			return desktopAtPreferred(after, candidate);
+	}
+	return false;
 }
 
 long collect_history = 0;
@@ -511,6 +664,11 @@ void ClockworkClient::selectPreferredMonitor(bool force) {
 #else
 	const bool can_position = true;
 #endif
+	if (isTinyVideomode(target_width, target_height))
+		return;
+	if (!isTinyVideomode(window_width, window_height) &&
+	    (target_width < window_width || target_height < window_height))
+		return;
 	const bool pos_ok = !can_position || (window_x == monitor_x && window_y == monitor_y);
 	if (!force && pos_ok && window_width == target_width && window_height == target_height)
 		return;
@@ -531,26 +689,19 @@ void ClockworkClient::selectPreferredMonitor(bool force) {
 }
 
 void ClockworkClient::rebindDisplay() {
-	// Native X11: the window often stays 1920x1200 on a dead scanout after
-	// HDMI HPD. xrandr --auto reattaches the CRTC; skip it on Wayland so
-	// labwc/Xwayland keep owning the output.
-	if (!usesWaylandCompositor()) {
-		if (std::system("xrandr --auto >/dev/null 2>&1") != 0)
-			std::cerr << "xrandr --auto failed after display restore\n";
-	}
 	selectPreferredMonitor(true);
 	glfwMakeContextCurrent(mGLFWWindow);
 	glfwSwapInterval(1);
 }
 
 void ClockworkClient::noteDisplayRestored() {
-	// Native X11: after HDMI HPD the GLX drawable is bound to a dead
-	// Intel plane. xrandr + swap is not enough; a new process (run.sh)
-	// is what actually restores the image. Leave Wayland to the compositor.
 	if (!usesWaylandCompositor()) {
+		if (!ensureNativeX11Output()) {
+			std::cerr << "display restore: no usable connected output yet\n";
+			return;
+		}
 		std::cout << "display output restored; restarting Humid to rebind X11 scanout\n"
 		          << std::flush;
-		std::system("xrandr --auto >/dev/null 2>&1");
 		_exit(0);
 	}
 	rebindDisplay();
@@ -567,6 +718,45 @@ void ClockworkClient::pollDisplayOutputs() {
 			requestRedraw();
 		else
 			display_restore_until = 0;
+	}
+
+	if (!usesWaylandCompositor()) {
+		XrandrState state;
+		if (!parseXrandrQuery(state))
+			return;
+		const XrandrOutput *output = bestConnectedOutput(state);
+		const bool connected = output != nullptr;
+		int window_width = 0, window_height = 0;
+		glfwGetWindowSize(mGLFWWindow, &window_width, &window_height);
+		const bool usable = output &&
+			desktopAtPreferred(state, *output) &&
+			!isTinyVideomode(window_width, window_height) &&
+			window_width == output->preferred_w &&
+			window_height == output->preferred_h;
+		if (!drm_watch_ready) {
+			drm_last_raw_active = connected;
+			drm_output_active = usable;
+			drm_raw_changed_at = now;
+			drm_watch_ready = true;
+			return;
+		}
+		if (connected != drm_last_raw_active) {
+			drm_last_raw_active = connected;
+			drm_raw_changed_at = now;
+			return;
+		}
+		if (now - drm_raw_changed_at < display_restore_debounce_us)
+			return;
+		if (connected && !drm_output_active) {
+			if (!ensureNativeX11Output())
+				return;
+			std::cout << "display output restored on " << output->name << " "
+			          << output->preferred_w << "x" << output->preferred_h
+			          << "; restarting Humid to rebind X11 scanout\n" << std::flush;
+			_exit(0);
+		}
+		drm_output_active = usable;
+		return;
 	}
 
 #if defined(__linux__)

@@ -549,6 +549,7 @@ int main(int argc, const char ** argv ) {
 	try {
 		nanogui::init();
 		std::cout << "nanogui initialised\n" <<std::flush;
+		ensureNativeX11Output();
 		GLFWmonitor* primary = glfwGetPrimaryMonitor();
 		const GLFWvidmode* mode = primary ? glfwGetVideoMode(primary) : nullptr;
 		if (primary) {
