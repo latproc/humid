@@ -1296,15 +1296,28 @@ bool EditorGUI::applyBacklight(bool enabled) {
 		applied = true;
 	}
 	else if (interface_name == "x11-dpms") {
-		// Automatic DPMS may be disabled for kiosk operation. Enable it only
-		// when requesting standby; an explicit wake works in either state.
-		if (!enabled && !runDisplayCommand({"xset", "+dpms"})) {
-			std::cerr << "Unable to enable X11 DPMS\n";
-			return false;
+		// Automatic DPMS must stay off while the Clockwork point is on: these
+		// kiosks get no input, so a 10-minute timeout blanks a live HMI.
+		// Enable DPMS only for an explicit standby request.
+		if (enabled) {
+			if (!runDisplayCommand({"xset", "dpms", "force", "on"})) {
+				std::cerr << "X11 DPMS display command failed\n";
+				return false;
+			}
+			if (!runDisplayCommand({"xset", "-dpms"})) {
+				std::cerr << "Unable to disable automatic X11 DPMS\n";
+				return false;
+			}
 		}
-		if (!runDisplayCommand({"xset", "dpms", "force", enabled ? "on" : "off"})) {
-			std::cerr << "X11 DPMS display command failed\n";
-			return false;
+		else {
+			if (!runDisplayCommand({"xset", "+dpms"})) {
+				std::cerr << "Unable to enable X11 DPMS\n";
+				return false;
+			}
+			if (!runDisplayCommand({"xset", "dpms", "force", "off"})) {
+				std::cerr << "X11 DPMS display command failed\n";
+				return false;
+			}
 		}
 		applied = true;
 	}
