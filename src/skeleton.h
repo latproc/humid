@@ -185,7 +185,7 @@ public:
 	virtual bool keyboardEvent(int key, int scancode, int action, int modifiers) override;
 	virtual bool resizeEvent(const nanogui::Vector2i &size) override;
 	virtual bool focusEvent(bool focused) override;
-	void selectPreferredMonitor();
+	void selectPreferredMonitor(bool force = false);
 	// Re-layout fullscreen and present for a short window after a display
 	// comes back (HDMI HPD, DPMS, or GLFW monitor connect). GLFW RandR can
 	// be marked broken when every output is disconnected, so DRM scanout
@@ -243,9 +243,12 @@ protected:
 	bool needs_frame_redraw;
 	bool drm_watch_ready = false;
 	bool drm_output_active = false;
+	bool drm_last_raw_active = false;
+	uint64_t drm_raw_changed_at = 0;
 	uint64_t display_restore_until = 0;
 
 	void pollDisplayOutputs();
+	void rebindDisplay();
 };
 
 

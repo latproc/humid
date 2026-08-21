@@ -1351,8 +1351,6 @@ bool EditorGUI::applyBacklight(bool enabled) {
 	else {
 		applied = true;
 	}
-	if (applied && enabled && interface_name != "none")
-		noteDisplayRestored();
 	return applied;
 }
 

@@ -42,6 +42,7 @@
 
 #include <sys/stat.h>
 #include <cstring>
+#include <cstdlib>
 #if defined(__linux__)
 #include <dirent.h>
 #endif
@@ -51,7 +52,25 @@ std::string table_header_font{"sans-bold"};
 
 namespace {
 std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
-const uint64_t display_restore_grace_us = 2000000;
+const uint64_t display_restore_grace_us = 5000000;
+const uint64_t display_restore_debounce_us = 400000;
+
+bool usesWaylandCompositor() {
+	const char *wayland = std::getenv("WAYLAND_DISPLAY");
+	if (wayland && wayland[0])
+		return true;
+	const char *humid_wayland = std::getenv("HUMID_WAYLAND_DISPLAY");
+	if (humid_wayland && humid_wayland[0])
+		return true;
+	const char *runtime = std::getenv("XDG_RUNTIME_DIR");
+	if (runtime && runtime[0]) {
+		struct stat st;
+		const std::string socket = std::string(runtime) + "/wayland-0";
+		if (stat(socket.c_str(), &st) == 0)
+			return true;
+	}
+	return false;
+}
 
 #if defined(__linux__)
 std::string readSysfsValue(const std::string &path) {
@@ -461,7 +480,7 @@ ClockworkClient::ClockworkClient(const Vector2i &size, const std::string &captio
     }
 }
 
-void ClockworkClient::selectPreferredMonitor() {
+void ClockworkClient::selectPreferredMonitor(bool force) {
 	extern long full_screen_mode;
 	if (!full_screen_mode) return;
 	GLFWmonitor *monitor = preferredMonitor();
@@ -492,7 +511,7 @@ void ClockworkClient::selectPreferredMonitor() {
 	const bool can_position = true;
 #endif
 	const bool pos_ok = !can_position || (window_x == monitor_x && window_y == monitor_y);
-	if (pos_ok && window_width == target_width && window_height == target_height)
+	if (!force && pos_ok && window_width == target_width && window_height == target_height)
 		return;
 
 	const char *name = glfwGetMonitorName(monitor);
@@ -505,13 +524,26 @@ void ClockworkClient::selectPreferredMonitor() {
 	std::cout << "\n" << std::flush;
 	if (can_position)
 		glfwSetWindowPos(mGLFWWindow, monitor_x, monitor_y);
-	if (window_width != target_width || window_height != target_height)
+	if (force || window_width != target_width || window_height != target_height)
 		glfwSetWindowSize(mGLFWWindow, target_width, target_height);
 	requestRedraw();
 }
 
+void ClockworkClient::rebindDisplay() {
+	// Native X11: the window often stays 1920x1200 on a dead scanout after
+	// HDMI HPD. xrandr --auto reattaches the CRTC; skip it on Wayland so
+	// labwc/Xwayland keep owning the output.
+	if (!usesWaylandCompositor()) {
+		if (std::system("xrandr --auto >/dev/null 2>&1") != 0)
+			std::cerr << "xrandr --auto failed after display restore\n";
+	}
+	selectPreferredMonitor(true);
+	glfwMakeContextCurrent(mGLFWWindow);
+	glfwSwapInterval(1);
+}
+
 void ClockworkClient::noteDisplayRestored() {
-	selectPreferredMonitor();
+	rebindDisplay();
 	display_restore_until = microsecs() + display_restore_grace_us;
 	requestRedraw();
 	std::cout << "display output restored; presenting for "
@@ -528,15 +560,24 @@ void ClockworkClient::pollDisplayOutputs() {
 	}
 
 #if defined(__linux__)
-	const bool active = drmOutputCanScanout();
+	const bool raw_active = drmOutputCanScanout();
 	if (!drm_watch_ready) {
-		drm_output_active = active;
+		drm_last_raw_active = raw_active;
+		drm_output_active = raw_active;
+		drm_raw_changed_at = now;
 		drm_watch_ready = true;
 		return;
 	}
-	if (active && !drm_output_active)
+	if (raw_active != drm_last_raw_active) {
+		drm_last_raw_active = raw_active;
+		drm_raw_changed_at = now;
+		return;
+	}
+	if (now - drm_raw_changed_at < display_restore_debounce_us)
+		return;
+	if (raw_active && !drm_output_active)
 		noteDisplayRestored();
-	drm_output_active = active;
+	drm_output_active = raw_active;
 #endif
 }
 
