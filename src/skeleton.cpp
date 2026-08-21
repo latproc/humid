@@ -43,6 +43,7 @@
 #include <sys/stat.h>
 #include <cstring>
 #include <cstdlib>
+#include <unistd.h>
 #if defined(__linux__)
 #include <dirent.h>
 #endif
@@ -53,7 +54,7 @@ std::string table_header_font{"sans-bold"};
 namespace {
 std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
 const uint64_t display_restore_grace_us = 5000000;
-const uint64_t display_restore_debounce_us = 400000;
+const uint64_t display_restore_debounce_us = 1000000;
 
 bool usesWaylandCompositor() {
 	const char *wayland = std::getenv("WAYLAND_DISPLAY");
@@ -543,6 +544,15 @@ void ClockworkClient::rebindDisplay() {
 }
 
 void ClockworkClient::noteDisplayRestored() {
+	// Native X11: after HDMI HPD the GLX drawable is bound to a dead
+	// Intel plane. xrandr + swap is not enough; a new process (run.sh)
+	// is what actually restores the image. Leave Wayland to the compositor.
+	if (!usesWaylandCompositor()) {
+		std::cout << "display output restored; restarting Humid to rebind X11 scanout\n"
+		          << std::flush;
+		std::system("xrandr --auto >/dev/null 2>&1");
+		_exit(0);
+	}
 	rebindDisplay();
 	display_restore_until = microsecs() + display_restore_grace_us;
 	requestRedraw();
