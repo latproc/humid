@@ -160,7 +160,6 @@ nanogui::Window *EditorGUI::getNamedWindow(const std::string name) {
 
 
 bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers) {
-	if (control_disconnected_overlay_visible) return true;
 	// A key used to wake a blanked display must never be delivered to a widget.
 	// Swallow its repeat and release events as well as the initial press.
 	if (backlight_wake_key_held && key == backlight_wake_key && scancode == backlight_wake_scancode) {
@@ -181,6 +180,9 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 		backlight_off_pending = true;
 		return true;
 	}
+	// The disconnected overlay consumes operator input, but only after the
+	// display wake path above has had an opportunity to handle it.
+	if (control_disconnected_overlay_visible) return true;
 	if (action != GLFW_RELEASE)
 		requestRedraw();
 	if (EDITOR->isEditMode()) {
