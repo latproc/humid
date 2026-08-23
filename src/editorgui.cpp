@@ -303,10 +303,12 @@ bool EditorGUI::controlConnectionsReady() const {
 	if (connections.empty()) return false;
 	for (const auto &item : connections) {
 		auto *connection = item.second;
-		// CHANNEL e_done means iod is reachable. Snapshot sDONE is a paint
-		// gate, not connectivity: a long iod-down must not keep the overlay
-		// up after the peer is back.
-		if (!connection || !connection->Ready()) return false;
+		// A live CHANNEL is not enough to expose operator controls. Keep the
+		// overlay up until MODBUS REFRESH has supplied a complete snapshot;
+		// otherwise unchanged values (notably E-stops) remain stale after boot.
+		if (!connection || !connection->Ready() ||
+		    (connection->getStartupState() != sDONE &&
+		     connection->getStartupState() != sRELOAD)) return false;
 	}
 	return true;
 }
@@ -398,17 +400,17 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 	if (!control_channel_ready_at_valid) {
 		control_channel_ready_at = now;
 		control_channel_ready_at_valid = true;
-		std::cerr << "Control channel ready — will uncover overlay\n";
+		std::cerr << "Control snapshot ready — will uncover overlay\n";
 	}
 
-	// Iod is up. Hold briefly for snapshot/page paint, then uncover even if
-	// sDONE or the selected screen never arrives. Outage length is irrelevant.
+	// The snapshot is complete. Hold briefly for page rebuild/paint, then
+	// uncover even if the selected screen is empty or no longer exists.
 	const long uncover_seconds = std::max<long>(0,
 		settings->getIntProperty("control_reconnect_uncover_seconds", 2));
 	if (now - control_channel_ready_at >= std::chrono::seconds(uncover_seconds)) {
 		if (control_disconnected_overlay_visible) {
 			applyControlRemoteTargets();
-			std::cerr << "Control overlay uncover (channel ready "
+			std::cerr << "Control overlay uncover (snapshot ready "
 			          << uncover_seconds << "s)\n";
 		}
 		hideControlDisconnectedOverlay();
