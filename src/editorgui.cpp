@@ -1330,7 +1330,9 @@ bool EditorGUI::applyBacklight(bool enabled) {
 				std::cerr << "Unable to enable X11 DPMS\n";
 				return false;
 			}
-			if (!runDisplayCommand({"xset", "dpms", "force", "off"})) {
+			// Standby/suspend keep HDMI up on these Dells. force off (DPMS
+			// Off) drops HPD and leaves the HMI at 320x200 after wake.
+			if (!runDisplayCommand({"xset", "dpms", "force", "standby"})) {
 				std::cerr << "X11 DPMS display command failed\n";
 				return false;
 			}

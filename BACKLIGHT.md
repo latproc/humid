@@ -533,10 +533,12 @@ ProjectSettings PROJECTSETTINGS(
     The Humid user must have access to the corresponding `/dev/i2c-N` device.
     A key or mouse button wakes a blanked display before the disconnected
     overlay consumes input. Operator activity restarts `backlight_off_delay_seconds`.
-  - `x11-dpms` uses `xset` to force the X11 display on or into DPMS standby.
-    Humid must inherit the active X session's `DISPLAY` and X authority. It
-    enables DPMS immediately before an off request, so kiosk startup may keep
-    automatic DPMS disabled with `xset -dpms`.
+  - `x11-dpms` uses `xset` to force the X11 display on, or into DPMS standby
+    when blanking. Do not use `force off`: that drops HDMI on Dell P2425E /
+    Intel Valleyview. Automatic DPMS stays disabled while the control point is
+    on (`xset -dpms`) so an idle kiosk does not blank itself. DPMS is enabled
+    only for an explicit standby request. Humid must inherit `DISPLAY` and X
+    authority.
   - `wayland-dpms` uses `wlopm` to power the configured Wayland output on or
     off. Set `backlight_output` to the compositor output name, for example
     `HDMI-A-1`; Humid must inherit `XDG_RUNTIME_DIR`. Install `wlopm` on the
@@ -551,11 +553,26 @@ ProjectSettings PROJECTSETTINGS(
   - `none` disables physical backlight writes while retaining the configured
     point.
 
-For an X11 HDMI HMI:
+For an X11 HDMI HMI (non-Dell, or until DDC is available):
 
 ```humid
 ProjectSettings PROJECTSETTINGS(
   backlight_interface: "x11-dpms",
+  backlight_control_point: "P_CoreHmiBacklightEnabled",
+  backlight_off_delay_seconds: 300
+);
+```
+
+For Dell P2425E on Intel Valleyview (same as plant 122), use DDC suspend
+rather than X11 `force off`. That keeps HDMI up. Requires `ddcutil`,
+`i2c-dev`, and `hmi` in group `i2c`:
+
+```humid
+ProjectSettings PROJECTSETTINGS(
+  backlight_interface: "ddcutil",
+  backlight_ddc_bus: 5,
+  backlight_ddc_on_value: "01",
+  backlight_ddc_off_value: "03",
   backlight_control_point: "P_CoreHmiBacklightEnabled",
   backlight_off_delay_seconds: 300
 );
