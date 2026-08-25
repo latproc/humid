@@ -523,14 +523,14 @@ ProjectSettings PROJECTSETTINGS(
     DSI driver: its LEDs resume but its video image may not.
   - `edatec-ddc` runs the installed `ed-ddc-server` brightness command; use
     it only where that tool and a DDC-capable display are available.
-  - `ddcutil` talks to the monitor over DDC/CI. Dell P2425E / P2423 only
-    advertise D6 power `01` (On) and `04`/`05` (hard off). Hard off drops
-    HDMI on Valleyview i915, and `03` is not implemented. Humid therefore
-    keeps D6 at `01` and blanks with **brightness VCP `10` = 0**, restoring
-    the previous brightness on wake (`backlight_ddc_brightness_feature`,
-    default `10`). `backlight_ddc_on_value` still forces D6 on (`01`).
-    Set `backlight_ddc_bus` when more than one `/dev/i2c-N` may be present.
-    The Humid user must have access to that device.
+  - `ddcutil` talks to the monitor over DDC/CI. The original D6 power
+    codes remain: `backlight_ddc_on_value` (default `01` On) and
+    `backlight_ddc_off_value` (default `03` Suspend). Brands that implement
+    02/03 still get that. `04`/`05` (hard off) are refused because they drop
+    HDMI on Valleyview i915. In addition, Humid blanks with **brightness
+    VCP `10` = 0** and restores the saved value on wake. Disable the extra
+    with `backlight_ddc_brightness_feature: "none"`. Set
+    `backlight_ddc_bus` when more than one `/dev/i2c-N` may be present.
     A key or mouse button wakes a blanked display before the disconnected
     overlay consumes input. Operator activity restarts `backlight_off_delay_seconds`.
   - `x11-dpms` uses `xset` to force the X11 display on, or into DPMS
@@ -563,17 +563,17 @@ ProjectSettings PROJECTSETTINGS(
 );
 ```
 
-For Dell P-series on Intel Valleyview, do not use X11 DPMS or D6=`04`.
-The panel only implements D6 `01`/`04`/`05`. Humid blanks with brightness
-0 and wakes with D6=`01` plus the saved VCP 10 value. Requires `ddcutil`
-2.x (Bookworm: local `2.2.0-1+bookworm1`), `i2c-dev`, and `hmi` access
-to `/dev/i2c-*`.
+For Dell P-series on Intel Valleyview, D6 `03` is not in the EDID
+capability list (`01`/`04`/`05` only). Keep D6 on=`01` off=`03` (no-op
+on these Dells) and rely on the brightness blank. Requires `ddcutil` 2.x
+(Bookworm: `2.2.0-1+bookworm1`), `i2c-dev`, and `hmi` access to `/dev/i2c-*`.
 
 ```humid
 ProjectSettings PROJECTSETTINGS(
   backlight_interface: "ddcutil",
   backlight_ddc_bus: 5,
   backlight_ddc_on_value: "01",
+  backlight_ddc_off_value: "03",
   backlight_control_point: "P_CoreHmiBacklightEnabled",
   backlight_off_delay_seconds: 300
 );

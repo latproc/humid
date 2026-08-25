@@ -1326,47 +1326,73 @@ bool EditorGUI::applyBacklight(bool enabled) {
 		applied = true;
 	}
 	else if (interface_name == "ddcutil") {
-		// These Dells only advertise D6 01/04/05. 04/05 are powered sleep and
-		// drop HDMI on Valleyview. Blank with brightness (VCP 10) instead.
 		auto command = ddcutilPrefix(settings);
+		auto normalise_d6 = [](std::string vcp) {
+			if (vcp.size() >= 2 && vcp[0] == '0' && (vcp[1] == 'x' || vcp[1] == 'X'))
+				vcp = vcp.substr(2);
+			if (vcp.size() == 1)
+				vcp.insert(vcp.begin(), '0');
+			return vcp;
+		};
+		const std::string d6 = normalise_d6(settings->getStringProperty(
+			enabled ? "backlight_ddc_on_value" : "backlight_ddc_off_value",
+			enabled ? "01" : "03"));
 		const std::string bright_feat = settings->getStringProperty(
 			"backlight_ddc_brightness_feature", "10");
+		const bool use_brightness = !bright_feat.empty() && bright_feat != "none";
+
 		if (enabled) {
-			std::string on_vcp = settings->getStringProperty("backlight_ddc_on_value", "01");
-			if (on_vcp.size() >= 2 && on_vcp[0] == '0' && (on_vcp[1] == 'x' || on_vcp[1] == 'X'))
-				on_vcp = on_vcp.substr(2);
 			auto power_on = command;
-			power_on.insert(power_on.end(), {"setvcp", "D6", on_vcp});
+			power_on.insert(power_on.end(), {"setvcp", "D6", d6});
 			if (!runDisplayCommand(power_on)) {
-				std::cerr << "DDC/CI display power command failed (D6=" << on_vcp << ")\n";
+				std::cerr << "DDC/CI display power command failed (D6=" << d6 << ")\n";
 				return false;
 			}
-			int restore = backlight_ddc_saved_brightness;
-			if (restore < 0)
-				restore = settings->getIntProperty("backlight_on_brightness", -1);
-			if (restore >= 0) {
-				auto bright_on = command;
-				bright_on.insert(bright_on.end(),
-					{"setvcp", bright_feat, std::to_string(restore)});
-				if (!runDisplayCommand(bright_on)) {
-					std::cerr << "DDC/CI brightness restore failed\n";
-					return false;
+			if (use_brightness) {
+				int restore = backlight_ddc_saved_brightness;
+				if (restore < 0)
+					restore = settings->getIntProperty("backlight_on_brightness", -1);
+				if (restore >= 0) {
+					auto bright_on = command;
+					bright_on.insert(bright_on.end(),
+						{"setvcp", bright_feat, std::to_string(restore)});
+					if (!runDisplayCommand(bright_on)) {
+						std::cerr << "DDC/CI brightness restore failed\n";
+						return false;
+					}
 				}
 			}
 			applied = true;
 		}
 		else {
-			if (backlight_ddc_saved_brightness < 0) {
-				auto getvcp = command;
-				getvcp.insert(getvcp.end(), {"getvcp", bright_feat});
-				backlight_ddc_saved_brightness =
-					parseDdcutilCurrentValue(runDisplayCommandOutput(getvcp));
+			if (use_brightness) {
+				if (backlight_ddc_saved_brightness < 0) {
+					auto getvcp = command;
+					getvcp.insert(getvcp.end(), {"getvcp", bright_feat});
+					backlight_ddc_saved_brightness =
+						parseDdcutilCurrentValue(runDisplayCommandOutput(getvcp));
+				}
+				auto bright_off = command;
+				bright_off.insert(bright_off.end(), {"setvcp", bright_feat, "0"});
+				if (!runDisplayCommand(bright_off)) {
+					std::cerr << "DDC/CI brightness blank failed\n";
+					return false;
+				}
 			}
-			auto bright_off = command;
-			bright_off.insert(bright_off.end(), {"setvcp", bright_feat, "0"});
-			if (!runDisplayCommand(bright_off)) {
-				std::cerr << "DDC/CI brightness blank failed\n";
-				return false;
+			// Keep D6 off codes for monitors that implement 02/03. Skip 04/05:
+			// those are powered sleep and drop HDMI on Valleyview i915.
+			if (d6 != "04" && d6 != "05") {
+				auto power_off = command;
+				power_off.insert(power_off.end(), {"setvcp", "D6", d6});
+				if (!runDisplayCommand(power_off)) {
+					std::cerr << "DDC/CI display power command failed (D6=" << d6 << ")\n";
+					if (!use_brightness)
+						return false;
+				}
+			}
+			else {
+				std::cerr << "Refusing DDC D6=" << d6
+				          << " (hard off); using brightness blank only\n";
 			}
 			applied = true;
 		}
