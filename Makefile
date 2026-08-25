@@ -4,7 +4,12 @@ ifndef JOBS
     JOBS:=-j4
 endif
 
-all:	
+# Vendored Clockwork client. Humid sources can call new cw_client symbols
+# after a git pull; the staged archive is not rebuilt by the humid target.
+client:
+	$(MAKE) -C clockwork client-install JOBS=$(JOBS)
+
+all: client
 	[ -d "build" ] || mkdir build
 	cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make $(JOBS) && make install
 
@@ -18,7 +23,7 @@ panel-update-restart:
 
 
 # Release is the default tree under build/ (not build/Release).
-release:
+release: client
 	[ -d "build" ] || mkdir build
 	cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make $(JOBS)
 
