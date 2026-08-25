@@ -4,14 +4,15 @@ ifndef JOBS
     JOBS:=-j4
 endif
 
-# Vendored Clockwork client. Humid sources can call new cw_client symbols
-# after a git pull; the staged archive is not rebuilt by the humid target.
-client:
-	$(MAKE) -C clockwork client-install JOBS=$(JOBS)
-
+# Restage the vendored Clockwork client first. `client` must not be the
+# first target: GNU make treats that as the default, so a bare `make`
+# would stop after libcw_client.a and never build humid.
 all: client
 	[ -d "build" ] || mkdir build
 	cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make $(JOBS) && make install
+
+client:
+	$(MAKE) -C clockwork client-install JOBS=$(JOBS)
 
 # Full panel update: pull master, build the vendored client, then build Humid.
 # See scripts/update-panel.sh --help
