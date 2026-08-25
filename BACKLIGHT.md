@@ -533,12 +533,12 @@ ProjectSettings PROJECTSETTINGS(
     The Humid user must have access to the corresponding `/dev/i2c-N` device.
     A key or mouse button wakes a blanked display before the disconnected
     overlay consumes input. Operator activity restarts `backlight_off_delay_seconds`.
-  - `x11-dpms` uses `xset` to force the X11 display on, or into DPMS standby
-    when blanking. Do not use `force off`: that drops HDMI on Dell P2425E /
-    Intel Valleyview. Automatic DPMS stays disabled while the control point is
-    on (`xset -dpms`) so an idle kiosk does not blank itself. DPMS is enabled
-    only for an explicit standby request. Humid must inherit `DISPLAY` and X
-    authority.
+  - `x11-dpms` uses `xset` to force the X11 display on, or into DPMS
+    **standby** when blanking. Never `force off`: DPMS Off / VCP D6=`04`
+    drops HDMI on Dell P-series / Valleyview i915. Blanking also sets
+    `xset dpms 0 0 0` so the server cannot escalate standby to off after
+    10 minutes. While the control point is on, automatic DPMS stays
+    disabled (`xset -dpms`). Humid must inherit `DISPLAY` and X authority.
   - `wayland-dpms` uses `wlopm` to power the configured Wayland output on or
     off. Set `backlight_output` to the compositor output name, for example
     `HDMI-A-1`; Humid must inherit `XDG_RUNTIME_DIR`. Install `wlopm` on the

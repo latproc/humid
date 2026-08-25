@@ -1326,12 +1326,16 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			}
 		}
 		else {
+			// Zero the Off timeout first. Default 600s standby→off is what
+			// puts Valleyview i915 into HDMI-drop "mode 4".
+			if (!runDisplayCommand({"xset", "dpms", "0", "0", "0"})) {
+				std::cerr << "Unable to clear X11 DPMS off timeout\n";
+				return false;
+			}
 			if (!runDisplayCommand({"xset", "+dpms"})) {
 				std::cerr << "Unable to enable X11 DPMS\n";
 				return false;
 			}
-			// Standby/suspend keep HDMI up on these Dells. force off (DPMS
-			// Off) drops HPD and leaves the HMI at 320x200 after wake.
 			if (!runDisplayCommand({"xset", "dpms", "force", "standby"})) {
 				std::cerr << "X11 DPMS display command failed\n";
 				return false;
