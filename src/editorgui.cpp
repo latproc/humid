@@ -106,6 +106,8 @@ std::string runDisplayCommandOutput(const std::vector<std::string> &arguments) {
 }
 
 std::vector<std::string> ddcutilPrefix(Structure *settings) {
+	// Do not pass --noverify: ddcutil 2.2.0 defaults to --verify and then
+	// logs "Both --verify and --noverify specified" on every call.
 	std::vector<std::string> command = {"ddcutil"};
 	const int bus = settings->getIntProperty("backlight_ddc_bus", 0);
 	if (bus > 0) {
@@ -490,6 +492,19 @@ void EditorGUI::idle(bool gui_is_ready) {
 
 void EditorGUI::draw(NVGcontext *ctx) {
 	ClockworkClient::draw(ctx);
+	if (backlight_is_blanked) {
+		// VCP 10=0 does not actually blank Dell P2425E; paint black pixels
+		// instead of D6=04, which drops HDMI on Valleyview i915.
+		const float width = static_cast<float>(size().x());
+		const float height = static_cast<float>(size().y());
+		nvgSave(ctx);
+		nvgBeginPath(ctx);
+		nvgRect(ctx, 0, 0, width, height);
+		nvgFillColor(ctx, nvgRGBA(0, 0, 0, 255));
+		nvgFill(ctx);
+		nvgRestore(ctx);
+		return;
+	}
 	if (!control_disconnected_overlay_visible) return;
 
 	const float width = static_cast<float>(size().x());
@@ -1289,11 +1304,13 @@ void EditorGUI::updateBacklightRequest(const std::string &point_name, const Valu
 	if (backlight_request_known && backlight_requested_on == requested) return;
 	backlight_request_known = true;
 	backlight_requested_on = requested;
-	std::cerr << "Backlight control point " << configured_point << " is " << (requested ? "on" : "off") << "\n";
+	std::cerr << "Backlight control point " << configured_point << " is "
+	          << (requested ? "on" : "off") << std::endl;
 	if (requested) {
 		backlight_off_pending = false;
 		backlight_is_blanked = false;
 		applyBacklight(true);
+		requestRedraw();
 	}
 	else {
 		backlight_off_requested_at = std::chrono::steady_clock::now();
@@ -1345,37 +1362,37 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			auto power_on = command;
 			power_on.insert(power_on.end(), {"setvcp", "D6", d6});
 			if (!runDisplayCommand(power_on)) {
-				std::cerr << "DDC/CI display power command failed (D6=" << d6 << ")\n";
-				return false;
+				std::cerr << "DDC/CI display power command failed (D6=" << d6
+				          << "); continuing with brightness restore" << std::endl;
 			}
 			if (use_brightness) {
 				int restore = backlight_ddc_saved_brightness;
-				if (restore < 0)
-					restore = settings->getIntProperty("backlight_on_brightness", -1);
-				if (restore >= 0) {
-					auto bright_on = command;
-					bright_on.insert(bright_on.end(),
-						{"setvcp", bright_feat, std::to_string(restore)});
-					if (!runDisplayCommand(bright_on)) {
-						std::cerr << "DDC/CI brightness restore failed\n";
-						return false;
-					}
+				if (restore < 1)
+					restore = settings->getIntProperty("backlight_on_brightness", 75);
+				auto bright_on = command;
+				bright_on.insert(bright_on.end(),
+					{"setvcp", bright_feat, std::to_string(restore)});
+				if (!runDisplayCommand(bright_on)) {
+					std::cerr << "DDC/CI brightness restore failed" << std::endl;
+					return false;
 				}
+				std::cerr << "DDC/CI wake D6=" << d6 << " brightness=" << restore
+				          << std::endl;
 			}
 			applied = true;
 		}
 		else {
 			if (use_brightness) {
-				if (backlight_ddc_saved_brightness < 0) {
-					auto getvcp = command;
-					getvcp.insert(getvcp.end(), {"getvcp", bright_feat});
-					backlight_ddc_saved_brightness =
-						parseDdcutilCurrentValue(runDisplayCommandOutput(getvcp));
-				}
+				auto getvcp = command;
+				getvcp.insert(getvcp.end(), {"getvcp", bright_feat});
+				const int current =
+					parseDdcutilCurrentValue(runDisplayCommandOutput(getvcp));
+				if (current > 0)
+					backlight_ddc_saved_brightness = current;
 				auto bright_off = command;
 				bright_off.insert(bright_off.end(), {"setvcp", bright_feat, "0"});
 				if (!runDisplayCommand(bright_off)) {
-					std::cerr << "DDC/CI brightness blank failed\n";
+					std::cerr << "DDC/CI brightness blank failed" << std::endl;
 					return false;
 				}
 			}
@@ -1385,15 +1402,19 @@ bool EditorGUI::applyBacklight(bool enabled) {
 				auto power_off = command;
 				power_off.insert(power_off.end(), {"setvcp", "D6", d6});
 				if (!runDisplayCommand(power_off)) {
-					std::cerr << "DDC/CI display power command failed (D6=" << d6 << ")\n";
+					std::cerr << "DDC/CI display power command failed (D6=" << d6
+					          << ")" << std::endl;
 					if (!use_brightness)
 						return false;
 				}
 			}
 			else {
 				std::cerr << "Refusing DDC D6=" << d6
-				          << " (hard off); using brightness blank only\n";
+				          << " (hard off); using brightness/overlay blank only"
+				          << std::endl;
 			}
+			std::cerr << "DDC/CI blank D6=" << d6 << " brightness=0 saved="
+			          << backlight_ddc_saved_brightness << std::endl;
 			applied = true;
 		}
 	}
@@ -1494,6 +1515,7 @@ void EditorGUI::processBacklightTimeout() {
 		// Remember the blank even if DDC/DPMS failed, so a later key/mouse
 		// still takes the wake path instead of being eaten by the overlay.
 		backlight_is_blanked = true;
+		requestRedraw();
 	}
 }
 
@@ -1509,6 +1531,7 @@ bool EditorGUI::tryWakeBlankedDisplay() {
 	backlight_is_blanked = false;
 	backlight_off_requested_at = std::chrono::steady_clock::now();
 	backlight_off_pending = true;
+	requestRedraw();
 	return true;
 }
 
