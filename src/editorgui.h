@@ -195,6 +195,9 @@ private:
 	void updateBacklightRequest(const std::string &point_name, const Value &value);
 	bool applyBacklight(bool enabled);
 	void processBacklightTimeout();
+	/** True if the event should be swallowed (display was blanked). */
+	bool tryWakeBlankedDisplay();
+	void noteBacklightOperatorActivity();
 };
 
 std::ostream &operator<<(std::ostream &out, const EditorGUI &m);

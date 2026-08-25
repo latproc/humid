@@ -523,10 +523,16 @@ ProjectSettings PROJECTSETTINGS(
     DSI driver: its LEDs resume but its video image may not.
   - `edatec-ddc` runs the installed `ed-ddc-server` brightness command; use
     it only where that tool and a DDC-capable display are available.
-  - `ddcutil` sends the standard monitor power-mode VCP `D6` using `ddcutil`:
-    `01` wakes the monitor and `04` requests standby. Set `backlight_ddc_bus`
+  - `ddcutil` sends the standard monitor power-mode VCP `D6` using `ddcutil`.
+    Codes: `01` On, `02` Standby, `03` Suspend, `04` Off. Defaults are `01`
+    on and **`03` suspend** off. Do not default to `04` (hard off): that
+    drops HDMI on Dell P2425E / Intel Valleyview so a PC-attached keyboard
+    cannot wake the panel. Override with `backlight_ddc_on_value` /
+    `backlight_ddc_off_value` (hex, e.g. `"03"`). Set `backlight_ddc_bus`
     to the monitor's I2C bus number when more than one display may be present.
     The Humid user must have access to the corresponding `/dev/i2c-N` device.
+    A key or mouse button wakes a blanked display before the disconnected
+    overlay consumes input. Operator activity restarts `backlight_off_delay_seconds`.
   - `x11-dpms` uses `xset` to force the X11 display on or into DPMS standby.
     Humid must inherit the active X session's `DISPLAY` and X authority. It
     enables DPMS immediately before an off request, so kiosk startup may keep

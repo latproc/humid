@@ -170,16 +170,13 @@ bool EditorGUI::keyboardEvent(int key, int scancode , int action, int modifiers)
 		backlight_wake_key = key;
 		backlight_wake_scancode = scancode;
 		backlight_wake_key_held = true;
-		if (!applyBacklight(true)) {
+		if (!tryWakeBlankedDisplay()) {
 			backlight_wake_key_held = false;
 			return true;
 		}
-		backlight_is_blanked = false;
-		// The Clockwork point remains off, so start a fresh off-delay period.
-		backlight_off_requested_at = std::chrono::steady_clock::now();
-		backlight_off_pending = true;
 		return true;
 	}
+	if (action == GLFW_PRESS) noteBacklightOperatorActivity();
 	// The disconnected overlay consumes operator input, but only after the
 	// display wake path above has had an opportunity to handle it.
 	if (control_disconnected_overlay_visible) return true;
@@ -1036,6 +1033,8 @@ bool EditorGUI::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool do
 
 	using namespace nanogui;
 	requestRedraw();
+	if (down && backlight_is_blanked && tryWakeBlankedDisplay()) return true;
+	if (down) noteBacklightOperatorActivity();
 	if (control_disconnected_overlay_visible) return true;
 
 	nanogui::Window *window = w_user->getWindow();
@@ -1292,9 +1291,21 @@ bool EditorGUI::applyBacklight(bool enabled) {
 			command.push_back("--bus");
 			command.push_back(std::to_string(bus));
 		}
-		command.insert(command.end(), {"setvcp", "D6", enabled ? "01" : "04"});
+		// VCP D6: 01 On, 02 Standby, 03 Suspend, 04 Off.
+		// Default off is Suspend (03), not Off (04). Hard-off drops HDMI on
+		// these Dells / Valleyview i915 so a PC-attached keyboard cannot wake.
+		std::string vcp = settings->getStringProperty(
+			enabled ? "backlight_ddc_on_value" : "backlight_ddc_off_value",
+			enabled ? "01" : "03");
+		if (vcp.size() >= 2 && vcp[0] == '0' && (vcp[1] == 'x' || vcp[1] == 'X')) {
+			vcp = vcp.substr(2);
+		}
+		if (vcp.size() == 1) {
+			vcp.insert(vcp.begin(), '0');
+		}
+		command.insert(command.end(), {"setvcp", "D6", vcp});
 		if (!runDisplayCommand(command)) {
-			std::cerr << "DDC/CI display power command failed\n";
+			std::cerr << "DDC/CI display power command failed (D6=" << vcp << ")\n";
 			return false;
 		}
 		applied = true;
@@ -1386,8 +1397,26 @@ void EditorGUI::processBacklightTimeout() {
 	const auto delay = std::chrono::seconds(settings->getIntProperty("backlight_off_delay_seconds", 0));
 	if (std::chrono::steady_clock::now() - backlight_off_requested_at >= delay) {
 		backlight_off_pending = false;
-		backlight_is_blanked = applyBacklight(false);
+		applyBacklight(false);
+		// Remember the blank even if DDC/DPMS failed, so a later key/mouse
+		// still takes the wake path instead of being eaten by the overlay.
+		backlight_is_blanked = true;
 	}
+}
+
+void EditorGUI::noteBacklightOperatorActivity() {
+	if (backlight_off_pending) {
+		backlight_off_requested_at = std::chrono::steady_clock::now();
+	}
+}
+
+bool EditorGUI::tryWakeBlankedDisplay() {
+	if (!backlight_is_blanked) return false;
+	if (!applyBacklight(true)) return false;
+	backlight_is_blanked = false;
+	backlight_off_requested_at = std::chrono::steady_clock::now();
+	backlight_off_pending = true;
+	return true;
 }
 
 void EditorGUI::processModbusInitialisation(const std::string group_name, cJSON *obj) {
