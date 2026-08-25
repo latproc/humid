@@ -194,6 +194,7 @@ private:
 	bool backlight_request_known = false;
 	bool backlight_requested_on = true;
 	bool backlight_initialised = false;
+	int backlight_ddc_saved_brightness = -1;
 	std::chrono::steady_clock::time_point backlight_off_requested_at;
 	void updateBacklightRequest(const std::string &point_name, const Value &value);
 	bool applyBacklight(bool enabled);

@@ -523,14 +523,14 @@ ProjectSettings PROJECTSETTINGS(
     DSI driver: its LEDs resume but its video image may not.
   - `edatec-ddc` runs the installed `ed-ddc-server` brightness command; use
     it only where that tool and a DDC-capable display are available.
-  - `ddcutil` sends the standard monitor power-mode VCP `D6` using `ddcutil`.
-    Codes: `01` On, `02` Standby, `03` Suspend, `04` Off. Defaults are `01`
-    on and **`03` suspend** off. Do not default to `04` (hard off): that
-    drops HDMI on Dell P2425E / Intel Valleyview so a PC-attached keyboard
-    cannot wake the panel. Override with `backlight_ddc_on_value` /
-    `backlight_ddc_off_value` (hex, e.g. `"03"`). Set `backlight_ddc_bus`
-    to the monitor's I2C bus number when more than one display may be present.
-    The Humid user must have access to the corresponding `/dev/i2c-N` device.
+  - `ddcutil` talks to the monitor over DDC/CI. Dell P2425E / P2423 only
+    advertise D6 power `01` (On) and `04`/`05` (hard off). Hard off drops
+    HDMI on Valleyview i915, and `03` is not implemented. Humid therefore
+    keeps D6 at `01` and blanks with **brightness VCP `10` = 0**, restoring
+    the previous brightness on wake (`backlight_ddc_brightness_feature`,
+    default `10`). `backlight_ddc_on_value` still forces D6 on (`01`).
+    Set `backlight_ddc_bus` when more than one `/dev/i2c-N` may be present.
+    The Humid user must have access to that device.
     A key or mouse button wakes a blanked display before the disconnected
     overlay consumes input. Operator activity restarts `backlight_off_delay_seconds`.
   - `x11-dpms` uses `xset` to force the X11 display on, or into DPMS
@@ -563,21 +563,17 @@ ProjectSettings PROJECTSETTINGS(
 );
 ```
 
-For Dell P2425E on Intel Valleyview, plant **122** uses DDC suspend (not
-X11 `force off`) to keep HDMI up. Requires `ddcutil` **2.x**, `i2c-dev`,
-and a working `/dev/i2c-*` ACL (`uaccess` or group `i2c`). Debian
-Bookworm `ddcutil` 1.4.1 on plant **121** is not that stack: `setvcp D6 03`
-either fails verification or lands as **04** (hard off). Leave 121 on
-`x11-dpms` standby until a 2.x `ddcutil` is available.
-
-Plant 122 settings:
+For Dell P-series on Intel Valleyview, do not use X11 DPMS or D6=`04`.
+The panel only implements D6 `01`/`04`/`05`. Humid blanks with brightness
+0 and wakes with D6=`01` plus the saved VCP 10 value. Requires `ddcutil`
+2.x (Bookworm: local `2.2.0-1+bookworm1`), `i2c-dev`, and `hmi` access
+to `/dev/i2c-*`.
 
 ```humid
 ProjectSettings PROJECTSETTINGS(
   backlight_interface: "ddcutil",
   backlight_ddc_bus: 5,
   backlight_ddc_on_value: "01",
-  backlight_ddc_off_value: "03",
   backlight_control_point: "P_CoreHmiBacklightEnabled",
   backlight_off_delay_seconds: 300
 );

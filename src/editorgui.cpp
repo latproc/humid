@@ -8,6 +8,8 @@
 #include <algorithm>
 #include <fstream>
 #include <cstdlib>
+#include <cstdio>
+#include <cstring>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <boost/algorithm/string.hpp>
@@ -84,6 +86,44 @@ bool runDisplayCommand(const std::vector<std::string> &arguments) {
 	int status = 0;
 	if (waitpid(pid, &status, 0) < 0) return false;
 	return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+}
+
+std::string runDisplayCommandOutput(const std::vector<std::string> &arguments) {
+	if (arguments.empty()) return std::string();
+	std::string cmd;
+	for (const auto &argument : arguments) {
+		if (!cmd.empty()) cmd += ' ';
+		cmd += argument;
+	}
+	FILE *pipe = popen(cmd.c_str(), "r");
+	if (!pipe) return std::string();
+	char buf[256];
+	std::string out;
+	while (fgets(buf, sizeof(buf), pipe))
+		out += buf;
+	pclose(pipe);
+	return out;
+}
+
+std::vector<std::string> ddcutilPrefix(Structure *settings) {
+	std::vector<std::string> command = {"ddcutil"};
+	const int bus = settings->getIntProperty("backlight_ddc_bus", 0);
+	if (bus > 0) {
+		command.push_back("--bus");
+		command.push_back(std::to_string(bus));
+	}
+	return command;
+}
+
+int parseDdcutilCurrentValue(const std::string &output) {
+	const char *key = "current value =";
+	const auto pos = output.find(key);
+	if (pos != std::string::npos)
+		return std::atoi(output.c_str() + pos + std::strlen(key));
+	int current = -1, maxv = -1;
+	if (std::sscanf(output.c_str(), "VCP %*s %*s %d %d", &current, &maxv) >= 1)
+		return current;
+	return -1;
 }
 }
 
@@ -1286,30 +1326,50 @@ bool EditorGUI::applyBacklight(bool enabled) {
 		applied = true;
 	}
 	else if (interface_name == "ddcutil") {
-		std::vector<std::string> command = {"ddcutil"};
-		const int bus = settings->getIntProperty("backlight_ddc_bus", 0);
-		if (bus > 0) {
-			command.push_back("--bus");
-			command.push_back(std::to_string(bus));
+		// These Dells only advertise D6 01/04/05. 04/05 are powered sleep and
+		// drop HDMI on Valleyview. Blank with brightness (VCP 10) instead.
+		auto command = ddcutilPrefix(settings);
+		const std::string bright_feat = settings->getStringProperty(
+			"backlight_ddc_brightness_feature", "10");
+		if (enabled) {
+			std::string on_vcp = settings->getStringProperty("backlight_ddc_on_value", "01");
+			if (on_vcp.size() >= 2 && on_vcp[0] == '0' && (on_vcp[1] == 'x' || on_vcp[1] == 'X'))
+				on_vcp = on_vcp.substr(2);
+			auto power_on = command;
+			power_on.insert(power_on.end(), {"setvcp", "D6", on_vcp});
+			if (!runDisplayCommand(power_on)) {
+				std::cerr << "DDC/CI display power command failed (D6=" << on_vcp << ")\n";
+				return false;
+			}
+			int restore = backlight_ddc_saved_brightness;
+			if (restore < 0)
+				restore = settings->getIntProperty("backlight_on_brightness", -1);
+			if (restore >= 0) {
+				auto bright_on = command;
+				bright_on.insert(bright_on.end(),
+					{"setvcp", bright_feat, std::to_string(restore)});
+				if (!runDisplayCommand(bright_on)) {
+					std::cerr << "DDC/CI brightness restore failed\n";
+					return false;
+				}
+			}
+			applied = true;
 		}
-		// VCP D6: 01 On, 02 Standby, 03 Suspend, 04 Off.
-		// Default off is Suspend (03), not Off (04). Hard-off drops HDMI on
-		// these Dells / Valleyview i915 so a PC-attached keyboard cannot wake.
-		std::string vcp = settings->getStringProperty(
-			enabled ? "backlight_ddc_on_value" : "backlight_ddc_off_value",
-			enabled ? "01" : "03");
-		if (vcp.size() >= 2 && vcp[0] == '0' && (vcp[1] == 'x' || vcp[1] == 'X')) {
-			vcp = vcp.substr(2);
+		else {
+			if (backlight_ddc_saved_brightness < 0) {
+				auto getvcp = command;
+				getvcp.insert(getvcp.end(), {"getvcp", bright_feat});
+				backlight_ddc_saved_brightness =
+					parseDdcutilCurrentValue(runDisplayCommandOutput(getvcp));
+			}
+			auto bright_off = command;
+			bright_off.insert(bright_off.end(), {"setvcp", bright_feat, "0"});
+			if (!runDisplayCommand(bright_off)) {
+				std::cerr << "DDC/CI brightness blank failed\n";
+				return false;
+			}
+			applied = true;
 		}
-		if (vcp.size() == 1) {
-			vcp.insert(vcp.begin(), '0');
-		}
-		command.insert(command.end(), {"setvcp", "D6", vcp});
-		if (!runDisplayCommand(command)) {
-			std::cerr << "DDC/CI display power command failed (D6=" << vcp << ")\n";
-			return false;
-		}
-		applied = true;
 	}
 	else if (interface_name == "x11-dpms") {
 		// Automatic DPMS must stay off while the Clockwork point is on: these
