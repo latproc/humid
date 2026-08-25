@@ -178,6 +178,7 @@ public:
 		std::string local_commands;
 		bool needs_refresh;
 		bool channel_was_ready;
+		uint64_t last_channel_ready_us;
 
 	};
 
@@ -232,6 +233,9 @@ public:
 	virtual void handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long time, const std::string &op, std::list<Value> *message) {};
 	virtual void update(ClockworkClient::Connection *connection, bool allow_data_sync);
 	virtual void afterFrameRendered() {}
+	// Called every main-loop wake, including when no GPU frame is painted.
+	// Return true to force a redraw (used by capture timeout/wait).
+	virtual bool pollCapture() { return false; }
 
 	std::map<std::string, Connection *>getConnections() { return connections; }
 

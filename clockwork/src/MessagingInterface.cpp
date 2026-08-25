@@ -70,7 +70,58 @@ static std::string thread_name() {
     return tnam;
 }
 
+namespace {
+
+bool g_recv_left_multipart = false;
+
+// Finish a multipart ZMQ message. Returning after a frame with more()==true
+// leaves libzmq's fair-queue in _more and the next recv can abort:
+// Assertion failed: !_more (src/fq.cpp:80).
+bool drainUntilLastFrame(zmq::socket_t &sock, zmq::message_t &message) {
+    int waits = 0;
+    while (message.more()) {
+        zmq::pollitem_t items[] = {{(void *)sock, 0, ZMQ_POLLIN, 0}};
+        int n = 0;
+        try {
+            n = zmq::poll(&items[0], 1, 200);
+        }
+        catch (const zmq::error_t &) {
+            g_recv_left_multipart = true;
+            return false;
+        }
+        if (!n) {
+            if (++waits >= 10) {
+                std::cerr << thread_name()
+                          << " safeRecv: timed out draining multipart message\n";
+                g_recv_left_multipart = true;
+                return false;
+            }
+            continue;
+        }
+        try {
+            if (!sock.recv(&message, 0)) {
+                g_recv_left_multipart = true;
+                return false;
+            }
+        }
+        catch (const zmq::error_t &e) {
+            std::cerr << thread_name() << " " << e.what()
+                      << " safeRecv drain error " << errno << " " << zmq_strerror(errno)
+                      << "\n";
+            g_recv_left_multipart = true;
+            return false;
+        }
+        waits = 0;
+    }
+    return true;
+}
+
+} // namespace
+
+bool safeRecvLeftMultipart() { return g_recv_left_multipart; }
+
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout) {
+    g_recv_left_multipart = false;
     *response_len = 0;
     if (block && timeout == 0) {
         timeout = 500;
@@ -90,26 +141,23 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
                           << zmq_strerror(errno) << "\n";
             }
             if (items[0].revents & ZMQ_POLLIN) {
-                bool done = false;
                 zmq::message_t message;
-                while (!done) {
-                    {
-                        if ((sock.recv(&message, ZMQ_DONTWAIT))) {
-                            *response_len = message.size();
-                            *buf = new char[*response_len + 1];
-                            memcpy(*buf, message.data(), *response_len);
-                            (*buf)[*response_len] = 0;
-                            return true;
-                        }
-                        else {
-                            if (!block) {
-                                done = true;
-                            }
-                        }
+                if (!sock.recv(&message, ZMQ_DONTWAIT)) {
+                    if (!block) {
+                        return false;
                     }
+                    continue;
                 }
+                if (message.more() && !drainUntilLastFrame(sock, message)) {
+                    return false;
+                }
+                *response_len = message.size();
+                *buf = new char[*response_len + 1];
+                memcpy(*buf, message.data(), *response_len);
+                (*buf)[*response_len] = 0;
+                return true;
             }
-            return (*response_len == 0) ? false : true;
+            return false;
         }
         catch (const zmq::error_t &e) {
             std::cerr << thread_name() << " " << e.what() << " safeRecv error " << errno << " " << zmq_strerror(errno)
@@ -132,6 +180,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout,
               MessageHeader &header) {
+    g_recv_left_multipart = false;
     *response_len = 0;
     if (block && timeout == 0) {
         timeout = 500;
@@ -147,26 +196,24 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
                 continue;
             }
             if (items[0].revents & ZMQ_POLLIN) {
-
-                bool done = false;
                 zmq::message_t message;
-                while (!done) {
-                    if (sock.recv(&message, ZMQ_DONTWAIT)) {
-                        if (message.more() && message.size() == sizeof(MessageHeader)) {
-                            memcpy(&header, message.data(), sizeof(MessageHeader));
-                            continue;
-                        }
-                        *response_len = message.size();
-                        *buf = new char[*response_len + 1];
-                        memcpy(*buf, message.data(), *response_len);
-                        (*buf)[*response_len] = 0;
-                        return true;
-                    }
-                    if (!block) {
-                        done = true;
+                if (!sock.recv(&message, ZMQ_DONTWAIT)) {
+                    return false;
+                }
+                if (message.more() && message.size() == sizeof(MessageHeader)) {
+                    memcpy(&header, message.data(), sizeof(MessageHeader));
+                    if (!drainUntilLastFrame(sock, message)) {
+                        return false;
                     }
                 }
-                return (*response_len == 0) ? false : true;
+                else if (message.more() && !drainUntilLastFrame(sock, message)) {
+                    return false;
+                }
+                *response_len = message.size();
+                *buf = new char[*response_len + 1];
+                memcpy(*buf, message.data(), *response_len);
+                (*buf)[*response_len] = 0;
+                return true;
             }
             return false;
         }
@@ -226,7 +273,7 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
                        << "\n";
             }
             if (--retries == 0) {
-                exit(EXIT_FAILURE);
+                return false;
             }
             if (errno == EINTR) {
                 std::cerr << "interrupted system call, retrying\n";

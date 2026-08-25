@@ -201,3 +201,15 @@ segfaults.
   a misleading Clockwork diagnostic unless a separate connection failure is
   present; the current condition in `MessagingInterface::connect()` is
   inverted and does not itself stop `socket->connect()`.
+
+## Capture Mode
+
+- `--capture` waits up to `--capture_timeout` for Clockwork snapshots on the
+  **connections the active screen actually binds** (Core, Grab, or both).
+  Layout-only pages do not wait. When the wait expires, Humid writes the
+  current frame anyway instead of exiting with no PNG.
+- Do not capture against a live plant HMI that already owns the same
+  `PANEL_CHANNEL_*` names; use local simulation or capture on the panel.
+- Incomplete ZMQ multipart receives must be drained (or the SUB socket
+  replaced). Returning after a `more()` frame aborts libzmq
+  (`Assertion failed: !_more (src/fq.cpp:80)`, humid exit 134).

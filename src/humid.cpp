@@ -484,7 +484,8 @@ int main(int argc, const char ** argv ) {
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
 	("capture", po::value<std::string>(&capture_file_name)->default_value(""), "write a PNG capture to this file and exit")
 	("screen", po::value<std::string>(&capture_screen_name)->default_value(""), "set the active screen for this run")
-	("capture_timeout", po::value<int>(&capture_timeout_seconds)->default_value(60), "force capture mode to exit after this many seconds")
+	("capture_timeout", po::value<int>(&capture_timeout_seconds)->default_value(60),
+		"wait this many seconds for Clockwork data used by the screen, then write the PNG anyway")
 	("refresh", po::value<int>(&mainloop_refresh_ms)->default_value(100),
 		"UI idle refresh period in milliseconds (default 100; 0 disables timer redraws)")
 	;
@@ -729,7 +730,7 @@ int main(int argc, const char ** argv ) {
 				  << (mainloop_refresh_ms == 0 ? " (event-driven only)" : "")
 				  << "\n" << std::flush;
 			nanogui::mainloop(mainloop_refresh_ms);
-			if (app->captureTimedOut()) {
+			if (!capture_file_name.empty() && !app->captureWritten()) {
 				nanogui::shutdown();
 				return EXIT_FAILURE;
 			}

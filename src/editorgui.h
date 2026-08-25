@@ -8,6 +8,7 @@
 
 #include <ostream>
 #include <string>
+#include <set>
 #include <chrono>
 #include <nanogui/common.h>
 #include <nanogui/widget.h>
@@ -120,14 +121,16 @@ public:
 	void configureCapture(const std::string &path, const std::string &screen_name, int timeout_seconds);
 	bool shouldIgnoreRemoteScreen() const { return capture_enabled; }
 	bool captureTimedOut() const { return capture_timed_out; }
+	bool captureWritten() const { return capture_written; }
 
 private:
 	void afterFrameRendered() override;
+	bool pollCapture() override;
 	bool connectionsReadyForCapture();
 	bool activeScreenReadyForCapture();
-	size_t expectedCaptureConnectionCount();
+	std::set<std::string> captureRequiredConnections();
 	bool captureDeadlineExceeded() const;
-	void tryCaptureFrame();
+	void tryCaptureFrame(bool force);
 	void updateControlDisconnectedOverlay();
 	void hideControlDisconnectedOverlay();
 	bool controlConnectionsReady() const;

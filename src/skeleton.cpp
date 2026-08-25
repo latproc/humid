@@ -853,7 +853,7 @@ ClockworkClient::Connection::Connection(ClockworkClient *cc, const std::string c
 	: startup(sINIT), owner(cc), name(connection_name), channel_name(ch), host_name(h), port(p), sm(0), disconnect_responder(0),
 		iosh_cmd(0), cmd_interface(0), g_iodcmd(0), command_state(WaitingCommand), command_request_start(0), last_update(0),
 		first_message_time(0),message_time_scale(1000), local_commands("inproc://local_cmds"),
-		needs_refresh(false), channel_was_ready(false) {
+		needs_refresh(false), channel_was_ready(false), last_channel_ready_us(0) {
 	local_commands += "_" + connection_name;
 }
 
@@ -1009,6 +1009,9 @@ bool ClockworkClient::Connection::handleSubscriber() {
 	char *data = 0;
 	size_t len = 0;
 	if (!safeRecv(sm->subscriber(), &data, &len, false, 0, mh) ) {
+		if (safeRecvLeftMultipart() && sm) {
+			sm->forceFullReconnect("incomplete subscriber multipart");
+		}
 		return false;
 	}
 	if (first_message_time == 0) first_message_time = mh.start_time;
@@ -1068,6 +1071,13 @@ void ClockworkClient::Connection::onChannelLost(const char *addr) {
 }
 
 void ClockworkClient::Connection::onChannelBecameReady() {
+	const uint64_t now = microsecs();
+	if (last_channel_ready_us && now - last_channel_ready_us < 1000000ULL) {
+		std::cerr << name << " channel ready — suppressing rapid re-arm ("
+			  << host_name << ":" << port << ")\n";
+		return;
+	}
+	last_channel_ready_us = now;
 	std::cerr << name << " channel ready — re-arming data refresh ("
 		  << host_name << ":" << port << ")\n";
 	// Ensure a clean command path after peer restart (may not have seen DISCONNECTED).
@@ -1378,6 +1388,8 @@ void ClockworkClient::update(ClockworkClient::Connection *, bool allow_data_sync
 void ClockworkClient::drawAll() {
 	// Always service Clockwork; only pay for NanoVG/GL when UI state changed.
 	idle();
+	if (pollCapture())
+		requestRedraw();
 	if (!needs_frame_redraw)
 		return;
 	needs_frame_redraw = false;

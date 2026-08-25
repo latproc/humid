@@ -14,6 +14,7 @@
 #include <nanogui/common.h>
 #include <regular_expressions.h>
 #include <list>
+#include <set>
 
 #include "editorproject.h"
 #include "editorsettings.h"
@@ -1671,32 +1672,34 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 */
 }
 
-bool EditorGUI::connectionsReadyForCapture() {
-	if (!capture_enabled) return false;
-	const size_t expected_connections = expectedCaptureConnectionCount();
-	if (expected_connections > 0 && connections.size() < expected_connections) return false;
-	if (expected_connections == 0 && connections.empty()) return true;
-
-	for (const auto &item : connections) {
-		auto *connection = item.second;
-		if (!connection || !connection->Ready()) return false;
-		const auto state = connection->getStartupState();
-		if (state != sDONE) return false;
+std::set<std::string> EditorGUI::captureRequiredConnections() {
+	std::set<std::string> names;
+	if (!w_user || !w_user->getWindow()) return names;
+	for (auto *child : w_user->getWindow()->children()) {
+		EditorWidget *ew = dynamic_cast<EditorWidget *>(child);
+		if (!ew) continue;
+		const std::string conn = ew->getConnection();
+		if (!conn.empty()) names.insert(conn);
 	}
-	return true;
+	return names;
 }
 
-size_t EditorGUI::expectedCaptureConnectionCount() {
-	auto *project_settings = findStructure("ProjectSettings");
-	if (!project_settings) return 0;
-	auto *settings_class = project_settings->getStructureDefinition();
-	if (!settings_class) return 0;
-
-	size_t count = 0;
-	for (const auto &local : settings_class->getLocals()) {
-		if (local.machine) ++count;
+bool EditorGUI::connectionsReadyForCapture() {
+	if (!capture_enabled) return false;
+	const std::set<std::string> required = captureRequiredConnections();
+	if (required.empty()) {
+		// No remotes on this page: layout-only, do not wait for Clockwork.
+		return true;
 	}
-	return count;
+	for (const std::string &name : required) {
+		auto found = connections.find(name);
+		if (found == connections.end() || !found->second) return false;
+		ClockworkClient::Connection *connection = found->second;
+		if (!connection->Ready()) return false;
+		const auto state = connection->getStartupState();
+		if (state != sDONE && state != sRELOAD) return false;
+	}
+	return true;
 }
 
 bool EditorGUI::captureDeadlineExceeded() const {
@@ -1712,18 +1715,21 @@ bool EditorGUI::activeScreenReadyForCapture() {
 	return w_user->structure()->getName() == active.asString();
 }
 
-void EditorGUI::tryCaptureFrame() {
+void EditorGUI::tryCaptureFrame(bool force) {
 	if (!capture_enabled || capture_written) return;
-	if (!connectionsReadyForCapture()) return;
-	if (!activeScreenReadyForCapture()) return;
+	if (!force && !connectionsReadyForCapture()) return;
+	if (!force && !activeScreenReadyForCapture()) return;
+	if (force && !(w_user && w_user->getWindow())) return;
 
-	if (capture_frames_remaining < 0) {
-		capture_frames_remaining = 1;
-		return;
-	}
-	if (capture_frames_remaining > 0) {
-		--capture_frames_remaining;
-		return;
+	if (!force) {
+		if (capture_frames_remaining < 0) {
+			capture_frames_remaining = 1;
+			return;
+		}
+		if (capture_frames_remaining > 0) {
+			--capture_frames_remaining;
+			return;
+		}
 	}
 
 	auto *panel_window = w_user ? w_user->getWindow() : nullptr;
@@ -1740,19 +1746,33 @@ void EditorGUI::tryCaptureFrame() {
 
 	capture_written = writeFramebufferRegionToPng(capture_path, px, py, pw, ph);
 	if (capture_written) {
+		if (force) {
+			std::cerr << "Capture used the current frame after the Clockwork wait\n";
+		}
 		nanogui::leave();
 	}
 }
 
+bool EditorGUI::pollCapture() {
+	if (!capture_enabled || capture_written) return false;
+	return true;
+}
+
 void EditorGUI::afterFrameRendered() {
-	if (captureDeadlineExceeded()) {
-		capture_timed_out = true;
-		std::cerr << "Capture timed out after " << capture_timeout_seconds << " seconds\n";
-		nanogui::leave();
+	tryCaptureFrame(false);
+	if (captureDeadlineExceeded() && !capture_written) {
+		std::cerr << "Capture wait expired after " << capture_timeout_seconds
+			  << " seconds; writing current frame\n";
+		tryCaptureFrame(true);
+		if (!capture_written) {
+			capture_timed_out = true;
+			std::cerr << "Capture timed out after " << capture_timeout_seconds
+				  << " seconds (no framebuffer)\n";
+			nanogui::leave();
+			return;
+		}
 		return;
 	}
-	tryCaptureFrame();
-	// Capture needs consecutive painted frames; keep requesting redraw until done.
 	if (capture_enabled && !capture_written && !capture_timed_out)
 		requestRedraw();
 

@@ -40,6 +40,9 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout);
 bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block, int64_t timeout,
               MessageHeader &hdr);
+// True when the last safeRecv() took a more() frame and could not drain the
+// rest. The socket is unsafe until replaced.
+bool safeRecvLeftMultipart();
 
 bool sendMessage(const char *msg, zmq::socket_t &sock, std::string &response,
                  int32_t timeout_us, const MessageHeader &header);
