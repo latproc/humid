@@ -563,9 +563,14 @@ ProjectSettings PROJECTSETTINGS(
 );
 ```
 
-For Dell P2425E on Intel Valleyview (same as plant 122), use DDC suspend
-rather than X11 `force off`. That keeps HDMI up. Requires `ddcutil`,
-`i2c-dev`, and `hmi` in group `i2c`:
+For Dell P2425E on Intel Valleyview, plant **122** uses DDC suspend (not
+X11 `force off`) to keep HDMI up. Requires `ddcutil` **2.x**, `i2c-dev`,
+and a working `/dev/i2c-*` ACL (`uaccess` or group `i2c`). Debian
+Bookworm `ddcutil` 1.4.1 on plant **121** is not that stack: `setvcp D6 03`
+either fails verification or lands as **04** (hard off). Leave 121 on
+`x11-dpms` standby until a 2.x `ddcutil` is available.
+
+Plant 122 settings:
 
 ```humid
 ProjectSettings PROJECTSETTINGS(
