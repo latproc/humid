@@ -611,7 +611,8 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			if (res) {
 				texture_cache[tex_name] = new Texture(std::move(tex));
 				loaded_textures[res] = tex_name;
-				ResourceManager::manage(res);
+				TextureResourceManagerFactory factory;
+				ResourceManager::manage(res, factory);
 			}
 			return res;
 		}

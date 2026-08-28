@@ -22,7 +22,8 @@ ResourceManager::~ResourceManager() {
 ResourceManager::ResourceManager() : item_id(0), refs(0), last_release_time(0) {
 }
 
-ResourceManager::ResourceManager(int resource, int init_refs) : item_id(resource), refs(init_refs) {
+ResourceManager::ResourceManager(int resource, int init_refs)
+    : item_id(resource), refs(init_refs), last_release_time(0) {
 	if (resource) {
 		//assert(resources.find(resource) == resources.end());
 		resources[resource] = this;
@@ -126,4 +127,3 @@ int main (int argc, char *argv[]) {
 }
 
 #endif
-

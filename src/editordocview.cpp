@@ -71,8 +71,8 @@ EditorDocView::EditorDocView(NamedObject *owner, Widget *parent, const std::stri
 }
 
 EditorDocView::~EditorDocView() {
-	if (mImageID)
-		ResourceManager::release(mImageID);
+	if (mImageID && ResourceManager::release(mImageID) == 0 && EDITOR && EDITOR->gui())
+		EDITOR->gui()->freeImage(mImageID);
 }
 
 void EditorDocView::setInteractive(bool value) {

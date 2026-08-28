@@ -33,7 +33,8 @@ EditorImageView::EditorImageView(NamedObject *owner, Widget *parent, const std::
 }
 
 EditorImageView::~EditorImageView() {
-      if (mImageID) ResourceManager::release(mImageID);
+      if (mImageID && ResourceManager::release(mImageID) == 0 && EDITOR && EDITOR->gui())
+            EDITOR->gui()->freeImage(mImageID);
 }
 
 bool EditorImageView::mouseButtonEvent(const nanogui::Vector2i &p, int button, bool down, int modifiers) {

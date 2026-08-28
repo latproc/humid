@@ -45,7 +45,7 @@ GLTexture::~GLTexture() noexcept {
 GLTexture::handleType GLTexture::load(const std::string& fileName) {
 	using namespace boost::filesystem;
 	if (mTextureId) {
-		//glDeleteTextures(1, &mTextureId);
+		glDeleteTextures(1, &mTextureId);
 		mTextureId = 0;
 	}
 	path filepath(fileName);

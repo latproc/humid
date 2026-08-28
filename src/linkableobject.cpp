@@ -101,12 +101,10 @@ void LinkableText::update(const Value &value) {
 	if (lbl) { lbl->setCaption(value.asString()); return; }
 	EditorImageView *iv = dynamic_cast<EditorImageView*>(widget);
 	if (iv) {
-		// Image-producing remotes commonly reuse a stable URL.  A new remote
-		// update still means the resource at that URL may have changed, so bypass
-		// both the downloaded-file and texture caches here.  Without this, an IOD
-		// restart that republishes the same URL leaves the panel showing the image
-		// cached before the restart.
-		iv->setImageName(value.asString(), true); iv->fit();
+		// Normal property updates select an image; they must not allocate a new
+		// server-side GL texture every time the same URL is published.  Reconnect
+		// refresh is handled explicitly by UserWindow::refreshImages().
+		iv->setImageName(value.asString()); iv->fit();
 		return;
 	}
 	EditorDocView *dv = dynamic_cast<EditorDocView*>(widget);
