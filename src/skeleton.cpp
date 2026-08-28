@@ -58,6 +58,10 @@ namespace {
 std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
 const uint64_t display_restore_grace_us = 5000000;
 const uint64_t display_restore_debounce_us = 1000000;
+// xrandr --query makes some Bionic modesetting drivers re-read and log the
+// complete EDID.  GLFW's monitor callback handles the normal hotplug path;
+// keep this only as a low-rate fallback instead of running it on every idle.
+const uint64_t x11_output_poll_interval_us = 60000000;
 
 bool usesWaylandCompositor() {
 	const char *wayland = std::getenv("WAYLAND_DISPLAY");
@@ -721,6 +725,9 @@ void ClockworkClient::pollDisplayOutputs() {
 	}
 
 	if (!usesWaylandCompositor()) {
+		if (last_x11_output_poll && now - last_x11_output_poll < x11_output_poll_interval_us)
+			return;
+		last_x11_output_poll = now;
 		XrandrState state;
 		if (!parseXrandrQuery(state))
 			return;
