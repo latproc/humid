@@ -107,6 +107,11 @@ void EditorImageView::draw(NVGcontext *ctx) {
 }
 
 void EditorImageView::setImageName(const std::string new_name, bool reload) {
+		// A changed URL names new content even when its basename (and therefore
+		// Humid's disk/texture cache key) is unchanged.  Force that transition to
+		// bypass both caches.  Repeated publication of the identical string may
+		// reuse the existing texture; reconnect refresh passes reload explicitly.
+		reload = reload || new_name != image_name;
 		GLuint img = (new_name.length()) ? EDITOR->gui()->getImageId(new_name.c_str(), reload) : 0;
 		image_name = new_name;
     if (img != mImageID) {
