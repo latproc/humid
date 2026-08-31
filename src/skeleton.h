@@ -255,7 +255,6 @@ protected:
 	bool drm_last_raw_active = false;
 	uint64_t drm_raw_changed_at = 0;
 	uint64_t display_restore_until = 0;
-	uint64_t last_x11_output_poll = 0;
 
 	void pollDisplayOutputs();
 	void rebindDisplay();

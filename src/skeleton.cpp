@@ -58,10 +58,6 @@ namespace {
 std::map<GLFWwindow *, ClockworkClient *> refresh_clients;
 const uint64_t display_restore_grace_us = 5000000;
 const uint64_t display_restore_debounce_us = 1000000;
-// xrandr --query makes some Bionic modesetting drivers re-read and log the
-// complete EDID.  GLFW's monitor callback handles the normal hotplug path;
-// keep this only as a low-rate fallback instead of running it on every idle.
-const uint64_t x11_output_poll_interval_us = 60000000;
 
 bool usesWaylandCompositor() {
 	const char *wayland = std::getenv("WAYLAND_DISPLAY");
@@ -724,48 +720,10 @@ void ClockworkClient::pollDisplayOutputs() {
 			display_restore_until = 0;
 	}
 
-	if (!usesWaylandCompositor()) {
-		if (last_x11_output_poll && now - last_x11_output_poll < x11_output_poll_interval_us)
-			return;
-		last_x11_output_poll = now;
-		XrandrState state;
-		if (!parseXrandrQuery(state))
-			return;
-		const XrandrOutput *output = bestConnectedOutput(state);
-		const bool connected = output != nullptr;
-		int window_width = 0, window_height = 0;
-		glfwGetWindowSize(mGLFWWindow, &window_width, &window_height);
-		const bool usable = output &&
-			desktopAtPreferred(state, *output) &&
-			!isTinyVideomode(window_width, window_height) &&
-			window_width == output->preferred_w &&
-			window_height == output->preferred_h;
-		if (!drm_watch_ready) {
-			drm_last_raw_active = connected;
-			drm_output_active = usable;
-			drm_raw_changed_at = now;
-			drm_watch_ready = true;
-			return;
-		}
-		if (connected != drm_last_raw_active) {
-			drm_last_raw_active = connected;
-			drm_raw_changed_at = now;
-			return;
-		}
-		if (now - drm_raw_changed_at < display_restore_debounce_us)
-			return;
-		if (connected && !drm_output_active) {
-			if (!ensureNativeX11Output())
-				return;
-			std::cout << "display output restored on " << output->name << " "
-			          << output->preferred_w << "x" << output->preferred_h
-			          << "; restarting Humid to rebind X11 scanout\n" << std::flush;
-			_exit(0);
-		}
-		drm_output_active = usable;
-		return;
-	}
-
+	// Watch /sys/class/drm on every idle. xrandr --query re-reads EDID on
+	// Bionic modesetting and blocks the UI thread for hundreds of ms; keep
+	// that only for ensureNativeX11Output() when a restore actually needs
+	// a mode set. GLFW's monitor callback still handles the hotplug path.
 #if defined(__linux__)
 	const bool raw_active = drmOutputCanScanout();
 	if (!drm_watch_ready) {
