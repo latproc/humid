@@ -25,6 +25,7 @@
 #include "editorgui.h"
 #include "factorybuttons.h"
 #include "structureswindow.h"
+#include "helper.h"
 #include <cassert>
 
 StructureFactoryButton::StructureFactoryButton(EditorGUI *screen,
@@ -291,7 +292,8 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			lbl->setName(tag_name);
 			lbl->setCaption("");
 			lbl->setEnabled(true);
-			lbl->setTooltip(tag_name);
+			if (widgetHintsEnabled())
+				lbl->setTooltip(tag_name);
 			lbl->setSize(Vector2i(object_width, object_height));
 			LinkableProperty *lp = EDITOR->gui()->findLinkableProperty(tag_name);
 			if (lp) lp->link(new LinkableText(lbl));
@@ -307,7 +309,8 @@ nanogui::Widget *ObjectFactoryButton::create(nanogui::Widget *container) const {
 			textBox->setEditable(true);
 			textBox->setSize(Vector2i(object_width, object_height));
 			textBox->setFixedSize(Vector2i(object_width, object_height));
-			textBox->setTooltip(tag_name);
+			if (widgetHintsEnabled())
+				textBox->setTooltip(tag_name);
 			//textBox->setDefaultValue("0");
 			//textBox->setFontSize(16);
 			//textBox->setFormat("[1-9][0-9]*");

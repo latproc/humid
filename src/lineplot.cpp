@@ -21,6 +21,7 @@
 #include <nanogui/label.h>
 #include <nanogui/layout.h>
 #include "userwindow.h"
+#include "helper.h"
 
 #include <iostream>
 #include <cassert>
@@ -452,7 +453,8 @@ bool LinePlot::scrollEvent(const Vector2i &p, const Vector2f &rel) {
 	char buf[80];
 	snprintf(buf, 80, "%s,%5.2lf", display_time(t_data).c_str(), val);
 	std::cout << buf << "\n";
-	setTooltip(buf);
+	if (widgetHintsEnabled())
+		setTooltip(buf);
 
 	x_scale += rel.y()/2.0;
 	if (x_scale <0.1) x_scale = 0.1;
@@ -486,7 +488,8 @@ bool LinePlot::mouseMotionEvent(const nanogui::Vector2i &p, const nanogui::Vecto
 		sep = "\n";
 		tooltip += buf;
 	}
-	setTooltip(tooltip);
+	if (widgetHintsEnabled())
+		setTooltip(tooltip);
 
 	return Widget::mouseMotionEvent(p, rel, button, modifiers);
 }

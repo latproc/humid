@@ -18,12 +18,20 @@
 #include "valuehelper.h"
 #include <cassert>
 
+extern int run_only;
+extern int show_widget_hints;
 extern std::list<Structure *>hm_structures;
 extern std::list<Structure *>builtin_structures;
 
 extern std::list<StructureClass *> hm_classes;
 
 static int screen_id = 0;
+
+bool widgetHintsEnabled() {
+	if (show_widget_hints >= 0)
+		return show_widget_hints != 0;
+	return run_only == 0;
+}
 
 std::string stripEscapes(const std::string &s) {
 	size_t n = s.length()+1;

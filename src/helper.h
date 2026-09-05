@@ -43,3 +43,7 @@ void getPropertyNames(std::list<std::string> &names);
 void loadPropertyToStructureMap(std::map<std::string, std::string> &property_map);
 std::ostream & displaySize(std::ostream &out, const std::string context, const nanogui::Vector2i s);
 void invert_map(const std::map<std::string, std::string> &normal, std::map<std::string, std::string> & reversed);
+
+// Editor identification tooltips (widget name / remote tag). Off in --run_only
+// unless --hints 1; on in the editor unless --hints 0.
+bool widgetHintsEnabled();

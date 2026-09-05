@@ -398,10 +398,12 @@ void createText(WidgetParams &params) {
 	if (params.tab_pos) textBox->setTabPosition(params.tab_pos);
 	if (params.border != SymbolTable::Null) textBox->setBorder(params.border.iValue);
 	textBox->setName(params.element->getName());
-	if (params.lp)
-		textBox->setTooltip(params.remote.asString());
-	else
-		textBox->setTooltip(params.element->getName());
+	if (widgetHintsEnabled()) {
+		if (params.lp)
+			textBox->setTooltip(params.remote.asString());
+		else
+			textBox->setTooltip(params.element->getName());
+	}
 	if (params.lp)
 		params.lp->link(new LinkableText(textBox));
 	if (params.visibility) textBox->setVisibilityLink(params.visibility);

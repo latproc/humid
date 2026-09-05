@@ -81,6 +81,7 @@ const char *filename = 0;
 
 long full_screen_mode = 0;
 int run_only = 0;
+int show_widget_hints = -1; // -1: default from run_only (off on panels)
 std::string capture_file_name;
 std::string capture_screen_name;
 int capture_timeout_seconds = 60;
@@ -482,6 +483,8 @@ int main(int argc, const char ** argv ) {
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
 	("fullscreen", po::value<long>(&full_screen_mode), "alias for --full_screen")
 	("run_only", po::value<int>(&run_only)->default_value(0), "run only (default 0)")
+	("hints", po::value<int>(&show_widget_hints),
+		"widget name/remote tooltips (1=on, 0=off; default off with --run_only)")
 	("capture", po::value<std::string>(&capture_file_name)->default_value(""), "write a PNG capture to this file and exit")
 	("screen", po::value<std::string>(&capture_screen_name)->default_value(""), "set the active screen for this run")
 	("capture_timeout", po::value<int>(&capture_timeout_seconds)->default_value(60),
