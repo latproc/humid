@@ -443,6 +443,9 @@ void UserWindow::loadStructure(Structure *s) {
 			if (element_class &&element_class->isExtension("LABEL")) {
 				createLabel(params);
 			}
+			if (element_class &&element_class->isExtension("TIME")) {
+				createClock(params);
+			}
 			if (element_class &&element_class->isExtension("IMAGE")) {
 				createImage(params);
 			}

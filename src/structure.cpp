@@ -87,6 +87,14 @@ static void prepare_class_properties(const std::string & class_name, std::map<st
 		properties["Wrap Text"] = "wrap";
 		properties["Background Colour"] = "bg_color";
 	}
+	else if (class_name == "TIME") {
+		properties["Font Size"] = "font_size";
+		properties["Format"] = "format";
+		properties["Text Colour"] = "text_colour";
+		properties["Alignment"] = "alignment";
+		properties["Vertical Alignment"] = "valign";
+		properties["Background Colour"] = "bg_color";
+	}
 	else if (class_name == "PLOT") {
 		properties["X scale"] = "x_scale";
 		properties["X offset"] = "x_offset";
@@ -397,6 +405,9 @@ void Structure::loadBuiltins() {
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("LABEL", "");
+	sc->setBuiltIn();
+	hm_classes.push_back(sc);
+	sc = new StructureClass("TIME", "");
 	sc->setBuiltIn();
 	hm_classes.push_back(sc);
 	sc = new StructureClass("PLOT", "");

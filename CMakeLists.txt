@@ -236,7 +236,7 @@ set(HEADERS src/draghandle.h	src/manuallayout.h	src/propertymonitor.h	src/skelet
 		  src/viewlistcontroller.h src/editorsettings.h
 		  src/editorobject.h src/linkableobject.h src/editorgui.h
 		  src/factorybuttons.h src/editor.h src/connectable.h
-		  src/editorwidget.h src/editorbutton.h src/editortextbox.h src/editorlabel.h
+		  src/editorwidget.h src/editorbutton.h src/editortextbox.h src/editorlabel.h src/editorclock.h
 		  src/editorimageview.h src/editordocview.h src/editorlineplot.h src/editorprogressbar.h src/structureswindow.h src/themewindow.h src/propertywindow.h
 		  src/helper.h src/curl_helper.h src/screenswindow.h
 		  src/linkableproperty.h src/anchor.h src/objectwindow.h src/patternswindow.h
@@ -372,7 +372,7 @@ endif()
 		  src/editorsettings.cpp src/editorobject.cpp
 		  src/linkableobject.cpp src/editorgui.cpp src/factorybuttons.cpp
 		  src/editor.cpp src/connectable.cpp src/editorwidget.cpp
-		  src/editorbutton.cpp src/editortextbox.cpp src/editorlabel.cpp
+		  src/editorbutton.cpp src/editortextbox.cpp src/editorlabel.cpp src/editorclock.cpp
 		  src/editorimageview.cpp src/editordocview.cpp src/editorlineplot.cpp
 		  src/editorprogressbar.cpp src/structureswindow.cpp
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp

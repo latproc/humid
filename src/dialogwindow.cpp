@@ -124,6 +124,9 @@ void DialogWindow::loadStructure(Structure *s) {
             if (element_class && element_class->isExtension("LABEL")) {
                 createLabel(params);
             }
+            else if (element_class && element_class->isExtension("TIME")) {
+                createClock(params);
+            }
             else if (element_class && element_class->isExtension("IMAGE")) {
                 createImage(params);
             }

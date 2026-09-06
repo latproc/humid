@@ -116,6 +116,17 @@ StructuresWindow::StructuresWindow(EditorGUI *screen, nanogui::Theme *theme) : S
 
 		cell = new Widget(palette_content);
 		cell->setFixedSize(Vector2i(button_width+4,35));
+		b = new StructureFactoryButton(gui, "TIME", this, cell, 0, "TIME", "");
+		b->setEnabled(true);
+		b->setFixedSize(Vector2i(button_width, 30));
+		b->setPosition(Vector2i(2,2));
+		s = new Structure(nullptr, "Start_Time", "TIME");
+		starters["TIME"] = s;
+		s->getProperties().add("width",160);
+		s->getProperties().add("height",40);
+
+		cell = new Widget(palette_content);
+		cell->setFixedSize(Vector2i(button_width+4,35));
 		b = new StructureFactoryButton(gui, "TEXT", this, cell, 0, "TEXT", "");
 		b->setEnabled(true);
 		b->setFixedSize(Vector2i(button_width, 30));

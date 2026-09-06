@@ -13,6 +13,7 @@
 #include "editorbutton.h"
 #include "editortextbox.h"
 #include "editorlabel.h"
+#include "editorclock.h"
 #include "editorimageview.h"
 #include "editordocview.h"
 #include "editorlineplot.h"
@@ -73,6 +74,13 @@ nanogui::Widget *StructureFactoryButton::create(nanogui::Widget *window) const {
 		eb->setName(eb->getName());
 		if (s) s->setName(eb->getName());
 		result = eb;
+	}
+	else if (sc->getName() == "TIME") {
+		EditorClock *ec = new EditorClock(parent, window, generated_name, nullptr);
+		ec->setDefinition(s);
+		ec->setName(ec->getName());
+		if (s) s->setName(ec->getName());
+		result = ec;
 	}
 	else if (sc->getName() == "TEXT") {
 		EditorGUI *gui = EDITOR->gui();

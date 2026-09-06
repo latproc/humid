@@ -1,0 +1,8 @@
+SYSTEM STRUCTURE {
+}
+System SYSTEM(
+    remote_screen: "P_Screen",
+	panel_width: 600,
+	panel_height: 450,
+	active_screen: clock_panel
+  );

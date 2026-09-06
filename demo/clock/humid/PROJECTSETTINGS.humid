@@ -1,0 +1,7 @@
+PROJECTSETTINGS STRUCTURE(
+    asset_path: "."
+  ) {
+}
+ProjectSettings PROJECTSETTINGS(
+    asset_path: "."
+  );

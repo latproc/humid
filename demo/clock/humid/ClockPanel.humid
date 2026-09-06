@@ -1,0 +1,42 @@
+ClockPanel STRUCTURE EXTENDS SCREEN {
+  big_time TIME(
+    alignment: 1,
+    border: 1,
+    bg_color: "#202030ff",
+    font_size: 72,
+    format: "%H:%M:%S",
+    height: 100,
+    pos_x: 100,
+    pos_y: 100,
+    text_colour: "#ffffffff",
+    valign: 1,
+    width: 400
+  );
+  date_line TIME(
+    alignment: 1,
+    border: 0,
+    font_size: 32,
+    format: "%A, %d %B %Y",
+    height: 50,
+    pos_x: 100,
+    pos_y: 240,
+    text_colour: "#ccccccff",
+    valign: 1,
+    width: 400
+  );
+  tz_line TIME(
+    alignment: 1,
+    border: 0,
+    font_size: 24,
+    format: "%Z (%z)",
+    height: 40,
+    pos_x: 100,
+    pos_y: 320,
+    text_colour: "#888888ff",
+    valign: 1,
+    width: 400
+  );
+}
+clock_panel ClockPanel(
+  screen_id: 1
+);

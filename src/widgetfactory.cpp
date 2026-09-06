@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "editorlabel.h"
+#include "editorclock.h"
 #include "editorimageview.h"
 #include "editorprogressbar.h"
 #include "editortextbox.h"
@@ -190,6 +191,32 @@ void createLabel(WidgetParams &params) {
 	if (params.visibility) el->setVisibilityLink(params.visibility);
 	prepare_remote_links(params, el);
 	el->setChanged(false);
+}
+
+void createClock(WidgetParams &params) {
+	EditorClock *clk = new EditorClock(params.s, params.window, params.element->getName(), params.lp);
+	clk->setName(params.element->getName());
+	clk->setDefinition(params.element);
+	if (params.theme.get()) { clk->setTheme(params.theme); }
+	setElementPosition(params, clk, params.element);
+	fixElementSize( clk, params.element);
+	if (params.font_size) clk->setFontSize(params.font_size);
+	Value bg_colour(params.element->getValue("bg_color"));
+	if (bg_colour != SymbolTable::Null)
+		clk->setBackgroundColor(colourFromProperty(params.element, "bg_color"));
+	Value text_colour(params.element->getValue("text_colour"));
+	if (text_colour != SymbolTable::Null)
+		clk->setTextColor(colourFromProperty(params.element, "text_colour"));
+	Value alignment_v(params.element->getValue("alignment"));
+	if (alignment_v != SymbolTable::Null) clk->setPropertyValue("Alignment", alignment_v.asString());
+	Value valignment_v(params.element->getValue("valign"));
+	if (valignment_v != SymbolTable::Null) clk->setPropertyValue("Vertical Alignment", valignment_v.asString());
+	if (params.format_val != SymbolTable::Null) clk->setFormat(params.format_val.asString());
+	if (params.border != SymbolTable::Null) clk->setBorder(params.border.iValue);
+	clk->setInvertedVisibility(params.ivis);
+	if (params.visibility) clk->setVisibilityLink(params.visibility);
+	prepare_remote_links(params, clk);
+	clk->setChanged(false);
 }
 
 void createTable(WidgetParams &params) {

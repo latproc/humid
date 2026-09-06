@@ -39,6 +39,7 @@ struct WidgetParams {
 };
 
 void createLabel(WidgetParams &params);
+void createClock(WidgetParams &params);
 void createImage(WidgetParams &params);
 void createProgress(WidgetParams &params);
 void createText(WidgetParams &params);
