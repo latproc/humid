@@ -11,6 +11,7 @@
 #include <exception>
 #include <inttypes.h>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <math.h>
 #include <type_traits>
@@ -147,10 +148,6 @@ void SocketMonitor::abort() {
 }
 
 bool SocketMonitor::active() {
-    if (!active_) {
-        DBG_MSG << monitor_socket_name << " " << std::hex << this << std::dec
-                << " monitor not active\n";
-    }
     return active_;
 }
 
@@ -159,7 +156,22 @@ const std::string &SocketMonitor::monitorSocketName() const { return monitor_soc
 void SocketMonitor::setMonitorSocketName(std::string name) { monitor_socket_name = name; }
 
 void SocketMonitor::on_monitor_started() {
-    DBG_MSG << monitor_socket_name << " " << std::hex << this << std::dec << " monitor started\n";
+    static uint64_t last_log = 0;
+    static unsigned suppressed = 0;
+    const uint64_t now = microsecs();
+    if (!last_log || now - last_log >= 60000000ULL) {
+        std::ostringstream os;
+        os << monitor_socket_name << " " << std::hex << this << std::dec << " monitor started";
+        if (suppressed) {
+            os << " (" << suppressed << " further starts not logged)";
+        }
+        DBG_MSG << os.str() << "\n";
+        last_log = now;
+        suppressed = 0;
+    }
+    else {
+        ++suppressed;
+    }
     active_ = true;
 }
 

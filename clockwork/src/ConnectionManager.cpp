@@ -15,6 +15,7 @@
 #include <map>
 #include <math.h>
 #include <ostream>
+#include <string>
 #include <utility>
 #include <zmq.hpp>
 #ifdef DYNAMIC_VALUES
@@ -91,16 +92,55 @@ class SubscriptionManagerInternals : public ConnectionManagerInternals {
 
   public:
     SubscriptionManagerInternals()
-        : sent_request(false), send_time(0), last_setup_recreate_time(0) {}
+        : sent_request(false), send_time(0), last_setup_recreate_time(0),
+          last_reconnect_log_time(0), reconnect_attempts(0) {}
 
     ~SubscriptionManagerInternals() {}
     // helpers for connection resume
     bool sent_request;
     uint64_t send_time;
     uint64_t last_setup_recreate_time;
+    uint64_t last_reconnect_log_time;
+    unsigned reconnect_attempts;
     static const uint64_t channel_request_timeout = 3000000;
     static const uint64_t setup_recreate_min_interval = 2000000; // 2s
+    static const uint64_t reconnect_log_interval = 60000000;     // 60s
     static std::list<SubscriptionManager*> all;
+
+    // Keep retrying every 2s; do not write that to the log every time.
+    bool shouldLogReconnect() {
+        const uint64_t now = microsecs();
+        if (last_reconnect_log_time &&
+            now - last_reconnect_log_time < reconnect_log_interval) {
+            return false;
+        }
+        return true;
+    }
+
+    void logReconnect(const char *channel, const char *msg) {
+        ++reconnect_attempts;
+        if (!shouldLogReconnect()) {
+            return;
+        }
+        FileLogger fl(program_name);
+        const uint64_t now = microsecs();
+        fl.f() << channel << " " << msg;
+        if (!last_reconnect_log_time) {
+            fl.f() << " (retrying every 2s)";
+        }
+        else {
+            fl.f() << " (" << reconnect_attempts << " retries in last "
+                   << (now - last_reconnect_log_time) / 1000000 << "s)";
+        }
+        fl.f() << "\n" << std::flush;
+        last_reconnect_log_time = now;
+        reconnect_attempts = 0;
+    }
+
+    void resetReconnectLog() {
+        last_reconnect_log_time = 0;
+        reconnect_attempts = 0;
+    }
 };
 
 std::list<SubscriptionManager*> SubscriptionManagerInternals::all;
@@ -245,11 +285,13 @@ bool SubscriptionManager::forceFullReconnect(const char *reason) {
             return false;
         }
     }
-    {
-        FileLogger fl(program_name);
-        fl.f() << channel_name << " forceFullReconnect"
-               << (reason ? ": " : "") << (reason ? reason : "") << "\n"
-               << std::flush;
+    if (smi) {
+        std::string msg("forceFullReconnect");
+        if (reason && *reason) {
+            msg += ": ";
+            msg += reason;
+        }
+        smi->logReconnect(channel_name.c_str(), msg.c_str());
     }
     // Drop data-path session first so we never mark e_done on a stale SUB.
     invalidateSubscriberSession();
@@ -333,10 +375,11 @@ void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket) {
 
     // ZMQ REQ is half-open until a reply arrives; after timeout/EFSM the only
     // reliable recovery is a new socket + reconnect (monitor must follow).
-    {
+    if (smi->shouldLogReconnect()) {
         FileLogger fl(program_name);
         fl.f() << channel_name << " recreating setup REQ socket for CHANNEL recovery\n"
                << std::flush;
+        smi->last_reconnect_log_time = microsecs();
     }
     try {
         // Capture endpoint before tearing down the monitor/socket.
@@ -735,6 +778,13 @@ void SubscriptionManager::setSetupStatus(Status new_status) {
             }
         }
         _setup_status = new_status;
+        if (new_status == e_done) {
+            SubscriptionManagerInternals *smi =
+                dynamic_cast<SubscriptionManagerInternals *>(internals);
+            if (smi) {
+                smi->resetReconnectLog();
+            }
+        }
     }
 }
 
