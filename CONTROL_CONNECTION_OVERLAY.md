@@ -34,4 +34,6 @@ It is removed only after every configured connection is ready, its
 startup/data-refresh state reaches `sDONE`, the Clockwork-selected HMI screen
 is loaded (or the current local screen if `active_screen` is unset), snapshot
 values have been applied to that page, and at least one covered frame has been
-painted. The current HMI screen is preserved.
+painted. The current HMI screen is preserved: a reconnect snapshot must not
+`clear()` the panel before the new page is known. The overlay is not dropped
+over an empty UserWindow (that is the blank-grey reconnect failure).

@@ -66,6 +66,15 @@ bool EditorImageView::mouseEnterEvent(const Vector2i &p, bool enter) {
 void EditorImageView::draw(NVGcontext *ctx) {
     using namespace nanogui;
     Widget::draw(ctx);
+    if (!mImageID) {
+      if (border) drawWidgetBorder(ctx);
+      if (mSelected)
+        drawSelectionBorder(ctx, mPos, mSize);
+      else if (EDITOR->isEditMode()) {
+        drawElementBorder(ctx, mPos, mSize);
+      }
+      return;
+    }
     nvgEndFrame(ctx); // Flush the NanoVG draw stack, not necessary to call nvgBeginFrame afterwards.
 
     if (border) {

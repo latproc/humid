@@ -356,14 +356,14 @@ bool EditorGUI::controlConnectionsReady() const {
 bool EditorGUI::controlPageReady() const {
 	if (state != GUIWORKING) return false;
 	if (!w_user) return false;
+	// An empty UserWindow is the blank-grey reconnect failure. Never treat
+	// that as ready even if active_screen is unset or unknown.
+	if (!w_user->hasPanelWidgets()) return false;
 	if (!systemSettings()) return true;
 	const Value active = systemSettings()->getProperties().find("active_screen");
-	// Empty / unset active_screen: do not require a loaded structure.
-	// Cold start with iod already down never select()s a real page.
 	if (active == SymbolTable::Null || active.asString().empty()) return true;
 	if (!w_user->structure()) return false;
 	if (w_user->structure()->getName() == active.asString()) return true;
-	// Named screen is not in the project; do not hold the overlay forever.
 	return findScreen(active.asString()) == nullptr;
 }
 
@@ -448,12 +448,14 @@ void EditorGUI::updateControlDisconnectedOverlay() {
 	const long uncover_seconds = std::max<long>(0,
 		settings->getIntProperty("control_reconnect_uncover_seconds", 2));
 	if (now - control_channel_ready_at >= std::chrono::seconds(uncover_seconds)) {
-		if (control_disconnected_overlay_visible) {
-			applyControlRemoteTargets();
-			std::cerr << "Control overlay uncover (snapshot ready "
-			          << uncover_seconds << "s)\n";
+		if (w_user && w_user->hasPanelWidgets()) {
+			if (control_disconnected_overlay_visible) {
+				applyControlRemoteTargets();
+				std::cerr << "Control overlay uncover (snapshot ready "
+				          << uncover_seconds << "s)\n";
+			}
+			hideControlDisconnectedOverlay();
 		}
-		hideControlDisconnectedOverlay();
 		return;
 	}
 
@@ -1671,7 +1673,12 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 							processModbusInitialisation(connection->getName(), obj);
 							w_objects->rebuildWindow();
 							if (w_user && getState() == GUIWORKING) {
-								w_user->setStructure(w_user->structure());
+								// Do not setStructure() here: that clear()s every widget
+								// before the remote screen is applied. After a long
+								// iod-down the follow-up load can fail and leave a
+								// blank grey panel until humid is killed.
+								applyControlRemoteTargets();
+								w_user->refreshImages();
 								if (!shouldIgnoreRemoteScreen()) {
 									const Value remote_screen(EditorGUI::systemSettings()->getProperties().find("remote_screen"));
 									if (remote_screen != SymbolTable::Null) {
@@ -1743,14 +1750,19 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 			if (active != SymbolTable::Null && !active.asString().empty()) {
 				if (connection->getStartupState() == sRELOAD || (w_user->structure() && w_user->structure()->getName() != active.asString())) {
 					Structure *s = findScreen(active.asString());
+					const bool already_showing = s && w_user->structure() == s && w_user->hasPanelWidgets();
 					if (connection->getStartupState() == sRELOAD || (s && w_user->structure() != s) ) {
 						w_user->getWindow()->requestFocus();
 						w_user->clearSelections();
-						if (s) {
+						if (s && !already_showing) {
 							w_user->setStructure(s);
 							applyControlRemoteTargets();
 							w_user->refreshImages();
 							std::cout << "Loaded active screen " << active << "\n";
+						}
+						else if (s && already_showing) {
+							applyControlRemoteTargets();
+							w_user->refreshImages();
 						}
 						else if (connection->getStartupState() != sRELOAD) {
 							std::cout << "Active screen " << active << " cannot be found\n";

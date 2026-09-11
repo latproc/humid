@@ -58,6 +58,7 @@ public:
 	void setStructure( Structure *s);
 	void loadStructure( Structure *s);
 	void clear();
+	bool hasPanelWidgets() const;
 
 	virtual void select(Selectable * w) override;
 	virtual void deselect(Selectable *w) override;

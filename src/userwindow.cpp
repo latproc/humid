@@ -1,4 +1,5 @@
 #include <iostream>
+#include <exception>
 #include "userwindowwin.h"
 #include "userwindow.h"
 #include "editorgui.h"
@@ -301,7 +302,12 @@ void UserWindow::setStructure( Structure *s) {
 		drag_handle->setPropertyMonitor(0);
 	}
 
-	loadStructure(s);
+	try {
+		loadStructure(s);
+	}
+	catch (const std::exception &ex) {
+		std::cerr << "loadStructure " << s->getName() << " failed: " << ex.what() << "\n";
+	}
 	current_structure = s;
 
 	window->addChild(drag_handle);
@@ -345,17 +351,28 @@ void UserWindow::deleteSelections() {
 	}
 }
 
+bool UserWindow::hasPanelWidgets() const {
+	if (!window) return false;
+	for (auto *child : window->children()) {
+		if (dynamic_cast<EditorWidget *>(child)) return true;
+	}
+	return false;
+}
+
 void UserWindow::clear() {
 	// Screen changes can destroy the button under an active mouse drag (e.g.
 	// multi-tap hidden jump). Clear mDragWidget first or the next release crashes.
 	if (gui) gui->cancelActiveDrag();
 
 	nanogui::DragHandle *drag_handle = EDITOR->getDragHandle();
-	if (drag_handle) drag_handle->setVisible(false);
-	drag_handle->incRef();
-	window->removeChild(drag_handle);
-	PropertyMonitor *pm = drag_handle->propertyMonitor();
-	drag_handle->setPropertyMonitor(0);
+	PropertyMonitor *pm = nullptr;
+	if (drag_handle) {
+		drag_handle->setVisible(false);
+		drag_handle->incRef();
+		window->removeChild(drag_handle);
+		pm = drag_handle->propertyMonitor();
+		drag_handle->setPropertyMonitor(0);
+	}
 
 	auto sc = structure() ? structure()->getStructureDefinition() : nullptr;
 	int n = window->childCount();
@@ -372,12 +389,13 @@ void UserWindow::clear() {
 		if (ew && sc) { LinkableObject::unlink(sc->getName(), ew); }
 		window->removeChild(idx);
 	}
-	window->addChild(drag_handle);
+	if (drag_handle) {
+		window->addChild(drag_handle);
+		drag_handle->setPropertyMonitor(pm);
+		drag_handle->decRef();
+	}
 
-	drag_handle->setPropertyMonitor(pm);
-	drag_handle->decRef();
-
-	window->performLayout( gui->nvgContext() );
+	if (gui) window->performLayout(gui->nvgContext());
 }
 
 CircularBuffer *UserWindow::getValues(const std::string name) {

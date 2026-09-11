@@ -451,12 +451,14 @@ class SetupDisconnectMonitor : public EventResponder {
 public:
 	explicit SetupDisconnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-		// Setup REQ flaps during CHANNEL recovery (EFSM recreate). Only treat a
-		// disconnect as "connection lost" when we had a full session (e_done seen
-		// in idle, or still Ready). Mid-handshake bounces must not thrash data-init.
+		// Monitor thread: do not tear down REQ sockets here. onChannelLost()
+		// deletes cmd_interface; the UI thread may be in safeSend() on it
+		// (NULL deref after a long drop). Idle's e_done edge does the cleanup.
 		if (connection && (connection->Ready() || connection->channelWasReady())) {
-			connection->noteDisconnected(addr_);
+			connection->setNeedsRefresh(true);
 		}
+		(void)event_;
+		(void)addr_;
 	}
 private:
 	ClockworkClient::Connection *connection;
@@ -467,12 +469,12 @@ class SetupConnectMonitor : public EventResponder {
 public:
 	explicit SetupConnectMonitor(ClockworkClient::Connection *c) : connection(c) {}
 	void operator()(const zmq_event_t &event_, const char* addr_) {
-		// Setup TCP connect flags a pending data refresh once CHANNEL reaches
-		// e_done. The reliable re-arm is idle's !was_ready -> e_done edge; this
-		// is an early hint when the monitor fires.
+		// Monitor thread: flag only. setState/resetCommandPath belong on idle.
 		if (connection) {
-			connection->noteConnected(addr_);
+			connection->setNeedsRefresh(true);
 		}
+		(void)event_;
+		(void)addr_;
 	}
 private:
 	ClockworkClient::Connection *connection;
