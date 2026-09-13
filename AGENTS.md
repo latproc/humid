@@ -186,6 +186,20 @@ dependent Humid objects to recompile; stale objects combined with a new static
 `libcw_client.a` can produce a valid link followed by deterministic startup
 segfaults.
 
+## Connection Configuration (deploy vs test)
+
+- A deployment takes each connection's `host`/`port` from the `CONNECTION`
+  entries in `PROJECTSETTINGS.humid`. Deployed invocations must not pass
+  connection overrides.
+- `--host`, `--cwport`, and `--connection NAME.host=...` / `NAME.port=...` are
+  testing-only overrides. When supplied they take precedence over project
+  settings, and every connection whose target changed is logged at startup as
+  `connection override (testing): OLD_HOST:OLD_PORT -> NEW_HOST:NEW_PORT`.
+- With more than one `CONNECTION`, a bare `--host`/`--cwport` is an error;
+  target one with `--connection NAME.port=PORT`.
+- Never use these overrides to verify deployed behaviour, and never add them to
+  a panel unit or start command. `humid --help` documents the same rule.
+
 ## Live Panel Change Control
 
 - Confirm the target panel, operating state, test window, and rollback before

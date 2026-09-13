@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <cstdlib>
 #include "propertymonitor.h"
 #include "skeleton.h"
 #include "editorsettings.h"
@@ -446,6 +447,136 @@ void loadSettingsFiles(std::list<std::string> &files) {
 	}
 }
 
+// Parse one --connection override, written NAME.host=VALUE or NAME.port=VALUE.
+static bool parseConnectionOverride(const std::string &arg, std::string &name,
+                                    std::string &field, std::string &value) {
+	const size_t eq = arg.find('=');
+	if (eq == std::string::npos || eq == 0) {
+		return false;
+	}
+	const std::string lhs = arg.substr(0, eq);
+	value = arg.substr(eq + 1);
+	const size_t dot = lhs.rfind('.');
+	if (dot == std::string::npos || dot == 0 || dot + 1 >= lhs.size()) {
+		return false;
+	}
+	name = lhs.substr(0, dot);
+	field = lhs.substr(dot + 1);
+	if (field != "host" && field != "port") {
+		return false;
+	}
+	return !value.empty();
+}
+
+// Apply explicit test overrides (--host/--cwport/--connection) to the resolved
+// PROJECTSETTINGS CONNECTION structures. A deployment takes each connection's
+// host/port from PROJECTSETTINGS.humid; these flags exist so a developer or
+// agent can point a test run elsewhere. Overrides win, and every target that
+// actually changed is logged with the value it replaced so a test run cannot be
+// mistaken for the deployed configuration. Returns false after reporting a
+// fatal configuration error.
+static bool applyConnectionOverrides(const po::variables_map &vm, Structure *project_settings,
+                                     const std::vector<std::string> &named_overrides,
+                                     const std::string &cli_host, int cli_port) {
+	const bool bare_host = vm.count("host") > 0;
+	const bool bare_port = vm.count("cwport") > 0;
+	if (!bare_host && !bare_port && named_overrides.empty()) {
+		return true;
+	}
+
+	std::list<Structure *> conns;
+	if (project_settings && project_settings->getStructureDefinition()) {
+		for (auto &p : project_settings->getStructureDefinition()->getLocals()) {
+			if (p.machine && p.machine->isA("CONNECTION")) {
+				conns.push_back(p.machine);
+			}
+		}
+	}
+	if (conns.empty()) {
+		std::cerr << "connection override requested but project settings define no CONNECTION\n";
+		return false;
+	}
+
+	struct Target {
+		Structure *conn;
+		std::string old_host;
+		int old_port;
+	};
+	std::vector<Target> targets;
+	for (auto *c : conns) {
+		targets.push_back(Target{c, c->getStringProperty("host", ""),
+		                         (int)c->getIntProperty("port", 5555)});
+	}
+
+	for (const auto &arg : named_overrides) {
+		std::string name, field, value;
+		if (!parseConnectionOverride(arg, name, field, value)) {
+			std::cerr << "invalid --connection '" << arg
+			          << "': expected NAME.host=VALUE or NAME.port=VALUE\n";
+			return false;
+		}
+		Structure *conn = nullptr;
+		for (auto *c : conns) {
+			if (c->getName() == name) {
+				conn = c;
+				break;
+			}
+		}
+		if (!conn) {
+			std::cerr << "--connection names unknown connection '" << name << "'\n";
+			return false;
+		}
+		if (field == "host") {
+			conn->getProperties().add("host", Value(value, Value::t_string));
+		}
+		else {
+			char *end = nullptr;
+			const long port = std::strtol(value.c_str(), &end, 10);
+			if (!end || *end != 0 || port <= 0 || port > 65535) {
+				std::cerr << "invalid port '" << value << "' in --connection " << arg << "\n";
+				return false;
+			}
+			conn->getProperties().add("port", (int)port);
+		}
+	}
+
+	if (bare_host || bare_port) {
+		if (conns.size() > 1) {
+			std::cerr << "--host/--cwport are ambiguous: project settings define "
+			          << conns.size()
+			          << " connections; use --connection NAME.host=VALUE / NAME.port=VALUE\n";
+			return false;
+		}
+		if (bare_host && cli_host.empty()) {
+			std::cerr << "--host requires a non-empty host\n";
+			return false;
+		}
+		if (bare_port && (cli_port <= 0 || cli_port > 65535)) {
+			std::cerr << "invalid --cwport " << cli_port << "\n";
+			return false;
+		}
+		Structure *conn = conns.front();
+		if (bare_host) {
+			conn->getProperties().add("host", Value(cli_host, Value::t_string));
+		}
+		if (bare_port) {
+			conn->getProperties().add("port", cli_port);
+		}
+	}
+
+	for (auto &t : targets) {
+		const std::string new_host = t.conn->getStringProperty("host", "");
+		const int new_port = (int)t.conn->getIntProperty("port", 5555);
+		if (new_host == t.old_host && new_port == t.old_port) {
+			continue;
+		}
+		std::cerr << "connection override (testing): " << t.conn->getName() << " "
+		          << (t.old_host.empty() ? std::string("<unset>") : t.old_host) << ":"
+		          << t.old_port << " -> " << new_host << ":" << new_port << "\n";
+	}
+	return true;
+}
+
 int main(int argc, const char ** argv ) {
 	char *pn = strdup(argv[0]);
 	program_name = strdup(basename(pn));
@@ -469,7 +600,9 @@ int main(int argc, const char ** argv ) {
 	//LogState::instance()->insert(DebugExtra::instance()->DEBUG_CHANNELS);
 
 	int cw_port = 5555;
-	std::string hostname;
+	std::string hostname = "localhost";
+	// Testing-only connection overrides, applied after project settings load.
+	std::vector<std::string> connection_overrides;
 
 	setup_signals();
 
@@ -477,8 +610,6 @@ int main(int argc, const char ** argv ) {
 	generic.add_options()
 	("help", "produce help message")
 	("debug",po::value<int>(&debug)->default_value(0), "set debug level")
-	("host", po::value<std::string>(&hostname)->default_value("localhost"),"remote host (localhost)")
-	("cwport",po::value<int>(&cw_port)->default_value(5555), "clockwork port (5555)")
 	("tags", po::value<std::string>(&tag_file_name)->default_value(""),"clockwork tag file")
 	("full_screen",po::value<long>(&full_screen_mode)->default_value(0), "full screen")
 	("fullscreen", po::value<long>(&full_screen_mode), "alias for --full_screen")
@@ -492,12 +623,23 @@ int main(int argc, const char ** argv ) {
 	("refresh", po::value<int>(&mainloop_refresh_ms)->default_value(100),
 		"UI idle refresh period in milliseconds (default 100; 0 disables timer redraws)")
 	;
+	// No default_value here: whether a flag was supplied must stay observable
+	// (vm.count) because it controls whether project settings are overridden.
+	po::options_description connection_options("Connection overrides (testing only)");
+	connection_options.add_options()
+	("host", po::value<std::string>(&hostname),
+		"override remote host for all CONNECTIONs (deployment uses PROJECTSETTINGS.humid)")
+	("cwport", po::value<int>(&cw_port),
+		"override clockwork port for all CONNECTIONs (deployment uses PROJECTSETTINGS.humid)")
+	("connection", po::value<std::vector<std::string> >(&connection_overrides),
+		"override one named connection: NAME.host=HOST or NAME.port=PORT (repeatable)")
+	;
 	po::options_description hidden("Hidden options");
 	hidden.add_options()
     ("source-file", po::value< std::vector<std::string> >(), "source file")
     ;
 	po::options_description cmdline_options;
-	cmdline_options.add(generic).add(hidden);
+	cmdline_options.add(generic).add(connection_options).add(hidden);
 
 	po::positional_options_description p;
 	p.add("source-file", -1);
@@ -514,12 +656,21 @@ int main(int argc, const char ** argv ) {
 	}
 
 	if (vm.count("help")) {
-		std::cout << generic << "\n";
+		std::cout << generic << "\n" << connection_options << "\n"
+			<< "Connection configuration:\n"
+			<< "  A deployment takes each connection's host and port from the\n"
+			<< "  CONNECTION entries in PROJECTSETTINGS.humid.\n"
+			<< "  The overrides above are for local testing only. When supplied they take\n"
+			<< "  precedence over the project settings, and each connection whose target\n"
+			<< "  changed is logged at startup as:\n"
+			<< "      connection override (testing): OLD_HOST:OLD_PORT -> NEW_HOST:NEW_PORT\n"
+			<< "  If the project defines more than one connection, target one explicitly\n"
+			<< "  with --connection NAME.port=PORT; a bare --host/--cwport is then an error.\n"
+			<< "  Do not use these overrides in a deployment or when verifying deployed\n"
+			<< "  behaviour.\n";
 		return 1;
 	}
 
-	if (vm.count("cwout")) cw_port = vm["cwout"].as<int>();
-	if (vm.count("host")) hostname = vm["host"].as<std::string>();
 	if (vm.count("debug")) debug = vm["debug"].as<int>();
 	if (vm.count("tags")) tag_file_name = vm["tags"].as<std::string>();
 	if (vm.count("run_only")) run_only = vm["run_only"].as<int>();
@@ -613,18 +764,18 @@ int main(int argc, const char ** argv ) {
 				StructureClass *psc = new StructureClass("PROJECTSETTINGS", "");
 				hm_classes.push_back(psc);
 				project_settings = psc->instantiate(nullptr, "ProjectSettings");
-				if (cw_port && hostname.length()) { // user supplied a host, setup the required connection object
-					Structure *conn = new Structure(nullptr, "Remote", "CONNECTION");
-					conn->getProperties().add("host", hostname.c_str());
-					conn->getProperties().add("port", cw_port);
-					HmiParameter p(conn->getName());
-					p.machine = conn;
-					psc->addLocal(p);
-				}
+				// No project file: do not invent a CONNECTION here. It would
+				// have no channel name, so it could never connect; overrides
+				// below report the missing CONNECTION instead.
 				psc->getProperties().add("asset_path", Value(".", Value::t_string));
 			}
 			if (!project_settings->getStructureDefinition()) {
 				project_settings->setStructureDefinition(findClass("PROJECTSETTINGS"));
+			}
+			// Testing-only overrides win over the project settings; deployments
+			// pass none of --host/--cwport/--connection.
+			if (!applyConnectionOverrides(vm, project_settings, connection_overrides, hostname, cw_port)) {
+				return EXIT_FAILURE;
 			}
 			auto asset_path = project_settings->getStringProperty("asset_path");
 			if (asset_path.empty()) {
