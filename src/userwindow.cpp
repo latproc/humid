@@ -19,7 +19,9 @@
 #include "propertyformhelper.h"
 #include "screenswindow.h"
 #include "widgetfactory.h"
+#include "linkableobject.h"
 #include <cassert>
+#include <cctype>
 
 using namespace nanogui;
 
@@ -537,12 +539,66 @@ void UserWindow::update() {
 }
 
 namespace {
+bool isBlankImageName(const std::string &name) {
+	for (unsigned char c : name) {
+		if (!std::isspace(c))
+			return false;
+	}
+	return true;
+}
+
+std::string liveImageSource(EditorImageView *image) {
+	LinkableProperty *lp = image->getRemote();
+	if (!lp) {
+		std::string remote_name = image->getRemoteName();
+		if (remote_name.empty() && image->getDefinition()) {
+			const Value &remote = image->getDefinition()->getValue("remote");
+			if (remote != SymbolTable::Null)
+				remote_name = remote.asString();
+		}
+		if (!remote_name.empty() && remote_name != "null") {
+			lp = EDITOR->gui()->findLinkableProperty(remote_name);
+			if (lp) {
+				image->setRemote(lp);
+				lp->link(new LinkableText(image));
+			}
+		}
+	}
+	if (!lp)
+		return {};
+	return lp->value().asString();
+}
+
+void bindClockworkRemotes(nanogui::Widget *parent, EditorGUI *gui) {
+	if (!parent || !gui) return;
+	for (auto child : parent->children()) {
+		if (EditorWidget *ew = dynamic_cast<EditorWidget *>(child)) {
+			if (Structure *def = ew->getDefinition()) {
+				const Value remote = def->getValue("remote");
+				if (remote != SymbolTable::Null) {
+					const std::string name = remote.asString();
+					if (!name.empty() && name != "null") {
+						LinkableProperty *lp = gui->findLinkableProperty(name);
+						if (lp && ew->getRemote() != lp)
+							ew->setProperty("Remote", name);
+						else if (lp)
+							lp->apply();
+					}
+				}
+			}
+		}
+		bindClockworkRemotes(child, gui);
+	}
+}
+
 void refreshImageWidgets(nanogui::Widget *parent) {
 	if (!parent) return;
 	for (auto child : parent->children()) {
 		if (EditorImageView *image = dynamic_cast<EditorImageView *>(child)) {
-			const std::string source = image->imageName();
-			if (!source.empty()) {
+			std::string source = liveImageSource(image);
+			if (isBlankImageName(source))
+				source = image->imageName();
+			if (!isBlankImageName(source)) {
 				image->setImageName(source, true);
 				image->fit();
 			}
@@ -553,9 +609,10 @@ void refreshImageWidgets(nanogui::Widget *parent) {
 }
 
 void UserWindow::refreshImages() {
-	// An IOD snapshot does not necessarily contain imageURL properties.  Reload
-	// the active widgets from their retained URLs after reconnect so those
-	// images cannot remain at their pre-restart cached contents.
+	// Pinned active_screen builds widgets before the IOD snapshot, so remotes
+	// were null at create time. Bind them now, then reload images from the
+	// live imageURL (reconnect also needs a refetch; the snapshot may omit it).
+	bindClockworkRemotes(window, gui);
 	refreshImageWidgets(window);
 	gui->requestRedraw();
 }

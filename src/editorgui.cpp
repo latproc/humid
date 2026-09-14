@@ -556,7 +556,9 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 	auto project_settings = findStructure("ProjectSettings");
 	std::string asset_path = project_settings->getStringProperty("asset_path", ".");
 	std::string blank_name = "images/blank";
-	std::string name(source);
+	std::string name(source ? source : "");
+	if (name.empty() || name.find_first_not_of(" \t") == std::string::npos)
+		return blank_id;
 	/*
 	for(auto it = mImagesData.begin(); it != mImagesData.end(); ++it) {
 		const GLTexture &tex = (*it).first;
@@ -1238,6 +1240,15 @@ LinkableProperty *EditorGUI::findLinkableProperty(const std::string name) {
 	return (*found).second;
 }
 
+bool EditorGUI::hasLiveRemoteScreen() {
+	if (shouldIgnoreRemoteScreen() || !systemSettings())
+		return false;
+	const Value remote_screen(systemSettings()->getProperties().find("remote_screen"));
+	if (remote_screen == SymbolTable::Null || remote_screen.asString().empty())
+		return false;
+	return findLinkableProperty(remote_screen.asString()) != nullptr;
+}
+
 void EditorGUI::handleClockworkMessage(ClockworkClient::Connection *conn, unsigned long now, const std::string &op, std::list<Value> *message) {
 	if (op == "UPDATE") {
 		int pos = 0;
@@ -1673,10 +1684,20 @@ void EditorGUI::update(ClockworkClient::Connection *connection, bool allow_data_
 							processModbusInitialisation(connection->getName(), obj);
 							w_objects->rebuildWindow();
 							if (w_user && getState() == GUIWORKING) {
-								// Do not setStructure() here: that clear()s every widget
-								// before the remote screen is applied. After a long
-								// iod-down the follow-up load can fail and leave a
-								// blank grey panel until humid is killed.
+								const bool rebuild_static_screen =
+									w_user->structure() && w_user->hasPanelWidgets()
+									&& !hasLiveRemoteScreen();
+								if (capture_enabled || rebuild_static_screen) {
+									// Widgets for a pinned active_screen (and --screen
+									// capture) are created at startup before this
+									// snapshot, so every remote resolved to null.
+									// Rebuild now that the linkables exist.
+									// Do not rebuild when Clockwork will replace the
+									// page via remote_screen: setStructure() here used
+									// to clear() the window first, and a failed
+									// follow-up load left a blank grey panel.
+									w_user->setStructure(w_user->structure());
+								}
 								applyControlRemoteTargets();
 								w_user->refreshImages();
 								if (!shouldIgnoreRemoteScreen()) {
