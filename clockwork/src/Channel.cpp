@@ -386,7 +386,7 @@ void Channel::maybeRetryClientHandshakeStatus() {
     if (!cmd_client || connections == 0) {
         return;
     }
-    if (communications_manager && communications_manager->monit_subs.disconnected()) {
+    if (communications_manager && communications_manager->monit_subs->disconnected()) {
         return;
     }
     const uint64_t now = microsecs();
@@ -436,7 +436,7 @@ Action::Status Channel::setState(const State &new_state, uint64_t authority, boo
             return Action::Failed;
         }
         if ((isClient() && communications_manager->monit_setup->disconnected()) ||
-            communications_manager->monit_subs.disconnected()) {
+            communications_manager->monit_subs->disconnected()) {
             {
                 FileLogger fl(program_name);
                 fl.f() << channel_name << " state change to " << new_state
@@ -446,7 +446,7 @@ Action::Status Channel::setState(const State &new_state, uint64_t authority, boo
             }
             return Action::Failed;
         }
-        if (communications_manager->monit_subs.disconnected()) {
+        if (communications_manager->monit_subs->disconnected()) {
             {
                 FileLogger fl(program_name);
                 fl.f() << channel_name << " state change to " << new_state
@@ -1505,12 +1505,12 @@ void Channel::startSubscriber() {
     connect_responder = new ChannelConnectMonitor(this);
     disconnect_responder = new ChannelDisconnectMonitor(this);
     if (isClient()) {
-        communications_manager->monit_subs.addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
+        communications_manager->monit_subs->addResponder(ZMQ_EVENT_CONNECTED, connect_responder);
     }
     else {
-        communications_manager->monit_subs.addResponder(ZMQ_EVENT_ACCEPTED, connect_responder);
+        communications_manager->monit_subs->addResponder(ZMQ_EVENT_ACCEPTED, connect_responder);
     }
-    communications_manager->monit_subs.addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
+    communications_manager->monit_subs->addResponder(ZMQ_EVENT_DISCONNECTED, disconnect_responder);
     DBG_CHANNELS << "Channel " << channel_name << " got response to start: " << buf << "\n";
 }
 
@@ -1902,7 +1902,7 @@ void Channel::sendThrottledUpdates() {
     if (current_state != ChannelImplementation::ACTIVE) {
         return;
     }
-    if (!communications_manager || communications_manager->monit_subs.disconnected()) {
+    if (!communications_manager || communications_manager->monit_subs->disconnected()) {
         return;
     }
     bool do_modbus = definition()->hasFeature(ChannelDefinition::ReportModbusUpdates);
@@ -2819,7 +2819,7 @@ void Channel::checkCommunications() {
     }
     //bool ok = communications_manager->checkConnections();
     if (communications_manager->monit_setup->disconnected() ||
-        communications_manager->monit_subs.disconnected()) {
+        communications_manager->monit_subs->disconnected()) {
         if (isClient()) {
             if (communications_manager->monit_setup->disconnected() &&
                 current_state != ChannelImplementation::DISCONNECTED) {

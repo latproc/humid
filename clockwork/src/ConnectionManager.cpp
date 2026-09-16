@@ -150,12 +150,16 @@ SubscriptionManager::SubscriptionManager(const char *chname, ProtocolType proto,
                                          int setup_port_num)
     : subscriber_host(remote_host), channel_name(chname), protocol(proto),
       setup_port(setup_port_num), authority(0),
-      subscriber_(*MessagingInterface::getContext(), (protocol == eCLOCKWORK) ? ZMQ_SUB : ZMQ_PAIR),
-      sender_(0), subscriber_port(remote_port), monit_subs(subscriber_), monit_pubs(0),
-      monit_setup(0), setup_(0), _setup_status(e_startup), sub_status_(ss_init), setup_monitor_thread(0) {
+      subscriber_(0),
+      sender_(0), subscriber_port(remote_port), monit_subs(0), monit_pubs(0),
+      monit_setup(0), setup_(0), _setup_status(e_startup), sub_status_(ss_init),
+      setup_monitor_thread(0), subscriber_monitor_thread(0) {
     internals = new SubscriptionManagerInternals();
     SubscriptionManagerInternals::all.push_back(this);
     state_start = microsecs();
+    subscriber_ = new zmq::socket_t(*MessagingInterface::getContext(),
+                                    (protocol == eCLOCKWORK) ? ZMQ_SUB : ZMQ_PAIR);
+    monit_subs = new SingleConnectionMonitor(*subscriber_);
     //createSubscriberSocket(chname);
     if (isClient()) {
         setup_ = new zmq::socket_t(*MessagingInterface::getContext(), ZMQ_REQ);
@@ -168,7 +172,7 @@ SubscriptionManager::SubscriptionManager(const char *chname, ProtocolType proto,
             assert(protocol == eCHANNEL);
             char url[100];
             snprintf(url, 100, "tcp://*:%d", subscriber_port);
-            subscriber_.bind(url);
+            subscriber_->bind(url);
         }
     }
     else {
@@ -187,6 +191,16 @@ SubscriptionManager::~SubscriptionManager() {
         delete setup_monitor_thread;
         setup_monitor_thread = 0;
     }
+    if (subscriber_monitor_thread) {
+        if (monit_subs) {
+            monit_subs->abort();
+        }
+        if (subscriber_monitor_thread->joinable()) {
+            subscriber_monitor_thread->join();
+        }
+        delete subscriber_monitor_thread;
+        subscriber_monitor_thread = 0;
+    }
 
     std::cout << "SubscriptionManagers: " << SubscriptionManagerInternals::all.size() << std::endl;
     auto iter = SubscriptionManagerInternals::all.begin();
@@ -197,8 +211,8 @@ SubscriptionManager::~SubscriptionManager() {
             break;
         }
     }
-    if (!monit_subs.disconnected()) {
-        monit_subs.abort();
+    if (monit_subs) {
+        monit_subs->abort();
     }
     if (monit_pubs && !monit_pubs->disconnected()) {
         monit_pubs->abort();
@@ -206,6 +220,10 @@ SubscriptionManager::~SubscriptionManager() {
     if (monit_setup &&!monit_setup->disconnected()) {
         monit_setup->abort();
     }
+    delete monit_subs;
+    monit_subs = 0;
+    delete subscriber_;
+    subscriber_ = 0;
     delete internals;
 }
 
@@ -219,9 +237,11 @@ void SubscriptionManager::setSetupMonitor(SingleConnectionMonitor *monitor) {
 
 void SubscriptionManager::init() {
     if (protocol == eCLOCKWORK) { // start the subscriber if necessary
-        subscriber_.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+        subscriber_->setsockopt(ZMQ_SUBSCRIBE, "", 0);
     }
-    boost::thread subscriber_monitor(boost::ref(monit_subs));
+    if (!subscriber_monitor_thread) {
+        subscriber_monitor_thread = new boost::thread(boost::ref(*monit_subs));
+    }
     if (isClient()) {
         if (setup_monitor_thread) {
             if (setup_monitor_thread->joinable()) {
@@ -254,22 +274,69 @@ int SubscriptionManager::configurePoll(zmq::pollitem_t *items) {
     return ++idx;
 }
 
+void SubscriptionManager::recreateSubscriberSocket(const char *reason) {
+    SubscriptionManagerInternals *smi = dynamic_cast<SubscriptionManagerInternals *>(internals);
+    if (smi && smi->shouldLogReconnect()) {
+        FileLogger fl(program_name);
+        fl.f() << channel_name << " recreating subscriber socket";
+        if (reason && *reason) {
+            fl.f() << " (" << reason << ")";
+        }
+        fl.f() << "\n" << std::flush;
+        smi->last_reconnect_log_time = microsecs();
+    }
+
+    SingleConnectionMonitor *old_monitor = monit_subs;
+    if (old_monitor) {
+        old_monitor->abort();
+    }
+    if (subscriber_monitor_thread) {
+        if (subscriber_monitor_thread->joinable()) {
+            subscriber_monitor_thread->join();
+        }
+        delete subscriber_monitor_thread;
+        subscriber_monitor_thread = 0;
+    }
+
+    int linger = 0;
+    if (subscriber_) {
+        try {
+            subscriber_->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+        }
+        catch (const zmq::error_t &) {
+        }
+        delete subscriber_;
+        subscriber_ = 0;
+    }
+
+    const int type = (protocol == eCLOCKWORK) ? ZMQ_SUB : ZMQ_PAIR;
+    subscriber_ = new zmq::socket_t(*MessagingInterface::getContext(), type);
+    if (protocol == eCLOCKWORK) {
+        try {
+            subscriber_->setsockopt(ZMQ_SUBSCRIBE, "", 0);
+        }
+        catch (const zmq::error_t &) {
+        }
+    }
+    monit_subs = new SingleConnectionMonitor(*subscriber_);
+    if (old_monitor) {
+        monit_subs->transferRespondersFrom(*old_monitor);
+        delete old_monitor;
+        old_monitor = 0;
+    }
+    subscriber_monitor_thread = new boost::thread(boost::ref(*monit_subs));
+
+    channel_url.clear();
+    sub_status_ = ss_init;
+}
+
 void SubscriptionManager::invalidateSubscriberSession() {
     // After peer restart the SUB/PAIR may still report connected (or auto-reconnect
     // to a stale port) while the CHANNEL grant/authority is gone. Force a clean
-    // re-subscribe on the next successful grant.
-    if (!channel_url.empty()) {
-        try {
-            subscriber_.disconnect(channel_url.c_str());
-        }
-        catch (const zmq::error_t &) {
-            // ignore — socket may already be down
-        }
-    }
-    channel_url.clear();
+    // socket so leftover multipart _more cannot abort the next recv.
+    recreateSubscriberSocket("invalidate subscriber session");
     current_channel.clear();
     authority = 0;
-    sub_status_ = ss_init;
 }
 
 bool SubscriptionManager::forceFullReconnect(const char *reason) {
@@ -278,14 +345,6 @@ bool SubscriptionManager::forceFullReconnect(const char *reason) {
     }
     SubscriptionManagerInternals *smi = dynamic_cast<SubscriptionManagerInternals *>(internals);
     if (smi) {
-        const uint64_t now = microsecs();
-        if (smi->last_setup_recreate_time &&
-            now - smi->last_setup_recreate_time <
-                SubscriptionManagerInternals::setup_recreate_min_interval) {
-            return false;
-        }
-    }
-    if (smi) {
         std::string msg("forceFullReconnect");
         if (reason && *reason) {
             msg += ": ";
@@ -293,10 +352,10 @@ bool SubscriptionManager::forceFullReconnect(const char *reason) {
         }
         smi->logReconnect(channel_name.c_str(), msg.c_str());
     }
-    // Drop data-path session first so we never mark e_done on a stale SUB.
+    // Always replace SUB first — rate-limiting this left fq _more on the old
+    // socket and the next recv aborted (humid exit 134).
     invalidateSubscriberSession();
-    // Always recreate setup REQ — half-open REQ after peer death cannot recover
-    // with drain alone, and resetChannelRequestState(false) left zombies.
+    // Setup REQ recreate stays rate-limited (join+new thread is expensive).
     resetChannelRequestState(true);
     // Drive the client FSM from e_startup so setupConnections() re-binds URL
     // and requestChannel() issues a fresh CHANNEL.
@@ -524,21 +583,16 @@ bool SubscriptionManager::applyChannelSetupReply(const char *buf, size_t len) {
 
     cJSON_Delete(chan);
 
-    // New grant after peer restart: force subscriber reconnect even if the
-    // monitor still thinks the old TCP session is up.
+    // New grant after peer restart: replace the SUB socket. Disconnect of the
+    // same socket leaves libzmq fq _more set and the next recv aborts.
     const bool grant_changed =
         (old_port != subscriber_port) || (old_authority != authority) ||
         (old_channel != current_channel) || channel_url.empty() || sub_status_ == ss_init;
-    if (grant_changed && !channel_url.empty()) {
-        try {
-            subscriber_.disconnect(channel_url.c_str());
-        }
-        catch (const zmq::error_t &) {
-        }
-        channel_url.clear();
-        sub_status_ = ss_init;
+    if (grant_changed && sub_status_ != ss_init) {
+        recreateSubscriberSocket("CHANNEL grant changed");
     }
-    else if (sub_status_ != ss_init && grant_changed) {
+    else if (grant_changed) {
+        channel_url.clear();
         sub_status_ = ss_init;
     }
 
@@ -720,25 +774,20 @@ bool SubscriptionManager::setupConnections() {
         // After peer restart the SUB may still be attached (or auto-reconnected)
         // to a stale endpoint. Reconnect cleanly when ss_init or the URL changed.
         if (sub_status_ == ss_init || channel_url != url) {
-            if (!channel_url.empty() &&
-                (!monit_subs.disconnected() || channel_url != url)) {
-                try {
-                    subscriber().disconnect(channel_url.c_str());
-                }
-                catch (const zmq::error_t &) {
-                }
+            if (!channel_url.empty() && channel_url != url) {
+                recreateSubscriberSocket("subscriber endpoint changed");
             }
             DBG_CHANNELS << " connecting subscriber to " << url << "\n";
             {
                 FileLogger fl(program_name);
                 fl.f() << " connecting subscriber to " << url << "\n";
             }
-            monit_subs.setEndPoint(url);
-            int counter = 5;
-            while (counter-- > 0 && !monit_subs.active()) {
-                usleep(100);
+            monit_subs->setEndPoint(url);
+            int counter = 50;
+            while (counter-- > 0 && !monit_subs->active()) {
+                usleep(1000);
             }
-            if (!monit_subs.active()) {
+            if (!monit_subs->active()) {
                 DBG_CHANNELS << url << " monitor subscriber not active\n";
                 return false;
             }
@@ -799,7 +848,10 @@ void SubscriptionManager::setupSender() {
     sender_->connect(url);
 }
 
-zmq::socket_t &SubscriptionManager::subscriber() { return subscriber_; }
+zmq::socket_t &SubscriptionManager::subscriber() {
+    assert(subscriber_);
+    return *subscriber_;
+}
 zmq::socket_t &SubscriptionManager::setup() {
     assert(setup_);
     return *setup_;
@@ -1139,7 +1191,7 @@ void MessageRouter::poll() {
 
 bool SubscriptionManager::checkConnections() {
     if (!isClient()) {
-        return !monit_subs.disconnected();
+        return !monit_subs->disconnected();
     }
 
     if (setupStatus() == e_startup || setupStatus() == e_connected) {
@@ -1158,7 +1210,7 @@ bool SubscriptionManager::checkConnections() {
         setSetupStatus(e_waiting_connect);
         return false;
     }
-    if (monit_setup->disconnected() || monit_subs.disconnected()) {
+    if (monit_setup->disconnected() || monit_subs->disconnected()) {
 #if 1
         /*
             FileLogger fl(program_name); fl.f()
@@ -1196,7 +1248,7 @@ bool SubscriptionManager::checkConnections() {
             forceFullReconnect("state timeout");
         }
 #endif
-        if (monit_setup->disconnected() && monit_subs.disconnected()) {
+        if (monit_setup->disconnected() && monit_subs->disconnected()) {
             // Both legs down (typical after iod restart): full reconnect, not a
             // soft drain — resetChannelRequestState(false) left half-open REQ.
             forceFullReconnect("setup+subscriber both disconnected");
@@ -1239,7 +1291,7 @@ bool SubscriptionManager::checkConnections() {
         return false;
     }
 
-    if (monit_subs.disconnected() && !monit_setup->disconnected()) {
+    if (monit_subs->disconnected() && !monit_setup->disconnected()) {
 #if 0
         {
             FileLogger fl(program_name);
@@ -1283,7 +1335,7 @@ bool SubscriptionManager::checkConnections() {
         }
         // Drive CHANNEL send/recv and SUB bind even though monitors look healthy.
         setupConnections();
-        if (!current_channel.empty() && !monit_subs.disconnected() && sub_status_ != ss_init) {
+        if (!current_channel.empty() && !monit_subs->disconnected() && sub_status_ != ss_init) {
             setSetupStatus(SubscriptionManager::e_done);
             channel_error_count = 0;
             return true;
@@ -1294,7 +1346,7 @@ bool SubscriptionManager::checkConnections() {
     // Both TCP paths up is not enough: we must have applied a CHANNEL grant
     // (current_channel set). Otherwise a race after peer restart marks e_done
     // while the CHANNEL JSON was drained/ignored and authority/port are wrong.
-    if (monit_setup && !monit_setup->disconnected() && !monit_subs.disconnected() &&
+    if (monit_setup && !monit_setup->disconnected() && !monit_subs->disconnected() &&
         !current_channel.empty() && sub_status_ != ss_init) {
         setSetupStatus(SubscriptionManager::e_done);
     }
@@ -1314,6 +1366,18 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
             fl.f()<< subscriber_host<<":"<<subscriber_port<< "\n";
         */
     }
+    // Inner checkConnections() may have replaced setup_ / subscriber_. The
+    // caller's poll list still holds the old handles — refresh before poll.
+    {
+        int idx = 0;
+        if (setup_ && num_items > idx) {
+            items[idx].socket = (void *)setup();
+            ++idx;
+        }
+        if (num_items > idx && subscriber_) {
+            items[idx].socket = (void *)subscriber();
+        }
+    }
     int rc = 0;
 
     /*  client programs that are not yet connected only monitor their own command channel for activity
@@ -1321,7 +1385,7 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
     */
     try {
         if (isClient() && num_items > 2 &&
-            (monit_subs.disconnected() || monit_setup->disconnected())) {
+            (monit_subs->disconnected() || monit_setup->disconnected())) {
             int idx = -1;
             int i = 0;
             while (i < num_items)
@@ -1486,7 +1550,7 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
                     need_reply = false;
                 }
             }
-            else if (!monit_subs.disconnected()) {
+            else if (!monit_subs->disconnected()) {
                 DBG_CHANNELS << " forwarding message " << buf << " to subscriber\n";
                 try {
                     subscriber().send(buf, strlen(buf));

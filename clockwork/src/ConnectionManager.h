@@ -210,6 +210,11 @@ class SubscriptionManager : public ConnectionManager {
     // Drop subscriber session state so the next successful CHANNEL grant reconnects.
     void invalidateSubscriberSession();
 
+    // Replace the SUB/PAIR socket and its monitor. Disconnect/reconnect of the
+    // same socket does not clear libzmq fq _more; a leftover more() frame then
+    // aborts (fq.cpp !_more, humid exit 134).
+    void recreateSubscriberSocket(const char *reason = nullptr);
+
     // Full client reconnect after peer (iod) restart / ENOTSOCK / stranded REQ:
     // invalidate SUB session, recreate setup REQ, reset to e_startup so the
     // next checkConnections() runs setupConnections() + CHANNEL from scratch.
@@ -258,12 +263,12 @@ class SubscriptionManager : public ConnectionManager {
     uint64_t authority;
 
   protected:
-    zmq::socket_t subscriber_;
+    zmq::socket_t *subscriber_;
     zmq::socket_t *sender_;
     int subscriber_port;
 
   public:
-    SingleConnectionMonitor monit_subs;
+    SingleConnectionMonitor *monit_subs;
     SingleConnectionMonitor *monit_pubs;
     SingleConnectionMonitor *monit_setup;
 
@@ -275,6 +280,8 @@ class SubscriptionManager : public ConnectionManager {
     SubStatus sub_status_;
     // Owned monitor thread for setup REQ; join before deleting monit_setup.
     boost::thread *setup_monitor_thread;
+    // Owned monitor thread for the subscriber socket; join before replacing it.
+    boost::thread *subscriber_monitor_thread;
 };
 
 #endif

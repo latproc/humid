@@ -76,32 +76,15 @@ bool g_recv_left_multipart = false;
 
 // Finish a multipart ZMQ message. Returning after a frame with more()==true
 // leaves libzmq's fair-queue in _more and the next recv can abort:
-// Assertion failed: !_more (src/fq.cpp:80).
+// Assertion failed: !_more (src/fq.cpp:80). Disconnect/reconnect of the same
+// socket does not clear _more — the caller must replace the socket.
 bool drainUntilLastFrame(zmq::socket_t &sock, zmq::message_t &message) {
     int waits = 0;
     while (message.more()) {
-        zmq::pollitem_t items[] = {{(void *)sock, 0, ZMQ_POLLIN, 0}};
-        int n = 0;
         try {
-            n = zmq::poll(&items[0], 1, 200);
-        }
-        catch (const zmq::error_t &) {
-            g_recv_left_multipart = true;
-            return false;
-        }
-        if (!n) {
-            if (++waits >= 10) {
-                std::cerr << thread_name()
-                          << " safeRecv: timed out draining multipart message\n";
-                g_recv_left_multipart = true;
-                return false;
-            }
-            continue;
-        }
-        try {
-            if (!sock.recv(&message, 0)) {
-                g_recv_left_multipart = true;
-                return false;
+            if (sock.recv(&message, ZMQ_DONTWAIT)) {
+                waits = 0;
+                continue;
             }
         }
         catch (const zmq::error_t &e) {
@@ -111,7 +94,68 @@ bool drainUntilLastFrame(zmq::socket_t &sock, zmq::message_t &message) {
             g_recv_left_multipart = true;
             return false;
         }
-        waits = 0;
+        // Multipart frames are queued together; a short poll covers scheduling.
+        // Do not wait seconds here — that freezes the HMI and still leaves _more.
+        if (++waits >= 3) {
+            std::cerr << thread_name()
+                      << " safeRecv: incomplete multipart; socket must be replaced\n";
+            g_recv_left_multipart = true;
+            return false;
+        }
+        try {
+            zmq::pollitem_t items[] = {{(void *)sock, 0, ZMQ_POLLIN, 0}};
+            zmq::poll(&items[0], 1, 50);
+        }
+        catch (const zmq::error_t &) {
+            g_recv_left_multipart = true;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool drainRcvMore(zmq::socket_t &sock) {
+    int more = 0;
+    size_t more_size = sizeof(more);
+    try {
+        sock.getsockopt(ZMQ_RCVMORE, &more, &more_size);
+    }
+    catch (const zmq::error_t &) {
+        g_recv_left_multipart = true;
+        return false;
+    }
+    if (!more) {
+        return true;
+    }
+    zmq::message_t message;
+    int waits = 0;
+    while (more) {
+        try {
+            if (sock.recv(&message, ZMQ_DONTWAIT)) {
+                waits = 0;
+                more_size = sizeof(more);
+                sock.getsockopt(ZMQ_RCVMORE, &more, &more_size);
+                continue;
+            }
+        }
+        catch (const zmq::error_t &) {
+            g_recv_left_multipart = true;
+            return false;
+        }
+        if (++waits >= 3) {
+            std::cerr << thread_name()
+                      << " safeRecv: incomplete multipart; socket must be replaced\n";
+            g_recv_left_multipart = true;
+            return false;
+        }
+        try {
+            zmq::pollitem_t items[] = {{(void *)sock, 0, ZMQ_POLLIN, 0}};
+            zmq::poll(&items[0], 1, 50);
+        }
+        catch (const zmq::error_t &) {
+            g_recv_left_multipart = true;
+            return false;
+        }
     }
     return true;
 }
@@ -242,6 +286,7 @@ bool safeRecv(zmq::socket_t &sock, char **buf, size_t *response_len, bool block,
 
 bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &response_len,
               int64_t timeout) {
+    g_recv_left_multipart = false;
     response_len = 0;
     int retries = 5;
     if (block && timeout == 0) {
@@ -262,6 +307,9 @@ bool safeRecv(zmq::socket_t &sock, char *buf, int buflen, bool block, size_t &re
                 }
                 if (!response_len && block) {
                     continue;
+                }
+                if (response_len && !drainRcvMore(sock)) {
+                    return false;
                 }
             }
             return (response_len == 0) ? false : true;
