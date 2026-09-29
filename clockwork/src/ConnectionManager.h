@@ -200,7 +200,10 @@ class SubscriptionManager : public ConnectionManager {
 
     // After CHANNEL setup timeout/disconnect: clear sent_request and recover
     // the ZMQ REQ FSM (drain late reply or recreate the setup socket).
-    void resetChannelRequestState(bool recreate_setup_socket);
+    // keep_channel: a command timeout while the subscriber is still up replaces
+    // the setup REQ only. Do not drop e_done or the CHANNEL grant — that path
+    // is what paints "Control is not connected" when iod did not restart.
+    void resetChannelRequestState(bool recreate_setup_socket, bool keep_channel = false);
 
     // Parse a CHANNEL grant JSON (port/name/authority) from the setup REQ reply.
     // Shared by the e_waiting_setup path and late/out-of-order POLLIN handling so a
@@ -251,6 +254,8 @@ class SubscriptionManager : public ConnectionManager {
     // When run_status == e_waiting_response: wall time of the forwarded cmd.
     // Used to abort stuck REQ/REP cycles if the remote never replies.
     uint64_t cmd_request_start;
+    // Truncated text of the command currently waiting on the setup REQ.
+    std::string pending_cmd;
     static const uint64_t cmd_response_timeout_us = 5000000ULL; // 5s
     RunStatus run_status;
     std::string current_channel;

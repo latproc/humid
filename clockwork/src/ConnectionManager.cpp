@@ -366,7 +366,8 @@ bool SubscriptionManager::forceFullReconnect(const char *reason) {
     return true;
 }
 
-void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket) {
+void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket,
+                                                    bool keep_channel) {
     assert(isClient());
     SubscriptionManagerInternals *smi = dynamic_cast<SubscriptionManagerInternals *>(internals);
     if (!smi) {
@@ -487,10 +488,15 @@ void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket) {
         }
         setup_monitor_thread = new boost::thread(boost::ref(*monit_setup));
 
-        // New setup socket means any prior CHANNEL grant is invalid for command
-        // forwarding until we complete CHANNEL again. Keep the subscriber up if
-        // it is still healthy; invalidate only when we already lost the grant.
-        current_channel = "";
+        // A command timeout while the subscriber is still connected only needs
+        // a fresh REQ. Clearing the CHANNEL grant here forces a full reconnect
+        // and the "Control is not connected" overlay even though iod stayed up.
+        const bool can_keep = keep_channel && !current_channel.empty() && monit_subs &&
+                              !monit_subs->disconnected() &&
+                              _setup_status == SubscriptionManager::e_done;
+        if (!can_keep) {
+            current_channel.clear();
+        }
         if (!endpoint.empty()) {
             int counter = 50;
             while (counter-- > 0 && !monit_setup->active()) {
@@ -498,9 +504,26 @@ void SubscriptionManager::resetChannelRequestState(bool recreate_setup_socket) {
             }
             setup().connect(endpoint.c_str());
             monit_setup->setEndPoint(endpoint.c_str());
-            setSetupStatus(SubscriptionManager::e_waiting_connect);
+            bool kept = false;
+            if (can_keep) {
+                for (int i = 0; i < 200 && monit_setup->disconnected(); ++i) {
+                    usleep(1000);
+                }
+                kept = !monit_setup->disconnected();
+            }
+            if (kept) {
+                FileLogger fl(program_name);
+                fl.f() << channel_name
+                       << " setup REQ replaced; subscriber channel kept\n"
+                       << std::flush;
+            }
+            else {
+                current_channel.clear();
+                setSetupStatus(SubscriptionManager::e_waiting_connect);
+            }
         }
         else {
+            current_channel.clear();
             setSetupStatus(SubscriptionManager::e_startup);
         }
     }
@@ -1486,6 +1509,10 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
                         if (setupStatus() == e_done) {
                             try {
                                 setup().send(buf, msglen);
+                                pending_cmd.assign(buf, msglen);
+                                if (pending_cmd.size() > 180) {
+                                    pending_cmd.resize(180);
+                                }
                                 run_status = e_waiting_response;
                                 cmd_request_start = microsecs();
                                 need_reply = false; // reply after remote response
@@ -1622,25 +1649,6 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
             // PROPERTY/DATA can send again without EFSM.
             resetChannelRequestState(true);
         }
-        else if (run_status == e_waiting_response && cmd_request_start &&
-                 (microsecs() - cmd_request_start) > cmd_response_timeout_us) {
-            {
-                FileLogger fl(program_name);
-                fl.f() << channel_name
-                       << " cmd response timed out after "
-                       << (microsecs() - cmd_request_start)
-                       << "us; nacking inproc and recovering setup REQ\n"
-                       << std::flush;
-            }
-            try {
-                safeSend(cmd, "timeout", 7);
-            }
-            catch (...) {
-            }
-            run_status = e_waiting_cmd;
-            cmd_request_start = 0;
-            resetChannelRequestState(true);
-        }
         else if (items[0].revents & ZMQ_POLLIN) {
             if (run_status == e_waiting_response) {
                 DBG_CHANNELS << "incoming response\n";
@@ -1662,6 +1670,7 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
                     catch (...) {
                     }
                     delete[] buf;
+                    pending_cmd.clear();
                     run_status = e_waiting_cmd;
                     cmd_request_start = 0;
                 }
@@ -1695,6 +1704,34 @@ bool SubscriptionManager::checkConnections(zmq::pollitem_t items[], int num_item
                 }
                 delete[] late_buf;
             }
+        }
+        else if (run_status == e_waiting_response && cmd_request_start &&
+                 (microsecs() - cmd_request_start) > cmd_response_timeout_us) {
+            // No reply queued. Replace the half-open REQ. If the subscriber is
+            // still up, keep the CHANNEL grant so the operator does not see a
+            // connection-loss overlay for a slow command.
+            {
+                FileLogger fl(program_name);
+                fl.f() << channel_name
+                       << " cmd response timed out after "
+                       << (microsecs() - cmd_request_start)
+                       << "us; nacking inproc and recovering setup REQ";
+                if (!pending_cmd.empty()) {
+                    fl.f() << " cmd: " << pending_cmd;
+                }
+                fl.f() << "\n" << std::flush;
+            }
+            pending_cmd.clear();
+            try {
+                safeSend(cmd, "timeout", 7);
+            }
+            catch (...) {
+            }
+            run_status = e_waiting_cmd;
+            cmd_request_start = 0;
+            const bool keep_channel = setupStatus() == e_done && monit_subs &&
+                                      !monit_subs->disconnected();
+            resetChannelRequestState(true, keep_channel);
         }
     }
     return true;
