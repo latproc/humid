@@ -377,7 +377,7 @@ endif()
 		  src/editorprogressbar.cpp src/structureswindow.cpp
 		  src/themewindow.cpp src/propertywindow.cpp src/helper.cpp
 		  src/platformdetect.cpp
-		  src/curl_helper.cpp src/screenswindow.cpp
+		  src/curl_helper.cpp src/image_cache.cpp src/screenswindow.cpp
 		  src/linkableproperty.cpp src/anchor.cpp src/objectwindow.cpp src/patternswindow.cpp
 		  src/resourcemanager.cpp src/viewswindow.cpp src/listpanel.cpp
 		  src/toolbar.cpp src/propertyformhelper.cpp src/propertyformwindow.cpp
@@ -415,6 +415,12 @@ endif()
   target_link_libraries(hmifile_check ${ClockworkClient_LIBRARIES} ${ZeroMQ_LIBRARY} ${Boost_LIBRARIES})
 
   install(TARGETS hmifile_check RUNTIME DESTINATION ${PROJECT_SOURCE_DIR}/stage/bin)
+
+  # Filesystem-only check for the HTTP image cache sweeper. Not part of the
+  # panel install; build with: cmake --build build --target test_image_cache
+  add_executable(test_image_cache tests/test_image_cache.cpp src/image_cache.cpp)
+  target_link_libraries(test_image_cache ${Boost_LIBRARIES})
+  set_target_properties(test_image_cache PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 
   # Copy icons for example application

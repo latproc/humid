@@ -49,7 +49,12 @@ IMAGE) plus `EditorWidget` for editor properties and remotes.
    `source + "page-" + zero-padded 3-digit page + ".png"`  
    → `…/page-001.png`, `…/page-002.png`, …
 3. Load uses existing `EditorGUI::getImageId()`:
-   - if `http://…` → download into cwd-relative `cache/` (see `.gitignore`)
+   - if `http://…` → download into cwd-relative `cache/` (see `.gitignore`).
+     Humid deletes that file when the texture leaves the GL cache, and sweeps
+     `cache/` for unused image files older than 10 minutes (sooner when the
+     filesystem, often a `/dev/shm` symlink, is low on free space). Live
+     textures keep their files. Only regular image files directly in `cache/`
+     are removed.
    - decode PNG/JPEG via `GLTexture` / `stb_image`
    - bind as OpenGL texture; only **one page texture** held for the widget
 4. **`pages`** is the known page count (must match converted set). **`page`** is
@@ -201,7 +206,7 @@ CAD. Do not put JS zoom in generated schematic HTML (litehtml ignores it).
 | HTMLVIEW bake-off history | `doc/html-viewer-bakeoff.md` |
 | Converter (agents / plant) | `llm-rules/tools/pdf_to_web.py` (SVN latproc) |
 | Converter notes | `llm-rules/TOOLS.md`, `llm-rules/humid/AGENT_GUIDE.md` |
-| Runtime image cache | cwd `cache/` (gitignored) |
+| Runtime image cache | cwd `cache/` (gitignored); unused image files are removed |
 
 ## Out of scope (v1)
 

@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <cmath>
+#include <ctime>
 #include <algorithm>
 #include <fstream>
 #include <cstdlib>
@@ -39,6 +40,7 @@
 #include "screenswindow.h"
 #include "objectwindow.h"
 #include "curl_helper.h"
+#include "image_cache.h"
 #include "resourcemanager.h"
 #include "propertyformhelper.h"
 #include "toolbar.h"
@@ -133,9 +135,51 @@ class Texture {
 public:
 	explicit Texture(GLTexture tex) : texture(std::move(tex)) {}
 	GLTexture texture;
+	// Set only for files downloaded into cache/. Empty for project assets.
+	std::string cache_file;
 };
 std::map<std::string, Texture*> texture_cache;
 std::map<GLuint, std::string> loaded_textures;
+int http_image_cache_unlinked = 0;
+
+void dropTexture(Texture *texture, bool drop_cache_file) {
+	if (!texture)
+		return;
+	if (drop_cache_file &&
+		discardHttpImageCacheFile(kHttpImageCacheDir, texture->cache_file))
+		++http_image_cache_unlinked;
+	delete texture;
+}
+
+void sweepHttpImageCacheIfDue() {
+	static uint64_t last_sweep = 0;
+	const uint64_t now = microsecs();
+	const bool due = last_sweep == 0 || (now - last_sweep) >= kHttpImageCacheSweepIntervalUs;
+	const bool pressure = httpImageCacheUnderPressure(
+		kHttpImageCacheDir, kHttpImageCacheMinFreeBytes, kHttpImageCacheMinFreeRatio);
+	if (!due && !pressure)
+		return;
+	last_sweep = now;
+
+	HttpImageCachePolicy policy;
+	policy.cache_dir = kHttpImageCacheDir;
+	policy.now_sec = std::time(nullptr);
+	policy.max_age_sec = kHttpImageCacheMaxAgeSec;
+	policy.min_free_bytes = kHttpImageCacheMinFreeBytes;
+	policy.min_free_ratio = kHttpImageCacheMinFreeRatio;
+	for (const auto &item : texture_cache) {
+		if (!item.second || item.second->cache_file.empty())
+			continue;
+		policy.live_names.insert(boost::filesystem::path(item.second->cache_file).filename().string());
+	}
+	const HttpImageCacheSweepResult result = sweepHttpImageCache(policy);
+	const int removed = result.removed_aged + result.removed_pressure + http_image_cache_unlinked;
+	http_image_cache_unlinked = 0;
+	if (removed > 0) {
+		std::cerr << "image cache: removed " << removed << " file(s) from "
+				  << kHttpImageCacheDir << "/\n";
+	}
+}
 
 class EditorKeyboard {
 public:
@@ -545,8 +589,7 @@ void EditorGUI::freeImage(GLuint image_id) {
 		if (found_tex != texture_cache.end()) {
 			Texture *tex = (*found_tex).second;
 			texture_cache.erase(found_tex);
-			delete tex;
-			//std::cout << "remaining textures: " << texture_cache.size() << " (" << loaded_textures.size() << ")\n";
+			dropTexture(tex, true);
 		}
 	}
 }
@@ -570,8 +613,9 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			blank_id = tex.texture();
 	}
 	*/
+	std::string cache_file;
 	if (isURL(name)) {
-		std::string cache_name = "cache";
+		std::string cache_name = kHttpImageCacheDir;
 		if (!boost::filesystem::exists(cache_name))
 			boost::filesystem::create_directory(cache_name);
 		cache_name += "/" + shortName(name) + "." + extn(name);
@@ -580,6 +624,7 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			std::cerr << "Error fetching image file\n";
 			return blank_id;
 		}
+		cache_file = cache_name;
 		name = cache_name;
 	}
 	std::string tex_name = shortName(name);
@@ -603,7 +648,8 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 					ResourceManager::handover(texture_id, factory);
 					old->texture.detach(); // do not call glDeleteTextures() when old is deleted
 				}
-				delete old;
+				// Keep the cache file: reload just overwrote it for the new texture.
+				dropTexture(old, false);
 			}
 		}
 
@@ -613,7 +659,9 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 			auto tex_data = tex.load(name);
 			GLuint res = tex.texture();
 			if (res) {
-				texture_cache[tex_name] = new Texture(std::move(tex));
+				Texture *stored = new Texture(std::move(tex));
+				stored->cache_file = cache_file;
+				texture_cache[tex_name] = stored;
 				loaded_textures[res] = tex_name;
 				TextureResourceManagerFactory factory;
 				ResourceManager::manage(res, factory);
@@ -629,39 +677,41 @@ GLuint EditorGUI::getImageId(const char *source, bool reload) {
 
 void cleanupTextureCache() {
 	uint64_t now = microsecs();
-	if (texture_cache.size() < 2) return;
-	std::map<uint64_t, Texture*> to_remove;
-	auto iter = texture_cache.begin();
-	while (iter != texture_cache.end()) {
-		const std::pair<std::string, Texture*> &item = *iter;
-		Texture *texture = item.second;
-		GLuint tex = item.second->texture.texture();
-		ResourceManager *manager = ResourceManager::find(tex);
-		if (manager && manager->uses() == 1 && manager->lastReleaseTime() && now - manager->lastReleaseTime() > 10000000) {
-			//ResourceManager::release(tex);
-			//delete texture;
-			//iter = texture_cache.erase(iter);
-			to_remove.insert(std::make_pair(manager->lastReleaseTime(), texture));
-			++iter;
+	if (texture_cache.size() >= 2) {
+		std::map<uint64_t, Texture*> to_remove;
+		auto iter = texture_cache.begin();
+		while (iter != texture_cache.end()) {
+			const std::pair<std::string, Texture*> &item = *iter;
+			Texture *texture = item.second;
+			GLuint tex = item.second->texture.texture();
+			ResourceManager *manager = ResourceManager::find(tex);
+			if (manager && manager->uses() == 1 && manager->lastReleaseTime() && now - manager->lastReleaseTime() > 10000000) {
+				//ResourceManager::release(tex);
+				//delete texture;
+				//iter = texture_cache.erase(iter);
+				to_remove.insert(std::make_pair(manager->lastReleaseTime(), texture));
+				++iter;
+			}
+			else ++iter;
 		}
-		else ++iter;
-	}
-	auto remove = to_remove.begin();
-	int n = texture_cache.size();
-	while (remove != to_remove.end()) {
-		const std::pair<uint64_t, Texture*> &item = *remove;
-		if (--n > 8 || (now - (*remove).first) > 60000000) { //minimum cache size and images older than 10m are flushed
-			Texture *texture = (*remove).second;
-			GLuint tex = (*remove).second->texture.texture();
-			texture_cache.erase(texture_cache.find(texture->texture.textureName()));
-			loaded_textures.erase(tex);
-			ResourceManager::release(tex);
-			delete texture;
-			remove = to_remove.erase(remove);
+		auto remove = to_remove.begin();
+		int n = texture_cache.size();
+		while (remove != to_remove.end()) {
+			const std::pair<uint64_t, Texture*> &item = *remove;
+			if (--n > 8 || (now - (*remove).first) > 60000000) { //minimum cache size and images older than 10m are flushed
+				Texture *texture = (*remove).second;
+				GLuint tex = (*remove).second->texture.texture();
+				texture_cache.erase(texture_cache.find(texture->texture.textureName()));
+				loaded_textures.erase(tex);
+				ResourceManager::release(tex);
+				dropTexture(texture, true);
+				remove = to_remove.erase(remove);
+			}
+			else ++remove;
+			//std::cout << "texture cache flushed. remaining: " << texture_cache.size() << "\n";
 		}
-		else ++remove;
-		//std::cout << "texture cache flushed. remaining: " << texture_cache.size() << "\n";
 	}
+	sweepHttpImageCacheIfDue();
 }
 /*
 void cleanupTextureCache(GLuint tex) {
